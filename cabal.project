@@ -1,0 +1,11 @@
+with-compiler: ghc-9.4.8
+
+packages: lw-staged-deptype.cabal
+
+-- https://downloads.haskell.org/ghc/latest/docs/html/users_guide/flags.html
+-- https://downloads.haskell.org/ghc/latest/docs/html/users_guide/runtime_control.html
+package lw-staged-deptype
+  tests: True
+  test-show-details: direct
+
+extra-packages: ormolu
