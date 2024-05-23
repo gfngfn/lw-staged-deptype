@@ -36,10 +36,10 @@ initialTypeEnv =
           )
 
     tyInt :: Ass0TypeExpr
-    tyInt = A0TyName "Int" []
+    tyInt = A0TyPrim A0TyInt
 
     tyVec :: Ass0Expr -> Ass1TypeExpr
-    tyVec a0e = A1TyName "Vec" [a0e]
+    tyVec = A1TyPrim . A1TyVec
 
     (-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
     (-->) a0tye1 = A0TyArrow (Nothing, a0tye1)

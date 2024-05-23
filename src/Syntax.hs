@@ -7,7 +7,9 @@ module Syntax
     TypeExpr (..),
     ArgForType (..),
     Ass0TypeExpr (..),
+    Ass0PrimType (..),
     Ass1TypeExpr (..),
+    Ass1PrimType (..),
   )
 where
 
@@ -52,12 +54,23 @@ data ArgForType
   deriving stock (Eq, Show)
 
 data Ass0TypeExpr
-  = A0TyName TypeName [Ass0Expr]
+  = A0TyPrim Ass0PrimType
   | A0TyArrow (Maybe Var, Ass0TypeExpr) Ass0TypeExpr
   | A0TyCode Ass1TypeExpr
   deriving stock (Eq, Show)
 
+data Ass0PrimType
+  = A0TyInt
+  | A0TyBool
+  deriving stock (Eq, Show)
+
 data Ass1TypeExpr
-  = A1TyName TypeName [Ass0Expr]
+  = A1TyPrim Ass1PrimType
   | A1TyArrow Ass1TypeExpr Ass1TypeExpr
+  deriving stock (Eq, Show)
+
+data Ass1PrimType
+  = A1TyInt
+  | A1TyBool
+  | A1TyVec Ass0Expr
   deriving stock (Eq, Show)
