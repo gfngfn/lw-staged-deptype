@@ -37,8 +37,8 @@ substExpr0 a0e x = \case
   A0Var y ->
     if y == x then a0e else A0Var y
   A0Lam (y, a0tye1) a0e2 ->
-    let a0tye1' = substTypeExpr0 a0e x a0tye1 in
-    A0Lam (y, a0tye1') (if y == x then a0e2 else go0 a0e2)
+    let a0tye1' = substTypeExpr0 a0e x a0tye1
+     in A0Lam (y, a0tye1') (if y == x then a0e2 else go0 a0e2)
   A0App a0e1 a0e2 ->
     A0App (go0 a0e1) (go0 a0e2)
   A0Bracket a1e1 ->
@@ -56,8 +56,8 @@ substExpr1 a0e x = \case
   A1Var y ->
     A1Var y -- Does not change since we substitute stage-0 variables.
   A1Lam (y, a1tye1) a1e2 ->
-    let a1tye1' = substTypeExpr1 a0e x a1tye1 in
-    A1Lam (y, a1tye1') (if y == x then a1e2 else go1 a1e2)
+    let a1tye1' = substTypeExpr1 a0e x a1tye1
+     in A1Lam (y, a1tye1') (if y == x then a1e2 else go1 a1e2)
   A1App a1e1 a1e2 ->
     A1App (go1 a1e1) (go1 a1e2)
   A1Escape a0e1 ->
@@ -155,11 +155,10 @@ typecheckExpr0 trav tyEnv = \case
     case a0tye1 of
       A0TyArrow (x11opt, a0tye11) a0tye12 -> do
         a0e2' <- addAssertions trav a0tye11 a0tye2 a0e2
-        let
-          a0tye12' =
-            case x11opt of
-              Just x11 -> substTypeExpr0 a0e2 x11 a0tye12
-              Nothing -> a0tye12
+        let a0tye12' =
+              case x11opt of
+                Just x11 -> substTypeExpr0 a0e2 x11 a0tye12
+                Nothing -> a0tye12
         pure (a0tye12', A0App a0e1 a0e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage0 a0tye1
