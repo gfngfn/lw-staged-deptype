@@ -25,6 +25,7 @@ data Token
   | TokPersistent
   | TokLower Text
   | TokUpper Text
+  | TokInt Int
   | TokFun
   | TokLet
   | TokIn
@@ -71,6 +72,12 @@ upperIdent = Text.pack <$> ((:) <$> p1 <*> p2)
     p1 = Mp.satisfy Char.isUpper
     p2 = Mp.many (Mp.satisfy isRestChar) <* Mp.notFollowedBy (Mp.satisfy isRestChar)
 
+integerLiteral :: Tokenizer Int
+integerLiteral = (\s -> read s :: Int) <$> ((:) <$> p1 <*> p2)
+  where
+    p1 = Mp.satisfy (\c -> Char.isDigit c && c /= '0')
+    p2 = Mp.many (Mp.satisfy Char.isDigit) <* Mp.notFollowedBy (Mp.satisfy Char.isDigit)
+
 token :: Tokenizer Token
 token =
   choice
@@ -83,7 +90,8 @@ token =
       TokEscape <$ Mp.single '~',
       TokPersistent <$ Mp.single '%',
       lowerIdentOrKeyword,
-      TokUpper <$> upperIdent
+      TokUpper <$> upperIdent,
+      TokInt <$> integerLiteral
     ]
 
 lex :: Text -> Either String [Token]

@@ -1,5 +1,6 @@
 module Syntax
   ( Var,
+    Literal (..),
     Expr (..),
     Ass0Expr (..),
     Ass1Expr (..),
@@ -17,8 +18,13 @@ import Data.Text (Text)
 
 type Var = Text
 
+data Literal
+  = LitInt Int
+  deriving stock (Eq, Show)
+
 data Expr
-  = Var Var
+  = Literal Literal
+  | Var Var
   | Lam (Var, TypeExpr) Expr
   | App Expr Expr
   | LetIn Var Expr Expr
@@ -27,14 +33,17 @@ data Expr
   deriving stock (Eq, Show)
 
 data Ass0Expr
-  = A0Var Var
+  = A0Literal Literal
+  | A0Var Var
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
+  | A0AssertAndThen Ass0Expr Ass0Expr Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass1Expr
-  = A1Var Var
+  = A1Literal Literal
+  | A1Var Var
   | A1Lam (Var, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
   | A1Escape Ass0Expr

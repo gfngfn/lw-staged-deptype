@@ -64,6 +64,8 @@ handle inputFilePath = do
         Left (tyErr, _travMod) -> do
           putStrLn "-------- type error: --------"
           print tyErr
-        Right atye -> do
+        Right (a1tye, a1e) -> do
           putStrLn "-------- type: --------"
-          print atye
+          print a1tye
+          putStrLn "-------- expression: --------"
+          print a1e

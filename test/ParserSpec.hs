@@ -25,6 +25,9 @@ tyNondepFun tye1 = TyArrow (Nothing, tye1)
 spec :: Spec
 spec = do
   describe "Parser.parseExpr" $ do
+    it "parses integer literals (1)" $
+      Parser.parseExpr "42"
+        `shouldBe` pure (Literal (LitInt 42))
     it "parses variables (1)" $
       Parser.parseExpr "x"
         `shouldBe` pure (Var "x")
@@ -40,6 +43,9 @@ spec = do
     it "parses applications (3)" $
       Parser.parseExpr "x (y z)"
         `shouldBe` pure (App (Var "x") (App (Var "y") (Var "z")))
+    it "parses applications and integer literals" $
+      Parser.parseExpr "x 42 z"
+        `shouldBe` pure (App (App (Var "x") (Literal (LitInt 42))) (Var "z"))
     it "parses lambda abstractions (1)" $
       Parser.parseExpr "fun (x : Int) -> x"
         `shouldBe` pure (Lam ("x", tyInt) (Var "x"))

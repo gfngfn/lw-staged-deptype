@@ -42,11 +42,21 @@ upper =
     )
     Set.empty
 
+int :: P Int
+int =
+  Mp.token
+    ( \case
+        TokInt n -> Just n
+        _ -> Nothing
+    )
+    Set.empty
+
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
   where
     atom =
-      try (Var <$> lower)
+      try (Literal . LitInt <$> int)
+        <|> try (Var <$> lower)
         <|> paren expr
     staged =
       try (Bracket <$> (token TokBracket *> staged))
