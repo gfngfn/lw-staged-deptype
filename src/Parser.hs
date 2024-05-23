@@ -43,16 +43,23 @@ upper =
     Set.empty
 
 exprAtom, expr :: P Expr
-(exprAtom, expr) = (atom, lam)
+(exprAtom, expr) = (atom, letin)
   where
     atom =
       try (Var <$> lower)
         <|> paren expr
+    staged =
+      try (Bracket <$> (token TokBracket *> staged))
+        <|> try (Escape <$> (token TokEscape *> staged))
+        <|> atom
     app =
-      foldl1 App <$> Mp.some (try atom)
+      foldl1 App <$> Mp.some (try staged)
     lam =
       try (Lam <$> (token TokFun *> paren ((,) <$> lower <*> (token TokColon *> typeExpr)) <* token TokArrow) <*> expr)
         <|> app
+    letin =
+      try (LetIn <$> (token TokLet *> lower) <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+        <|> lam
 
 typeExpr :: P TypeExpr
 typeExpr = fun

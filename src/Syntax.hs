@@ -18,6 +18,7 @@ data Expr
   = Var Var
   | Lam (Var, TypeExpr) Expr
   | App Expr Expr
+  | LetIn Var Expr Expr
   | Bracket Expr
   | Escape Expr
   deriving stock (Eq, Show)

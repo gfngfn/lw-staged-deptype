@@ -44,6 +44,22 @@ spec = do
       let ty = tyDepFun "n" tyInt tyBool
        in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
             `shouldBe` pure (Lam ("x", ty) (App (Var "x") (Var "y")))
+    it "parses let expressions" $
+      let ty = tyDepFun "n" tyInt tyBool
+       in Parser.parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
+            `shouldBe` pure (LetIn "f" (Lam ("x", ty) (App (Var "x") (Var "y"))) (Var "f"))
+    it "parses brackets (1)" $
+      Parser.parseExpr "f &x y"
+        `shouldBe` pure (App (App (Var "f") (Bracket (Var "x"))) (Var "y"))
+    it "parses brackets (2)" $
+      Parser.parseExpr "f &(g x)"
+        `shouldBe` pure (App (Var "f") (Bracket (App (Var "g") (Var "x"))))
+    it "parses escapes (1)" $
+      Parser.parseExpr "f ~x y"
+        `shouldBe` pure (App (App (Var "f") (Escape (Var "x"))) (Var "y"))
+    it "parses escapes (2)" $
+      Parser.parseExpr "f ~(g x)"
+        `shouldBe` pure (App (Var "f") (Escape (App (Var "g") (Var "x"))))
   describe "Parser.parseTypeExpr" $ do
     it "parses dependent function types (1)" $
       Parser.parseTypeExpr "(n : Int) -> Bool"

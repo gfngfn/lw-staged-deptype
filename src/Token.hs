@@ -18,24 +18,16 @@ data Token
   = TokLeftParen
   | TokRightParen
   | TokArrow
-  | TokDot
-  | TokColon
-  | TokDoubleColon
   | TokEqual
-  | TokSeal
+  | TokColon
+  | TokBracket
+  | TokEscape
+  | TokPersistent
   | TokLower Text
   | TokUpper Text
-  | TokDummy
-  | TokEnd
   | TokFun
-  | TokInclude
-  | TokModule
-  | TokSig
-  | TokStruct
-  | TokType
-  | TokUsing
-  | TokVal
-  | TokWithtype
+  | TokLet
+  | TokIn
   deriving stock (Ord, Eq, Show)
 
 instance Mp.VisualStream [Token] where
@@ -49,17 +41,9 @@ type Tokenizer = Mp.Parsec Void Text
 keywordMap :: Map Text Token
 keywordMap =
   Map.fromList
-    [ ("dummy", TokDummy),
-      ("end", TokEnd),
-      ("fun", TokFun),
-      ("include", TokInclude),
-      ("module", TokModule),
-      ("sig", TokSig),
-      ("struct", TokStruct),
-      ("type", TokType),
-      ("using", TokUsing),
-      ("val", TokVal),
-      ("withtype", TokWithtype)
+    [ ("fun", TokFun),
+      ("let", TokLet),
+      ("in", TokIn)
     ]
 
 space :: Tokenizer ()
@@ -93,11 +77,11 @@ token =
     [ TokLeftParen <$ Mp.single '(',
       TokRightParen <$ Mp.single ')',
       TokArrow <$ Mp.chunk "->",
-      TokDot <$ Mp.single '.',
-      TokDoubleColon <$ Mp.chunk "::",
-      TokSeal <$ Mp.chunk ":>",
       TokColon <$ Mp.single ':',
       TokEqual <$ Mp.single '=',
+      TokBracket <$ Mp.single '&',
+      TokEscape <$ Mp.single '~',
+      TokPersistent <$ Mp.single '%',
       lowerIdentOrKeyword,
       TokUpper <$> upperIdent
     ]
