@@ -15,13 +15,43 @@ initialTypeEnv =
   List.foldl'
     (\tyEnv (x, a0tye) -> TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye) tyEnv)
     TypeEnv.empty
-    [ ("add", tyInt --> (tyInt --> tyInt)) ]
+    [ ("add", tyInt --> tyInt --> tyInt),
+      ("gen_vadd", tyGenVadd),
+      ("gen_vconcat", tyGenVconcat)
+    ]
   where
+    tyGenVadd :: Ass0TypeExpr
+    tyGenVadd =
+      ("a", tyInt)
+        -:> A0TyCode (tyVec (A0Var "a") ==> tyVec (A0Var "a") ==> tyVec (A0Var "a"))
+
+    tyGenVconcat :: Ass0TypeExpr
+    tyGenVconcat =
+      ("a", tyInt)
+        -:> ("b", tyInt)
+        -:> A0TyCode
+          ( tyVec (A0Var "a")
+              ==> tyVec (A0Var "b")
+              ==> tyVec (A0App (A0App (A0Var "add") (A0Var "a")) (A0Var "b"))
+          )
+
     tyInt :: Ass0TypeExpr
     tyInt = A0TyName "Int" []
 
+    tyVec :: Ass0Expr -> Ass1TypeExpr
+    tyVec a0e = A1TyName "Vec" [a0e]
+
     (-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
     (-->) a0tye1 = A0TyArrow (Nothing, a0tye1)
+    infixr 0 -->
+
+    (-:>) :: (Var, Ass0TypeExpr) -> Ass0TypeExpr -> Ass0TypeExpr
+    (-:>) (x, a0tye1) = A0TyArrow (Just x, a0tye1)
+    infixr 0 -:>
+
+    (==>) :: Ass1TypeExpr -> Ass1TypeExpr -> Ass1TypeExpr
+    (==>) = A1TyArrow
+    infixr 0 ==>
 
 handle :: String -> IO ()
 handle inputFilePath = do

@@ -2,7 +2,7 @@
   let concat_and_add =
     fun (m : Int) -> fun (n : Int) ->
       &(fun (u1 : Vec %m) -> fun (u2 : Vec %n) -> fun (v : Vec %(add m n)) ->
-        ~(genvadd n) (~(genvconcat m n) u1 u2) v
+        ~(gen_vadd n) (~(gen_vconcat m n) u1 u2) v
       )
   in
   concat_and_add
