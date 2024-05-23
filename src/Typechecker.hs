@@ -52,12 +52,12 @@ typecheckTypeExpr :: trav -> TypeEnv -> TypeExpr -> M trav AssTypeExpr
 typecheckTypeExpr trav tyEnv = \case
   TyName tyName es -> do
     results <- mapM (typecheckExpr trav tyEnv) es
---     baseTy <-
---       case (tyName, results) of
---         ("int", []) -> pure TyBaseInt
---         ("bool", []) -> pure TyBaseBool
---         _ -> typeError trav $ UnknownTypeOrInvalidArity tyName (List.length semTys)
-      -- TODO
+    --     baseTy <-
+    --       case (tyName, results) of
+    --         ("int", []) -> pure TyBaseInt
+    --         ("bool", []) -> pure TyBaseBool
+    --         _ -> typeError trav $ UnknownTypeOrInvalidArity tyName (List.length semTys)
+    -- TODO
     let aes = snd <$> results
     pure $ TyName tyName aes
   TyArrow (x, tye1) tye2 -> do
