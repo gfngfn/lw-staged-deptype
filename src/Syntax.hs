@@ -25,7 +25,7 @@ type TypeName = Text
 
 data TypeExpr
   = TyName TypeName [Expr]
-  | TyArrow (Var, TypeExpr) TypeExpr
+  | TyArrow (Maybe Var, TypeExpr) TypeExpr
   deriving stock (Eq, Show)
 
 -- TODO

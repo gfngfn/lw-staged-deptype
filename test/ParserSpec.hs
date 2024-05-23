@@ -14,7 +14,10 @@ tyVec :: Expr -> TypeExpr
 tyVec e = TyName "Vec" [e]
 
 tyDepFun :: Var -> TypeExpr -> TypeExpr -> TypeExpr
-tyDepFun x tye1 = TyArrow (x, tye1)
+tyDepFun x tye1 = TyArrow (Just x, tye1)
+
+tyNondepFun :: TypeExpr -> TypeExpr -> TypeExpr
+tyNondepFun tye1 = TyArrow (Nothing, tye1)
 
 spec :: Spec
 spec = do
@@ -42,15 +45,36 @@ spec = do
        in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
             `shouldBe` pure (Lam ("x", ty) (App (Var "x") (Var "y")))
   describe "Parser.parseTypeExpr" $ do
-    it "parses function types (1)" $
+    it "parses dependent function types (1)" $
       Parser.parseTypeExpr "(n : Int) -> Bool"
         `shouldBe` pure (tyDepFun "n" tyInt tyBool)
-    it "parses function types (2)" $
+    it "parses dependent function types (2)" $
       Parser.parseTypeExpr "(m : Int) -> (n : Int) -> Bool"
         `shouldBe` pure (tyDepFun "m" tyInt (tyDepFun "n" tyInt tyBool))
-    it "parses function types (3)" $
+    it "parses dependent function types (3)" $
       Parser.parseTypeExpr "(f : (n : Int) -> Int) -> Bool"
         `shouldBe` pure (tyDepFun "f" (tyDepFun "n" tyInt tyInt) tyBool)
+    it "parses non-dependent function types (1)" $
+      Parser.parseTypeExpr "Int -> Bool"
+        `shouldBe` pure (tyNondepFun tyInt tyBool)
+    it "parses non-dependent function types (2)" $
+      Parser.parseTypeExpr "Int -> Int -> Bool"
+        `shouldBe` pure (tyNondepFun tyInt (tyNondepFun tyInt tyBool))
+    it "parses non-dependent function types (3)" $
+      Parser.parseTypeExpr "(Int -> Int) -> Bool"
+        `shouldBe` pure (tyNondepFun (tyNondepFun tyInt tyInt) tyBool)
+    it "parses mixed function types (1)" $
+      Parser.parseTypeExpr "(m : Int) -> Int -> Bool"
+        `shouldBe` pure (tyDepFun "m" tyInt (tyNondepFun tyInt tyBool))
+    it "parses mixed function types (2)" $
+      Parser.parseTypeExpr "Int -> (n : Int) -> Bool"
+        `shouldBe` pure (tyNondepFun tyInt (tyDepFun "n" tyInt tyBool))
+    it "parses mixed function types (3)" $
+      Parser.parseTypeExpr "(f : Int -> Int) -> Bool"
+        `shouldBe` pure (tyDepFun "f" (tyNondepFun tyInt tyInt) tyBool)
+    it "parses mixed function types (4)" $
+      Parser.parseTypeExpr "((n : Int) -> Int) -> Bool"
+        `shouldBe` pure (tyNondepFun (tyDepFun "n" tyInt tyInt) tyBool)
     it "parses type applications (1)" $
       Parser.parseTypeExpr "Vec n"
         `shouldBe` pure (tyVec (Var "n"))

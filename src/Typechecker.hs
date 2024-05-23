@@ -36,7 +36,7 @@ typecheckExpr trav tyEnv = \case
   Lam (x1, tye1) e2 -> do
     atye1 <- typecheckTypeExpr trav tyEnv tye1
     (atye2, ae2) <- typecheckExpr trav (TypeEnv.addVar x1 atye1 tyEnv) e2
-    pure (TyArrow (x1, atye1) atye2, Lam (x1, atye1) ae2)
+    pure (TyArrow (Just x1, atye1) atye2, Lam (x1, atye1) ae2)
   App e1 e2 -> do
     (atye1, ae1) <- typecheckExpr trav tyEnv e1
     (atye2, ae2) <- typecheckExpr trav tyEnv e2
@@ -60,7 +60,10 @@ typecheckTypeExpr trav tyEnv = \case
     -- TODO
     let aes = snd <$> results
     pure $ TyName tyName aes
-  TyArrow (x, tye1) tye2 -> do
+  TyArrow (xOpt, tye1) tye2 -> do
     atye1 <- typecheckTypeExpr trav tyEnv tye1
-    atye2 <- typecheckTypeExpr trav (TypeEnv.addVar x atye1 tyEnv) tye2
-    pure $ TyArrow (x, atye1) atye2
+    atye2 <-
+      case xOpt of
+        Just x -> typecheckTypeExpr trav (TypeEnv.addVar x atye1 tyEnv) tye2
+        Nothing -> typecheckTypeExpr trav tyEnv tye2
+    pure $ TyArrow (xOpt, atye1) atye2
