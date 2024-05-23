@@ -5,10 +5,16 @@ import Syntax
 import Test.Hspec
 
 tyInt :: TypeExpr
-tyInt = TyName "int" []
+tyInt = TyName "Int" []
 
 tyBool :: TypeExpr
-tyBool = TyName "bool" []
+tyBool = TyName "Bool" []
+
+tyVec :: Expr -> TypeExpr
+tyVec e = TyName "Vec" [e]
+
+tyDepFun :: Var -> TypeExpr -> TypeExpr -> TypeExpr
+tyDepFun x tye1 = TyArrow (x, tye1)
 
 spec :: Spec
 spec = do
@@ -29,28 +35,28 @@ spec = do
       Parser.parseExpr "x (y z)"
         `shouldBe` pure (App (Var "x") (App (Var "y") (Var "z")))
     it "parses lambda abstractions (1)" $
-      Parser.parseExpr "fun (x : int) -> x"
+      Parser.parseExpr "fun (x : Int) -> x"
         `shouldBe` pure (Lam ("x", tyInt) (Var "x"))
     it "parses lambda abstractions (2)" $
-      let ty = TyArrow ("n", tyInt) tyBool
-       in Parser.parseExpr "fun (x : (n : int) -> bool) -> x y"
+      let ty = tyDepFun "n" tyInt tyBool
+       in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
             `shouldBe` pure (Lam ("x", ty) (App (Var "x") (Var "y")))
   describe "Parser.parseTypeExpr" $ do
     it "parses function types (1)" $
-      Parser.parseTypeExpr"(n : int) -> bool"
-        `shouldBe` pure (TyArrow ("n", tyInt) tyBool)
+      Parser.parseTypeExpr "(n : Int) -> Bool"
+        `shouldBe` pure (tyDepFun "n" tyInt tyBool)
     it "parses function types (2)" $
-      Parser.parseTypeExpr"(m : int) -> (n : int) -> bool"
-        `shouldBe` pure (TyArrow ("m", tyInt) (TyArrow ("n", tyInt) tyBool))
+      Parser.parseTypeExpr "(m : Int) -> (n : Int) -> Bool"
+        `shouldBe` pure (tyDepFun "m" tyInt (tyDepFun "n" tyInt tyBool))
     it "parses function types (3)" $
-      Parser.parseTypeExpr"(f : (n : int) -> int) -> bool"
-        `shouldBe` pure (TyArrow ("f", TyArrow ("n", tyInt) tyInt) tyBool)
+      Parser.parseTypeExpr "(f : (n : Int) -> Int) -> Bool"
+        `shouldBe` pure (tyDepFun "f" (tyDepFun "n" tyInt tyInt) tyBool)
     it "parses type applications (1)" $
-      Parser.parseTypeExpr"vec n"
-        `shouldBe` pure (TyName "vec" [Var "n"])
+      Parser.parseTypeExpr "Vec n"
+        `shouldBe` pure (tyVec (Var "n"))
     it "parses type applications (2)" $
-      Parser.parseTypeExpr"(v : vec n) -> bool"
-        `shouldBe` pure (TyArrow ("v", TyName "vec" [Var "n"]) tyBool)
+      Parser.parseTypeExpr "(v : Vec n) -> Bool"
+        `shouldBe` pure (tyDepFun "v" (tyVec (Var "n")) tyBool)
     it "parses type applications (3)" $
-      Parser.parseTypeExpr"vec (succ n)"
-        `shouldBe` pure (TyName "vec" [App (Var "succ") (Var "n")])
+      Parser.parseTypeExpr "Vec (succ n)"
+        `shouldBe` pure (tyVec (App (Var "succ") (Var "n")))

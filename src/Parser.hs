@@ -33,14 +33,14 @@ lower =
     )
     Set.empty
 
--- upper :: P Text
--- upper =
---   Mp.token
---     ( \case
---         TokUpper x -> Just x
---         _ -> Nothing
---     )
---     Set.empty
+upper :: P Text
+upper =
+  Mp.token
+    ( \case
+        TokUpper x -> Just x
+        _ -> Nothing
+    )
+    Set.empty
 
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, lam)
@@ -58,10 +58,10 @@ typeExpr :: P TypeExpr
 typeExpr = fun
   where
     atom =
-      try (flip TyName [] <$> lower)
+      try (flip TyName [] <$> upper)
         <|> paren fun
     app =
-      try (TyName <$> lower <*> Mp.some (try exprAtom))
+      try (TyName <$> upper <*> Mp.some (try exprAtom))
         <|> atom
     fun =
       try (TyArrow <$> paren ((,) <$> (lower <* token TokColon) <*> fun) <*> (token TokArrow *> fun))
