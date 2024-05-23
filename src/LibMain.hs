@@ -14,7 +14,7 @@ handle inputFilePath = do
     Left err -> do
       putStrLn $ "parse error: " ++ err
     Right e -> do
-      case evalStateT (Typechecker.typecheckExpr id TypeEnv.empty e) () of
+      case evalStateT (Typechecker.typecheckExpr1 id TypeEnv.empty e) () of
         Left (tyErr, _travMod) -> do
           putStrLn "-------- type error: --------"
           print tyErr
