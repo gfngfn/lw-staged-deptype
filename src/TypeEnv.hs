@@ -1,5 +1,6 @@
 module TypeEnv
   ( TypeEnv,
+    Entry (..),
     empty,
     addVar,
     findVar,
@@ -9,19 +10,21 @@ where
 import Data.List.Extra qualified as List
 import Syntax
 
-newtype TypeEnv = TypeEnv [TypeEnvEntry]
+newtype TypeEnv = TypeEnv [(Var, Entry)]
 
-data TypeEnvEntry = TypeEnvEntry Var TypeExpr
+data Entry
+  = Ass0Entry Ass0TypeExpr
+  | Ass1Entry Ass1TypeExpr
 
 empty :: TypeEnv
 empty = TypeEnv []
 
-addVar :: Var -> TypeExpr -> TypeEnv -> TypeEnv
-addVar var tye (TypeEnv revEntries) =
-  TypeEnv (TypeEnvEntry var tye : revEntries)
+addVar :: Var -> Entry -> TypeEnv -> TypeEnv
+addVar var entry (TypeEnv revEntries) =
+  TypeEnv ((var, entry) : revEntries)
 
-findVar :: Var -> TypeEnv -> Maybe TypeExpr
+findVar :: Var -> TypeEnv -> Maybe Entry
 findVar var0 (TypeEnv revEntries) =
   List.firstJust
-    (\(TypeEnvEntry var tye) -> if var == var0 then Just tye else Nothing)
+    (\(var, entry) -> if var == var0 then Just entry else Nothing)
     revEntries

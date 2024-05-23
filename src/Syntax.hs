@@ -1,12 +1,12 @@
 module Syntax
   ( Var,
     Expr (..),
-    AssExpr0,
-    AssExpr1,
+    Ass0Expr (..),
+    Ass1Expr (..),
     TypeName,
     TypeExpr (..),
-    AssTypeExpr0,
-    AssTypeExpr1,
+    Ass0TypeExpr (..),
+    Ass1TypeExpr (..),
   )
 where
 
@@ -22,11 +22,19 @@ data Expr
   | Escape Expr
   deriving stock (Eq, Show)
 
--- TODO
-type AssExpr0 = Expr
+data Ass0Expr
+  = A0Var Var
+  | A0Lam (Var, Ass0TypeExpr) Ass0Expr
+  | A0App Ass0Expr Ass0Expr
+  | A0Bracket Ass1Expr
+  deriving stock (Eq, Show)
 
--- TODO
-type AssExpr1 = Expr
+data Ass1Expr
+  = A1Var Var
+  | A1Lam (Var, Ass1TypeExpr) Ass1Expr
+  | A1App Ass1Expr Ass1Expr
+  | A1Escape Ass0Expr
+  deriving stock (Eq, Show)
 
 type TypeName = Text
 
@@ -36,8 +44,13 @@ data TypeExpr
   | TyCode TypeExpr
   deriving stock (Eq, Show)
 
--- TODO
-type AssTypeExpr0 = TypeExpr
+data Ass0TypeExpr
+  = A0TyName TypeName [Ass0Expr]
+  | A0TyArrow (Maybe Var, Ass0TypeExpr) Ass0TypeExpr
+  | A0TyCode Ass1TypeExpr
+  deriving stock (Eq, Show)
 
--- TODO
-type AssTypeExpr1 = TypeExpr
+data Ass1TypeExpr
+  = A1TyName TypeName [Ass0Expr]
+  | A1TyArrow Ass1TypeExpr Ass1TypeExpr
+  deriving stock (Eq, Show)
