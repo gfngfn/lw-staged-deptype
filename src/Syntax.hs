@@ -5,6 +5,7 @@ module Syntax
     Ass1Expr (..),
     TypeName,
     TypeExpr (..),
+    ArgForType (..),
     Ass0TypeExpr (..),
     Ass1TypeExpr (..),
   )
@@ -40,9 +41,14 @@ data Ass1Expr
 type TypeName = Text
 
 data TypeExpr
-  = TyName TypeName [Expr]
+  = TyName TypeName [ArgForType]
   | TyArrow (Maybe Var, TypeExpr) TypeExpr
   | TyCode TypeExpr
+  deriving stock (Eq, Show)
+
+data ArgForType
+  = PersistentArg Expr
+  | NormalArg Expr
   deriving stock (Eq, Show)
 
 data Ass0TypeExpr

@@ -19,4 +19,6 @@ data TypeError
   | CannotUseBracketAtStage1
   | FunctionTypeCannotBeDependentAtStage1 Var
   | CannotUseCodeTypeAtStage1
+  | CannotUsePersistentArgAtStage0
+  | CannotUseNormalArgAtStage1
   deriving stock (Show)

@@ -98,8 +98,14 @@ typecheckExpr1 trav tyEnv = \case
 
 typecheckTypeExpr0 :: trav -> TypeEnv -> TypeExpr -> M trav Ass0TypeExpr
 typecheckTypeExpr0 trav tyEnv = \case
-  TyName tyName es -> do
-    results <- mapM (typecheckExpr0 trav tyEnv) es
+  TyName tyName args -> do
+    results <-
+      mapM
+        ( \case
+            PersistentArg _ -> typeError trav CannotUsePersistentArgAtStage0
+            NormalArg e -> typecheckExpr0 trav tyEnv e
+        )
+        args
     --     baseTy <-
     --       case (tyName, results) of
     --         ("int", []) -> pure TyBaseInt
@@ -121,8 +127,14 @@ typecheckTypeExpr0 trav tyEnv = \case
 
 typecheckTypeExpr1 :: trav -> TypeEnv -> TypeExpr -> M trav Ass1TypeExpr
 typecheckTypeExpr1 trav tyEnv = \case
-  TyName tyName es -> do
-    results <- mapM (typecheckExpr0 trav tyEnv) es
+  TyName tyName args -> do
+    results <-
+      mapM
+        ( \case
+            PersistentArg e -> typecheckExpr0 trav tyEnv e
+            NormalArg _ -> typeError trav CannotUseNormalArgAtStage1
+        )
+        args
     --     baseTy <-
     --       case (tyName, results) of
     --         ("int", []) -> pure TyBaseInt

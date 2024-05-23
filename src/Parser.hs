@@ -68,7 +68,7 @@ typeExpr = fun
       try (flip TyName [] <$> upper)
         <|> paren fun
     app =
-      try (TyName <$> upper <*> Mp.some (try exprAtom))
+      try (TyName <$> upper <*> Mp.some (try arg))
         <|> atom
     fun =
       try (TyArrow <$> funDom <*> (token TokArrow *> fun))
@@ -76,6 +76,9 @@ typeExpr = fun
     funDom =
       try (paren ((,) <$> (Just <$> (lower <* token TokColon)) <*> fun))
         <|> ((Nothing,) <$> app)
+    arg =
+      try (PersistentArg <$> (token TokPersistent *> exprAtom))
+        <|> (NormalArg <$> exprAtom)
 
 parse :: P a -> Text -> Either String a
 parse p source = do

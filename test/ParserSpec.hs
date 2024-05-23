@@ -10,8 +10,11 @@ tyInt = TyName "Int" []
 tyBool :: TypeExpr
 tyBool = TyName "Bool" []
 
-tyVec :: Expr -> TypeExpr
-tyVec e = TyName "Vec" [e]
+tyNormalVec :: Expr -> TypeExpr
+tyNormalVec e = TyName "Vec" [NormalArg e]
+
+tyPersVec :: Expr -> TypeExpr
+tyPersVec e = TyName "Vec" [PersistentArg e]
 
 tyDepFun :: Var -> TypeExpr -> TypeExpr -> TypeExpr
 tyDepFun x tye1 = TyArrow (Just x, tye1)
@@ -93,10 +96,16 @@ spec = do
         `shouldBe` pure (tyNondepFun (tyDepFun "n" tyInt tyInt) tyBool)
     it "parses type applications (1)" $
       Parser.parseTypeExpr "Vec n"
-        `shouldBe` pure (tyVec (Var "n"))
+        `shouldBe` pure (tyNormalVec (Var "n"))
     it "parses type applications (2)" $
-      Parser.parseTypeExpr "(v : Vec n) -> Bool"
-        `shouldBe` pure (tyDepFun "v" (tyVec (Var "n")) tyBool)
+      Parser.parseTypeExpr "Vec %n"
+        `shouldBe` pure (tyPersVec (Var "n"))
     it "parses type applications (3)" $
+      Parser.parseTypeExpr "(v : Vec n) -> Bool"
+        `shouldBe` pure (tyDepFun "v" (tyNormalVec (Var "n")) tyBool)
+    it "parses type applications (4)" $
       Parser.parseTypeExpr "Vec (succ n)"
-        `shouldBe` pure (tyVec (App (Var "succ") (Var "n")))
+        `shouldBe` pure (tyNormalVec (App (Var "succ") (Var "n")))
+    it "parses type applications (5)" $
+      Parser.parseTypeExpr "Vec %(succ n)"
+        `shouldBe` pure (tyPersVec (App (Var "succ") (Var "n")))
