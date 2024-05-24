@@ -66,8 +66,9 @@ initialEnv =
       ("gen_vadd", clo "x1" tyValInt (A0AppBuiltIn (BIGenVadd "x1"))),
       ("gen_vconcat", clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIGenVconcat "x1" "x2"))))
     ]
-    -- TODO: extend this with `gen_vadd` and `gen_vconcat`
   where
+    -- TODO: extend this with `gen_vadd` and `gen_vconcat`
+
     clo x a0tyv1 a0tye2 = A0ValLam (x, a0tyv1) a0tye2 initialEnv
     tyValInt = A0TyValPrim A0TyValInt
     lam x a0tye1 = A0Lam (x, a0tye1)

@@ -113,8 +113,8 @@ evalTypeExpr0 env = \case
 evalTypeExpr1 :: Env0 -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case
   A1TyPrim a1tyPrim ->
-    A1TyValPrim <$>
-      case a1tyPrim of
+    A1TyValPrim
+      <$> case a1tyPrim of
         A1TyInt -> pure A1TyValInt
         A1TyBool -> pure A1TyValBool
         A1TyVec a0e1 -> A1TyValVec <$> evalExpr0 env a0e1

@@ -53,9 +53,9 @@ instance Disp Literal where
 
 instance Disp BuiltIn where
   dispGen _ = \case
-    BIAdd _ _ -> "@add _ _"
-    BIGenVadd _ -> "@gen_vadd _"
-    BIGenVconcat _ _ -> "@gen_vconcat _ _"
+    BIAdd x1 x2 -> "ADD" <+> disp x1 <+> disp x2
+    BIGenVadd x -> "GEN_VADD" <+> disp x
+    BIGenVconcat x1 x2 -> "GEN_VCONCAT" <+> disp x1 <+> disp x2
 
 instance Disp Ass0Expr where
   dispGen req = \case
@@ -139,8 +139,8 @@ instance Disp Ass0Val where
 
 instance Disp Ass1ValConst where
   dispGen _ = \case
-    A1ValConstVadd n -> "vadd{" <> disp n <> "}"
-    A1ValConstVconcat m n -> "vconcat{" <> disp m <> "," <+> disp n <> "}"
+    A1ValConstVadd n -> "vadd@{" <> disp n <> "}"
+    A1ValConstVconcat m n -> "vconcat@{" <> disp m <> "," <+> disp n <> "}"
 
 instance Disp Ass1Val where
   dispGen req = \case
