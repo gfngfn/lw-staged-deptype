@@ -14,6 +14,7 @@ module Syntax
     Ass1PrimType (..),
     Ass0Val (..),
     Ass1Val (..),
+    Ass1ValConst (..),
     Ass0TypeVal (..),
     Ass0PrimTypeVal (..),
     Ass1TypeVal (..),
@@ -108,9 +109,15 @@ data Ass0Val
 
 data Ass1Val
   = A1ValLiteral Literal
+  | A1ValConst Ass1ValConst
   | A1ValVar Var
   | A1ValLam (Var, Ass1TypeVal) Ass1Val
   | A1ValApp Ass1Val Ass1Val
+  deriving stock (Eq, Show)
+
+data Ass1ValConst
+  = A1ValConstVadd Int
+  | A1ValConstVconcat Int Int
   deriving stock (Eq, Show)
 
 data Ass0TypeVal

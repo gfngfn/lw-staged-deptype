@@ -126,3 +126,60 @@ instance Disp TypeError where
     other ->
       -- TODO: implement this
       disp (Text.pack (show other))
+
+instance Disp Ass0Val where
+  dispGen req = \case
+    A0ValLiteral lit ->
+      disp lit
+    A0ValLam (x, a0tyv1) a0v2 _env ->
+      let doc = group ("λ" <> disp x <+> ":" <+> disp a0tyv1 <> "." <> nest 2 (line <> disp a0v2))
+       in if req <= FunDomain then deepenParen doc else doc
+    A0ValBracket a1v1 ->
+      "&" <> dispGen Atomic a1v1
+
+instance Disp Ass1ValConst where
+  dispGen _ = \case
+    A1ValConstVadd n -> "vadd{" <> disp n <> "}"
+    A1ValConstVconcat m n -> "vconcat{" <> disp m <> "," <+> disp n <> "}"
+
+instance Disp Ass1Val where
+  dispGen req = \case
+    A1ValLiteral lit -> disp lit
+    A1ValConst c -> disp c
+    A1ValVar x -> disp x
+    A1ValLam (x, a1tyv1) a1v2 ->
+      let doc = "λ" <> disp x <+> ":" <+> disp a1tyv1 <> "." <+> disp a1v2
+       in if req <= FunDomain then deepenParen doc else doc
+    A1ValApp a1v1 a1v2 ->
+      let doc = group (dispGen FunDomain a1v1 <> nest 2 (line <> dispGen Atomic a1v2))
+       in if req <= Atomic then deepenParen doc else doc
+
+instance Disp Ass0TypeVal where
+  dispGen req = \case
+    A0TyValPrim a0tyvPrim ->
+      case a0tyvPrim of
+        A0TyValInt -> "Int"
+        A0TyValBool -> "Bool"
+    A0TyValArrow (xOpt, a0tyv1) a0tye2 ->
+      let docDom =
+            case xOpt of
+              Just x -> "(" <> disp x <+> ":" <+> disp a0tyv1 <> ")"
+              Nothing -> dispGen FunDomain a0tyv1
+          doc =
+            group (docDom <> " ->" <> line <> disp a0tye2)
+       in if req <= FunDomain then deepenParen doc else doc
+    A0TyValCode a1tyv1 ->
+      "&" <> dispGen Atomic a1tyv1
+
+instance Disp Ass1TypeVal where
+  dispGen req = \case
+    A1TyValPrim a1tyvPrim ->
+      case a1tyvPrim of
+        A1TyValInt -> "Int"
+        A1TyValBool -> "Bool"
+        A1TyValVec a0v ->
+          let doc = "Vec %" <> dispGen Atomic a0v
+           in if req <= Atomic then deepenParen doc else doc
+    A1TyValArrow a1tyv1 a1tyv2 ->
+      let doc = group (dispGen FunDomain a1tyv1 <> " ->" <> line <> disp a1tyv2)
+       in if req <= FunDomain then deepenParen doc else doc

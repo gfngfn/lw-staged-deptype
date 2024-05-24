@@ -46,10 +46,13 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValLiteral (LitInt (n1 + n2))
-      BIGenVadd _x1 -> do
-        error "TODO: BIGenVadd"
-      BIGenVconcat _x1 _x2 -> do
-        error "TODO: BIGenVconcat"
+      BIGenVadd x1 -> do
+        n1 <- findInt0 env x1
+        pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
+      BIGenVconcat x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2))
   A0Var x ->
     findVar0 env x
   A0Lam (x, a0tye1) a0e2 -> do

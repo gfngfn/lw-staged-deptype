@@ -62,7 +62,10 @@ initialEnv =
   List.foldl'
     (flip (uncurry Map.insert))
     Map.empty
-    [ ("add", clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIAdd "x1" "x2")))) ]
+    [ ("add", clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIAdd "x1" "x2")))),
+      ("gen_vadd", clo "x1" tyValInt (A0AppBuiltIn (BIGenVadd "x1"))),
+      ("gen_vconcat", clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIGenVconcat "x1" "x2"))))
+    ]
     -- TODO: extend this with `gen_vadd` and `gen_vconcat`
   where
     clo x a0tyv1 a0tye2 = A0ValLam (x, a0tyv1) a0tye2 initialEnv
@@ -93,4 +96,4 @@ handle inputFilePath = do
               print err
             Right a1v -> do
               putStrLn "-------- expanded expression: --------"
-              print a1v
+              putStrLn $ Text.unpack $ Formatter.render a1v
