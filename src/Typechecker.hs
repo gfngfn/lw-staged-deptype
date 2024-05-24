@@ -126,13 +126,22 @@ extractEquations1 trav a1tye1 a1tye2 =
     _ ->
       typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
 
-addAssertions :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> Ass0Expr -> M trav Ass0Expr
-addAssertions trav a0tye1 a0tye2 a0e0 = do
+addAssertions0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> Ass0Expr -> M trav Ass0Expr
+addAssertions0 trav a0tye1 a0tye2 a0e0 = do
   eqns <- extractEquations0 trav a0tye1 a0tye2
   pure $
     foldr
       (\(lhs, rhs) a0e -> A0AssertAndThen lhs rhs a0e)
       a0e0
+      eqns
+
+addAssertions1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> Ass1Expr -> M trav Ass1Expr
+addAssertions1 trav a1tye1 a1tye2 a1e0 = do
+  eqns <- extractEquations1 trav a1tye1 a1tye2
+  pure . A1Escape $
+    foldr
+      (\(lhs, rhs) a0e -> A0AssertAndThen lhs rhs a0e)
+      (A0Bracket a1e0)
       eqns
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
@@ -154,7 +163,7 @@ typecheckExpr0 trav tyEnv = \case
     (a0tye2, a0e2) <- typecheckExpr0 trav tyEnv e2
     case a0tye1 of
       A0TyArrow (x11opt, a0tye11) a0tye12 -> do
-        a0e2' <- addAssertions trav a0tye11 a0tye2 a0e2
+        a0e2' <- addAssertions0 trav a0tye11 a0tye2 a0e2
         let a0tye12' =
               case x11opt of
                 Just x11 -> substTypeExpr0 a0e2 x11 a0tye12
@@ -191,10 +200,9 @@ typecheckExpr1 trav tyEnv = \case
     (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
     (a1tye2, a1e2) <- typecheckExpr1 trav tyEnv e2
     case a1tye1 of
-      A1TyArrow a1tye11 a1tye12 ->
-        if a1tye11 == a1tye2
-          then pure (a1tye12, A1App a1e1 a1e2)
-          else typeError trav $ TypeContradictionAtStage1 a1tye11 a1tye2
+      A1TyArrow a1tye11 a1tye12 -> do
+        a1e2' <- addAssertions1 trav a1tye11 a1tye2 a1e2
+        pure (a1tye12, A1App a1e1 a1e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage1 a1tye1
   LetIn x e1 e2 -> do
