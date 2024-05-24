@@ -58,7 +58,17 @@ initialTypeEnv =
     infixr 0 ==>
 
 initialEnv :: Env0
-initialEnv = Map.empty -- TODO: extend this
+initialEnv =
+  List.foldl'
+    (flip (uncurry Map.insert))
+    Map.empty
+    [ ("add", clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIAdd "x1" "x2")))) ]
+    -- TODO: extend this with `gen_vadd` and `gen_vconcat`
+  where
+    clo x a0tyv1 a0tye2 = A0ValLam (x, a0tyv1) a0tye2 initialEnv
+    tyValInt = A0TyValPrim A0TyValInt
+    lam x a0tye1 = A0Lam (x, a0tye1)
+    tyInt = A0TyPrim A0TyInt
 
 handle :: String -> IO ()
 handle inputFilePath = do

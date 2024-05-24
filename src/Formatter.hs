@@ -51,9 +51,16 @@ instance Disp Literal where
   dispGen _ = \case
     LitInt n -> pretty n
 
+instance Disp BuiltIn where
+  dispGen _ = \case
+    BIAdd _ _ -> "@add _ _"
+    BIGenVadd _ -> "@gen_vadd _"
+    BIGenVconcat _ _ -> "@gen_vconcat _ _"
+
 instance Disp Ass0Expr where
   dispGen req = \case
     A0Literal lit -> disp lit
+    A0AppBuiltIn bi -> disp bi
     A0Var y -> disp y
     A0Lam (y, a0tye1) a0e2 ->
       let doc = group ("λ" <> disp y <+> ":" <+> disp a0tye1 <> "." <> nest 2 (line <> disp a0e2))

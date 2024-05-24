@@ -1,6 +1,7 @@
 module Syntax
   ( Var,
     Literal (..),
+    BuiltIn (..),
     Expr (..),
     Ass0Expr (..),
     Ass1Expr (..),
@@ -30,6 +31,12 @@ data Literal
   = LitInt Int
   deriving stock (Eq, Show)
 
+data BuiltIn
+  = BIAdd Var Var
+  | BIGenVadd Var
+  | BIGenVconcat Var Var
+  deriving stock (Eq, Show)
+
 data Expr
   = Literal Literal
   | Var Var
@@ -42,6 +49,7 @@ data Expr
 
 data Ass0Expr
   = A0Literal Literal
+  | A0AppBuiltIn BuiltIn
   | A0Var Var
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr

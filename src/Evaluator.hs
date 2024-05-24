@@ -7,6 +7,7 @@ data Bug
   = UnboundVar Var
   | NotAClosure Ass0Val
   | NotACodeValue Ass0Val
+  | NotAnInteger Var Ass0Val
   deriving stock (Eq, Show)
 
 data EvalError
@@ -22,14 +23,35 @@ evalError = Left
 bug :: Bug -> M a
 bug = Left . Bug
 
+findVar0 :: Env0 -> Var -> M Ass0Val
+findVar0 env x =
+  case Map.lookup x env of
+    Nothing -> bug $ UnboundVar x
+    Just a0v -> pure a0v
+
+findInt0 :: Env0 -> Var -> M Int
+findInt0 env x = do
+  a0v <- findVar0 env x
+  case a0v of
+    A0ValLiteral (LitInt n) -> pure n
+    _ -> bug $ NotAnInteger x a0v
+
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
     pure $ A0ValLiteral lit
+  A0AppBuiltIn bi ->
+    case bi of
+      BIAdd x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValLiteral (LitInt (n1 + n2))
+      BIGenVadd _x1 -> do
+        error "TODO: BIGenVadd"
+      BIGenVconcat _x1 _x2 -> do
+        error "TODO: BIGenVconcat"
   A0Var x ->
-    case Map.lookup x env of
-      Nothing -> bug $ UnboundVar x
-      Just a0v -> pure a0v
+    findVar0 env x
   A0Lam (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam (x, a0tyv1) a0e2 env

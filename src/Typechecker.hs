@@ -34,6 +34,8 @@ substExpr0 :: Ass0Expr -> Var -> Ass0Expr -> Ass0Expr
 substExpr0 a0e x = \case
   A0Literal lit ->
     A0Literal lit
+  A0AppBuiltIn bi ->
+    A0AppBuiltIn bi
   A0Var y ->
     if y == x then a0e else A0Var y
   A0Lam (y, a0tye1) a0e2 ->
