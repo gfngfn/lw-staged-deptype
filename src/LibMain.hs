@@ -2,8 +2,10 @@ module LibMain (handle) where
 
 import Control.Monad.Trans.State
 import Data.List qualified as List
+import Data.Map qualified as Map
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
+import Evaluator qualified
 import Formatter qualified
 import Parser
 import Syntax
@@ -55,12 +57,16 @@ initialTypeEnv =
     (==>) = A1TyArrow
     infixr 0 ==>
 
+initialEnv :: Env0
+initialEnv = Map.empty -- TODO: extend this
+
 handle :: String -> IO ()
 handle inputFilePath = do
   source <- TextIO.readFile inputFilePath
   case Parser.parseExpr source of
     Left err -> do
-      putStrLn $ "parse error: " ++ err
+      putStrLn "-------- parse error: --------"
+      putStrLn err
     Right e -> do
       case evalStateT (Typechecker.typecheckExpr1 id initialTypeEnv e) () of
         Left (tyErr, _travMod) -> do
@@ -71,3 +77,10 @@ handle inputFilePath = do
           putStrLn $ Text.unpack $ Formatter.render a1tye
           putStrLn "-------- expression: --------"
           putStrLn $ Text.unpack $ Formatter.render a1e
+          case Evaluator.evalExpr1 initialEnv a1e of
+            Left err -> do
+              putStrLn "-------- eval error: --------"
+              print err
+            Right a1v -> do
+              putStrLn "-------- expanded expression: --------"
+              print a1v

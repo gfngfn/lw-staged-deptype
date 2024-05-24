@@ -11,9 +11,17 @@ module Syntax
     Ass0PrimType (..),
     Ass1TypeExpr (..),
     Ass1PrimType (..),
+    Ass0Val (..),
+    Ass1Val (..),
+    Ass0TypeVal (..),
+    Ass0PrimTypeVal (..),
+    Ass1TypeVal (..),
+    Ass1PrimTypeVal (..),
+    Env0,
   )
 where
 
+import Data.Map (Map)
 import Data.Text (Text)
 
 type Var = Text
@@ -83,3 +91,40 @@ data Ass1PrimType
   | A1TyBool
   | A1TyVec Ass0Expr
   deriving stock (Eq, Show)
+
+data Ass0Val
+  = A0ValLiteral Literal
+  | A0ValLam (Var, Ass0TypeVal) Ass0Expr Env0
+  | A0ValBracket Ass1Val
+  deriving stock (Eq, Show)
+
+data Ass1Val
+  = A1ValLiteral Literal
+  | A1ValVar Var
+  | A1ValLam (Var, Ass1TypeVal) Ass1Val
+  | A1ValApp Ass1Val Ass1Val
+  deriving stock (Eq, Show)
+
+data Ass0TypeVal
+  = A0TyValPrim Ass0PrimTypeVal
+  | A0TyValArrow (Maybe Var, Ass0TypeVal) Ass0TypeExpr
+  | A0TyValCode Ass1TypeVal
+  deriving stock (Eq, Show)
+
+data Ass0PrimTypeVal
+  = A0TyValInt
+  | A0TyValBool
+  deriving stock (Eq, Show)
+
+data Ass1TypeVal
+  = A1TyValPrim Ass1PrimTypeVal
+  | A1TyValArrow Ass1TypeVal Ass1TypeVal
+  deriving stock (Eq, Show)
+
+data Ass1PrimTypeVal
+  = A1TyValInt
+  | A1TyValBool
+  | A1TyValVec Ass0Val
+  deriving stock (Eq, Show)
+
+type Env0 = Map Var Ass0Val
