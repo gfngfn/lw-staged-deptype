@@ -56,15 +56,15 @@ instance Disp Ass0Expr where
     A0Literal lit -> disp lit
     A0Var y -> disp y
     A0Lam (y, a0tye1) a0e2 ->
-      let doc = "λ" <> disp y <+> ":" <+> disp a0tye1 <> "." <+> disp a0e2
+      let doc = group ("λ" <> disp y <+> ":" <+> disp a0tye1 <> "." <> nest 2 (line <> disp a0e2))
        in if req <= FunDomain then deepenParen doc else doc
     A0App a0e1 a0e2 ->
-      let doc = dispGen FunDomain a0e1 <+> dispGen Atomic a0e2
+      let doc = group (dispGen FunDomain a0e1 <> nest 2 (line <> dispGen Atomic a0e2))
        in if req <= Atomic then deepenParen doc else doc
     A0Bracket a1e1 ->
       "&" <> dispGen Atomic a1e1
     A0AssertAndThen a0e1 a0e2 a0e0 ->
-      let doc = "assert" <+> disp a0e1 <+> "=" <+> disp a0e2 <> ";" <+> disp a0e0
+      let doc = group ("assert" <+> disp a0e1 <+> "=" <+> disp a0e2 <> ";" <> line <> disp a0e0)
        in if req <= FunDomain then deepenParen doc else doc
 
 instance Disp Ass1Expr where
@@ -94,7 +94,7 @@ instance Disp Ass0TypeExpr where
               Just x -> "(" <> disp x <+> ":" <+> disp a0tye1 <> ")"
               Nothing -> dispGen FunDomain a0tye1
           doc =
-            docDom <> " ->" <+> disp a0tye2
+            group (docDom <> " ->" <> line <> disp a0tye2)
        in if req <= FunDomain then deepenParen doc else doc
     A0TyCode a1tye1 ->
       "&" <> dispGen Atomic a1tye1
@@ -111,7 +111,7 @@ instance Disp Ass1TypeExpr where
   dispGen req = \case
     A1TyPrim a1tyPrim -> disp a1tyPrim
     A1TyArrow a1tye1 a1tye2 ->
-      let doc = dispGen FunDomain a1tye1 <> " ->" <+> disp a1tye2
+      let doc = group (dispGen FunDomain a1tye1 <> " ->" <> line <> disp a1tye2)
        in if req <= FunDomain then deepenParen doc else doc
 
 instance Disp TypeError where
