@@ -2,7 +2,9 @@ module LibMain (handle) where
 
 import Control.Monad.Trans.State
 import Data.List qualified as List
+import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
+import Formatter qualified
 import Parser
 import Syntax
 import TypeEnv (TypeEnv)
@@ -63,9 +65,9 @@ handle inputFilePath = do
       case evalStateT (Typechecker.typecheckExpr1 id initialTypeEnv e) () of
         Left (tyErr, _travMod) -> do
           putStrLn "-------- type error: --------"
-          print tyErr
+          putStrLn $ Text.unpack $ Formatter.render tyErr
         Right (a1tye, a1e) -> do
           putStrLn "-------- type: --------"
-          print a1tye
+          putStrLn $ Text.unpack $ Formatter.render a1tye
           putStrLn "-------- expression: --------"
-          print a1e
+          putStrLn $ Text.unpack $ Formatter.render a1e
