@@ -17,8 +17,8 @@ import Syntax
 import TypeEnv (TypeEnv)
 import TypeEnv qualified
 import TypeError
-import Prelude hiding (mod)
 import Vector qualified
+import Prelude hiding (mod)
 
 type TypecheckerState = ()
 
@@ -148,11 +148,10 @@ addAssertions1 trav a1tye1 a1tye2 a1e0 = do
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv = \case
   Literal lit -> do
-    let
-      a0tye =
-        case lit of
-          LitInt _ -> A0TyPrim A0TyInt
-          LitVec v -> A0TyPrim (A0TyVec (Vector.length v))
+    let a0tye =
+          case lit of
+            LitInt _ -> A0TyPrim A0TyInt
+            LitVec v -> A0TyPrim (A0TyVec (Vector.length v))
     pure (a0tye, A0Literal lit)
   Var x -> do
     entry <- findVar trav x tyEnv
@@ -190,11 +189,10 @@ typecheckExpr0 trav tyEnv = \case
 typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
 typecheckExpr1 trav tyEnv = \case
   Literal lit -> do
-    let
-      a1tye =
-        case lit of
-          LitInt _ -> A1TyPrim A1TyInt
-          LitVec v -> A1TyPrim (A1TyVec (A0Literal (LitInt (Vector.length v))))
+    let a1tye =
+          case lit of
+            LitInt _ -> A1TyPrim A1TyInt
+            LitVec v -> A1TyPrim (A1TyVec (A0Literal (LitInt (Vector.length v))))
     pure (a1tye, A1Literal lit)
   Var x -> do
     entry <- findVar trav x tyEnv

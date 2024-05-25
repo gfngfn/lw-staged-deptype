@@ -9,7 +9,7 @@ module Vector
 where
 
 import Data.List qualified as List
-import Prelude hiding (length, concat)
+import Prelude hiding (concat, length)
 
 newtype Vector = Vector [Int]
   deriving newtype (Eq, Show)
