@@ -15,6 +15,7 @@ import Text.Megaparsec qualified as Mp
 import Token (Token (..))
 import Token qualified
 import Prelude hiding (mod)
+import Vector qualified
 
 type P = Mp.Parsec Void [Token]
 
@@ -51,11 +52,17 @@ int =
     )
     Set.empty
 
+vec :: P [Int]
+vec = token TokVecLeft *> (try (nonempty <* token TokVecRight) <|> ([] <$ token TokVecRight))
+  where
+    nonempty = (:) <$> int <*> Mp.many (token TokSemicolon *> int)
+
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
   where
     atom =
       try (Literal . LitInt <$> int)
+        <|> try (Literal . LitVec . Vector.fromList <$> vec)
         <|> try (Var <$> lower)
         <|> paren expr
     staged =

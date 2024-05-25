@@ -23,6 +23,9 @@ data Token
   | TokBracket
   | TokEscape
   | TokPersistent
+  | TokSemicolon
+  | TokVecLeft
+  | TokVecRight
   | TokLower Text
   | TokUpper Text
   | TokInt Int
@@ -89,6 +92,9 @@ token =
       TokBracket <$ Mp.single '&',
       TokEscape <$ Mp.single '~',
       TokPersistent <$ Mp.single '%',
+      TokSemicolon <$ Mp.single ';',
+      TokVecLeft <$ Mp.chunk "[|",
+      TokVecRight <$ Mp.chunk "|]",
       lowerIdentOrKeyword,
       TokUpper <$> upperIdent,
       TokInt <$> integerLiteral

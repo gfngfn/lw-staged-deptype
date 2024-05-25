@@ -3,6 +3,7 @@ module ParserSpec (spec) where
 import Parser
 import Syntax
 import Test.Hspec
+import Vector qualified
 
 tyInt :: TypeExpr
 tyInt = TyName "Int" []
@@ -25,9 +26,15 @@ tyNondepFun tye1 = TyArrow (Nothing, tye1)
 spec :: Spec
 spec = do
   describe "Parser.parseExpr" $ do
-    it "parses integer literals (1)" $
+    it "parses integer literals" $
       Parser.parseExpr "42"
         `shouldBe` pure (Literal (LitInt 42))
+    it "parses vector literals (1)" $
+      Parser.parseExpr "[| |]"
+        `shouldBe` pure (Literal (LitVec (Vector.fromList [])))
+    it "parses vector literals (2)" $
+      Parser.parseExpr "[| 3; 14; 1592 |]"
+        `shouldBe` pure (Literal (LitVec (Vector.fromList [3, 14, 1592])))
     it "parses variables (1)" $
       Parser.parseExpr "x"
         `shouldBe` pure (Var "x")
