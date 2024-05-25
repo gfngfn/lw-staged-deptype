@@ -54,7 +54,7 @@ instance Disp Symbol where
 instance Disp Literal where
   dispGen _ = \case
     LitInt n -> pretty n
-    LitVec v -> encloseSep "[|" "|]" comma (disp <$> Vector.toList v)
+    LitVec v -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> Vector.toList v)
 
 instance Disp BuiltIn where
   dispGen _ = \case
