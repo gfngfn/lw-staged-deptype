@@ -29,7 +29,7 @@ handle inputFilePath = do
           putStrLn $ Text.unpack $ Formatter.render a1e
           case evalStateT (Evaluator.evalExpr1 BuiltIn.initialEnv a1e) Evaluator.initialState of
             Left err -> do
-              putStrLn "-------- eval error: --------"
+              putStrLn "-------- error during code generation: --------"
               print err
             Right a1v -> do
               putStrLn "-------- generated code: --------"
