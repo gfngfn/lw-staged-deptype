@@ -8,6 +8,8 @@ data Bug
   | NotAClosure Ass0Val
   | NotACodeValue Ass0Val
   | NotAnInteger Var Ass0Val
+  | FoundSymbol Var Symbol
+  | FoundAss0Val Var Ass0Val
   deriving stock (Eq, Show)
 
 data EvalError
@@ -23,15 +25,32 @@ evalError = Left
 bug :: Bug -> M a
 bug = Left . Bug
 
-findVar0 :: Env0 -> Var -> M Ass0Val
-findVar0 env x =
+generateFreshSymbol :: M Symbol
+generateFreshSymbol = error "TODO: generateFreshSymbol"
+
+findEntry :: Env0 -> Var -> M EnvEntry
+findEntry env x =
   case Map.lookup x env of
     Nothing -> bug $ UnboundVar x
-    Just a0v -> pure a0v
+    Just envEntry -> pure envEntry
+
+findVal0 :: Env0 -> Var -> M Ass0Val
+findVal0 env x = do
+  entry <- findEntry env x
+  case entry of
+    Ass0ValEntry a0v -> pure a0v
+    SymbolEntry symb -> bug $ FoundSymbol x symb
+
+findSymbol :: Env0 -> Var -> M Symbol
+findSymbol env x = do
+  entry <- findEntry env x
+  case entry of
+    Ass0ValEntry a0v -> bug $ FoundAss0Val x a0v
+    SymbolEntry symb -> pure symb
 
 findInt0 :: Env0 -> Var -> M Int
 findInt0 env x = do
-  a0v <- findVar0 env x
+  a0v <- findVal0 env x
   case a0v of
     A0ValLiteral (LitInt n) -> pure n
     _ -> bug $ NotAnInteger x a0v
@@ -54,7 +73,7 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2))
   A0Var x ->
-    findVar0 env x
+     findVal0 env x
   A0Lam (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam (x, a0tyv1) a0e2 env
@@ -63,7 +82,7 @@ evalExpr0 env = \case
     a0v2 <- evalExpr0 env a0e2
     case a0v1 of
       A0ValLam (x, _a0tyv11) a0e12 env1 ->
-        evalExpr0 (Map.insert x a0v2 env1) a0e12
+        evalExpr0 (Map.insert x (Ass0ValEntry a0v2) env1) a0e12
       _ ->
         bug $ NotAClosure a0v1
   A0Bracket a1e1 -> do
@@ -80,12 +99,14 @@ evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
   A1Literal lit ->
     pure $ A1ValLiteral lit
-  A1Var x ->
-    pure $ A1ValVar x -- TODO: generate symbols
+  A1Var x -> do
+    symb <- findSymbol env x
+    pure $ A1ValVar symb
   A1Lam (x, a1tye1) a1e2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
-    a1v1 <- evalExpr1 env a1e2
-    pure $ A1ValLam (x, a1tyv1) a1v1
+    symb <- generateFreshSymbol
+    a1v1 <- evalExpr1 (Map.insert x (SymbolEntry symb) env) a1e2
+    pure $ A1ValLam (symb, a1tyv1) a1v1
   A1App a1e1 a1e2 -> do
     a1v1 <- evalExpr1 env a1e1
     a1v2 <- evalExpr1 env a1e2
@@ -122,3 +143,21 @@ evalTypeExpr1 env = \case
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
     pure $ A1TyValArrow a1tyv1 a1tyv2
+
+unliftVal :: Ass1Val -> Ass0Expr
+unliftVal = \case
+  A1ValLiteral lit -> A0Literal lit
+  A1ValConst _c -> error "TODO: unliftVal, A1ValConst"
+  A1ValVar symb -> A0Var (symbolToVar symb)
+  A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
+  A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)
+
+unliftTypeVal :: Ass1TypeVal -> Ass0TypeExpr
+unliftTypeVal = \case
+  A1TyValPrim a1tyvPrim ->
+    case a1tyvPrim of
+      A1TyValInt -> A0TyPrim A0TyInt
+      A1TyValBool -> A0TyPrim A0TyBool
+      A1TyValVec _a0v -> error "TODO: unliftTypeVal, A1TyValVec"
+  A1TyValArrow a1tyv1 a1tyv2 ->
+    A0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)

@@ -1,5 +1,7 @@
 module Syntax
   ( Var,
+    Symbol (..),
+    symbolToVar,
     Literal (..),
     BuiltIn (..),
     Expr (..),
@@ -20,13 +22,21 @@ module Syntax
     Ass1TypeVal (..),
     Ass1PrimTypeVal (..),
     Env0,
+    EnvEntry (..),
   )
 where
 
 import Data.Map (Map)
 import Data.Text (Text)
+import Data.Text qualified as Text
 
 type Var = Text
+
+data Symbol = Symbol Int
+  deriving stock (Eq, Show)
+
+symbolToVar :: Symbol -> Var
+symbolToVar (Symbol n) = Text.pack $ "S#" ++ show n
 
 data Literal
   = LitInt Int
@@ -110,8 +120,8 @@ data Ass0Val
 data Ass1Val
   = A1ValLiteral Literal
   | A1ValConst Ass1ValConst
-  | A1ValVar Var
-  | A1ValLam (Var, Ass1TypeVal) Ass1Val
+  | A1ValVar Symbol
+  | A1ValLam (Symbol, Ass1TypeVal) Ass1Val
   | A1ValApp Ass1Val Ass1Val
   deriving stock (Eq, Show)
 
@@ -142,4 +152,9 @@ data Ass1PrimTypeVal
   | A1TyValVec Ass0Val
   deriving stock (Eq, Show)
 
-type Env0 = Map Var Ass0Val
+type Env0 = Map Var EnvEntry
+
+data EnvEntry
+  = Ass0ValEntry Ass0Val
+  | SymbolEntry Symbol
+  deriving stock (Eq, Show)

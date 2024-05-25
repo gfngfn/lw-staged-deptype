@@ -47,6 +47,9 @@ instance Disp Text where
 instance Disp Int where
   dispGen _ = pretty
 
+instance Disp Symbol where
+  dispGen _ (Symbol n) = "S#" <> disp n
+
 instance Disp Literal where
   dispGen _ = \case
     LitInt n -> pretty n
@@ -77,9 +80,9 @@ instance Disp Ass0Expr where
 instance Disp Ass1Expr where
   dispGen req = \case
     A1Literal lit -> disp lit
-    A1Var y -> disp y
-    A1Lam (y, a1tye1) a1e2 ->
-      let doc = "λ" <> disp y <+> ":" <+> disp a1tye1 <> "." <+> disp a1e2
+    A1Var x -> disp x
+    A1Lam (x, a1tye1) a1e2 ->
+      let doc = "λ" <> disp x <+> ":" <+> disp a1tye1 <> "." <+> disp a1e2
        in if req <= FunDomain then deepenParen doc else doc
     A1App a1e1 a1e2 ->
       let doc = dispGen FunDomain a1e1 <+> dispGen Atomic a1e2
@@ -146,9 +149,9 @@ instance Disp Ass1Val where
   dispGen req = \case
     A1ValLiteral lit -> disp lit
     A1ValConst c -> disp c
-    A1ValVar x -> disp x
-    A1ValLam (x, a1tyv1) a1v2 ->
-      let doc = "λ" <> disp x <+> ":" <+> disp a1tyv1 <> "." <+> disp a1v2
+    A1ValVar symb -> disp symb
+    A1ValLam (symb, a1tyv1) a1v2 ->
+      let doc = "λ" <> disp symb <+> ":" <+> disp a1tyv1 <> "." <+> disp a1v2
        in if req <= FunDomain then deepenParen doc else doc
     A1ValApp a1v1 a1v2 ->
       let doc = group (dispGen FunDomain a1v1 <> nest 2 (line <> dispGen Atomic a1v2))

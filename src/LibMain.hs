@@ -60,7 +60,7 @@ initialTypeEnv =
 initialEnv :: Env0
 initialEnv =
   List.foldl'
-    (flip (uncurry Map.insert))
+    (\env (x, a0v) -> Map.insert x (Ass0ValEntry a0v) env)
     Map.empty
     [ ("add", clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIAdd "x1" "x2")))),
       ("gen_vadd", clo "x1" tyValInt (A0AppBuiltIn (BIGenVadd "x1"))),
