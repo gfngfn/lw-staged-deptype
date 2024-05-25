@@ -102,6 +102,7 @@ extractEquations0 trav a0tye1 a0tye2 =
       case (a0tyPrim1, a0tyPrim2) of
         (A0TyInt, A0TyInt) -> pure []
         (A0TyBool, A0TyBool) -> pure []
+        (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure []
         _ -> typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
     (A0TyArrow (_x1opt, a0tye11) _a0tye12, A0TyArrow (_x2opt, a0tye21) _a0tye22) -> do
       _eqns1 <- extractEquations0 trav a0tye11 a0tye21
