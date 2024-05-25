@@ -1,5 +1,6 @@
 module Evaluator
-  ( evalExpr1,
+  ( evalExpr0,
+    evalExpr1,
     initialState,
     unliftVal,
     Bug,
@@ -8,6 +9,7 @@ module Evaluator
   )
 where
 
+import BuiltIn qualified
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
@@ -172,7 +174,10 @@ evalTypeExpr1 env = \case
 unliftVal :: Ass1Val -> Ass0Expr
 unliftVal = \case
   A1ValLiteral lit -> A0Literal lit
-  A1ValConst _c -> error "TODO: unliftVal, A1ValConst"
+  A1ValConst c ->
+    case c of
+      A1ValConstVadd n -> BuiltIn.ass0exprVadd n
+      A1ValConstVconcat m n -> BuiltIn.ass0exprVconcat m n
   A1ValVar symb -> A0Var (symbolToVar symb)
   A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
   A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)

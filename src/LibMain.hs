@@ -98,3 +98,11 @@ handle inputFilePath = do
             Right a1v -> do
               putStrLn "-------- generated code: --------"
               putStrLn $ Text.unpack $ Formatter.render a1v
+              let a0e = Evaluator.unliftVal a1v
+              case evalStateT (Evaluator.evalExpr0 initialEnv a0e) Evaluator.initialState of
+                Left err -> do
+                  putStrLn "-------- eval error: --------"
+                  print err
+                Right a0v -> do
+                  putStrLn "-------- final result: --------"
+                  putStrLn $ Text.unpack $ Formatter.render a0v
