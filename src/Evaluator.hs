@@ -17,7 +17,7 @@ data Bug
   = UnboundVar Var
   | NotAClosure Ass0Val
   | NotACodeValue Ass0Val
-  | NotAnInteger Var Ass0Val
+  | NotAnInteger (Maybe Var) Ass0Val
   | FoundSymbol Var Symbol
   | FoundAss0Val Var Ass0Val
   deriving stock (Eq, Show)
@@ -73,7 +73,7 @@ findInt0 env x = do
   a0v <- findVal0 env x
   case a0v of
     A0ValLiteral (LitInt n) -> pure n
-    _ -> bug $ NotAnInteger x a0v
+    _ -> bug $ NotAnInteger (Just x) a0v
 
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
@@ -144,6 +144,7 @@ evalTypeExpr0 env = \case
       case a0tyPrim of
         A0TyInt -> A0TyValInt
         A0TyBool -> A0TyValBool
+        A0TyVec n -> A0TyValVec n
   A0TyArrow (xOpt, a0tye1) a0tye2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0TyValArrow (xOpt, a0tyv1) a0tye2
@@ -158,7 +159,11 @@ evalTypeExpr1 env = \case
       <$> case a1tyPrim of
         A1TyInt -> pure A1TyValInt
         A1TyBool -> pure A1TyValBool
-        A1TyVec a0e1 -> A1TyValVec <$> evalExpr0 env a0e1
+        A1TyVec a0e1 -> do
+          a0v <- evalExpr0 env a0e1
+          case a0v of
+            A0ValLiteral (LitInt n) -> pure $ A1TyValVec n
+            _ -> bug $ NotAnInteger Nothing a0v
   A1TyArrow a1tye1 a1tye2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
@@ -175,9 +180,10 @@ unliftVal = \case
 unliftTypeVal :: Ass1TypeVal -> Ass0TypeExpr
 unliftTypeVal = \case
   A1TyValPrim a1tyvPrim ->
-    case a1tyvPrim of
-      A1TyValInt -> A0TyPrim A0TyInt
-      A1TyValBool -> A0TyPrim A0TyBool
-      A1TyValVec _a0v -> error "TODO: unliftTypeVal, A1TyValVec"
+    A0TyPrim $
+      case a1tyvPrim of
+        A1TyValInt -> A0TyInt
+        A1TyValBool -> A0TyBool
+        A1TyValVec n -> A0TyVec n
   A1TyValArrow a1tyv1 a1tyv2 ->
     A0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)

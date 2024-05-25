@@ -71,9 +71,7 @@ substExpr1 a0e x = \case
 substTypeExpr0 :: Ass0Expr -> Var -> Ass0TypeExpr -> Ass0TypeExpr
 substTypeExpr0 a0e x = \case
   A0TyPrim a0tyPrim ->
-    A0TyPrim $ case a0tyPrim of
-      A0TyInt -> A0TyInt
-      A0TyBool -> A0TyBool
+    A0TyPrim a0tyPrim
   A0TyArrow (yOpt, a0tye1) a0tye2 ->
     case yOpt of
       Nothing -> A0TyArrow (Nothing, goTy0 a0tye1) (goTy0 a0tye2)

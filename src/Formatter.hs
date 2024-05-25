@@ -91,9 +91,12 @@ instance Disp Ass1Expr where
       "~" <> dispGen Atomic a0e1
 
 instance Disp Ass0PrimType where
-  dispGen _ = \case
+  dispGen req = \case
     A0TyInt -> "Int"
     A0TyBool -> "Bool"
+    A0TyVec n ->
+      let doc = "Vec" <+> disp n
+       in if req <= Atomic then deepenParen doc else doc
 
 instance Disp Ass0TypeExpr where
   dispGen req = \case
@@ -163,6 +166,9 @@ instance Disp Ass0TypeVal where
       case a0tyvPrim of
         A0TyValInt -> "Int"
         A0TyValBool -> "Bool"
+        A0TyValVec n ->
+          let doc = "Vec" <+> disp n
+           in if req <= Atomic then deepenParen doc else doc
     A0TyValArrow (xOpt, a0tyv1) a0tye2 ->
       let docDom =
             case xOpt of

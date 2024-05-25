@@ -98,6 +98,7 @@ data Ass0TypeExpr
 data Ass0PrimType
   = A0TyInt
   | A0TyBool
+  | A0TyVec Int
   deriving stock (Eq, Show)
 
 data Ass1TypeExpr
@@ -139,6 +140,7 @@ data Ass0TypeVal
 data Ass0PrimTypeVal
   = A0TyValInt
   | A0TyValBool
+  | A0TyValVec Int
   deriving stock (Eq, Show)
 
 data Ass1TypeVal
@@ -149,7 +151,7 @@ data Ass1TypeVal
 data Ass1PrimTypeVal
   = A1TyValInt
   | A1TyValBool
-  | A1TyValVec Ass0Val
+  | A1TyValVec Int
   deriving stock (Eq, Show)
 
 type Env0 = Map Var EnvEntry
