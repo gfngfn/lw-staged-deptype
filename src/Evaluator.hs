@@ -42,7 +42,7 @@ bug :: Bug -> M a
 bug = lift . Left . Bug
 
 initialState :: EvalState
-initialState = EvalState { nextSymbolIndex = 0 }
+initialState = EvalState {nextSymbolIndex = 0}
 
 generateFreshSymbol :: M Symbol
 generateFreshSymbol = do
@@ -95,7 +95,7 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2))
   A0Var x ->
-     findVal0 env x
+    findVal0 env x
   A0Lam (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam (x, a0tyv1) a0e2 env

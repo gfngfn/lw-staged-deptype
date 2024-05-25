@@ -20,14 +20,17 @@ tyVec = A1TyPrim . A1TyVec
 
 (-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
 (-->) a0tye1 = A0TyArrow (Nothing, a0tye1)
+
 infixr 0 -->
 
 (-:>) :: (Var, Ass0TypeExpr) -> Ass0TypeExpr -> Ass0TypeExpr
 (-:>) (x, a0tye1) = A0TyArrow (Just x, a0tye1)
+
 infixr 0 -:>
 
 (==>) :: Ass1TypeExpr -> Ass1TypeExpr -> Ass1TypeExpr
 (==>) = A1TyArrow
+
 infixr 0 ==>
 
 initialTypeEnv :: TypeEnv
