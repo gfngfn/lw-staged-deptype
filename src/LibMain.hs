@@ -89,12 +89,12 @@ handle inputFilePath = do
         Right (a1tye, a1e) -> do
           putStrLn "-------- type: --------"
           putStrLn $ Text.unpack $ Formatter.render a1tye
-          putStrLn "-------- expression: --------"
+          putStrLn "-------- elaborated expression: --------"
           putStrLn $ Text.unpack $ Formatter.render a1e
-          case Evaluator.evalExpr1 initialEnv a1e of
+          case evalStateT (Evaluator.evalExpr1 initialEnv a1e) Evaluator.initialState of
             Left err -> do
               putStrLn "-------- eval error: --------"
               print err
             Right a1v -> do
-              putStrLn "-------- expanded expression: --------"
+              putStrLn "-------- generated code: --------"
               putStrLn $ Text.unpack $ Formatter.render a1v

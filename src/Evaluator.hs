@@ -1,5 +1,15 @@
-module Evaluator where
+module Evaluator
+  ( evalExpr1,
+    initialState,
+    unliftVal,
+    Bug,
+    EvalError,
+    EvalState,
+  )
+where
 
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Syntax
 
@@ -17,16 +27,26 @@ data EvalError
   | AssertionFailure Ass0Val Ass0Val
   deriving stock (Eq, Show)
 
-type M = Either EvalError
+data EvalState = EvalState
+  { nextSymbolIndex :: Int
+  }
+
+type M a = StateT EvalState (Either EvalError) a
 
 evalError :: EvalError -> M a
-evalError = Left
+evalError = lift . Left
 
 bug :: Bug -> M a
-bug = Left . Bug
+bug = lift . Left . Bug
+
+initialState :: EvalState
+initialState = EvalState { nextSymbolIndex = 0 }
 
 generateFreshSymbol :: M Symbol
-generateFreshSymbol = error "TODO: generateFreshSymbol"
+generateFreshSymbol = do
+  currentState@EvalState {nextSymbolIndex} <- get
+  put $ currentState {nextSymbolIndex = nextSymbolIndex + 1}
+  pure $ Symbol nextSymbolIndex
 
 findEntry :: Env0 -> Var -> M EnvEntry
 findEntry env x =

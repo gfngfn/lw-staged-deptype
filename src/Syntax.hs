@@ -36,7 +36,7 @@ data Symbol = Symbol Int
   deriving stock (Eq, Show)
 
 symbolToVar :: Symbol -> Var
-symbolToVar (Symbol n) = Text.pack $ "S#" ++ show n
+symbolToVar (Symbol n) = Text.pack $ "#S" ++ show n
 
 data Literal
   = LitInt Int

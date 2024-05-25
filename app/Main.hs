@@ -8,7 +8,7 @@ main = do
   args <- Env.getArgs
   case args of
     [inputFilePath] -> do
-      putStrLn "Hello, Haskell!"
+      putStrLn "Lightweight Dependent Types via Staging"
       LibMain.handle inputFilePath
     _ ->
       error "Wrong number of arguments"

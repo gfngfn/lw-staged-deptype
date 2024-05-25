@@ -48,7 +48,7 @@ instance Disp Int where
   dispGen _ = pretty
 
 instance Disp Symbol where
-  dispGen _ (Symbol n) = "S#" <> disp n
+  dispGen _ symb = disp (symbolToVar symb)
 
 instance Disp Literal where
   dispGen _ = \case
