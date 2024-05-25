@@ -14,8 +14,8 @@ import Text.Megaparsec hiding (Token, parse, token, tokens)
 import Text.Megaparsec qualified as Mp
 import Token (Token (..))
 import Token qualified
-import Prelude hiding (mod)
 import Vector qualified
+import Prelude hiding (mod)
 
 type P = Mp.Parsec Void [Token]
 
