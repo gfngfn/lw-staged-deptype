@@ -6,6 +6,7 @@ import Prettyprinter
 import Prettyprinter.Render.Text
 import Syntax
 import TypeError
+import Vector qualified
 
 type Ann = ()
 
@@ -53,12 +54,15 @@ instance Disp Symbol where
 instance Disp Literal where
   dispGen _ = \case
     LitInt n -> pretty n
+    LitVec v -> encloseSep "[|" "|]" comma (disp <$> Vector.toList v)
 
 instance Disp BuiltIn where
   dispGen _ = \case
-    BIAdd x1 x2 -> "ADD" <+> disp x1 <+> disp x2
-    BIGenVadd x -> "GEN_VADD" <+> disp x
-    BIGenVconcat x1 x2 -> "GEN_VCONCAT" <+> disp x1 <+> disp x2
+    BIAdd x1 x2 -> "ADD(" <> disp x1 <> "," <+> disp x2 <> ")"
+    BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
+    BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disp x1 <> "," <+> disp x2 <> ")"
+    BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disp x1 <> "," <+> disp x2 <> ")"
+    BIVconcat m n x1 x2 -> "VCONCAT@{" <> disp m <> "," <+> disp n <> "}(" <> disp x1 <> "," <+> disp x2 <> ")"
 
 instance Disp Ass0Expr where
   dispGen req = \case

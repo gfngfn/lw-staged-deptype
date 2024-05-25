@@ -68,7 +68,8 @@ library
       Token,
       TypeEnv,
       TypeError,
-      Typechecker
+      Typechecker,
+      Vector
 
     -- Modules included in this library but not exported.
     -- other-modules:

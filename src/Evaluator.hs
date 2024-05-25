@@ -14,14 +14,18 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Syntax
+import Vector (Vector)
+import Vector qualified
 
 data Bug
   = UnboundVar Var
   | NotAClosure Ass0Val
   | NotACodeValue Ass0Val
   | NotAnInteger (Maybe Var) Ass0Val
+  | NotAVector Var Ass0Val
   | FoundSymbol Var Symbol
   | FoundAss0Val Var Ass0Val
+  | InconsistentAppBuiltIn BuiltIn
   deriving stock (Eq, Show)
 
 data EvalError
@@ -77,6 +81,13 @@ findInt0 env x = do
     A0ValLiteral (LitInt n) -> pure n
     _ -> bug $ NotAnInteger (Just x) a0v
 
+findVec0 :: Env0 -> Var -> M Vector
+findVec0 env x = do
+  a0v <- findVal0 env x
+  case a0v of
+    A0ValLiteral (LitVec v) -> pure v
+    _ -> bug $ NotAVector x a0v
+
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
@@ -94,6 +105,18 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2))
+      BIVadd n x1 x2 -> do
+        v1 <- findVec0 env x1
+        v2 <- findVec0 env x2
+        case Vector.add n v1 v2 of
+          Just v -> pure $ A0ValLiteral (LitVec v)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
+      BIVconcat m n x1 x2 -> do
+        v1 <- findVec0 env x1
+        v2 <- findVec0 env x2
+        case Vector.concat m n v1 v2 of
+          Just v -> pure $ A0ValLiteral (LitVec v)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
     findVal0 env x
   A0Lam (x, a0tye1) a0e2 -> do

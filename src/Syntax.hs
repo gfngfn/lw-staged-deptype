@@ -29,23 +29,27 @@ where
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Vector (Vector)
 
 type Var = Text
 
-data Symbol = Symbol Int
-  deriving stock (Eq, Show)
+newtype Symbol = Symbol Int
+  deriving newtype (Eq, Show)
 
 symbolToVar :: Symbol -> Var
 symbolToVar (Symbol n) = Text.pack $ "#S" ++ show n
 
 data Literal
   = LitInt Int
+  | LitVec Vector
   deriving stock (Eq, Show)
 
 data BuiltIn
   = BIAdd Var Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
+  | BIVadd Int Var Var
+  | BIVconcat Int Int Var Var
   deriving stock (Eq, Show)
 
 data Expr

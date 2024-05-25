@@ -15,8 +15,11 @@ import TypeEnv qualified
 tyInt :: Ass0TypeExpr
 tyInt = A0TyPrim A0TyInt
 
-tyVec :: Ass0Expr -> Ass1TypeExpr
-tyVec = A1TyPrim . A1TyVec
+ty1Vec :: Ass0Expr -> Ass1TypeExpr
+ty1Vec = A1TyPrim . A1TyVec
+
+ty0Vec :: Int -> Ass0TypeExpr
+ty0Vec = A0TyPrim . A0TyVec
 
 (-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
 (-->) a0tye1 = A0TyArrow (Nothing, a0tye1)
@@ -46,16 +49,16 @@ initialTypeEnv =
     tyGenVadd :: Ass0TypeExpr
     tyGenVadd =
       ("a", tyInt)
-        -:> A0TyCode (tyVec (A0Var "a") ==> tyVec (A0Var "a") ==> tyVec (A0Var "a"))
+        -:> A0TyCode (ty1Vec (A0Var "a") ==> ty1Vec (A0Var "a") ==> ty1Vec (A0Var "a"))
 
     tyGenVconcat :: Ass0TypeExpr
     tyGenVconcat =
       ("a", tyInt)
         -:> ("b", tyInt)
         -:> A0TyCode
-          ( tyVec (A0Var "a")
-              ==> tyVec (A0Var "b")
-              ==> tyVec (A0App (A0App (A0Var "add") (A0Var "a")) (A0Var "b"))
+          ( ty1Vec (A0Var "a")
+              ==> ty1Vec (A0Var "b")
+              ==> ty1Vec (A0App (A0App (A0Var "add") (A0Var "a")) (A0Var "b"))
           )
 
 tyValInt :: Ass0TypeVal
@@ -69,10 +72,10 @@ lam :: Var -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
 lam x a0tye1 = A0Lam (x, a0tye1)
 
 ass0exprVadd :: Int -> Ass0Expr
-ass0exprVadd _n = error "TODO: ass0exprVadd"
+ass0exprVadd n = lam "v1" (ty0Vec n) (lam "v2" (ty0Vec n) (A0AppBuiltIn (BIVadd n "v1" "v2")))
 
 ass0exprVconcat :: Int -> Int -> Ass0Expr
-ass0exprVconcat _m _n = error "TODO: ass0exprVconcat"
+ass0exprVconcat m n = lam "v1" (ty0Vec m) (lam "v2" (ty0Vec n) (A0AppBuiltIn (BIVconcat m n "v1" "v2")))
 
 ass0valAdd :: Ass0Val
 ass0valAdd = clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIAdd "x1" "x2")))
