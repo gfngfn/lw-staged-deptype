@@ -7,6 +7,10 @@ module Syntax
     Expr (..),
     Ass0Expr (..),
     Ass1Expr (..),
+    Type0Equality (..),
+    decomposeType0Equality,
+    Type1Equality (..),
+    decomposeType1Equality,
     TypeName,
     TypeExpr (..),
     ArgForType (..),
@@ -69,8 +73,50 @@ data Ass0Expr
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
-  | A0AssertAndThen Ass0Expr Ass0Expr Ass0Expr
+  | A0TyEqAssert Type0Equality Ass0Expr
   deriving stock (Eq, Show)
+
+data Type0Equality
+  = TyEq0PrimInt
+  | TyEq0PrimBool
+  | TyEq0PrimVec Int
+  | TyEq0Code Type1Equality
+  | TyEq0Arrow (Maybe Var) Type0Equality Type0Equality
+  deriving stock (Eq, Show)
+
+decomposeType0Equality :: Type0Equality -> (Ass0TypeExpr, Ass0TypeExpr)
+decomposeType0Equality = \case
+  TyEq0PrimInt -> prims A0TyInt
+  TyEq0PrimBool -> prims A0TyBool
+  TyEq0PrimVec n -> prims (A0TyVec n)
+  TyEq0Code ty1eq ->
+    let (a1tye1, a1tye2) = decomposeType1Equality ty1eq
+     in (A0TyCode a1tye1, A0TyCode a1tye2)
+  TyEq0Arrow xOpt ty0eqDom ty0eqCod ->
+    let (a0tye11, a0tye21) = decomposeType0Equality ty0eqDom
+        (a0tye12, a0tye22) = decomposeType0Equality ty0eqCod
+     in (A0TyArrow (xOpt, a0tye11) a0tye12, A0TyArrow (xOpt, a0tye21) a0tye22)
+  where
+    prims p = (A0TyPrim p, A0TyPrim p)
+
+data Type1Equality
+  = TyEq1PrimInt
+  | TyEq1PrimBool
+  | TyEq1PrimVec Ass0Expr Ass0Expr
+  | TyEq1Arrow Type1Equality Type1Equality
+  deriving stock (Eq, Show)
+
+decomposeType1Equality :: Type1Equality -> (Ass1TypeExpr, Ass1TypeExpr)
+decomposeType1Equality = \case
+  TyEq1PrimInt -> prims A1TyInt
+  TyEq1PrimBool -> prims A1TyBool
+  TyEq1PrimVec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
+  TyEq1Arrow ty1eqDom ty1eqCod ->
+    let (a1tye11, a1tye21) = decomposeType1Equality ty1eqDom
+        (a1tye12, a1tye22) = decomposeType1Equality ty1eqCod
+     in (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22)
+  where
+    prims p = (A1TyPrim p, A1TyPrim p)
 
 data Ass1Expr
   = A1Literal Literal

@@ -40,17 +40,18 @@ substExpr0 a0e x = \case
   A0Var y ->
     if y == x then a0e else A0Var y
   A0Lam (y, a0tye1) a0e2 ->
-    let a0tye1' = substTypeExpr0 a0e x a0tye1
-     in A0Lam (y, a0tye1') (if y == x then a0e2 else go0 a0e2)
+    A0Lam (y, goTy0 a0tye1) (if y == x then a0e2 else go0 a0e2)
   A0App a0e1 a0e2 ->
     A0App (go0 a0e1) (go0 a0e2)
   A0Bracket a1e1 ->
     A0Bracket (go1 a1e1)
-  A0AssertAndThen a0e1 a0e2 a0e0 ->
-    A0AssertAndThen (go0 a0e1) (go0 a0e2) (go0 a0e0)
+  A0TyEqAssert ty0eq a0e0 ->
+    A0TyEqAssert (goTyEq0 ty0eq) (go0 a0e0)
   where
     go0 = substExpr0 a0e x
     go1 = substExpr1 a0e x
+    goTy0 = substTypeExpr0 a0e x
+    goTyEq0 = substType0Equality a0e x
 
 substExpr1 :: Ass0Expr -> Var -> Ass1Expr -> Ass1Expr
 substExpr1 a0e x = \case
@@ -95,56 +96,78 @@ substTypeExpr1 a0e x = \case
     go0 = substExpr0 a0e x
     goTy1 = substTypeExpr1 a0e x
 
-extractEquations0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> M trav [(Ass0Expr, Ass0Expr)]
-extractEquations0 trav a0tye1 a0tye2 =
+substType0Equality :: Ass0Expr -> Var -> Type0Equality -> Type0Equality
+substType0Equality a0e x = \case
+  TyEq0PrimInt -> TyEq0PrimInt
+  TyEq0PrimBool -> TyEq0PrimBool
+  TyEq0PrimVec n -> TyEq0PrimVec n
+  TyEq0Code ty1eq -> TyEq0Code (goTyEq1 ty1eq)
+  TyEq0Arrow yOpt ty0eqDom ty0eqCod ->
+    case yOpt of
+      Just y | y == x -> TyEq0Arrow (Just y) (goTyEq0 ty0eqDom) ty0eqCod
+      _ -> TyEq0Arrow yOpt (goTyEq0 ty0eqDom) (goTyEq0 ty0eqCod)
+  where
+    goTyEq0 = substType0Equality a0e x
+    goTyEq1 = substType1Equality a0e x
+
+substType1Equality :: Ass0Expr -> Var -> Type1Equality -> Type1Equality
+substType1Equality a0e x = \case
+  TyEq1PrimInt -> TyEq1PrimInt
+  TyEq1PrimBool -> TyEq1PrimBool
+  TyEq1PrimVec a0e1 a0e2 -> TyEq1PrimVec (go0 a0e1) (go0 a0e2)
+  TyEq1Arrow ty1eqDom ty1eqCod -> TyEq1Arrow (goTyEq1 ty1eqDom) (goTyEq1 ty1eqCod)
+  where
+    go0 = substExpr0 a0e x
+    goTyEq1 = substType1Equality a0e x
+
+makeEquation0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Type0Equality
+makeEquation0 trav a0tye1 a0tye2 =
   case (a0tye1, a0tye2) of
     (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) ->
       case (a0tyPrim1, a0tyPrim2) of
-        (A0TyInt, A0TyInt) -> pure []
-        (A0TyBool, A0TyBool) -> pure []
-        (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure []
+        (A0TyInt, A0TyInt) -> pure TyEq0PrimInt
+        (A0TyBool, A0TyBool) -> pure TyEq0PrimBool
+        (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure $ TyEq0PrimVec n1
         _ -> typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
-    (A0TyArrow (_x1opt, a0tye11) _a0tye12, A0TyArrow (_x2opt, a0tye21) _a0tye22) -> do
-      _eqns1 <- extractEquations0 trav a0tye11 a0tye21
-      error "TODO: extractEquations0, A0TyArrow"
-    (A0TyCode a1tye1, A0TyCode a1tye2) ->
-      extractEquations1 trav a1tye1 a1tye2
+    (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
+      case (x1opt, x2opt) of
+        (Nothing, Nothing) -> do
+          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
+          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
+          pure $ TyEq0Arrow Nothing ty0eqDom ty0eqCod
+        (Just x1, Nothing) -> do
+          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
+          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
+          pure $ TyEq0Arrow (Just x1) ty0eqDom ty0eqCod
+        (Nothing, Just x2) -> do
+          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
+          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
+          pure $ TyEq0Arrow (Just x2) ty0eqDom ty0eqCod
+        (Just x1, Just x2) -> do
+          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
+          ty0eqCod <- makeEquation0 trav a0tye12 (substTypeExpr0 (A0Var x1) x2 a0tye22)
+          pure $ TyEq0Arrow (Just x1) ty0eqDom ty0eqCod
+    (A0TyCode a1tye1, A0TyCode a1tye2) -> do
+      ty1eq <- makeEquation1 trav a1tye1 a1tye2
+      pure $ TyEq0Code ty1eq
     _ ->
       typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
 
-extractEquations1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> M trav [(Ass0Expr, Ass0Expr)]
-extractEquations1 trav a1tye1 a1tye2 =
+makeEquation1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> M trav Type1Equality
+makeEquation1 trav a1tye1 a1tye2 =
   case (a1tye1, a1tye2) of
     (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
       case (a1tyPrim1, a1tyPrim2) of
-        (A1TyInt, A1TyInt) -> pure []
-        (A1TyBool, A1TyBool) -> pure []
-        (A1TyVec a0e1, A1TyVec a0e2) -> pure [(a0e1, a0e2)]
+        (A1TyInt, A1TyInt) -> pure TyEq1PrimInt
+        (A1TyBool, A1TyBool) -> pure TyEq1PrimBool
+        (A1TyVec a0e1, A1TyVec a0e2) -> pure $ TyEq1PrimVec a0e1 a0e2
         _ -> typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
     (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
-      eqns1 <- extractEquations1 trav a1tye11 a1tye21
-      eqns2 <- extractEquations1 trav a1tye12 a1tye22
-      pure $ eqns1 ++ eqns2
+      ty1eqDom <- makeEquation1 trav a1tye11 a1tye21
+      ty1eqCod <- makeEquation1 trav a1tye12 a1tye22
+      pure $ TyEq1Arrow ty1eqDom ty1eqCod
     _ ->
       typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
-
-addAssertions0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> Ass0Expr -> M trav Ass0Expr
-addAssertions0 trav a0tye1 a0tye2 a0e0 = do
-  eqns <- extractEquations0 trav a0tye1 a0tye2
-  pure $
-    foldr
-      (\(lhs, rhs) a0e -> A0AssertAndThen lhs rhs a0e)
-      a0e0
-      eqns
-
-addAssertions1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> Ass1Expr -> M trav Ass1Expr
-addAssertions1 trav a1tye1 a1tye2 a1e0 = do
-  eqns <- extractEquations1 trav a1tye1 a1tye2
-  pure . A1Escape $
-    foldr
-      (\(lhs, rhs) a0e -> A0AssertAndThen lhs rhs a0e)
-      (A0Bracket a1e0)
-      eqns
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv = \case
@@ -168,12 +191,12 @@ typecheckExpr0 trav tyEnv = \case
     (a0tye2, a0e2) <- typecheckExpr0 trav tyEnv e2
     case a0tye1 of
       A0TyArrow (x11opt, a0tye11) a0tye12 -> do
-        a0e2' <- addAssertions0 trav a0tye11 a0tye2 a0e2
+        ty0eq <- makeEquation0 trav a0tye11 a0tye2
         let a0tye12' =
               case x11opt of
                 Just x11 -> substTypeExpr0 a0e2 x11 a0tye12
                 Nothing -> a0tye12
-        pure (a0tye12', A0App a0e1 a0e2')
+        pure (a0tye12', A0App a0e1 (A0TyEqAssert ty0eq a0e2))
       _ ->
         typeError trav $ NotAFunctionTypeForStage0 a0tye1
   LetIn x e1 e2 -> do
@@ -209,8 +232,10 @@ typecheckExpr1 trav tyEnv = \case
     (a1tye2, a1e2) <- typecheckExpr1 trav tyEnv e2
     case a1tye1 of
       A1TyArrow a1tye11 a1tye12 -> do
-        a1e2' <- addAssertions1 trav a1tye11 a1tye2 a1e2
-        pure (a1tye12, A1App a1e1 a1e2')
+        -- Embeds type equality assertion at stage 0 here!
+        ty1eq <- makeEquation1 trav a1tye11 a1tye2
+        let ty0eq = TyEq0Code ty1eq
+        pure (a1tye12, A1App a1e1 (A1Escape (A0TyEqAssert ty0eq (A0Bracket a1e2))))
       _ ->
         typeError trav $ NotAFunctionTypeForStage1 a1tye1
   LetIn x e1 e2 -> do

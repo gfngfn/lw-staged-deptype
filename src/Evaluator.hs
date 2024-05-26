@@ -30,7 +30,7 @@ data Bug
 
 data EvalError
   = Bug Bug
-  | AssertionFailure Ass0Val Ass0Val
+  | AssertionFailure Ass1TypeVal Ass1TypeVal
   deriving stock (Eq, Show)
 
 data EvalState = EvalState
@@ -133,12 +133,35 @@ evalExpr0 env = \case
   A0Bracket a1e1 -> do
     a1v1 <- evalExpr1 env a1e1
     pure $ A0ValBracket a1v1
-  A0AssertAndThen a0e1 a0e2 a0e0 -> do
-    a0v1 <- evalExpr0 env a0e1
-    a0v2 <- evalExpr0 env a0e2
-    if a0v1 == a0v2 -- Judges syntactic equality
-      then evalExpr0 env a0e0
-      else evalError $ AssertionFailure a0v1 a0v2
+  A0TyEqAssert ty0eq a0e0 -> do
+    a0v0 <- evalExpr0 env a0e0
+    case ty0eq of
+      TyEq0PrimInt -> pure a0v0
+      TyEq0PrimBool -> pure a0v0
+      TyEq0PrimVec _ -> pure a0v0
+      TyEq0Code ty1eq -> do
+        -- Judges equality of stage-1 types:
+        let (a1tye1, a1tye2) = decomposeType1Equality ty1eq
+        a1tyv1 <- evalTypeExpr1 env a1tye1
+        a1tyv2 <- evalTypeExpr1 env a1tye2
+        if a1tyv1 == a1tyv2 -- We can use `==` for stage-1 types
+          then pure a0v0
+          else evalError $ AssertionFailure a1tyv1 a1tyv2
+      TyEq0Arrow xOpt ty0eqDom ty0eqCod -> do
+        -- Decomposes the equation into two:
+        x <-
+          case xOpt of
+            Just x' -> pure x'
+            Nothing -> symbolToVar <$> generateFreshSymbol
+        f <- symbolToVar <$> generateFreshSymbol
+        let (a0tye11, a0tye21) = decomposeType0Equality ty0eqDom
+        let (a0tye12, _) = decomposeType0Equality ty0eqCod
+        let a1tyeF = A0TyArrow (xOpt, a0tye11) a0tye12
+        let mainLam =
+              A0Lam
+                (x, a0tye21)
+                (A0TyEqAssert ty0eqCod (A0App (A0Var f) (A0TyEqAssert ty0eqDom (A0Var x))))
+        evalExpr0 env $ A0App (A0Lam (f, a1tyeF) mainLam) a0e0
 
 evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case

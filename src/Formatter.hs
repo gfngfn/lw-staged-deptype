@@ -77,8 +77,9 @@ instance Disp Ass0Expr where
        in if req <= Atomic then deepenParen doc else doc
     A0Bracket a1e1 ->
       "&" <> dispGen Atomic a1e1
-    A0AssertAndThen a0e1 a0e2 a0e0 ->
-      let doc = group ("assert" <+> disp a0e1 <+> "=" <+> disp a0e2 <> ";" <> line <> disp a0e0)
+    A0TyEqAssert ty0eq a0e0 ->
+      let (a0tye1, a0tye2) = decomposeType0Equality ty0eq
+          doc = group ("{" <> disp a0tye1 <+> "▷" <+> disp a0tye2 <> "}" <> line <> disp a0e0)
        in if req <= FunDomain then deepenParen doc else doc
 
 instance Disp Ass1Expr where
