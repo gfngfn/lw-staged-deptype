@@ -1,7 +1,6 @@
 module Formatter where
 
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Prettyprinter
 import Prettyprinter.Render.Text
 import Syntax
@@ -134,9 +133,42 @@ instance Disp Ass1TypeExpr where
 
 instance Disp TypeError where
   dispGen _ = \case
-    other ->
-      -- TODO: implement this
-      disp (Text.pack (show other))
+    UnboundVar x ->
+      "Unbound variable" <+> disp x
+    NotAStage0Var x ->
+      "Not a stage-0 variable:" <+> disp x
+    NotAStage1Var x ->
+      "Not a stage-1 variable:" <+> disp x
+    UnknownTypeOrInvalidArity tyName n ->
+      "Unknown type, or invalid arity: (" <> disp tyName <> "," <+> disp n <> ")"
+    TypeContradictionAtStage0 a0tye1 a0tye2 ->
+      "Type contradiction at stage 0. left:" <> hardline
+        <> disp a0tye1 <> "," <> hardline
+        <> "right:" <> hardline
+        <> disp a0tye2
+    TypeContradictionAtStage1 a1tye1 a1tye2 ->
+      "Type contradiction at stage 1. left:" <> hardline
+        <> disp a1tye1 <> "," <> hardline
+        <> "right:" <> hardline
+        <> disp a1tye2
+    NotAFunctionTypeForStage0 a0tye ->
+      "Not a function type (for stage 0): " <+> disp a0tye
+    NotAFunctionTypeForStage1 a1tye ->
+      "Not a function type (for stage 1): " <+> disp a1tye
+    NotACodeType a0tye ->
+      "Not a code type:" <+> disp a0tye
+    CannotUseEscapeAtStage0 ->
+      "Cannot use Escape (~) at stage 0"
+    CannotUseBracketAtStage1 ->
+      "Cannot use Bracket (&) at stage 1"
+    FunctionTypeCannotBeDependentAtStage1 x ->
+      "Function types cannot be dependent at stage 1:" <+> disp x
+    CannotUseCodeTypeAtStage1 ->
+      "Cannot use code types at stage 1"
+    CannotUsePersistentArgAtStage0 ->
+      "Cannot use persistent arguments at stage 0"
+    CannotUseNormalArgAtStage1 ->
+      "Cannot use normal arguments at stage 1"
 
 instance Disp Ass0Val where
   dispGen req = \case
