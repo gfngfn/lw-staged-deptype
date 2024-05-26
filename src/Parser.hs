@@ -84,9 +84,12 @@ typeExpr = fun
     atom =
       try (flip TyName [] <$> upper)
         <|> paren fun
+    staged =
+      try (TyCode <$> (token TokBracket *> staged))
+        <|> atom
     app =
       try (TyName <$> upper <*> Mp.some (try arg))
-        <|> atom
+        <|> staged
     fun =
       try (TyArrow <$> funDom <*> (token TokArrow *> fun))
         <|> app

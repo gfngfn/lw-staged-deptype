@@ -122,3 +122,15 @@ spec = do
     it "parses type applications (5)" $
       Parser.parseTypeExpr "Vec %(succ n)"
         `shouldBe` pure (tyPersVec (App (Var "succ") (Var "n")))
+    it "parses code types (1)" $
+      Parser.parseTypeExpr "&Int"
+        `shouldBe` pure (TyCode tyInt)
+    it "parses code types (2)" $
+      Parser.parseTypeExpr "&(Vec n)"
+        `shouldBe` pure (TyCode (tyNormalVec (Var "n")))
+    it "parses code types (3)" $
+      Parser.parseTypeExpr "&Int -> Bool"
+        `shouldBe` pure (TyArrow (Nothing, TyCode tyInt) tyBool)
+    it "parses code types (4)" $
+      Parser.parseTypeExpr "&(Int -> Bool)"
+        `shouldBe` pure (TyCode (TyArrow (Nothing, tyInt) tyBool))
