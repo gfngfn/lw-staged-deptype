@@ -3,8 +3,8 @@ module Evaluator
     evalExpr1,
     initialState,
     unliftVal,
-    Bug,
-    EvalError,
+    Bug (..),
+    EvalError (..),
     EvalState,
   )
 where

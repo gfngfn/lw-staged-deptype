@@ -31,7 +31,7 @@ handle inputFilePath = do
           case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) Evaluator.initialState of
             Left err -> do
               putStrLn "-------- error during compile-time code generation: --------"
-              print err
+              putStrLn $ Text.unpack $ Formatter.render err
             Right a0v -> do
               case a0v of
                 A0ValBracket a1v -> do
@@ -41,7 +41,7 @@ handle inputFilePath = do
                   case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) Evaluator.initialState of
                     Left err -> do
                       putStrLn "-------- eval error: --------"
-                      print err
+                      putStrLn $ Text.unpack $ Formatter.render err
                     Right a0vRuntime -> do
                       putStrLn "-------- result of runtime evaluation: --------"
                       putStrLn $ Text.unpack $ Formatter.render a0vRuntime

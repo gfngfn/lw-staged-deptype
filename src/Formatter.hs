@@ -1,6 +1,8 @@
 module Formatter where
 
 import Data.Text (Text)
+import Data.Text qualified as Text
+import Evaluator qualified
 import Prettyprinter
 import Prettyprinter.Render.Text
 import Syntax
@@ -229,3 +231,34 @@ instance Disp Ass1TypeVal where
     A1TyValArrow a1tyv1 a1tyv2 ->
       let doc = group (dispGen FunDomain a1tyv1 <> " ->" <> line <> disp a1tyv2)
        in if req <= FunDomain then deepenParen doc else doc
+
+instance Disp Evaluator.Bug where
+  dispGen _ = \case
+    Evaluator.UnboundVar x ->
+      "Unbound variable:" <+> disp x
+    Evaluator.NotAClosure a0v ->
+      "Not a closure:" <+> disp a0v
+    Evaluator.NotACodeValue a0v ->
+      "Not a code value:" <+> disp a0v
+    Evaluator.NotAnInteger Nothing a0v ->
+      "Not an integer:" <+> disp a0v
+    Evaluator.NotAnInteger (Just x) a0v ->
+      "Not an integer:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
+    Evaluator.NotAVector x a0v ->
+      "Not a vector:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
+    Evaluator.FoundSymbol x symb ->
+      "Expected a stage-0 value, but found a symbol:" <+> disp symb <+> "(bound to:" <+> disp x <> ")"
+    Evaluator.FoundAss0Val x a0v ->
+      "Expected a symbol, but found a stage-0 value:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
+    Evaluator.InconsistentAppBuiltIn builtin ->
+      "Inconsistent application of a built-in function:" <+> disp (Text.pack (show builtin))
+
+instance Disp Evaluator.EvalError where
+  dispGen _ = \case
+    Evaluator.Bug bug ->
+      "Bug:" <+> disp bug
+    Evaluator.AssertionFailure a1tyv1 a1tyv2 ->
+      "Assertion failure. left:" <> hardline
+        <> disp a1tyv1 <> "," <> hardline
+        <> "right:" <> hardline
+        <> disp a1tyv2
