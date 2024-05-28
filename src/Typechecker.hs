@@ -20,6 +20,10 @@ import TypeError
 import Vector qualified
 import Prelude hiding (mod)
 
+-- TODO: make this changeable by command lines
+optimizeTrivialAssertion :: Bool
+optimizeTrivialAssertion = True
+
 type TypecheckerState = ()
 
 type M trav a = StateT TypecheckerState (Either (TypeError, trav)) a
@@ -196,7 +200,20 @@ typecheckExpr0 trav tyEnv = \case
               case x11opt of
                 Just x11 -> substTypeExpr0 a0e2 x11 a0tye12
                 Nothing -> a0tye12
-        pure (a0tye12', A0App a0e1 (A0TyEqAssert ty0eq a0e2))
+        let a0e2' =
+              if optimizeTrivialAssertion
+                then
+                  case ty0eq of
+                    TyEq0PrimInt -> a0e2 -- Slight shortcut
+                    TyEq0PrimBool -> a0e2 -- Slight shortcut
+                    TyEq0PrimVec _ -> a0e2 -- Slight shortcut
+                    _ ->
+                      if a0tye1 == a0tye2
+                        then a0e2
+                        else A0TyEqAssert ty0eq a0e2
+              else
+                A0TyEqAssert ty0eq a0e2
+        pure (a0tye12', A0App a0e1 a0e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage0 a0tye1
   LetIn x e1 e2 -> do

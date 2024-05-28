@@ -22,13 +22,13 @@ class Disp a where
   disp :: a -> Doc Ann
   disp = dispGen Outermost
 
-renderDoc :: Doc Ann -> Text
-renderDoc doc =
+renderDoc :: Int -> Doc Ann -> Text
+renderDoc wid doc =
   renderStrict $
-    layoutSmart (LayoutOptions {layoutPageWidth = AvailablePerLine 80 1.0}) doc
+    layoutSmart (LayoutOptions {layoutPageWidth = AvailablePerLine wid 1.0}) doc
 
-render :: (Disp a) => a -> Text
-render = renderDoc . disp
+render :: (Disp a) => Int -> a -> Text
+render wid = renderDoc wid . disp
 
 commaSep :: [Doc Ann] -> Doc Ann
 commaSep = sep . punctuate comma
