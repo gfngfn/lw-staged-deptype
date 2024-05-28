@@ -201,18 +201,9 @@ typecheckExpr0 trav tyEnv = \case
                 Just x11 -> substTypeExpr0 a0e2 x11 a0tye12
                 Nothing -> a0tye12
         let a0e2' =
-              if optimizeTrivialAssertion
-                then
-                  case ty0eq of
-                    TyEq0PrimInt -> a0e2 -- Slight shortcut
-                    TyEq0PrimBool -> a0e2 -- Slight shortcut
-                    TyEq0PrimVec _ -> a0e2 -- Slight shortcut
-                    _ ->
-                      if a0tye1 == a0tye2
-                        then a0e2
-                        else A0TyEqAssert ty0eq a0e2
-              else
-                A0TyEqAssert ty0eq a0e2
+              if optimizeTrivialAssertion && a0tye11 == a0tye2
+                then a0e2 -- Do slight shortcuts
+                else A0TyEqAssert ty0eq a0e2
         pure (a0tye12', A0App a0e1 a0e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage0 a0tye1
@@ -252,7 +243,11 @@ typecheckExpr1 trav tyEnv = \case
         -- Embeds type equality assertion at stage 0 here!
         ty1eq <- makeEquation1 trav a1tye11 a1tye2
         let ty0eq = TyEq0Code ty1eq
-        pure (a1tye12, A1App a1e1 (A1Escape (A0TyEqAssert ty0eq (A0Bracket a1e2))))
+        let a1e2' =
+              if optimizeTrivialAssertion && a1tye11 == a1tye2
+                then a1e2 -- Do slight shortcuts
+                else (A1Escape (A0TyEqAssert ty0eq (A0Bracket a1e2)))
+        pure (a1tye12, A1App a1e1 a1e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage1 a1tye1
   LetIn x e1 e2 -> do
