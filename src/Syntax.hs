@@ -89,7 +89,7 @@ data Ass0Expr
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
-  | A0TyEqAssert Type0Equality Ass0Expr
+  | A0TyEqAssert Span Type0Equality Ass0Expr
   deriving stock (Eq, Show)
 
 data Type0Equality

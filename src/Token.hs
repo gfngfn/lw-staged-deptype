@@ -4,6 +4,8 @@ module Token
     mergeSpan,
     Located (..),
     lex,
+    LocationInFile (..),
+    getLocationInFileFromOffset,
   )
 where
 
@@ -16,9 +18,12 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import GHC.Base
+import Text.Megaparsec (PosState (..), SourcePos (..))
 import Text.Megaparsec qualified as Mp
 import Text.Megaparsec.Char qualified as MpChar
 import Text.Megaparsec.Char.Lexer qualified as MpLexer
+import Text.Megaparsec.Pos qualified as MpPos
+import Text.Megaparsec.Stream qualified as MpStream
 import Prelude hiding (lex)
 
 data Token
@@ -131,3 +136,29 @@ lex :: Text -> Either String [Located Token]
 lex source =
   mapLeft Mp.errorBundlePretty $
     Mp.parse (space *> manyTill tokenWithOffsets Mp.eof) "input" source
+
+data LocationInFile = LocationInFile
+  { line :: Int,
+    column :: Int
+  }
+  deriving stock (Eq, Show)
+
+getLocationInFileFromOffset :: String -> Text -> Int -> LocationInFile
+getLocationInFileFromOffset inputFilePath source offset =
+  let
+    initialState =
+      PosState
+        { pstateInput = source,
+          pstateOffset = 0,
+          pstateSourcePos = MpPos.initialPos inputFilePath,
+          pstateTabWidth = MpPos.defaultTabWidth,
+          pstateLinePrefix = ""
+        }
+    (_maybeLineText, finalState) = MpStream.reachOffset offset initialState
+    PosState {pstateSourcePos = finalPos} = finalState
+    SourcePos {sourceLine, sourceColumn} = finalPos
+  in
+  LocationInFile
+    { line = MpPos.unPos sourceLine,
+      column = MpPos.unPos sourceColumn
+    }

@@ -47,8 +47,8 @@ substExpr0 a0e x = \case
     A0App (go0 a0e1) (go0 a0e2)
   A0Bracket a1e1 ->
     A0Bracket (go1 a1e1)
-  A0TyEqAssert ty0eq a0e0 ->
-    A0TyEqAssert (goTyEq0 ty0eq) (go0 a0e0)
+  A0TyEqAssert loc ty0eq a0e0 ->
+    A0TyEqAssert loc (goTyEq0 ty0eq) (go0 a0e0)
   where
     go0 = substExpr0 a0e x
     go1 = substExpr1 a0e x
@@ -172,7 +172,7 @@ makeEquation1 trav a1tye1 a1tye2 =
       typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
-typecheckExpr0 trav tyEnv (Expr _loc eMain) = case eMain of -- TODO: use `loc`
+typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
   Literal lit -> do
     let a0tye =
           case lit of
@@ -202,7 +202,7 @@ typecheckExpr0 trav tyEnv (Expr _loc eMain) = case eMain of -- TODO: use `loc`
         let a0e2' =
               if optimizeTrivialAssertion && a0tye11 == a0tye2
                 then a0e2 -- Do slight shortcuts
-                else A0TyEqAssert ty0eq a0e2
+                else A0TyEqAssert loc ty0eq a0e2
         pure (a0tye12', A0App a0e1 a0e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage0 a0tye1
@@ -218,7 +218,7 @@ typecheckExpr0 trav tyEnv (Expr _loc eMain) = case eMain of -- TODO: use `loc`
     typeError trav CannotUseEscapeAtStage0
 
 typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
-typecheckExpr1 trav tyEnv (Expr _loc eMain) = case eMain of -- TODO: use `loc`
+typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
   Literal lit -> do
     let a1tye =
           case lit of
@@ -246,7 +246,7 @@ typecheckExpr1 trav tyEnv (Expr _loc eMain) = case eMain of -- TODO: use `loc`
         let a1e2' =
               if optimizeTrivialAssertion && a1tye11 == a1tye2
                 then a1e2 -- Do slight shortcuts
-                else (A1Escape (A0TyEqAssert ty0eq (A0Bracket a1e2)))
+                else A1Escape (A0TyEqAssert loc ty0eq (A0Bracket a1e2))
         pure (a1tye12, A1App a1e1 a1e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage1 a1tye1

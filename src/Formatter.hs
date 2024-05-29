@@ -6,6 +6,7 @@ import Evaluator qualified
 import Prettyprinter
 import Prettyprinter.Render.Text
 import Syntax
+import Token (LocationInFile (LocationInFile))
 import TypeError
 import Vector qualified
 
@@ -78,7 +79,7 @@ instance Disp Ass0Expr where
        in if req <= Atomic then deepenParen doc else doc
     A0Bracket a1e1 ->
       "&" <> dispGen Atomic a1e1
-    A0TyEqAssert ty0eq a0e0 ->
+    A0TyEqAssert _loc ty0eq a0e0 ->
       let (a0tye1, a0tye2) = decomposeType0Equality ty0eq
           doc = group ("{" <> disp a0tye1 <+> "▷" <+> disp a0tye2 <> "}" <> line <> disp a0e0)
        in if req <= FunDomain then deepenParen doc else doc
@@ -240,6 +241,10 @@ instance Disp Ass1TypeVal where
       let doc = group (dispGen FunDomain a1tyv1 <> " ->" <> line <> disp a1tyv2)
        in if req <= FunDomain then deepenParen doc else doc
 
+instance Disp LocationInFile where
+  dispGen _ (LocationInFile l c) =
+    "line" <+> disp l <> ", column" <+> disp c
+
 instance Disp Evaluator.Bug where
   dispGen _ = \case
     Evaluator.UnboundVar x ->
@@ -265,8 +270,7 @@ instance Disp Evaluator.EvalError where
   dispGen _ = \case
     Evaluator.Bug bug ->
       "Bug:" <+> disp bug
-    Evaluator.AssertionFailure a1tyv1 a1tyv2 ->
-      "Assertion failure. left:" <> hardline
-        <> disp a1tyv1 <> "," <> hardline
-        <> "right:" <> hardline
-        <> disp a1tyv2
+    Evaluator.AssertionFailure (locInFileStart, locInFileEnd) a1tyv1 a1tyv2 ->
+      "Assertion failure (from" <+> disp locInFileStart <+> "to" <+> disp locInFileEnd <> ")"
+        <> hardline <> "left:" <> nest 2 (hardline <> disp a1tyv1)
+        <> hardline <> "right:" <> nest 2 (hardline <> disp a1tyv2)
