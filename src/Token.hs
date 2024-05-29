@@ -1,4 +1,9 @@
-module Token (Token (..), lex) where
+module Token
+  ( Token (..),
+    Span (..),
+    lex,
+  )
+where
 
 import Control.Monad.Combinators
 import Data.Char qualified as Char
@@ -100,7 +105,20 @@ token =
       TokInt <$> integerLiteral
     ]
 
-lex :: Text -> Either String [Token]
+data Span = Span
+  { start :: Int,
+    end :: Int
+  }
+
+tokenWithOffsets :: Tokenizer (Span, Token)
+tokenWithOffsets = do
+  start <- Mp.getOffset
+  t <- token
+  end <- Mp.getOffset
+  _ <- space
+  pure $ (Span start end, t)
+
+lex :: Text -> Either String [(Span, Token)]
 lex source =
   mapLeft Mp.errorBundlePretty $
-    Mp.parse (space *> manyTill (token <* space) Mp.eof) "input" source
+    Mp.parse (space *> manyTill tokenWithOffsets Mp.eof) "input" source

@@ -102,7 +102,8 @@ typeExpr = fun
 
 parse :: P a -> Text -> Either String a
 parse p source = do
-  tokens <- Token.lex source
+  tokensWithOffsets <- Token.lex source
+  let tokens = snd <$> tokensWithOffsets -- TODO: use spans
   mapLeft Mp.errorBundlePretty $ Mp.parse p "input" tokens
 
 parseExpr :: Text -> Either String Expr
