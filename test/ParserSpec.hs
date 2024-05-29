@@ -5,6 +5,7 @@ import Data.Text (Text)
 import Parser qualified
 import Syntax
 import Test.Hspec
+import Token (Span (..))
 import Vector qualified
 
 type TypeExpr0 = TypeExprF ()
@@ -65,9 +66,15 @@ parseExpr s = fmap void (Parser.parseExpr s)
 parseTypeExpr :: Text -> Either String TypeExpr0
 parseTypeExpr s = fmap void (Parser.parseTypeExpr s)
 
+exprLoc :: Int -> Int -> ExprMain Span -> Expr
+exprLoc start end = Expr (Span start end)
+
+typLoc :: Int -> Int -> TypeExprMain Span -> TypeExpr
+typLoc start end = TypeExpr (Span start end)
+
 spec :: Spec
 spec = do
-  describe "Parser.parseExpr" $ do
+  describe "Parser.parseExpr (without code locations)" $ do
     it "parses integer literals" $
       parseExpr "42"
         `shouldBe` pure (litInt 42)
@@ -176,3 +183,47 @@ spec = do
     it "parses code types (4)" $
       parseTypeExpr "&(Int -> Bool)"
         `shouldBe` pure (tyCode (tyNondepFun tyInt tyBool))
+  describe "Parser.parseExpr (with code locations)" $ do
+    it "parses integer literals" $
+      Parser.parseExpr "42"
+        `shouldBe` pure (exprLoc 0 2 $ Literal (LitInt 42))
+    it "parses vector literals" $
+      Parser.parseExpr "[| 3; 14; 1592 |]"
+        `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec (Vector.fromList [3, 14, 1592])))
+    it "parses variables" $
+      Parser.parseExpr "foo_bar"
+        `shouldBe` pure (exprLoc 0 7 $ Var "foo_bar")
+    it "parses applications (1)" $
+      Parser.parseExpr "x y"
+        `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
+    it "parses applications (2)" $
+      let e =
+            exprLoc 0 5 $ App
+              (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
+              (exprLoc 4 5 $ Var "z")
+       in Parser.parseExpr "x y z"
+            `shouldBe` pure e
+    it "parses applications (3)" $
+      let e =
+            exprLoc 0 7 $ App
+              (exprLoc 0 1 $ Var "x")
+              (exprLoc 2 7 $ App (exprLoc 3 4 $ Var "y") (exprLoc 5 6 $ Var "z"))
+       in Parser.parseExpr "x (y z)" `shouldBe` pure e
+    it "parses brackets" $
+      let e =
+            exprLoc 0 8 $ App
+              (exprLoc 0 1 $ Var "f")
+              (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ Var "g") (exprLoc 6 7 $ Var "x")))
+       in
+      Parser.parseExpr "f &(g x)"
+        `shouldBe` pure e
+    it "parses lambda abstractions" $
+      let ty =
+            typLoc 9 26 $ TyArrow
+              (Just "n", typLoc 14 17 $ TyName "Int" [])
+              (typLoc 22 26 $ TyName "Bool" [])
+          e =
+            exprLoc 0 34 $ Lam ("x", ty)
+              (exprLoc 31 34 $ App (exprLoc 31 32 $ Var "x") (exprLoc 33 34 $ Var "y"))
+       in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
+            `shouldBe` pure e

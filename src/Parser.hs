@@ -81,9 +81,10 @@ exprAtom, expr :: P Expr
       try (located (Literal . LitInt) <$> int)
         <|> try (located (Literal . LitVec . Vector.fromList) <$> vec)
         <|> try (located Var <$> lower)
-        <|> paren expr
+        <|> makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen
       where
         located constructor (Located loc e) = Expr loc (constructor e)
+        makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
 
     staged :: P Expr
     staged =
@@ -124,7 +125,10 @@ typeExpr = fun
     atom :: P TypeExpr
     atom =
       try ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
-        <|> paren fun
+        <|> makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen
+      where
+        makeEnclosed loc1 (TypeExpr _ tyeMain) loc2 =
+          TypeExpr (mergeSpan loc1 loc2) tyeMain
 
     staged :: P TypeExpr
     staged =
