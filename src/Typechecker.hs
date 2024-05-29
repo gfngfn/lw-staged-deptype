@@ -277,6 +277,10 @@ typecheckTypeExpr0 trav tyEnv = \case
       case (tyName, results) of
         ("Int", []) -> pure A0TyInt
         ("Bool", []) -> pure A0TyBool
+        ("Vec", [arg]) ->
+          case arg of
+            (A0TyPrim A0TyInt, A0Literal (LitInt n)) -> pure $ A0TyVec n
+            (_a0tye, a0e) -> typeError trav $ NotAnIntLitArgOfVecAtStage0 a0e
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 tyName (List.length results)
     pure $ A0TyPrim tyPrim
   TyArrow (xOpt, tye1) tye2 -> do

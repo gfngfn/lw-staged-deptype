@@ -145,18 +145,22 @@ instance Disp TypeError where
       "Unknown type or invalid arity (at stage 0):" <+> disp tyName <> "," <+> disp n
     UnknownTypeOrInvalidArityAtStage1 tyName n ->
       "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n
+    NotAnIntLitArgOfVecAtStage0 a0e ->
+      "An argument expression of Vec at stage 0 was not an integer literal:" <+> disp a0e
     NotAnIntTypedArgOfVecAtStage1 a0tye ->
-      "The argument expression of Vec is not Int-typed:" <+> disp a0tye
+      "An argument expression of Vec at stage 1 was not Int-typed:" <+> disp a0tye
     TypeContradictionAtStage0 a0tye1 a0tye2 ->
-      "Type contradiction at stage 0. left:" <> hardline
-        <> disp a0tye1 <> "," <> hardline
-        <> "right:" <> hardline
-        <> disp a0tye2
+      "Type contradiction at stage 0."
+        <> hardline <> "left:"
+        <> nest 2 (hardline <> disp a0tye1)
+        <> hardline <> "right:"
+        <> nest 2 (hardline <> disp a0tye2)
     TypeContradictionAtStage1 a1tye1 a1tye2 ->
-      "Type contradiction at stage 1. left:" <> hardline
-        <> disp a1tye1 <> "," <> hardline
-        <> "right:" <> hardline
-        <> disp a1tye2
+      "Type contradiction at stage 1."
+        <> hardline <> "left:"
+        <> nest 2 (hardline <> disp a1tye1)
+        <> hardline <> "right:"
+        <> nest 2 (hardline <> disp a1tye2)
     NotAFunctionTypeForStage0 a0tye ->
       "Not a function type (for stage 0): " <+> disp a0tye
     NotAFunctionTypeForStage1 a1tye ->
