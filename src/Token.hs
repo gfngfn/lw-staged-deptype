@@ -1,6 +1,8 @@
 module Token
   ( Token (..),
     Span (..),
+    mergeSpan,
+    Located (..),
     lex,
   )
 where
@@ -109,16 +111,23 @@ data Span = Span
   { start :: Int,
     end :: Int
   }
+  deriving (Eq, Show)
 
-tokenWithOffsets :: Tokenizer (Span, Token)
+mergeSpan :: Span -> Span -> Span
+mergeSpan (Span {start}) (Span {end}) = Span {start, end}
+
+data Located a = Located Span a
+  deriving (Eq, Show, Functor)
+
+tokenWithOffsets :: Tokenizer (Located Token)
 tokenWithOffsets = do
   start <- Mp.getOffset
   t <- token
   end <- Mp.getOffset
   _ <- space
-  pure $ (Span start end, t)
+  pure $ Located (Span start end) t
 
-lex :: Text -> Either String [(Span, Token)]
+lex :: Text -> Either String [Located Token]
 lex source =
   mapLeft Mp.errorBundlePretty $
     Mp.parse (space *> manyTill tokenWithOffsets Mp.eof) "input" source
