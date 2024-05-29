@@ -82,6 +82,7 @@ library
         base ^>= 4.17.2.1,
         containers ^>= 0.6.7,
         extra ^>= 1.7.14,
+        generic-data ^>= 1.1.0.0,
         megaparsec ^>= 9.6.1,
         parser-combinators ^>= 1.3.0,
         prettyprinter ^>= 1.7.1,
@@ -95,6 +96,7 @@ library
     default-language: GHC2021
     default-extensions:
         DerivingStrategies
+        DerivingVia
         LambdaCase
         OverloadedStrings
         RecursiveDo
@@ -155,5 +157,6 @@ test-suite lw-staged-deptype-test
         base ^>=4.17.2.1,
         hspec ^>= 2.11.7,
         hspec-discover ^>= 2.11.7,
-        lw-staged-deptype
+        lw-staged-deptype,
+        text ^>= 2.1
     build-tool-depends: hspec-discover:hspec-discover == 2.*

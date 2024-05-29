@@ -5,6 +5,7 @@ module Evaluator
     unliftVal,
     Bug (..),
     EvalError (..),
+    SourceSpec (..),
     EvalState,
   )
 where
@@ -13,7 +14,10 @@ import BuiltIn qualified
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
+import Data.Text (Text)
 import Syntax
+import Token (Span (..), LocationInFile)
+import Token qualified
 import Vector (Vector)
 import Vector qualified
 
@@ -30,11 +34,23 @@ data Bug
 
 data EvalError
   = Bug Bug
-  | AssertionFailure Ass1TypeVal Ass1TypeVal
+  | AssertionFailure (LocationInFile, LocationInFile) Ass1TypeVal Ass1TypeVal
   deriving stock (Eq, Show)
 
+data SourceSpec = SourceSpec
+  { source :: Text,
+    inputFilePath :: String
+  }
+
+getLocationInFile :: SourceSpec -> Span -> (LocationInFile, LocationInFile)
+getLocationInFile SourceSpec {source, inputFilePath} Span {start, end} = (locInFileStart, locInFileEnd)
+  where
+    locInFileStart = Token.getLocationInFileFromOffset inputFilePath source start
+    locInFileEnd = Token.getLocationInFileFromOffset inputFilePath source end
+
 data EvalState = EvalState
-  { nextSymbolIndex :: Int
+  { nextSymbolIndex :: Int,
+    sourceSpec :: SourceSpec -- For assertion failure
   }
 
 type M a = StateT EvalState (Either EvalError) a
@@ -45,8 +61,9 @@ evalError = lift . Left
 bug :: Bug -> M a
 bug = lift . Left . Bug
 
-initialState :: EvalState
-initialState = EvalState {nextSymbolIndex = 0}
+initialState :: SourceSpec -> EvalState
+initialState sourceSpec =
+  EvalState {nextSymbolIndex = 0, sourceSpec}
 
 generateFreshSymbol :: M Symbol
 generateFreshSymbol = do
@@ -133,7 +150,7 @@ evalExpr0 env = \case
   A0Bracket a1e1 -> do
     a1v1 <- evalExpr1 env a1e1
     pure $ A0ValBracket a1v1
-  A0TyEqAssert ty0eq a0e0 -> do
+  A0TyEqAssert loc ty0eq a0e0 -> do
     a0v0 <- evalExpr0 env a0e0
     case ty0eq of
       TyEq0PrimInt -> pure a0v0
@@ -146,7 +163,10 @@ evalExpr0 env = \case
         a1tyv2 <- evalTypeExpr1 env a1tye2
         if a1tyv1 == a1tyv2 -- We can use `==` for stage-1 types
           then pure a0v0
-          else evalError $ AssertionFailure a1tyv1 a1tyv2
+          else do
+            EvalState {sourceSpec} <- get
+            let locInFilePair = getLocationInFile sourceSpec loc
+            evalError $ AssertionFailure locInFilePair a1tyv1 a1tyv2
       TyEq0Arrow xOpt ty0eqDom ty0eqCod -> do
         -- Decomposes the equation into two:
         x <-
@@ -160,7 +180,7 @@ evalExpr0 env = \case
         let mainLam =
               A0Lam
                 (x, a0tye21)
-                (A0TyEqAssert ty0eqCod (A0App (A0Var f) (A0TyEqAssert ty0eqDom (A0Var x))))
+                (A0TyEqAssert loc ty0eqCod (A0App (A0Var f) (A0TyEqAssert loc ty0eqDom (A0Var x))))
         evalExpr0 env $ A0App (A0Lam (f, a1tyeF) mainLam) a0e0
 
 evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val

@@ -4,7 +4,9 @@ module Syntax
     symbolToVar,
     Literal (..),
     BuiltIn (..),
-    Expr (..),
+    ExprF (..),
+    ExprMain (..),
+    Expr,
     Ass0Expr (..),
     Ass1Expr (..),
     Type0Equality (..),
@@ -12,8 +14,11 @@ module Syntax
     Type1Equality (..),
     decomposeType1Equality,
     TypeName,
-    TypeExpr (..),
-    ArgForType (..),
+    TypeExprF (..),
+    TypeExprMain (..),
+    TypeExpr,
+    ArgForTypeF (..),
+    ArgForType,
     Ass0TypeExpr (..),
     Ass0PrimType (..),
     Ass1TypeExpr (..),
@@ -30,9 +35,13 @@ module Syntax
   )
 where
 
+import Data.Functor.Classes
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Generic.Data
+import Generic.Data.Orphans ()
+import Token (Span)
 import Vector (Vector)
 
 type Var = Text
@@ -56,15 +65,22 @@ data BuiltIn
   | BIVconcat Int Int Var Var
   deriving stock (Eq, Show)
 
-data Expr
+data ExprF ann = Expr ann (ExprMain ann)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 ExprF)
+
+data ExprMain ann
   = Literal Literal
   | Var Var
-  | Lam (Var, TypeExpr) Expr
-  | App Expr Expr
-  | LetIn Var Expr Expr
-  | Bracket Expr
-  | Escape Expr
-  deriving stock (Eq, Show)
+  | Lam (Var, TypeExprF ann) (ExprF ann)
+  | App (ExprF ann) (ExprF ann)
+  | LetIn Var (ExprF ann) (ExprF ann)
+  | Bracket (ExprF ann)
+  | Escape (ExprF ann)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 ExprMain)
+
+type Expr = ExprF Span
 
 data Ass0Expr
   = A0Literal Literal
@@ -73,7 +89,7 @@ data Ass0Expr
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
-  | A0TyEqAssert Type0Equality Ass0Expr
+  | A0TyEqAssert Span Type0Equality Ass0Expr
   deriving stock (Eq, Show)
 
 data Type0Equality
@@ -128,16 +144,26 @@ data Ass1Expr
 
 type TypeName = Text
 
-data TypeExpr
-  = TyName TypeName [ArgForType]
-  | TyArrow (Maybe Var, TypeExpr) TypeExpr
-  | TyCode TypeExpr
-  deriving stock (Eq, Show)
+data TypeExprF ann = TypeExpr ann (TypeExprMain ann)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 TypeExprF)
 
-data ArgForType
-  = PersistentArg Expr
-  | NormalArg Expr
-  deriving stock (Eq, Show)
+data TypeExprMain ann
+  = TyName TypeName [ArgForTypeF ann]
+  | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
+  | TyCode (TypeExprF ann)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 TypeExprMain)
+
+type TypeExpr = TypeExprF Span
+
+data ArgForTypeF ann
+  = PersistentArg (ExprF ann)
+  | NormalArg (ExprF ann)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 ArgForTypeF)
+
+type ArgForType = ArgForTypeF Span
 
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType

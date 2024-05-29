@@ -1,136 +1,229 @@
 module ParserSpec (spec) where
 
-import Parser
+import Data.Functor
+import Data.Text (Text)
+import Parser qualified
 import Syntax
 import Test.Hspec
+import Token (Span (..))
 import Vector qualified
 
-tyInt :: TypeExpr
-tyInt = TyName "Int" []
+type TypeExpr0 = TypeExprF ()
 
-tyBool :: TypeExpr
-tyBool = TyName "Bool" []
+type Expr0 = ExprF ()
 
-tyNormalVec :: Expr -> TypeExpr
-tyNormalVec e = TyName "Vec" [NormalArg e]
+typ :: TypeExprMain () -> TypeExpr0
+typ = TypeExpr ()
 
-tyPersVec :: Expr -> TypeExpr
-tyPersVec e = TyName "Vec" [PersistentArg e]
+tyInt :: TypeExpr0
+tyInt = typ (TyName "Int" [])
 
-tyDepFun :: Var -> TypeExpr -> TypeExpr -> TypeExpr
-tyDepFun x tye1 = TyArrow (Just x, tye1)
+tyBool :: TypeExpr0
+tyBool = typ (TyName "Bool" [])
 
-tyNondepFun :: TypeExpr -> TypeExpr -> TypeExpr
-tyNondepFun tye1 = TyArrow (Nothing, tye1)
+tyNormalVec :: Expr0 -> TypeExpr0
+tyNormalVec e = typ (TyName "Vec" [NormalArg e])
+
+tyPersVec :: Expr0 -> TypeExpr0
+tyPersVec e = typ (TyName "Vec" [PersistentArg e])
+
+tyCode :: TypeExpr0 -> TypeExpr0
+tyCode = typ . TyCode
+
+tyDepFun :: Var -> TypeExpr0 -> TypeExpr0 -> TypeExpr0
+tyDepFun x tye1 tye2 = typ (TyArrow (Just x, tye1) tye2)
+
+tyNondepFun :: TypeExpr0 -> TypeExpr0 -> TypeExpr0
+tyNondepFun tye1 tye2 = typ (TyArrow (Nothing, tye1) tye2)
+
+expr :: ExprMain () -> Expr0
+expr = Expr ()
+
+litInt :: Int -> Expr0
+litInt = expr . Literal . LitInt
+
+litVec :: [Int] -> Expr0
+litVec = expr . Literal . LitVec . Vector.fromList
+
+var :: Text -> Expr0
+var = expr . Var
+
+lam :: (Var, TypeExpr0) -> Expr0 -> Expr0
+lam binder e = expr (Lam binder e)
+
+app :: Expr0 -> Expr0 -> Expr0
+app e1 e2 = expr (App e1 e2)
+
+bracket :: Expr0 -> Expr0
+bracket = expr . Bracket
+
+escape :: Expr0 -> Expr0
+escape = expr . Escape
+
+parseExpr :: Text -> Either String Expr0
+parseExpr s = fmap void (Parser.parseExpr s)
+
+parseTypeExpr :: Text -> Either String TypeExpr0
+parseTypeExpr s = fmap void (Parser.parseTypeExpr s)
+
+exprLoc :: Int -> Int -> ExprMain Span -> Expr
+exprLoc start end = Expr (Span start end)
+
+typLoc :: Int -> Int -> TypeExprMain Span -> TypeExpr
+typLoc start end = TypeExpr (Span start end)
 
 spec :: Spec
 spec = do
-  describe "Parser.parseExpr" $ do
+  describe "Parser.parseExpr (without code locations)" $ do
     it "parses integer literals" $
-      Parser.parseExpr "42"
-        `shouldBe` pure (Literal (LitInt 42))
+      parseExpr "42"
+        `shouldBe` pure (litInt 42)
     it "parses vector literals (1)" $
-      Parser.parseExpr "[| |]"
-        `shouldBe` pure (Literal (LitVec (Vector.fromList [])))
+      parseExpr "[| |]"
+        `shouldBe` pure (litVec [])
     it "parses vector literals (2)" $
-      Parser.parseExpr "[| 3; 14; 1592 |]"
-        `shouldBe` pure (Literal (LitVec (Vector.fromList [3, 14, 1592])))
+      parseExpr "[| 3; 14; 1592 |]"
+        `shouldBe` pure (litVec [3, 14, 1592])
     it "parses variables (1)" $
-      Parser.parseExpr "x"
-        `shouldBe` pure (Var "x")
+      parseExpr "x"
+        `shouldBe` pure (var "x")
     it "parses variables (2)" $
-      Parser.parseExpr "foo_bar"
-        `shouldBe` pure (Var "foo_bar")
+      parseExpr "foo_bar"
+        `shouldBe` pure (var "foo_bar")
     it "parses applications (1)" $
-      Parser.parseExpr "x y"
-        `shouldBe` pure (App (Var "x") (Var "y"))
+      parseExpr "x y"
+        `shouldBe` pure (app (var "x") (var "y"))
     it "parses applications (2)" $
-      Parser.parseExpr "x y z"
-        `shouldBe` pure (App (App (Var "x") (Var "y")) (Var "z"))
+      parseExpr "x y z"
+        `shouldBe` pure (app (app (var "x") (var "y")) (var "z"))
     it "parses applications (3)" $
-      Parser.parseExpr "x (y z)"
-        `shouldBe` pure (App (Var "x") (App (Var "y") (Var "z")))
+      parseExpr "x (y z)"
+        `shouldBe` pure (app (var "x") (app (var "y") (var "z")))
     it "parses applications and integer literals" $
-      Parser.parseExpr "x 42 z"
-        `shouldBe` pure (App (App (Var "x") (Literal (LitInt 42))) (Var "z"))
+      parseExpr "x 42 z"
+        `shouldBe` pure (app (app (var "x") (litInt 42)) (var "z"))
     it "parses lambda abstractions (1)" $
-      Parser.parseExpr "fun (x : Int) -> x"
-        `shouldBe` pure (Lam ("x", tyInt) (Var "x"))
+      parseExpr "fun (x : Int) -> x"
+        `shouldBe` pure (lam ("x", tyInt) (var "x"))
     it "parses lambda abstractions (2)" $
       let ty = tyDepFun "n" tyInt tyBool
-       in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
-            `shouldBe` pure (Lam ("x", ty) (App (Var "x") (Var "y")))
+       in parseExpr "fun (x : (n : Int) -> Bool) -> x y"
+            `shouldBe` pure (lam ("x", ty) (app (var "x") (var "y")))
     it "parses let expressions" $
       let ty = tyDepFun "n" tyInt tyBool
-       in Parser.parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
-            `shouldBe` pure (LetIn "f" (Lam ("x", ty) (App (Var "x") (Var "y"))) (Var "f"))
+       in parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
+            `shouldBe` pure (expr (LetIn "f" (lam ("x", ty) (app (var "x") (var "y"))) (var "f")))
     it "parses brackets (1)" $
-      Parser.parseExpr "f &x y"
-        `shouldBe` pure (App (App (Var "f") (Bracket (Var "x"))) (Var "y"))
+      parseExpr "f &x y"
+        `shouldBe` pure (app (app (var "f") (bracket (var "x"))) (var "y"))
     it "parses brackets (2)" $
-      Parser.parseExpr "f &(g x)"
-        `shouldBe` pure (App (Var "f") (Bracket (App (Var "g") (Var "x"))))
+      parseExpr "f &(g x)"
+        `shouldBe` pure (app (var "f") (bracket (app (var "g") (var "x"))))
     it "parses escapes (1)" $
-      Parser.parseExpr "f ~x y"
-        `shouldBe` pure (App (App (Var "f") (Escape (Var "x"))) (Var "y"))
+      parseExpr "f ~x y"
+        `shouldBe` pure (app (app (var "f") (escape (var "x"))) (var "y"))
     it "parses escapes (2)" $
-      Parser.parseExpr "f ~(g x)"
-        `shouldBe` pure (App (Var "f") (Escape (App (Var "g") (Var "x"))))
+      parseExpr "f ~(g x)"
+        `shouldBe` pure (app (var "f") (escape (app (var "g") (var "x"))))
   describe "Parser.parseTypeExpr" $ do
     it "parses dependent function types (1)" $
-      Parser.parseTypeExpr "(n : Int) -> Bool"
+      parseTypeExpr "(n : Int) -> Bool"
         `shouldBe` pure (tyDepFun "n" tyInt tyBool)
     it "parses dependent function types (2)" $
-      Parser.parseTypeExpr "(m : Int) -> (n : Int) -> Bool"
+      parseTypeExpr "(m : Int) -> (n : Int) -> Bool"
         `shouldBe` pure (tyDepFun "m" tyInt (tyDepFun "n" tyInt tyBool))
     it "parses dependent function types (3)" $
-      Parser.parseTypeExpr "(f : (n : Int) -> Int) -> Bool"
+      parseTypeExpr "(f : (n : Int) -> Int) -> Bool"
         `shouldBe` pure (tyDepFun "f" (tyDepFun "n" tyInt tyInt) tyBool)
     it "parses non-dependent function types (1)" $
-      Parser.parseTypeExpr "Int -> Bool"
+      parseTypeExpr "Int -> Bool"
         `shouldBe` pure (tyNondepFun tyInt tyBool)
     it "parses non-dependent function types (2)" $
-      Parser.parseTypeExpr "Int -> Int -> Bool"
+      parseTypeExpr "Int -> Int -> Bool"
         `shouldBe` pure (tyNondepFun tyInt (tyNondepFun tyInt tyBool))
     it "parses non-dependent function types (3)" $
-      Parser.parseTypeExpr "(Int -> Int) -> Bool"
+      parseTypeExpr "(Int -> Int) -> Bool"
         `shouldBe` pure (tyNondepFun (tyNondepFun tyInt tyInt) tyBool)
     it "parses mixed function types (1)" $
-      Parser.parseTypeExpr "(m : Int) -> Int -> Bool"
+      parseTypeExpr "(m : Int) -> Int -> Bool"
         `shouldBe` pure (tyDepFun "m" tyInt (tyNondepFun tyInt tyBool))
     it "parses mixed function types (2)" $
-      Parser.parseTypeExpr "Int -> (n : Int) -> Bool"
+      parseTypeExpr "Int -> (n : Int) -> Bool"
         `shouldBe` pure (tyNondepFun tyInt (tyDepFun "n" tyInt tyBool))
     it "parses mixed function types (3)" $
-      Parser.parseTypeExpr "(f : Int -> Int) -> Bool"
+      parseTypeExpr "(f : Int -> Int) -> Bool"
         `shouldBe` pure (tyDepFun "f" (tyNondepFun tyInt tyInt) tyBool)
     it "parses mixed function types (4)" $
-      Parser.parseTypeExpr "((n : Int) -> Int) -> Bool"
+      parseTypeExpr "((n : Int) -> Int) -> Bool"
         `shouldBe` pure (tyNondepFun (tyDepFun "n" tyInt tyInt) tyBool)
     it "parses type applications (1)" $
-      Parser.parseTypeExpr "Vec n"
-        `shouldBe` pure (tyNormalVec (Var "n"))
+      parseTypeExpr "Vec n"
+        `shouldBe` pure (tyNormalVec (var "n"))
     it "parses type applications (2)" $
-      Parser.parseTypeExpr "Vec %n"
-        `shouldBe` pure (tyPersVec (Var "n"))
+      parseTypeExpr "Vec %n"
+        `shouldBe` pure (tyPersVec (var "n"))
     it "parses type applications (3)" $
-      Parser.parseTypeExpr "(v : Vec n) -> Bool"
-        `shouldBe` pure (tyDepFun "v" (tyNormalVec (Var "n")) tyBool)
+      parseTypeExpr "(v : Vec n) -> Bool"
+        `shouldBe` pure (tyDepFun "v" (tyNormalVec (var "n")) tyBool)
     it "parses type applications (4)" $
-      Parser.parseTypeExpr "Vec (succ n)"
-        `shouldBe` pure (tyNormalVec (App (Var "succ") (Var "n")))
+      parseTypeExpr "Vec (succ n)"
+        `shouldBe` pure (tyNormalVec (app (var "succ") (var "n")))
     it "parses type applications (5)" $
-      Parser.parseTypeExpr "Vec %(succ n)"
-        `shouldBe` pure (tyPersVec (App (Var "succ") (Var "n")))
+      parseTypeExpr "Vec %(succ n)"
+        `shouldBe` pure (tyPersVec (app (var "succ") (var "n")))
     it "parses code types (1)" $
-      Parser.parseTypeExpr "&Int"
-        `shouldBe` pure (TyCode tyInt)
+      parseTypeExpr "&Int"
+        `shouldBe` pure (tyCode tyInt)
     it "parses code types (2)" $
-      Parser.parseTypeExpr "&(Vec n)"
-        `shouldBe` pure (TyCode (tyNormalVec (Var "n")))
+      parseTypeExpr "&(Vec n)"
+        `shouldBe` pure (tyCode (tyNormalVec (var "n")))
     it "parses code types (3)" $
-      Parser.parseTypeExpr "&Int -> Bool"
-        `shouldBe` pure (TyArrow (Nothing, TyCode tyInt) tyBool)
+      parseTypeExpr "&Int -> Bool"
+        `shouldBe` pure (tyNondepFun (tyCode tyInt) tyBool)
     it "parses code types (4)" $
-      Parser.parseTypeExpr "&(Int -> Bool)"
-        `shouldBe` pure (TyCode (TyArrow (Nothing, tyInt) tyBool))
+      parseTypeExpr "&(Int -> Bool)"
+        `shouldBe` pure (tyCode (tyNondepFun tyInt tyBool))
+  describe "Parser.parseExpr (with code locations)" $ do
+    it "parses integer literals" $
+      Parser.parseExpr "42"
+        `shouldBe` pure (exprLoc 0 2 $ Literal (LitInt 42))
+    it "parses vector literals" $
+      Parser.parseExpr "[| 3; 14; 1592 |]"
+        `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec (Vector.fromList [3, 14, 1592])))
+    it "parses variables" $
+      Parser.parseExpr "foo_bar"
+        `shouldBe` pure (exprLoc 0 7 $ Var "foo_bar")
+    it "parses applications (1)" $
+      Parser.parseExpr "x y"
+        `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
+    it "parses applications (2)" $
+      let e =
+            exprLoc 0 5 $ App
+              (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
+              (exprLoc 4 5 $ Var "z")
+       in Parser.parseExpr "x y z"
+            `shouldBe` pure e
+    it "parses applications (3)" $
+      let e =
+            exprLoc 0 7 $ App
+              (exprLoc 0 1 $ Var "x")
+              (exprLoc 2 7 $ App (exprLoc 3 4 $ Var "y") (exprLoc 5 6 $ Var "z"))
+       in Parser.parseExpr "x (y z)" `shouldBe` pure e
+    it "parses brackets" $
+      let e =
+            exprLoc 0 8 $ App
+              (exprLoc 0 1 $ Var "f")
+              (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ Var "g") (exprLoc 6 7 $ Var "x")))
+       in
+      Parser.parseExpr "f &(g x)"
+        `shouldBe` pure e
+    it "parses lambda abstractions" $
+      let ty =
+            typLoc 9 26 $ TyArrow
+              (Just "n", typLoc 14 17 $ TyName "Int" [])
+              (typLoc 22 26 $ TyName "Bool" [])
+          e =
+            exprLoc 0 34 $ Lam ("x", ty)
+              (exprLoc 31 34 $ App (exprLoc 31 32 $ Var "x") (exprLoc 33 34 $ Var "y"))
+       in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
+            `shouldBe` pure e

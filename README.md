@@ -20,5 +20,5 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 
 - [x] Assertions corresponding to the equality check of higher-order types
 - [x] Command-line options
-- [ ] Handle code positions
+- [x] Handle code positions
 - [ ] Add `Mat m n`

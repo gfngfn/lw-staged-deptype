@@ -9,6 +9,7 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
+import Evaluator (SourceSpec (SourceSpec))
 import Evaluator qualified
 import Formatter (Disp)
 import Formatter qualified
@@ -29,6 +30,7 @@ handle :: Argument -> IO ()
 handle Argument {inputFilePath, optimize, displayWidth} = do
   putStrLn "Lightweight Dependent Types via Staging"
   source <- TextIO.readFile inputFilePath
+  let initialEvalState = Evaluator.initialState (SourceSpec source inputFilePath)
   case Parser.parseExpr source of
     Left err -> do
       putStrLn "-------- parse error: --------"
@@ -43,7 +45,7 @@ handle Argument {inputFilePath, optimize, displayWidth} = do
           putRenderedLines a1tye
           putStrLn "-------- elaborated expression: --------"
           putRenderedLines a0e
-          case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) Evaluator.initialState of
+          case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) initialEvalState of
             Left err -> do
               putStrLn "-------- error during compile-time code generation: --------"
               putRenderedLines err
@@ -53,7 +55,7 @@ handle Argument {inputFilePath, optimize, displayWidth} = do
                   putStrLn "-------- generated code: --------"
                   putRenderedLines a1v
                   let a0eRuntime = Evaluator.unliftVal a1v
-                  case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) Evaluator.initialState of
+                  case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
                     Left err -> do
                       putStrLn "-------- eval error: --------"
                       putRenderedLines err
