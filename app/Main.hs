@@ -1,14 +1,14 @@
 module Main where
 
-import LibMain qualified
-import System.Environment qualified as Env
+import LibMain
+import Options.Applicative
+
+argumentParser :: Parser Argument
+argumentParser =
+  Argument
+    <$> strArgument (metavar "STRING")
+    <*> switch (short 'o' <> long "optimize" <> help "Do slight optimization about assertion insertion")
+    <*> option auto (value 80 <> short 'w' <> long "diplay-width" <> help "Set display width")
 
 main :: IO ()
-main = do
-  args <- Env.getArgs
-  case args of
-    [inputFilePath] -> do
-      putStrLn "Lightweight Dependent Types via Staging"
-      LibMain.handle inputFilePath
-    _ ->
-      error "Wrong number of arguments"
+main = execParser (info argumentParser briefDesc) >>= handle

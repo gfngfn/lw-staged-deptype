@@ -3,14 +3,14 @@ module Typechecker
     typecheckExpr1,
     typecheckTypeExpr0,
     typecheckTypeExpr1,
-    TypecheckerState,
+    TypecheckConfig (..),
     M,
   )
 where
 
 import Control.Monad
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.State
+import Control.Monad.Trans.Reader
 import Data.Either.Extra
 import Data.List qualified as List
 import Syntax
@@ -20,13 +20,11 @@ import TypeError
 import Vector qualified
 import Prelude hiding (mod)
 
--- TODO: make this changeable by command lines
-optimizeTrivialAssertion :: Bool
-optimizeTrivialAssertion = True
+data TypecheckConfig = TypecheckConfig
+  { optimizeTrivialAssertion :: Bool
+  }
 
-type TypecheckerState = ()
-
-type M trav a = StateT TypecheckerState (Either (TypeError, trav)) a
+type M trav a = ReaderT TypecheckConfig (Either (TypeError, trav)) a
 
 typeError :: trav -> TypeError -> M trav b
 typeError trav e = lift $ Left (e, trav)
@@ -195,6 +193,7 @@ typecheckExpr0 trav tyEnv = \case
     (a0tye2, a0e2) <- typecheckExpr0 trav tyEnv e2
     case a0tye1 of
       A0TyArrow (x11opt, a0tye11) a0tye12 -> do
+        TypecheckConfig {optimizeTrivialAssertion} <- ask
         ty0eq <- makeEquation0 trav a0tye11 a0tye2
         let a0tye12' =
               case x11opt of
@@ -241,6 +240,7 @@ typecheckExpr1 trav tyEnv = \case
     case a1tye1 of
       A1TyArrow a1tye11 a1tye12 -> do
         -- Embeds type equality assertion at stage 0 here!
+        TypecheckConfig {optimizeTrivialAssertion} <- ask
         ty1eq <- makeEquation1 trav a1tye11 a1tye2
         let ty0eq = TyEq0Code ty1eq
         let a1e2' =
