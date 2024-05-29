@@ -277,7 +277,7 @@ typecheckTypeExpr0 trav tyEnv = \case
       case (tyName, results) of
         ("Int", []) -> pure A0TyInt
         ("Bool", []) -> pure A0TyBool
-        _ -> typeError trav $ UnknownTypeOrInvalidArity tyName (List.length results)
+        _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 tyName (List.length results)
     pure $ A0TyPrim tyPrim
   TyArrow (xOpt, tye1) tye2 -> do
     a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
@@ -304,8 +304,11 @@ typecheckTypeExpr1 trav tyEnv = \case
       case (tyName, results) of
         ("Int", []) -> pure A1TyInt
         ("Bool", []) -> pure A1TyBool
-        ("Vec", [(A0TyPrim A0TyInt, a0e)]) -> pure $ A1TyVec a0e
-        _ -> typeError trav $ UnknownTypeOrInvalidArity tyName (List.length results)
+        ("Vec", [(a0tye, a0e)]) ->
+          case a0tye of
+            A0TyPrim A0TyInt -> pure $ A1TyVec a0e
+            _ -> typeError trav $ NotAnIntTypedArgOfVecAtStage1 a0tye
+        _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 tyName (List.length results)
     pure $ A1TyPrim a1tyPrim
   TyArrow (xOpt, tye1) tye2 -> do
     a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1

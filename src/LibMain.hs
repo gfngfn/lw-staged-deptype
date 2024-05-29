@@ -14,7 +14,7 @@ import Prelude
 
 -- TODO: make this changeable by command lines
 lineWidth :: Int
-lineWidth = 120
+lineWidth = 90
 
 putRenderedLines :: (Disp a) => a -> IO ()
 putRenderedLines x =

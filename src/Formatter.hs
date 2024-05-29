@@ -141,8 +141,12 @@ instance Disp TypeError where
       "Not a stage-0 variable:" <+> disp x
     NotAStage1Var x ->
       "Not a stage-1 variable:" <+> disp x
-    UnknownTypeOrInvalidArity tyName n ->
-      "Unknown type, or invalid arity: (" <> disp tyName <> "," <+> disp n <> ")"
+    UnknownTypeOrInvalidArityAtStage0 tyName n ->
+      "Unknown type or invalid arity (at stage 0):" <+> disp tyName <> "," <+> disp n
+    UnknownTypeOrInvalidArityAtStage1 tyName n ->
+      "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n
+    NotAnIntTypedArgOfVecAtStage1 a0tye ->
+      "The argument expression of Vec is not Int-typed:" <+> disp a0tye
     TypeContradictionAtStage0 a0tye1 a0tye2 ->
       "Type contradiction at stage 0. left:" <> hardline
         <> disp a0tye1 <> "," <> hardline
