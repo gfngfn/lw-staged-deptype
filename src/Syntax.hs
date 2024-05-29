@@ -14,8 +14,9 @@ module Syntax
     decomposeType1Equality,
     TypeName,
     TypeExprF (..),
-    TypeExpr,
-    ArgForType (..),
+    TypeExpr (..),
+    ArgForTypeF (..),
+    ArgForType,
     Ass0TypeExpr (..),
     Ass0PrimType (..),
     Ass1TypeExpr (..),
@@ -63,18 +64,18 @@ data BuiltIn
   | BIVconcat Int Int Var Var
   deriving stock (Eq, Show)
 
-data ExprF e
+data ExprF t e
   = Literal Literal
   | Var Var
-  | Lam (Var, TypeExpr) e
+  | Lam (Var, t) e
   | App e e
   | LetIn Var e e
   | Bracket e
   | Escape e
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 ExprF)
+  deriving (Eq1, Show1) via (Generically1 (ExprF t))
 
-type Expr = Cofree ExprF Span
+type Expr = Cofree (ExprF TypeExpr) Span
 
 data Ass0Expr
   = A0Literal Literal
@@ -138,19 +139,21 @@ data Ass1Expr
 
 type TypeName = Text
 
-data TypeExprF t
-  = TyName TypeName [ArgForType]
+data TypeExprF e t
+  = TyName TypeName [ArgForTypeF e]
   | TyArrow (Maybe Var, t) t
   | TyCode t
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 TypeExprF)
+  deriving (Eq1, Show1) via (Generically1 (TypeExprF e))
 
-type TypeExpr = Cofree TypeExprF Span
+type TypeExpr = Cofree (TypeExprF Expr) Span
 
-data ArgForType
-  = PersistentArg Expr
-  | NormalArg Expr
+data ArgForTypeF e
+  = PersistentArg e
+  | NormalArg e
   deriving stock (Eq, Show)
+
+type ArgForType = ArgForTypeF Expr
 
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType

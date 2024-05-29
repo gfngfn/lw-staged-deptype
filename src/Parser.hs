@@ -139,8 +139,8 @@ exprAtom, expr :: P Expr
       try (makeLam <$> token TokFun <*> (paren ((,) <$> forgetLoc lower <*> (token TokColon *> typeExpr)) <* token TokArrow) <*> expr)
         <|> app
       where
-        makeLam locFirst binder e@(locLast :< _) =
-          mergeSpan locFirst locLast :< Lam binder e
+        makeLam locFirst (x, tye) e@(locLast :< _) =
+          mergeSpan locFirst locLast :< Lam (x, TypeAnnot tye) e
 
     letin :: P Expr
     letin =

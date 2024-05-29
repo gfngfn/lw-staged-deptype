@@ -8,8 +8,12 @@ import Syntax
 import Test.Hspec
 import Vector qualified
 
---type TypeExpr0 = Cofree TypeExprF ()
---
+type TypeExpr0 = Cofree (TypeExprF Expr0) ()
+
+newtype TypeAnnot0 = TypeAnnot0 TypeExpr0
+
+type Expr0 = Cofree (ExprF TypeAnnot0) ()
+
 --typ :: TypeExprF (Cofree TypeExprF ()) -> TypeExpr0
 --typ tyeMain = () :< tyeMain
 --
@@ -34,9 +38,7 @@ import Vector qualified
 --tyNondepFun :: TypeExpr0 -> TypeExpr0 -> TypeExpr0
 --tyNondepFun tye1 tye2 = typ (TyArrow (Nothing, tye1) tye2)
 
-type Expr0 = Cofree ExprF ()
-
-expr :: ExprF (Cofree ExprF ()) -> Expr0
+expr :: ExprF TypeAnnot0 Expr0 -> Expr0
 expr eMain = () :< eMain
 
 litInt :: Int -> Expr0
