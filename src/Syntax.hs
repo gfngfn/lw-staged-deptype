@@ -4,7 +4,8 @@ module Syntax
     symbolToVar,
     Literal (..),
     BuiltIn (..),
-    Expr (..),
+    ExprF (..),
+    Expr,
     Ass0Expr (..),
     Ass1Expr (..),
     Type0Equality (..),
@@ -30,9 +31,14 @@ module Syntax
   )
 where
 
+import Control.Comonad.Cofree
+import Data.Functor.Classes
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Generic.Data
+import Generic.Data.Orphans ()
+import Token (Span)
 import Vector (Vector)
 
 type Var = Text
@@ -56,15 +62,18 @@ data BuiltIn
   | BIVconcat Int Int Var Var
   deriving stock (Eq, Show)
 
-data Expr
+data ExprF e
   = Literal Literal
   | Var Var
-  | Lam (Var, TypeExpr) Expr
-  | App Expr Expr
-  | LetIn Var Expr Expr
-  | Bracket Expr
-  | Escape Expr
-  deriving stock (Eq, Show)
+  | Lam (Var, TypeExpr) e
+  | App e e
+  | LetIn Var e e
+  | Bracket e
+  | Escape e
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 ExprF)
+
+type Expr = Cofree ExprF Span
 
 data Ass0Expr
   = A0Literal Literal

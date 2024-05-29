@@ -41,10 +41,10 @@ data Token
   | TokIn
   deriving stock (Ord, Eq, Show)
 
-instance Mp.VisualStream [Token] where
+instance Mp.VisualStream [Located Token] where
   showTokens _proxy = show
 
-instance Mp.TraversableStream [Token] where
+instance Mp.TraversableStream [Located Token] where
   reachOffset _n posState = (Nothing, posState)
 
 type Tokenizer = Mp.Parsec Void Text
@@ -111,13 +111,13 @@ data Span = Span
   { start :: Int,
     end :: Int
   }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 mergeSpan :: Span -> Span -> Span
 mergeSpan (Span {start}) (Span {end}) = Span {start, end}
 
 data Located a = Located Span a
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Ord, Show, Functor)
 
 tokenWithOffsets :: Tokenizer (Located Token)
 tokenWithOffsets = do

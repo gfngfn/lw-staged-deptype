@@ -8,6 +8,7 @@ module Typechecker
   )
 where
 
+import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
@@ -172,7 +173,7 @@ makeEquation1 trav a1tye1 a1tye2 =
       typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
-typecheckExpr0 trav tyEnv = \case
+typecheckExpr0 trav tyEnv (_loc :< e) = case e of -- TODO: use `loc`
   Literal lit -> do
     let a0tye =
           case lit of
@@ -218,7 +219,7 @@ typecheckExpr0 trav tyEnv = \case
     typeError trav CannotUseEscapeAtStage0
 
 typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
-typecheckExpr1 trav tyEnv = \case
+typecheckExpr1 trav tyEnv (_loc :< e) = case e of
   Literal lit -> do
     let a1tye =
           case lit of
