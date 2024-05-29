@@ -4,7 +4,6 @@ module Parser
   )
 where
 
-import Control.Comonad.Cofree
 import Data.Either.Extra
 import Data.Functor
 import Data.Set qualified as Set
@@ -28,45 +27,8 @@ token tExpected =
     )
     Set.empty
 
-(=*>) :: forall f. P Span -> P (Cofree f Span) -> P (Located (Cofree f Span))
-(=*>) pPrefix p = do
-   (\loc1 e@(loc2 :< _) -> Located (mergeSpan loc1 loc2) e) <$> pPrefix <*> p
-infixl 4 =*>
-
-located :: (a -> f (Cofree f Span)) -> Located a -> Cofree f Span
-located g (Located loc e) = loc :< g e
-
 forgetLoc :: P (Located a) -> P a
 forgetLoc p = (\(Located _ x) -> x) <$> p
-
--- (<*) :: P a -> P () -> P a
--- (<*) p pSuffix = do
---   (\(Located loc1 v) (Located loc2 ()) -> Located (mergeSpan loc1 loc2) v) <$> p Prelude.<*> pSuffix
--- infixl 4 <*
---
--- manyWithSepAndEnd :: P a -> P () -> P () -> P [a]
--- manyWithSepAndEnd p pSep pEnd =
---   try ((reform <$> p <*> Mp.many (pSep *> p)) <* pEnd)
---     <|> (fmap (const []) <$> pEnd)
---   where
---     reform (Located locFirst vFirst) rest =
---       case reverse rest of
---         [] ->
---           Located locFirst [vFirst]
---         Located locLast _ : _ ->
---           Located (mergeSpan locFirst locLast) (vFirst : map (\(Located _ v) -> v) rest)
---
--- some :: P a -> P (NonEmpty a)
--- some p = reform <$> Mp.some p
---   where
---     reform [] = error "Mp.some returns the empty list"
---     reform (Located locFirst vFirst : rest) =
---       Located locMerged (vFirst :| map (\(Located _ v) -> v) rest)
---       where
---         locMerged =
---           case reverse rest of
---             [] -> locFirst
---             Located locLast _ : _ -> mergeSpan locFirst locLast
 
 paren :: P a -> P a
 paren p = token TokLeftParen *> p <* token TokRightParen
@@ -120,48 +82,57 @@ exprAtom, expr :: P Expr
         <|> try (located (Literal . LitVec . Vector.fromList) <$> vec)
         <|> try (located Var <$> lower)
         <|> paren expr
+      where
+        located constructor (Located loc e) = Expr loc (constructor e)
 
     staged :: P Expr
     staged =
-      try (located Bracket <$> (token TokBracket =*> staged))
-        <|> try (located Escape <$> (token TokEscape =*> staged))
+      try (makeStaged Bracket <$> token TokBracket <*> staged)
+        <|> try (makeStaged Escape <$> token TokEscape <*> staged)
         <|> atom
+      where
+        makeStaged constructor loc1 e@(Expr loc2 _) =
+          Expr (mergeSpan loc1 loc2) (constructor e)
 
     app :: P Expr
     app =
       foldl1 makeApp <$> Mp.some (try staged)
       where
-        makeApp e1@(loc1 :< _) e2@(loc2 :< _) =
-          mergeSpan loc1 loc2 :< App e1 e2
+        makeApp :: Expr -> Expr -> Expr
+        makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
+          Expr (mergeSpan loc1 loc2) (App e1 e2)
 
     lam :: P Expr
     lam =
       try (makeLam <$> token TokFun <*> (paren ((,) <$> forgetLoc lower <*> (token TokColon *> typeExpr)) <* token TokArrow) <*> expr)
         <|> app
       where
-        makeLam locFirst (x, tye) e@(locLast :< _) =
-          mergeSpan locFirst locLast :< Lam (x, TypeAnnot tye) e
+        makeLam locFirst (x, tye) e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (Lam (x, tye) e)
 
     letin :: P Expr
     letin =
       try (makeLetIn <$> token TokLet <*> forgetLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         <|> lam
       where
-        makeLetIn locFirst x e1 e2@(locLast :< _) =
-          mergeSpan locFirst locLast :< LetIn x e1 e2
+        makeLetIn locFirst x e1 e2@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LetIn x e1 e2)
 
 typeExpr :: P TypeExpr
 typeExpr = fun
   where
     atom :: P TypeExpr
     atom =
-      try (located (flip TyName []) <$> upper)
+      try ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
         <|> paren fun
 
     staged :: P TypeExpr
     staged =
-      try (located TyCode <$> (token TokBracket =*> staged))
+      try (makeTyCode <$> token TokBracket <*> staged)
         <|> atom
+      where
+        makeTyCode loc1 tye@(TypeExpr loc2 _) =
+          TypeExpr (mergeSpan loc1 loc2) (TyCode tye)
 
     app :: P TypeExpr
     app =
@@ -172,21 +143,21 @@ typeExpr = fun
           let loc =
                 case reverse tyeArgs of
                   [] -> error "Mp.some returned the empty list"
-                  PersistentArg (locLast :< _) : _ -> mergeSpan locFirst locLast
-                  NormalArg (locLast :< _) : _ -> mergeSpan locFirst locLast
-           in loc :< TyName t tyeArgs
+                  PersistentArg (Expr locLast _) : _ -> mergeSpan locFirst locLast
+                  NormalArg (Expr locLast _) : _ -> mergeSpan locFirst locLast
+           in TypeExpr loc (TyName t tyeArgs)
 
     fun :: P TypeExpr
     fun =
       try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
         <|> app
       where
-        makeTyArrow funDomSpec tye2@(loc2 :< _) =
+        makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
           let (loc, tyDom) =
                 case funDomSpec of
-                  (Nothing, tye1@(loc1 :< _)) -> (mergeSpan loc1 loc2, (Nothing, tye1))
+                  (Nothing, tye1@(TypeExpr loc1 _)) -> (mergeSpan loc1 loc2, (Nothing, tye1))
                   (Just (loc1, x), tye1) -> (mergeSpan loc1 loc2, (Just x, tye1))
-           in loc :< TyArrow tyDom tye2
+           in TypeExpr loc (TyArrow tyDom tye2)
 
     funDom :: P (Maybe (Span, Var), TypeExpr)
     funDom =

@@ -8,7 +8,6 @@ module Typechecker
   )
 where
 
-import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
@@ -173,7 +172,7 @@ makeEquation1 trav a1tye1 a1tye2 =
       typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
-typecheckExpr0 trav tyEnv (_loc :< eMain) = case eMain of -- TODO: use `loc`
+typecheckExpr0 trav tyEnv (Expr _loc eMain) = case eMain of -- TODO: use `loc`
   Literal lit -> do
     let a0tye =
           case lit of
@@ -185,7 +184,7 @@ typecheckExpr0 trav tyEnv (_loc :< eMain) = case eMain of -- TODO: use `loc`
     case entry of
       TypeEnv.Ass0Entry a0tye -> pure (a0tye, A0Var x)
       TypeEnv.Ass1Entry _ -> typeError trav $ NotAStage0Var x
-  Lam (x1, TypeAnnot tye1) e2 -> do
+  Lam (x1, tye1) e2 -> do
     a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
     (a0tye2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) e2
     pure (A0TyArrow (Just x1, a0tye1) a0tye2, A0Lam (x1, a0tye1) a0e2)
@@ -219,7 +218,7 @@ typecheckExpr0 trav tyEnv (_loc :< eMain) = case eMain of -- TODO: use `loc`
     typeError trav CannotUseEscapeAtStage0
 
 typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
-typecheckExpr1 trav tyEnv (_loc :< eMain) = case eMain of -- TODO: use `loc`
+typecheckExpr1 trav tyEnv (Expr _loc eMain) = case eMain of -- TODO: use `loc`
   Literal lit -> do
     let a1tye =
           case lit of
@@ -231,7 +230,7 @@ typecheckExpr1 trav tyEnv (_loc :< eMain) = case eMain of -- TODO: use `loc`
     case entry of
       TypeEnv.Ass0Entry _ -> typeError trav $ NotAStage1Var x
       TypeEnv.Ass1Entry a1tye -> pure (a1tye, A1Var x)
-  Lam (x1, TypeAnnot tye1) e2 -> do
+  Lam (x1, tye1) e2 -> do
     a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
     (a1tye2, a1e2) <- typecheckExpr1 trav (TypeEnv.addVar x1 (TypeEnv.Ass1Entry a1tye1) tyEnv) e2
     pure (A1TyArrow a1tye1 a1tye2, A1Lam (x1, a1tye1) a1e2)
@@ -265,7 +264,7 @@ typecheckExpr1 trav tyEnv (_loc :< eMain) = case eMain of -- TODO: use `loc`
       _ -> typeError trav $ NotACodeType a0tye1
 
 typecheckTypeExpr0 :: trav -> TypeEnv -> TypeExpr -> M trav Ass0TypeExpr
-typecheckTypeExpr0 trav tyEnv (_loc :< tyeMain) = case tyeMain of -- TODO: use `loc`
+typecheckTypeExpr0 trav tyEnv (TypeExpr _loc tyeMain) = case tyeMain of -- TODO: use `loc`
   TyName tyName args -> do
     results <-
       mapM
@@ -296,7 +295,7 @@ typecheckTypeExpr0 trav tyEnv (_loc :< tyeMain) = case tyeMain of -- TODO: use `
     pure $ A0TyCode a1tye1
 
 typecheckTypeExpr1 :: trav -> TypeEnv -> TypeExpr -> M trav Ass1TypeExpr
-typecheckTypeExpr1 trav tyEnv (_loc :< tyeMain) = case tyeMain of -- TODO: use `loc`
+typecheckTypeExpr1 trav tyEnv (TypeExpr _loc tyeMain) = case tyeMain of -- TODO: use `loc`
   TyName tyName args -> do
     results <-
       mapM
