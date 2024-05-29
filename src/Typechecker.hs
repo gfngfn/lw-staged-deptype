@@ -173,7 +173,7 @@ makeEquation1 trav a1tye1 a1tye2 =
       typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
-typecheckExpr0 trav tyEnv (_loc :< e) = case e of -- TODO: use `loc`
+typecheckExpr0 trav tyEnv (_loc :< eMain) = case eMain of -- TODO: use `loc`
   Literal lit -> do
     let a0tye =
           case lit of
@@ -219,7 +219,7 @@ typecheckExpr0 trav tyEnv (_loc :< e) = case e of -- TODO: use `loc`
     typeError trav CannotUseEscapeAtStage0
 
 typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
-typecheckExpr1 trav tyEnv (_loc :< e) = case e of
+typecheckExpr1 trav tyEnv (_loc :< eMain) = case eMain of -- TODO: use `loc`
   Literal lit -> do
     let a1tye =
           case lit of
@@ -265,7 +265,7 @@ typecheckExpr1 trav tyEnv (_loc :< e) = case e of
       _ -> typeError trav $ NotACodeType a0tye1
 
 typecheckTypeExpr0 :: trav -> TypeEnv -> TypeExpr -> M trav Ass0TypeExpr
-typecheckTypeExpr0 trav tyEnv = \case
+typecheckTypeExpr0 trav tyEnv (_loc :< tyeMain) = case tyeMain of -- TODO: use `loc`
   TyName tyName args -> do
     results <-
       mapM
@@ -296,7 +296,7 @@ typecheckTypeExpr0 trav tyEnv = \case
     pure $ A0TyCode a1tye1
 
 typecheckTypeExpr1 :: trav -> TypeEnv -> TypeExpr -> M trav Ass1TypeExpr
-typecheckTypeExpr1 trav tyEnv = \case
+typecheckTypeExpr1 trav tyEnv (_loc :< tyeMain) = case tyeMain of -- TODO: use `loc`
   TyName tyName args -> do
     results <-
       mapM

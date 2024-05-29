@@ -155,28 +155,46 @@ typeExpr = fun
   where
     atom :: P TypeExpr
     atom =
-      try (flip TyName [] <$> forgetLoc upper)
+      try (located (flip TyName []) <$> upper)
         <|> paren fun
 
     staged :: P TypeExpr
     staged =
-      try (TyCode <$> (token TokBracket *> staged))
+      try (located TyCode <$> (token TokBracket =*> staged))
         <|> atom
 
     app :: P TypeExpr
     app =
-      try (TyName <$> forgetLoc upper <*> Mp.some (try arg))
+      try (makeTyName <$> upper <*> Mp.some (try arg))
         <|> staged
+      where
+        makeTyName (Located locFirst t) tyeArgs =
+          let loc =
+                case reverse tyeArgs of
+                  [] -> error "Mp.some returned the empty list"
+                  PersistentArg (locLast :< _) : _ -> mergeSpan locFirst locLast
+                  NormalArg (locLast :< _) : _ -> mergeSpan locFirst locLast
+           in loc :< TyName t tyeArgs
 
     fun :: P TypeExpr
     fun =
-      try (TyArrow <$> funDom <*> (token TokArrow *> fun))
+      try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
         <|> app
+      where
+        makeTyArrow funDomSpec tye2@(loc2 :< _) =
+          let (loc, tyDom) =
+                case funDomSpec of
+                  (Nothing, tye1@(loc1 :< _)) -> (mergeSpan loc1 loc2, (Nothing, tye1))
+                  (Just (loc1, x), tye1) -> (mergeSpan loc1 loc2, (Just x, tye1))
+           in loc :< TyArrow tyDom tye2
 
-    funDom :: P (Maybe Var, TypeExpr)
+    funDom :: P (Maybe (Span, Var), TypeExpr)
     funDom =
-      try (paren ((,) <$> (Just <$> (forgetLoc lower <* token TokColon)) <*> fun))
+      try (makeFunDom <$> token TokLeftParen <*> (forgetLoc lower <* token TokColon) <*> fun <* token TokRightParen)
         <|> ((Nothing,) <$> app)
+      where
+        makeFunDom locFirst x tyeDom =
+          (Just (locFirst, x), tyeDom)
 
     arg :: P ArgForType
     arg =

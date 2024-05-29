@@ -13,7 +13,8 @@ module Syntax
     Type1Equality (..),
     decomposeType1Equality,
     TypeName,
-    TypeExpr (..),
+    TypeExprF (..),
+    TypeExpr,
     ArgForType (..),
     Ass0TypeExpr (..),
     Ass0PrimType (..),
@@ -137,11 +138,14 @@ data Ass1Expr
 
 type TypeName = Text
 
-data TypeExpr
+data TypeExprF t
   = TyName TypeName [ArgForType]
-  | TyArrow (Maybe Var, TypeExpr) TypeExpr
-  | TyCode TypeExpr
-  deriving stock (Eq, Show)
+  | TyArrow (Maybe Var, t) t
+  | TyCode t
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 TypeExprF)
+
+type TypeExpr = Cofree TypeExprF Span
 
 data ArgForType
   = PersistentArg Expr
