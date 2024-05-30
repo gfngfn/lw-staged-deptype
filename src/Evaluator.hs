@@ -16,7 +16,7 @@ import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Syntax
-import Token (Span (..), LocationInFile)
+import Token (LocationInFile, Span (..))
 import Token qualified
 import Vector (Vector)
 import Vector qualified

@@ -10,9 +10,9 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Void (Void)
 import Syntax
-import Text.Megaparsec hiding (Token, parse, token, tokens, some)
+import Text.Megaparsec hiding (Token, parse, some, token, tokens)
 import Text.Megaparsec qualified as Mp
-import Token (Token (..), Span, mergeSpan, Located (..))
+import Token (Located (..), Span, Token (..), mergeSpan)
 import Token qualified
 import Vector qualified
 import Prelude
@@ -81,7 +81,10 @@ exprAtom, expr :: P Expr
       try (located (Literal . LitInt) <$> int)
         <|> try (located (Literal . LitVec . Vector.fromList) <$> vec)
         <|> try (located Var <$> lower)
-        <|> makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen
+        <|> makeEnclosed
+        <$> token TokLeftParen
+        <*> expr
+        <*> token TokRightParen
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
@@ -125,7 +128,10 @@ typeExpr = fun
     atom :: P TypeExpr
     atom =
       try ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
-        <|> makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen
+        <|> makeEnclosed
+        <$> token TokLeftParen
+        <*> fun
+        <*> token TokRightParen
       where
         makeEnclosed loc1 (TypeExpr _ tyeMain) loc2 =
           TypeExpr (mergeSpan loc1 loc2) tyeMain

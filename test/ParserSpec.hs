@@ -198,32 +198,37 @@ spec = do
         `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
     it "parses applications (2)" $
       let e =
-            exprLoc 0 5 $ App
-              (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
-              (exprLoc 4 5 $ Var "z")
+            exprLoc 0 5 $
+              App
+                (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
+                (exprLoc 4 5 $ Var "z")
        in Parser.parseExpr "x y z"
             `shouldBe` pure e
     it "parses applications (3)" $
       let e =
-            exprLoc 0 7 $ App
-              (exprLoc 0 1 $ Var "x")
-              (exprLoc 2 7 $ App (exprLoc 3 4 $ Var "y") (exprLoc 5 6 $ Var "z"))
+            exprLoc 0 7 $
+              App
+                (exprLoc 0 1 $ Var "x")
+                (exprLoc 2 7 $ App (exprLoc 3 4 $ Var "y") (exprLoc 5 6 $ Var "z"))
        in Parser.parseExpr "x (y z)" `shouldBe` pure e
     it "parses brackets" $
       let e =
-            exprLoc 0 8 $ App
-              (exprLoc 0 1 $ Var "f")
-              (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ Var "g") (exprLoc 6 7 $ Var "x")))
-       in
-      Parser.parseExpr "f &(g x)"
-        `shouldBe` pure e
+            exprLoc 0 8 $
+              App
+                (exprLoc 0 1 $ Var "f")
+                (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ Var "g") (exprLoc 6 7 $ Var "x")))
+       in Parser.parseExpr "f &(g x)"
+            `shouldBe` pure e
     it "parses lambda abstractions" $
       let ty =
-            typLoc 9 26 $ TyArrow
-              (Just "n", typLoc 14 17 $ TyName "Int" [])
-              (typLoc 22 26 $ TyName "Bool" [])
+            typLoc 9 26 $
+              TyArrow
+                (Just "n", typLoc 14 17 $ TyName "Int" [])
+                (typLoc 22 26 $ TyName "Bool" [])
           e =
-            exprLoc 0 34 $ Lam ("x", ty)
-              (exprLoc 31 34 $ App (exprLoc 31 32 $ Var "x") (exprLoc 33 34 $ Var "y"))
+            exprLoc 0 34 $
+              Lam
+                ("x", ty)
+                (exprLoc 31 34 $ App (exprLoc 31 32 $ Var "x") (exprLoc 33 34 $ Var "y"))
        in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
             `shouldBe` pure e

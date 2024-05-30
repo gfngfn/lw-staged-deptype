@@ -155,15 +155,19 @@ instance Disp TypeError where
       "An argument expression of Vec at stage 1 was not Int-typed:" <+> disp a0tye
     TypeContradictionAtStage0 a0tye1 a0tye2 ->
       "Type contradiction at stage 0."
-        <> hardline <> "left:"
+        <> hardline
+        <> "left:"
         <> nest 2 (hardline <> disp a0tye1)
-        <> hardline <> "right:"
+        <> hardline
+        <> "right:"
         <> nest 2 (hardline <> disp a0tye2)
     TypeContradictionAtStage1 a1tye1 a1tye2 ->
       "Type contradiction at stage 1."
-        <> hardline <> "left:"
+        <> hardline
+        <> "left:"
         <> nest 2 (hardline <> disp a1tye1)
-        <> hardline <> "right:"
+        <> hardline
+        <> "right:"
         <> nest 2 (hardline <> disp a1tye2)
     NotAFunctionTypeForStage0 a0tye ->
       "Not a function type (for stage 0): " <+> disp a0tye
@@ -274,13 +278,22 @@ instance Disp Evaluator.EvalError where
     Evaluator.Bug bug ->
       "Bug:" <+> disp bug
     Evaluator.AssertionFailure (locInFileStart, locInFileEnd, maybeLineText) a1tyv1 a1tyv2 ->
-      "Assertion failure (from" <+> disp locInFileStart <+> "to" <+> disp locInFileEnd <> ")"
+      "Assertion failure (from"
+        <+> disp locInFileStart
+        <+> "to"
+        <+> disp locInFileEnd
+        <> ")"
         <> maybe mempty makeLineText maybeLineText
-        <> hardline <> "left:" <> nest 2 (hardline <> disp a1tyv1)
-        <> hardline <> "right:" <> nest 2 (hardline <> disp a1tyv2)
+        <> hardline
+        <> "left:"
+        <> nest 2 (hardline <> disp a1tyv1)
+        <> hardline
+        <> "right:"
+        <> nest 2 (hardline <> disp a1tyv2)
       where
         makeLineText s =
-          hardline <> disp s
+          hardline
+            <> disp s
             <> hats
           where
             LocationInFile startLine startColumn = locInFileStart

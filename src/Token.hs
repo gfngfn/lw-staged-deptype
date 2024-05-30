@@ -146,22 +146,20 @@ data LocationInFile = LocationInFile
 
 getLocationInFileFromOffset :: String -> Text -> Int -> (LocationInFile, Maybe String)
 getLocationInFileFromOffset inputFilePath source offset =
-  let
-    initialState =
-      PosState
-        { pstateInput = source,
-          pstateOffset = 0,
-          pstateSourcePos = MpPos.initialPos inputFilePath,
-          pstateTabWidth = MpPos.defaultTabWidth,
-          pstateLinePrefix = ""
-        }
-    (maybeLineText, finalState) = MpStream.reachOffset offset initialState
-    PosState {pstateSourcePos = finalPos} = finalState
-    SourcePos {sourceLine, sourceColumn} = finalPos
-    locInFile =
-      LocationInFile
-        { line = MpPos.unPos sourceLine,
-          column = MpPos.unPos sourceColumn
-        }
-  in
-  (locInFile, maybeLineText)
+  let initialState =
+        PosState
+          { pstateInput = source,
+            pstateOffset = 0,
+            pstateSourcePos = MpPos.initialPos inputFilePath,
+            pstateTabWidth = MpPos.defaultTabWidth,
+            pstateLinePrefix = ""
+          }
+      (maybeLineText, finalState) = MpStream.reachOffset offset initialState
+      PosState {pstateSourcePos = finalPos} = finalState
+      SourcePos {sourceLine, sourceColumn} = finalPos
+      locInFile =
+        LocationInFile
+          { line = MpPos.unPos sourceLine,
+            column = MpPos.unPos sourceColumn
+          }
+   in (locInFile, maybeLineText)
