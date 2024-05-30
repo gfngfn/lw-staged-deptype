@@ -12,7 +12,7 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Assertions corresponding to the equality check of higher-order types
   * We can probably use *Gradual tensor shape checking* \[Hattori, Kobayashi, & Sato 2023\] as a reference
 - [ ] Error localization for assertion failures
-  * This is actually easy because it basically suffices to just adding a label `L` to `assert` when type-checking applications `(e_1 e_2)^L` (with a label `L` that indicates a code position) and generating their corresponding `assert`s
+  * This is actually easy because it basically suffices to just add a label `L` to `assert` when type-checking applications `(e_1 e_2)^L` (with a label `L` that indicates a code position) and generating their corresponding `assert`s
 - [ ] A surface language that can infer some obvious stage-0 annotations
 
 
@@ -22,3 +22,4 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Command-line options
 - [x] Handle code positions
 - [ ] Add `Mat m n`
+- [ ] Add realistic examples

@@ -47,6 +47,9 @@ addFirstBreak (doc : docs) = (line' <> doc) : docs
 instance Disp Text where
   dispGen _ = pretty
 
+instance Disp String where
+  dispGen _ = pretty
+
 instance Disp Int where
   dispGen _ = pretty
 
@@ -270,7 +273,19 @@ instance Disp Evaluator.EvalError where
   dispGen _ = \case
     Evaluator.Bug bug ->
       "Bug:" <+> disp bug
-    Evaluator.AssertionFailure (locInFileStart, locInFileEnd) a1tyv1 a1tyv2 ->
+    Evaluator.AssertionFailure (locInFileStart, locInFileEnd, maybeLineText) a1tyv1 a1tyv2 ->
       "Assertion failure (from" <+> disp locInFileStart <+> "to" <+> disp locInFileEnd <> ")"
+        <> maybe mempty makeLineText maybeLineText
         <> hardline <> "left:" <> nest 2 (hardline <> disp a1tyv1)
         <> hardline <> "right:" <> nest 2 (hardline <> disp a1tyv2)
+      where
+        makeLineText s =
+          hardline <> disp s
+            <> hats
+          where
+            LocationInFile startLine startColumn = locInFileStart
+            LocationInFile endLine endColumn = locInFileEnd
+            hats =
+              if startLine == endLine
+                then nest 2 (hardline <> disp (replicate (endColumn - startColumn) '^'))
+                else mempty

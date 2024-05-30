@@ -34,7 +34,7 @@ data Bug
 
 data EvalError
   = Bug Bug
-  | AssertionFailure (LocationInFile, LocationInFile) Ass1TypeVal Ass1TypeVal
+  | AssertionFailure (LocationInFile, LocationInFile, Maybe String) Ass1TypeVal Ass1TypeVal
   deriving stock (Eq, Show)
 
 data SourceSpec = SourceSpec
@@ -42,11 +42,12 @@ data SourceSpec = SourceSpec
     inputFilePath :: String
   }
 
-getLocationInFile :: SourceSpec -> Span -> (LocationInFile, LocationInFile)
-getLocationInFile SourceSpec {source, inputFilePath} Span {start, end} = (locInFileStart, locInFileEnd)
+getLocationInFile :: SourceSpec -> Span -> (LocationInFile, LocationInFile, Maybe String)
+getLocationInFile SourceSpec {source, inputFilePath} Span {start, end} =
+  (locInFileStart, locInFileEnd, maybeLineText)
   where
-    locInFileStart = Token.getLocationInFileFromOffset inputFilePath source start
-    locInFileEnd = Token.getLocationInFileFromOffset inputFilePath source end
+    (locInFileStart, maybeLineText) = Token.getLocationInFileFromOffset inputFilePath source start
+    (locInFileEnd, _) = Token.getLocationInFileFromOffset inputFilePath source end
 
 data EvalState = EvalState
   { nextSymbolIndex :: Int,

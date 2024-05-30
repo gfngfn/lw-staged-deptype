@@ -112,6 +112,7 @@ token =
       TokInt <$> integerLiteral
     ]
 
+-- The type for code locations (pairs of a start offset and an end offset).
 data Span = Span
   { start :: Int,
     end :: Int
@@ -143,7 +144,7 @@ data LocationInFile = LocationInFile
   }
   deriving stock (Eq, Show)
 
-getLocationInFileFromOffset :: String -> Text -> Int -> LocationInFile
+getLocationInFileFromOffset :: String -> Text -> Int -> (LocationInFile, Maybe String)
 getLocationInFileFromOffset inputFilePath source offset =
   let
     initialState =
@@ -154,11 +155,13 @@ getLocationInFileFromOffset inputFilePath source offset =
           pstateTabWidth = MpPos.defaultTabWidth,
           pstateLinePrefix = ""
         }
-    (_maybeLineText, finalState) = MpStream.reachOffset offset initialState
+    (maybeLineText, finalState) = MpStream.reachOffset offset initialState
     PosState {pstateSourcePos = finalPos} = finalState
     SourcePos {sourceLine, sourceColumn} = finalPos
+    locInFile =
+      LocationInFile
+        { line = MpPos.unPos sourceLine,
+          column = MpPos.unPos sourceColumn
+        }
   in
-  LocationInFile
-    { line = MpPos.unPos sourceLine,
-      column = MpPos.unPos sourceColumn
-    }
+  (locInFile, maybeLineText)
