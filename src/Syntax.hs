@@ -7,18 +7,18 @@ module Syntax
     ExprF (..),
     ExprMain (..),
     Expr,
-    Ass0Expr (..),
-    Ass1Expr (..),
-    Type0Equality (..),
-    decomposeType0Equality,
-    Type1Equality (..),
-    decomposeType1Equality,
     TypeName,
     TypeExprF (..),
     TypeExprMain (..),
     TypeExpr,
     ArgForTypeF (..),
     ArgForType,
+    Ass0Expr (..),
+    Ass1Expr (..),
+    Type0Equality (..),
+    decomposeType0Equality,
+    Type1Equality (..),
+    decomposeType1Equality,
     Ass0TypeExpr (..),
     Ass0PrimType (..),
     Ass1TypeExpr (..),
@@ -46,6 +46,7 @@ import Vector (Vector)
 
 type Var = Text
 
+-- The type for symbols generated dynamically for hygienicity.
 newtype Symbol = Symbol Int
   deriving newtype (Eq, Show)
 
@@ -80,67 +81,8 @@ data ExprMain ann
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ExprMain)
 
+-- The type for ASTs for expressions obtained by parsing source programs.
 type Expr = ExprF Span
-
-data Ass0Expr
-  = A0Literal Literal
-  | A0AppBuiltIn BuiltIn
-  | A0Var Var
-  | A0Lam (Var, Ass0TypeExpr) Ass0Expr
-  | A0App Ass0Expr Ass0Expr
-  | A0Bracket Ass1Expr
-  | A0TyEqAssert Span Type0Equality Ass0Expr
-  deriving stock (Eq, Show)
-
-data Type0Equality
-  = TyEq0PrimInt
-  | TyEq0PrimBool
-  | TyEq0PrimVec Int
-  | TyEq0Code Type1Equality
-  | TyEq0Arrow (Maybe Var) Type0Equality Type0Equality
-  deriving stock (Eq, Show)
-
-decomposeType0Equality :: Type0Equality -> (Ass0TypeExpr, Ass0TypeExpr)
-decomposeType0Equality = \case
-  TyEq0PrimInt -> prims A0TyInt
-  TyEq0PrimBool -> prims A0TyBool
-  TyEq0PrimVec n -> prims (A0TyVec n)
-  TyEq0Code ty1eq ->
-    let (a1tye1, a1tye2) = decomposeType1Equality ty1eq
-     in (A0TyCode a1tye1, A0TyCode a1tye2)
-  TyEq0Arrow xOpt ty0eqDom ty0eqCod ->
-    let (a0tye11, a0tye21) = decomposeType0Equality ty0eqDom
-        (a0tye12, a0tye22) = decomposeType0Equality ty0eqCod
-     in (A0TyArrow (xOpt, a0tye11) a0tye12, A0TyArrow (xOpt, a0tye21) a0tye22)
-  where
-    prims p = (A0TyPrim p, A0TyPrim p)
-
-data Type1Equality
-  = TyEq1PrimInt
-  | TyEq1PrimBool
-  | TyEq1PrimVec Ass0Expr Ass0Expr
-  | TyEq1Arrow Type1Equality Type1Equality
-  deriving stock (Eq, Show)
-
-decomposeType1Equality :: Type1Equality -> (Ass1TypeExpr, Ass1TypeExpr)
-decomposeType1Equality = \case
-  TyEq1PrimInt -> prims A1TyInt
-  TyEq1PrimBool -> prims A1TyBool
-  TyEq1PrimVec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
-  TyEq1Arrow ty1eqDom ty1eqCod ->
-    let (a1tye11, a1tye21) = decomposeType1Equality ty1eqDom
-        (a1tye12, a1tye22) = decomposeType1Equality ty1eqCod
-     in (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22)
-  where
-    prims p = (A1TyPrim p, A1TyPrim p)
-
-data Ass1Expr
-  = A1Literal Literal
-  | A1Var Var
-  | A1Lam (Var, Ass1TypeExpr) Ass1Expr
-  | A1App Ass1Expr Ass1Expr
-  | A1Escape Ass0Expr
-  deriving stock (Eq, Show)
 
 type TypeName = Text
 
@@ -155,6 +97,7 @@ data TypeExprMain ann
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 TypeExprMain)
 
+-- The type for ASTs for type expressions obtained by parsing source programs.
 type TypeExpr = TypeExprF Span
 
 data ArgForTypeF ann
@@ -164,6 +107,24 @@ data ArgForTypeF ann
   deriving (Eq1, Show1) via (Generically1 ArgForTypeF)
 
 type ArgForType = ArgForTypeF Span
+
+data Ass0Expr
+  = A0Literal Literal
+  | A0AppBuiltIn BuiltIn
+  | A0Var Var
+  | A0Lam (Var, Ass0TypeExpr) Ass0Expr
+  | A0App Ass0Expr Ass0Expr
+  | A0Bracket Ass1Expr
+  | A0TyEqAssert Span Type0Equality Ass0Expr
+  deriving stock (Eq, Show)
+
+data Ass1Expr
+  = A1Literal Literal
+  | A1Var Var
+  | A1Lam (Var, Ass1TypeExpr) Ass1Expr
+  | A1App Ass1Expr Ass1Expr
+  | A1Escape Ass0Expr
+  deriving stock (Eq, Show)
 
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType
@@ -230,9 +191,51 @@ data Ass1PrimTypeVal
   | A1TyValVec Int
   deriving stock (Eq, Show)
 
+data Type0Equality
+  = TyEq0PrimInt
+  | TyEq0PrimBool
+  | TyEq0PrimVec Int
+  | TyEq0Code Type1Equality
+  | TyEq0Arrow (Maybe Var) Type0Equality Type0Equality
+  deriving stock (Eq, Show)
+
+data Type1Equality
+  = TyEq1PrimInt
+  | TyEq1PrimBool
+  | TyEq1PrimVec Ass0Expr Ass0Expr
+  | TyEq1Arrow Type1Equality Type1Equality
+  deriving stock (Eq, Show)
+
 type Env0 = Map Var EnvEntry
 
 data EnvEntry
   = Ass0ValEntry Ass0Val
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
+
+decomposeType0Equality :: Type0Equality -> (Ass0TypeExpr, Ass0TypeExpr)
+decomposeType0Equality = \case
+  TyEq0PrimInt -> prims A0TyInt
+  TyEq0PrimBool -> prims A0TyBool
+  TyEq0PrimVec n -> prims (A0TyVec n)
+  TyEq0Code ty1eq ->
+    let (a1tye1, a1tye2) = decomposeType1Equality ty1eq
+     in (A0TyCode a1tye1, A0TyCode a1tye2)
+  TyEq0Arrow xOpt ty0eqDom ty0eqCod ->
+    let (a0tye11, a0tye21) = decomposeType0Equality ty0eqDom
+        (a0tye12, a0tye22) = decomposeType0Equality ty0eqCod
+     in (A0TyArrow (xOpt, a0tye11) a0tye12, A0TyArrow (xOpt, a0tye21) a0tye22)
+  where
+    prims p = (A0TyPrim p, A0TyPrim p)
+
+decomposeType1Equality :: Type1Equality -> (Ass1TypeExpr, Ass1TypeExpr)
+decomposeType1Equality = \case
+  TyEq1PrimInt -> prims A1TyInt
+  TyEq1PrimBool -> prims A1TyBool
+  TyEq1PrimVec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
+  TyEq1Arrow ty1eqDom ty1eqCod ->
+    let (a1tye11, a1tye21) = decomposeType1Equality ty1eqDom
+        (a1tye12, a1tye22) = decomposeType1Equality ty1eqCod
+     in (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22)
+  where
+    prims p = (A1TyPrim p, A1TyPrim p)
