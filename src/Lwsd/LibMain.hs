@@ -4,11 +4,11 @@ module Lwsd.LibMain
   )
 where
 
-import Lwsd.BuiltIn qualified as BuiltIn
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
+import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.Evaluator (SourceSpec (SourceSpec))
 import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)

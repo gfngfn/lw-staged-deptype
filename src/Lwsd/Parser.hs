@@ -10,11 +10,11 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Void (Void)
 import Lwsd.Syntax
-import Text.Megaparsec hiding (Token, parse, some, token, tokens)
-import Text.Megaparsec qualified as Mp
 import Lwsd.Token (Located (..), Span, Token (..), mergeSpan)
 import Lwsd.Token qualified as Token
 import Lwsd.Vector qualified as Vector
+import Text.Megaparsec hiding (Token, parse, some, token, tokens)
+import Text.Megaparsec qualified as Mp
 import Prelude
 
 type P a = Mp.Parsec Void [Located Token] a

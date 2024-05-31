@@ -10,11 +10,11 @@ module Lwsd.Evaluator
   )
 where
 
-import Lwsd.BuiltIn qualified as BuiltIn
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Data.Text (Text)
+import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.Syntax
 import Lwsd.Token (LocationInFile, Span (..))
 import Lwsd.Token qualified as Token
