@@ -16,9 +16,9 @@ module Lwsd.Syntax
     Ass0Expr (..),
     Ass1Expr (..),
     Type0Equation (..),
-    decomposeType0Equation,
+    Type0PrimEquation (..),
     Type1Equation (..),
-    decomposeType1Equation,
+    Type1PrimEquation (..),
     Ass0TypeExpr (..),
     Ass0PrimType (..),
     Ass1TypeExpr (..),
@@ -32,6 +32,8 @@ module Lwsd.Syntax
     Ass1PrimTypeVal (..),
     Env0,
     EnvEntry (..),
+    decomposeType0Equation,
+    decomposeType1Equation,
   )
 where
 
@@ -192,18 +194,26 @@ data Ass1PrimTypeVal
   deriving stock (Eq, Show)
 
 data Type0Equation
-  = TyEq0PrimInt
-  | TyEq0PrimBool
-  | TyEq0PrimVec Int
+  = TyEq0Prim Type0PrimEquation
   | TyEq0Code Type1Equation
   | TyEq0Arrow (Maybe Var) Type0Equation Type0Equation
   deriving stock (Eq, Show)
 
+data Type0PrimEquation
+  = TyEq0Int
+  | TyEq0Bool
+  | TyEq0Vec Int
+  deriving stock (Eq, Show)
+
 data Type1Equation
-  = TyEq1PrimInt
-  | TyEq1PrimBool
-  | TyEq1PrimVec Ass0Expr Ass0Expr
+  = TyEq1Prim Type1PrimEquation
   | TyEq1Arrow Type1Equation Type1Equation
+  deriving stock (Eq, Show)
+
+data Type1PrimEquation
+  = TyEq1Int
+  | TyEq1Bool
+  | TyEq1Vec Ass0Expr Ass0Expr
   deriving stock (Eq, Show)
 
 type Env0 = Map Var EnvEntry
@@ -215,9 +225,11 @@ data EnvEntry
 
 decomposeType0Equation :: Type0Equation -> (Ass0TypeExpr, Ass0TypeExpr)
 decomposeType0Equation = \case
-  TyEq0PrimInt -> prims A0TyInt
-  TyEq0PrimBool -> prims A0TyBool
-  TyEq0PrimVec n -> prims (A0TyVec n)
+  TyEq0Prim ty0eqPrim ->
+    case ty0eqPrim of
+      TyEq0Int -> prims A0TyInt
+      TyEq0Bool -> prims A0TyBool
+      TyEq0Vec n -> prims (A0TyVec n)
   TyEq0Code ty1eq ->
     let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
      in (A0TyCode a1tye1, A0TyCode a1tye2)
@@ -230,9 +242,11 @@ decomposeType0Equation = \case
 
 decomposeType1Equation :: Type1Equation -> (Ass1TypeExpr, Ass1TypeExpr)
 decomposeType1Equation = \case
-  TyEq1PrimInt -> prims A1TyInt
-  TyEq1PrimBool -> prims A1TyBool
-  TyEq1PrimVec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
+  TyEq1Prim ty1eqPrim ->
+    case ty1eqPrim of
+      TyEq1Int -> prims A1TyInt
+      TyEq1Bool -> prims A1TyBool
+      TyEq1Vec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
   TyEq1Arrow ty1eqDom ty1eqCod ->
     let (a1tye11, a1tye21) = decomposeType1Equation ty1eqDom
         (a1tye12, a1tye22) = decomposeType1Equation ty1eqCod

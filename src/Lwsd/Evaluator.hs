@@ -154,9 +154,9 @@ evalExpr0 env = \case
   A0TyEqAssert loc ty0eq a0e0 -> do
     a0v0 <- evalExpr0 env a0e0
     case ty0eq of
-      TyEq0PrimInt -> pure a0v0
-      TyEq0PrimBool -> pure a0v0
-      TyEq0PrimVec _ -> pure a0v0
+      TyEq0Prim _ ->
+        -- Equalities on primitive types at stage-0 are all trivial:
+        pure a0v0
       TyEq0Code ty1eq -> do
         -- Judges equality of stage-1 types:
         let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
