@@ -1,6 +1,6 @@
 module Main where
 
-import LibMain
+import Lwsd.LibMain
 import Options.Applicative
 
 argumentParser :: Parser Argument

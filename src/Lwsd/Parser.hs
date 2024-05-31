@@ -1,4 +1,4 @@
-module Parser
+module Lwsd.Parser
   ( parseExpr,
     parseTypeExpr,
   )
@@ -9,12 +9,12 @@ import Data.Functor
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Void (Void)
-import Syntax
+import Lwsd.Syntax
+import Lwsd.Token (Located (..), Span, Token (..), mergeSpan)
+import Lwsd.Token qualified as Token
+import Lwsd.Vector qualified as Vector
 import Text.Megaparsec hiding (Token, parse, some, token, tokens)
 import Text.Megaparsec qualified as Mp
-import Token (Located (..), Span, Token (..), mergeSpan)
-import Token qualified
-import Vector qualified
 import Prelude
 
 type P a = Mp.Parsec Void [Located Token] a
@@ -27,8 +27,8 @@ token tExpected =
     )
     Set.empty
 
-forgetLoc :: P (Located a) -> P a
-forgetLoc p = (\(Located _ x) -> x) <$> p
+noLoc :: P (Located a) -> P a
+noLoc p = (\(Located _ x) -> x) <$> p
 
 paren :: P a -> P a
 paren p = token TokLeftParen *> p <* token TokRightParen
@@ -64,7 +64,7 @@ vec :: P (Located [Int])
 vec = makeVec <$> token TokVecLeft <*> rest
   where
     rest =
-      try (makeNonemptyVec <$> forgetLoc int <*> Mp.many (token TokSemicolon *> forgetLoc int) <*> token TokVecRight)
+      try (makeNonemptyVec <$> noLoc int <*> Mp.many (token TokSemicolon *> noLoc int) <*> token TokVecRight)
         <|> (([],) <$> token TokVecRight)
 
     makeNonemptyVec elemFirst elemsTail locLast =
@@ -81,10 +81,7 @@ exprAtom, expr :: P Expr
       try (located (Literal . LitInt) <$> int)
         <|> try (located (Literal . LitVec . Vector.fromList) <$> vec)
         <|> try (located Var <$> lower)
-        <|> makeEnclosed
-        <$> token TokLeftParen
-        <*> expr
-        <*> token TokRightParen
+        <|> (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
@@ -108,15 +105,18 @@ exprAtom, expr :: P Expr
 
     lam :: P Expr
     lam =
-      try (makeLam <$> token TokFun <*> (paren ((,) <$> forgetLoc lower <*> (token TokColon *> typeExpr)) <* token TokArrow) <*> expr)
+      try (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
         <|> app
       where
+        binder =
+          paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
+
         makeLam locFirst (x, tye) e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (Lam (x, tye) e)
 
     letin :: P Expr
     letin =
-      try (makeLetIn <$> token TokLet <*> forgetLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+      try (makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         <|> lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
@@ -128,10 +128,7 @@ typeExpr = fun
     atom :: P TypeExpr
     atom =
       try ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
-        <|> makeEnclosed
-        <$> token TokLeftParen
-        <*> fun
-        <*> token TokRightParen
+        <|> (makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen)
       where
         makeEnclosed loc1 (TypeExpr _ tyeMain) loc2 =
           TypeExpr (mergeSpan loc1 loc2) tyeMain
@@ -171,7 +168,7 @@ typeExpr = fun
 
     funDom :: P (Maybe (Span, Var), TypeExpr)
     funDom =
-      try (makeFunDom <$> token TokLeftParen <*> (forgetLoc lower <* token TokColon) <*> fun <* token TokRightParen)
+      try (makeFunDom <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen))
         <|> ((Nothing,) <$> app)
       where
         makeFunDom locFirst x tyeDom =

@@ -1,4 +1,4 @@
-module Syntax
+module Lwsd.Syntax
   ( Var,
     Symbol (..),
     symbolToVar,
@@ -41,8 +41,8 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Generic.Data
 import Generic.Data.Orphans ()
-import Token (Span)
-import Vector (Vector)
+import Lwsd.Token (Span)
+import Lwsd.Vector (Vector)
 
 type Var = Text
 

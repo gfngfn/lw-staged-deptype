@@ -1,22 +1,22 @@
-module LibMain
+module Lwsd.LibMain
   ( Argument (..),
     handle,
   )
 where
 
-import BuiltIn qualified
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
-import Evaluator (SourceSpec (SourceSpec))
-import Evaluator qualified
-import Formatter (Disp)
-import Formatter qualified
-import Parser
-import Syntax
-import Typechecker (TypecheckConfig (..))
-import Typechecker qualified
+import Lwsd.BuiltIn qualified as BuiltIn
+import Lwsd.Evaluator (SourceSpec (SourceSpec))
+import Lwsd.Evaluator qualified as Evaluator
+import Lwsd.Formatter (Disp)
+import Lwsd.Formatter qualified as Formatter
+import Lwsd.Parser qualified as Parser
+import Lwsd.Syntax
+import Lwsd.Typechecker (TypecheckConfig (..))
+import Lwsd.Typechecker qualified as Typechecker
 import Prelude
 
 data Argument = Argument

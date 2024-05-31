@@ -59,17 +59,17 @@ library
 
     -- Modules exported by the library.
     exposed-modules:
-      BuiltIn,
-      Evaluator,
-      Formatter,
-      LibMain,
-      Parser,
-      Syntax,
-      Token,
-      TypeEnv,
-      TypeError,
-      Typechecker,
-      Vector
+      Lwsd.BuiltIn,
+      Lwsd.Evaluator,
+      Lwsd.Formatter,
+      Lwsd.LibMain,
+      Lwsd.Parser,
+      Lwsd.Syntax,
+      Lwsd.Token,
+      Lwsd.TypeEnv,
+      Lwsd.TypeError,
+      Lwsd.Typechecker,
+      Lwsd.Vector
 
     -- Modules included in this library but not exported.
     -- other-modules:

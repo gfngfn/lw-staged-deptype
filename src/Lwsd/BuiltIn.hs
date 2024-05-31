@@ -1,4 +1,4 @@
-module BuiltIn
+module Lwsd.BuiltIn
   ( ass0exprVadd,
     ass0exprVconcat,
     initialTypeEnv,
@@ -8,9 +8,9 @@ where
 
 import Data.List qualified as List
 import Data.Map qualified as Map
-import Syntax
-import TypeEnv (TypeEnv)
-import TypeEnv qualified
+import Lwsd.Syntax
+import Lwsd.TypeEnv (TypeEnv)
+import Lwsd.TypeEnv qualified as TypeEnv
 
 tyInt :: Ass0TypeExpr
 tyInt = A0TyPrim A0TyInt

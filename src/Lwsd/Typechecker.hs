@@ -1,4 +1,4 @@
-module Typechecker
+module Lwsd.Typechecker
   ( typecheckExpr0,
     typecheckExpr1,
     typecheckTypeExpr0,
@@ -13,11 +13,11 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Data.Either.Extra
 import Data.List qualified as List
-import Syntax
-import TypeEnv (TypeEnv)
-import TypeEnv qualified
-import TypeError
-import Vector qualified
+import Lwsd.Syntax
+import Lwsd.TypeEnv (TypeEnv)
+import Lwsd.TypeEnv qualified as TypeEnv
+import Lwsd.TypeError
+import Lwsd.Vector qualified as Vector
 import Prelude hiding (mod)
 
 data TypecheckConfig = TypecheckConfig

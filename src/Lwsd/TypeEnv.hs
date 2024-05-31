@@ -1,4 +1,4 @@
-module TypeEnv
+module Lwsd.TypeEnv
   ( TypeEnv,
     Entry (..),
     empty,
@@ -8,7 +8,7 @@ module TypeEnv
 where
 
 import Data.List.Extra qualified as List
-import Syntax
+import Lwsd.Syntax
 
 newtype TypeEnv = TypeEnv [(Var, Entry)]
 

@@ -1,4 +1,4 @@
-module Token
+module Lwsd.Token
   ( Token (..),
     Span (..),
     mergeSpan,
