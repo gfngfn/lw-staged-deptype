@@ -113,7 +113,7 @@ instance HasVar0 Ass1TypeExpr where
       go :: forall a. (HasVar0 a) => a -> a
       go = subst0 a0e x
 
-instance HasVar0 Type0Equality where
+instance HasVar0 Type0Equation where
   frees0 = \case
     TyEq0PrimInt -> Set.empty
     TyEq0PrimBool -> Set.empty
@@ -139,7 +139,7 @@ instance HasVar0 Type0Equality where
       go :: forall a. (HasVar0 a) => a -> a
       go = subst0 a0e x
 
-instance HasVar0 Type1Equality where
+instance HasVar0 Type1Equation where
   frees0 = \case
     TyEq1PrimInt -> Set.empty
     TyEq1PrimBool -> Set.empty

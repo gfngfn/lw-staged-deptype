@@ -83,7 +83,7 @@ instance Disp Ass0Expr where
     A0Bracket a1e1 ->
       "&" <> dispGen Atomic a1e1
     A0TyEqAssert _loc ty0eq a0e0 ->
-      let (a0tye1, a0tye2) = decomposeType0Equality ty0eq
+      let (a0tye1, a0tye2) = decomposeType0Equation ty0eq
           doc = group ("{" <> disp a0tye1 <+> "▷" <+> disp a0tye2 <> "}" <> line <> disp a0e0)
        in if req <= FunDomain then deepenParen doc else doc
 

@@ -15,10 +15,10 @@ module Lwsd.Syntax
     ArgForType,
     Ass0Expr (..),
     Ass1Expr (..),
-    Type0Equality (..),
-    decomposeType0Equality,
-    Type1Equality (..),
-    decomposeType1Equality,
+    Type0Equation (..),
+    decomposeType0Equation,
+    Type1Equation (..),
+    decomposeType1Equation,
     Ass0TypeExpr (..),
     Ass0PrimType (..),
     Ass1TypeExpr (..),
@@ -115,7 +115,7 @@ data Ass0Expr
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
-  | A0TyEqAssert Span Type0Equality Ass0Expr
+  | A0TyEqAssert Span Type0Equation Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass1Expr
@@ -191,19 +191,19 @@ data Ass1PrimTypeVal
   | A1TyValVec Int
   deriving stock (Eq, Show)
 
-data Type0Equality
+data Type0Equation
   = TyEq0PrimInt
   | TyEq0PrimBool
   | TyEq0PrimVec Int
-  | TyEq0Code Type1Equality
-  | TyEq0Arrow (Maybe Var) Type0Equality Type0Equality
+  | TyEq0Code Type1Equation
+  | TyEq0Arrow (Maybe Var) Type0Equation Type0Equation
   deriving stock (Eq, Show)
 
-data Type1Equality
+data Type1Equation
   = TyEq1PrimInt
   | TyEq1PrimBool
   | TyEq1PrimVec Ass0Expr Ass0Expr
-  | TyEq1Arrow Type1Equality Type1Equality
+  | TyEq1Arrow Type1Equation Type1Equation
   deriving stock (Eq, Show)
 
 type Env0 = Map Var EnvEntry
@@ -213,29 +213,29 @@ data EnvEntry
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
 
-decomposeType0Equality :: Type0Equality -> (Ass0TypeExpr, Ass0TypeExpr)
-decomposeType0Equality = \case
+decomposeType0Equation :: Type0Equation -> (Ass0TypeExpr, Ass0TypeExpr)
+decomposeType0Equation = \case
   TyEq0PrimInt -> prims A0TyInt
   TyEq0PrimBool -> prims A0TyBool
   TyEq0PrimVec n -> prims (A0TyVec n)
   TyEq0Code ty1eq ->
-    let (a1tye1, a1tye2) = decomposeType1Equality ty1eq
+    let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
      in (A0TyCode a1tye1, A0TyCode a1tye2)
   TyEq0Arrow xOpt ty0eqDom ty0eqCod ->
-    let (a0tye11, a0tye21) = decomposeType0Equality ty0eqDom
-        (a0tye12, a0tye22) = decomposeType0Equality ty0eqCod
+    let (a0tye11, a0tye21) = decomposeType0Equation ty0eqDom
+        (a0tye12, a0tye22) = decomposeType0Equation ty0eqCod
      in (A0TyArrow (xOpt, a0tye11) a0tye12, A0TyArrow (xOpt, a0tye21) a0tye22)
   where
     prims p = (A0TyPrim p, A0TyPrim p)
 
-decomposeType1Equality :: Type1Equality -> (Ass1TypeExpr, Ass1TypeExpr)
-decomposeType1Equality = \case
+decomposeType1Equation :: Type1Equation -> (Ass1TypeExpr, Ass1TypeExpr)
+decomposeType1Equation = \case
   TyEq1PrimInt -> prims A1TyInt
   TyEq1PrimBool -> prims A1TyBool
   TyEq1PrimVec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
   TyEq1Arrow ty1eqDom ty1eqCod ->
-    let (a1tye11, a1tye21) = decomposeType1Equality ty1eqDom
-        (a1tye12, a1tye22) = decomposeType1Equality ty1eqCod
+    let (a1tye11, a1tye21) = decomposeType1Equation ty1eqDom
+        (a1tye12, a1tye22) = decomposeType1Equation ty1eqCod
      in (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22)
   where
     prims p = (A1TyPrim p, A1TyPrim p)

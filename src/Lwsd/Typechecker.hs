@@ -34,7 +34,7 @@ findVar :: trav -> Var -> TypeEnv -> M trav TypeEnv.Entry
 findVar trav x tyEnv =
   lift $ maybeToEither (UnboundVar x, trav) $ TypeEnv.findVar x tyEnv
 
-makeEquation0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Type0Equality
+makeEquation0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Type0Equation
 makeEquation0 trav a0tye1 a0tye2 =
   case (a0tye1, a0tye2) of
     (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) ->
@@ -67,7 +67,7 @@ makeEquation0 trav a0tye1 a0tye2 =
     _ ->
       typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
 
-makeEquation1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> M trav Type1Equality
+makeEquation1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> M trav Type1Equation
 makeEquation1 trav a1tye1 a1tye2 =
   case (a1tye1, a1tye2) of
     (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
