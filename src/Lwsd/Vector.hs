@@ -1,4 +1,4 @@
-module Vector
+module Lwsd.Vector
   ( Vector,
     fromList,
     toList,

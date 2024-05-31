@@ -1,4 +1,4 @@
-module Evaluator
+module Lwsd.Evaluator
   ( evalExpr0,
     evalExpr1,
     initialState,
@@ -10,16 +10,16 @@ module Evaluator
   )
 where
 
-import BuiltIn qualified
+import Lwsd.BuiltIn qualified as BuiltIn
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Data.Text (Text)
-import Syntax
-import Token (LocationInFile, Span (..))
-import Token qualified
-import Vector (Vector)
-import Vector qualified
+import Lwsd.Syntax
+import Lwsd.Token (LocationInFile, Span (..))
+import Lwsd.Token qualified as Token
+import Lwsd.Vector (Vector)
+import Lwsd.Vector qualified as Vector
 
 data Bug
   = UnboundVar Var

@@ -1,14 +1,14 @@
-module Formatter where
+module Lwsd.Formatter where
 
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Evaluator qualified
+import Lwsd.Evaluator qualified as Evaluator
 import Prettyprinter
 import Prettyprinter.Render.Text
-import Syntax
-import Token (LocationInFile (LocationInFile))
-import TypeError
-import Vector qualified
+import Lwsd.Syntax
+import Lwsd.Token (LocationInFile (LocationInFile))
+import Lwsd.TypeError
+import Lwsd.Vector qualified as Vector
 
 type Ann = ()
 

@@ -2,11 +2,11 @@ module ParserSpec (spec) where
 
 import Data.Functor
 import Data.Text (Text)
-import Parser qualified
-import Syntax
+import Lwsd.Parser qualified as Parser
+import Lwsd.Syntax
 import Test.Hspec
-import Token (Span (..))
-import Vector qualified
+import Lwsd.Token (Span (..))
+import Lwsd.Vector qualified as Vector
 
 type TypeExpr0 = TypeExprF ()
 

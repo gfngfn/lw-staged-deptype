@@ -1,9 +1,9 @@
-module TypeError
+module Lwsd.TypeError
   ( TypeError (..),
   )
 where
 
-import Syntax
+import Lwsd.Syntax
 
 data TypeError
   = UnboundVar Var
