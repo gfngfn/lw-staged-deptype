@@ -59,7 +59,7 @@ makeEquation0 trav a0tye1 a0tye2 =
           pure $ TyEq0Arrow (Just x2) ty0eqDom ty0eqCod
         (Just x1, Just x2) -> do
           ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
-          ty0eqCod <- makeEquation0 trav a0tye12 (substTypeExpr0 (A0Var x1) x2 a0tye22)
+          ty0eqCod <- makeEquation0 trav a0tye12 (subst0 (A0Var x1) x2 a0tye22)
           pure $ TyEq0Arrow (Just x1) ty0eqDom ty0eqCod
     (A0TyCode a1tye1, A0TyCode a1tye2) -> do
       ty1eq <- makeEquation1 trav a1tye1 a1tye2
@@ -109,7 +109,7 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
         ty0eq <- makeEquation0 trav a0tye11 a0tye2
         let a0tye12' =
               case x11opt of
-                Just x11 -> substTypeExpr0 a0e2 x11 a0tye12
+                Just x11 -> subst0 a0e2 x11 a0tye12
                 Nothing -> a0tye12
         let a0e2' =
               if optimizeTrivialAssertion && a0tye11 == a0tye2
