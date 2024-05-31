@@ -154,12 +154,12 @@ evalExpr0 env = \case
   A0TyEqAssert loc ty0eq a0e0 -> do
     a0v0 <- evalExpr0 env a0e0
     case ty0eq of
-      TyEq0PrimInt -> pure a0v0
-      TyEq0PrimBool -> pure a0v0
-      TyEq0PrimVec _ -> pure a0v0
+      TyEq0Prim _ ->
+        -- Equalities on primitive types at stage-0 are all trivial:
+        pure a0v0
       TyEq0Code ty1eq -> do
         -- Judges equality of stage-1 types:
-        let (a1tye1, a1tye2) = decomposeType1Equality ty1eq
+        let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
         a1tyv1 <- evalTypeExpr1 env a1tye1
         a1tyv2 <- evalTypeExpr1 env a1tye2
         if a1tyv1 == a1tyv2 -- We can use `==` for stage-1 types
@@ -175,8 +175,8 @@ evalExpr0 env = \case
             Just x' -> pure x'
             Nothing -> symbolToVar <$> generateFreshSymbol
         f <- symbolToVar <$> generateFreshSymbol
-        let (a0tye11, a0tye21) = decomposeType0Equality ty0eqDom
-        let (a0tye12, _) = decomposeType0Equality ty0eqCod
+        let (a0tye11, a0tye21) = decomposeType0Equation ty0eqDom
+        let (a0tye12, _) = decomposeType0Equation ty0eqCod
         let a1tyeF = A0TyArrow (xOpt, a0tye11) a0tye12
         let mainLam =
               A0Lam

@@ -34,15 +34,16 @@ findVar :: trav -> Var -> TypeEnv -> M trav TypeEnv.Entry
 findVar trav x tyEnv =
   lift $ maybeToEither (UnboundVar x, trav) $ TypeEnv.findVar x tyEnv
 
-makeEquation0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Type0Equality
+makeEquation0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Type0Equation
 makeEquation0 trav a0tye1 a0tye2 =
   case (a0tye1, a0tye2) of
     (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) ->
-      case (a0tyPrim1, a0tyPrim2) of
-        (A0TyInt, A0TyInt) -> pure TyEq0PrimInt
-        (A0TyBool, A0TyBool) -> pure TyEq0PrimBool
-        (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure $ TyEq0PrimVec n1
-        _ -> typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
+      TyEq0Prim
+        <$> case (a0tyPrim1, a0tyPrim2) of
+          (A0TyInt, A0TyInt) -> pure TyEq0Int
+          (A0TyBool, A0TyBool) -> pure TyEq0Bool
+          (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure $ TyEq0Vec n1
+          _ -> typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
     (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
       case (x1opt, x2opt) of
         (Nothing, Nothing) -> do
@@ -67,15 +68,16 @@ makeEquation0 trav a0tye1 a0tye2 =
     _ ->
       typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
 
-makeEquation1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> M trav Type1Equality
+makeEquation1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> M trav Type1Equation
 makeEquation1 trav a1tye1 a1tye2 =
   case (a1tye1, a1tye2) of
     (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
-      case (a1tyPrim1, a1tyPrim2) of
-        (A1TyInt, A1TyInt) -> pure TyEq1PrimInt
-        (A1TyBool, A1TyBool) -> pure TyEq1PrimBool
-        (A1TyVec a0e1, A1TyVec a0e2) -> pure $ TyEq1PrimVec a0e1 a0e2
-        _ -> typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
+      TyEq1Prim
+        <$> case (a1tyPrim1, a1tyPrim2) of
+          (A1TyInt, A1TyInt) -> pure TyEq1Int
+          (A1TyBool, A1TyBool) -> pure TyEq1Bool
+          (A1TyVec a0e1, A1TyVec a0e2) -> pure $ TyEq1Vec a0e1 a0e2
+          _ -> typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
     (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
       ty1eqDom <- makeEquation1 trav a1tye11 a1tye21
       ty1eqCod <- makeEquation1 trav a1tye12 a1tye22
