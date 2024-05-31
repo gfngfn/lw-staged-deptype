@@ -121,8 +121,9 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
   LetIn x e1 e2 -> do
     (a0tye1, a0e1) <- typecheckExpr0 trav tyEnv e1
     (a0tye2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) e2
-    pure (a0tye2, A0App (A0Lam (x, a0tye1) a0e2) a0e1)
-  -- TODO: check that `x` does not occur in `a0tye2`
+    if x `occurs0` a0tye2
+      then typeError trav $ VarOccursFreelyInAss0Type x a0tye2
+      else pure (a0tye2, A0App (A0Lam (x, a0tye1) a0e2) a0e1)
   Bracket e1 -> do
     (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
     pure (A0TyCode a1tye1, A0Bracket a1e1)
@@ -165,8 +166,9 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
   LetIn x e1 e2 -> do
     (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
     (a1tye2, a1e2) <- typecheckExpr1 trav (TypeEnv.addVar x (TypeEnv.Ass1Entry a1tye1) tyEnv) e2
-    pure (a1tye2, A1App (A1Lam (x, a1tye1) a1e2) a1e1)
-  -- TODO: check that `x` does not occur in `a0tye2`
+    if x `occurs0` a1tye2
+      then typeError trav $ VarOccursFreelyInAss1Type x a1tye2
+      else pure (a1tye2, A1App (A1Lam (x, a1tye1) a1e2) a1e1)
   Bracket _ ->
     typeError trav CannotUseBracketAtStage1
   Escape e1 -> do

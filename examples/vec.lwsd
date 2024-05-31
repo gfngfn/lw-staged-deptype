@@ -1,3 +1,7 @@
+let foo =
+  let bar = 42 in
+  &(fun (foo : Vec %bar) -> foo)
+in
 let concat_and_add =
   fun (m : Int) -> fun (n : Int) ->
     &(fun (u1 : Vec %m) -> fun (u2 : Vec %n) ->
