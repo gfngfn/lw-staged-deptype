@@ -24,4 +24,6 @@ data TypeError
   | CannotUseCodeTypeAtStage1
   | CannotUsePersistentArgAtStage0
   | CannotUseNormalArgAtStage1
+  | VarOccursFreelyInAss0Type Var Ass0TypeExpr
+  | VarOccursFreelyInAss1Type Var Ass1TypeExpr
   deriving stock (Eq, Show)

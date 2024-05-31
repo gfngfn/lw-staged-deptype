@@ -187,6 +187,10 @@ instance Disp TypeError where
       "Cannot use persistent arguments at stage 0"
     CannotUseNormalArgAtStage1 ->
       "Cannot use normal arguments at stage 1"
+    VarOccursFreelyInAss0Type x a0tye ->
+      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> disp a0tye
+    VarOccursFreelyInAss1Type x a1tye ->
+      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> disp a1tye
 
 instance Disp Ass0Val where
   dispGen req = \case
