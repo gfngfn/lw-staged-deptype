@@ -214,12 +214,18 @@ evalTypeExpr0 env = \case
         A0TyInt -> A0TyValInt
         A0TyBool -> A0TyValBool
         A0TyVec n -> A0TyValVec n
+        A0TyMat m n -> A0TyValMat m n
   A0TyArrow (xOpt, a0tye1) a0tye2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0TyValArrow (xOpt, a0tyv1) a0tye2
   A0TyCode a1tye1 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1
+
+validateIntLiteral :: Ass0Val -> M Int
+validateIntLiteral = \case
+  A0ValLiteral (LitInt n) -> pure n
+  a0v -> bug $ NotAnInteger Nothing a0v
 
 evalTypeExpr1 :: Env0 -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case
@@ -229,10 +235,12 @@ evalTypeExpr1 env = \case
         A1TyInt -> pure A1TyValInt
         A1TyBool -> pure A1TyValBool
         A1TyVec a0e1 -> do
-          a0v <- evalExpr0 env a0e1
-          case a0v of
-            A0ValLiteral (LitInt n) -> pure $ A1TyValVec n
-            _ -> bug $ NotAnInteger Nothing a0v
+          n <- validateIntLiteral =<< evalExpr0 env a0e1
+          pure $ A1TyValVec n
+        A1TyMat a0e1 a0e2 -> do
+          m <- validateIntLiteral =<< evalExpr0 env a0e1
+          n <- validateIntLiteral =<< evalExpr0 env a0e2
+          pure $ A1TyValMat m n
   A1TyArrow a1tye1 a1tye2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
@@ -257,5 +265,6 @@ unliftTypeVal = \case
         A1TyValInt -> A0TyInt
         A1TyValBool -> A0TyBool
         A1TyValVec n -> A0TyVec n
+        A1TyValMat m n -> A0TyMat m n
   A1TyValArrow a1tyv1 a1tyv2 ->
     A0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)

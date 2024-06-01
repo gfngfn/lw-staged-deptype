@@ -138,6 +138,7 @@ data Ass0PrimType
   = A0TyInt
   | A0TyBool
   | A0TyVec Int
+  | A0TyMat Int Int
   deriving stock (Eq, Show)
 
 data Ass1TypeExpr
@@ -149,6 +150,7 @@ data Ass1PrimType
   = A1TyInt
   | A1TyBool
   | A1TyVec Ass0Expr
+  | A1TyMat Ass0Expr Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass0Val
@@ -180,6 +182,7 @@ data Ass0PrimTypeVal
   = A0TyValInt
   | A0TyValBool
   | A0TyValVec Int
+  | A0TyValMat Int Int
   deriving stock (Eq, Show)
 
 data Ass1TypeVal
@@ -191,6 +194,7 @@ data Ass1PrimTypeVal
   = A1TyValInt
   | A1TyValBool
   | A1TyValVec Int
+  | A1TyValMat Int Int
   deriving stock (Eq, Show)
 
 data Type0Equation
@@ -203,6 +207,7 @@ data Type0PrimEquation
   = TyEq0Int
   | TyEq0Bool
   | TyEq0Vec Int
+  | TyEq0Mat Int Int
   deriving stock (Eq, Show)
 
 data Type1Equation
@@ -214,6 +219,7 @@ data Type1PrimEquation
   = TyEq1Int
   | TyEq1Bool
   | TyEq1Vec Ass0Expr Ass0Expr
+  | TyEq1Mat Ass0Expr Ass0Expr Ass0Expr Ass0Expr
   deriving stock (Eq, Show)
 
 type Env0 = Map Var EnvEntry
@@ -230,6 +236,7 @@ decomposeType0Equation = \case
       TyEq0Int -> prims A0TyInt
       TyEq0Bool -> prims A0TyBool
       TyEq0Vec n -> prims (A0TyVec n)
+      TyEq0Mat m n -> prims (A0TyMat m n)
   TyEq0Code ty1eq ->
     let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
      in (A0TyCode a1tye1, A0TyCode a1tye2)
@@ -247,6 +254,7 @@ decomposeType1Equation = \case
       TyEq1Int -> prims A1TyInt
       TyEq1Bool -> prims A1TyBool
       TyEq1Vec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
+      TyEq1Mat a0e11 a0e12 a0e21 a0e22 -> (A1TyPrim (A1TyMat a0e11 a0e12), A1TyPrim (A1TyMat a0e21 a0e22))
   TyEq1Arrow ty1eqDom ty1eqCod ->
     let (a1tye11, a1tye21) = decomposeType1Equation ty1eqDom
         (a1tye12, a1tye22) = decomposeType1Equation ty1eqCod

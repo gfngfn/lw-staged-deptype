@@ -107,6 +107,9 @@ instance Disp Ass0PrimType where
     A0TyVec n ->
       let doc = "Vec" <+> disp n
        in if req <= Atomic then deepenParen doc else doc
+    A0TyMat m n ->
+      let doc = "Mat" <+> disp m <+> disp n
+       in if req <= Atomic then deepenParen doc else doc
 
 instance Disp Ass0TypeExpr where
   dispGen req = \case
@@ -129,6 +132,9 @@ instance Disp Ass1PrimType where
     A1TyVec a0e ->
       let doc = "Vec %" <> dispGen Atomic a0e
        in if req <= Atomic then deepenParen doc else doc
+    A1TyMat a0e1 a0e2 ->
+      let doc = "Mat %" <> dispGen Atomic a0e1 <+> "%" <> dispGen Atomic a0e2
+       in if req <= Atomic then deepenParen doc else doc
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case
@@ -149,10 +155,10 @@ instance Disp TypeError where
       "Unknown type or invalid arity (at stage 0):" <+> disp tyName <> "," <+> disp n
     UnknownTypeOrInvalidArityAtStage1 tyName n ->
       "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n
-    NotAnIntLitArgOfVecAtStage0 a0e ->
-      "An argument expression of Vec at stage 0 was not an integer literal:" <+> disp a0e
-    NotAnIntTypedArgOfVecAtStage1 a0tye ->
-      "An argument expression of Vec at stage 1 was not Int-typed:" <+> disp a0tye
+    NotAnIntLitArgAtStage0 a0e ->
+      "An argument expression at stage 0 was not an integer literal:" <+> disp a0e
+    NotAnIntTypedArgAtStage1 a0tye ->
+      "An argument expression at stage 1 was not Int-typed:" <+> disp a0tye
     TypeContradictionAtStage0 a0tye1 a0tye2 ->
       "Type contradiction at stage 0."
         <> hardline
@@ -228,6 +234,9 @@ instance Disp Ass0TypeVal where
         A0TyValVec n ->
           let doc = "Vec" <+> disp n
            in if req <= Atomic then deepenParen doc else doc
+        A0TyValMat m n ->
+          let doc = "Mat" <+> disp m <+> disp n
+           in if req <= Atomic then deepenParen doc else doc
     A0TyValArrow (xOpt, a0tyv1) a0tye2 ->
       let docDom =
             case xOpt of
@@ -247,6 +256,9 @@ instance Disp Ass1TypeVal where
         A1TyValBool -> "Bool"
         A1TyValVec a0v ->
           let doc = "Vec %" <> dispGen Atomic a0v
+           in if req <= Atomic then deepenParen doc else doc
+        A1TyValMat a0v1 a0v2 ->
+          let doc = "Mat %" <> dispGen Atomic a0v1 <+> "&" <> dispGen Atomic a0v2
            in if req <= Atomic then deepenParen doc else doc
     A1TyValArrow a1tyv1 a1tyv2 ->
       let doc = group (dispGen FunDomain a1tyv1 <> " ->" <> line <> disp a1tyv2)

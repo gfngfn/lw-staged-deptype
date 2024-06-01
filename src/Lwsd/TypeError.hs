@@ -11,8 +11,8 @@ data TypeError
   | NotAStage1Var Var
   | UnknownTypeOrInvalidArityAtStage0 TypeName Int
   | UnknownTypeOrInvalidArityAtStage1 TypeName Int
-  | NotAnIntLitArgOfVecAtStage0 Ass0Expr
-  | NotAnIntTypedArgOfVecAtStage1 Ass0TypeExpr
+  | NotAnIntLitArgAtStage0 Ass0Expr
+  | NotAnIntTypedArgAtStage1 Ass0TypeExpr
   | TypeContradictionAtStage0 Ass0TypeExpr Ass0TypeExpr
   | TypeContradictionAtStage1 Ass1TypeExpr Ass1TypeExpr
   | NotAFunctionTypeForStage0 Ass0TypeExpr
