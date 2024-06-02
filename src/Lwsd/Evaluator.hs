@@ -123,6 +123,11 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2))
+      BIGenMmult x1 x2 x3 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        n3 <- findInt0 env x3
+        pure $ A0ValBracket (A1ValConst (A1ValConstMmult n1 n2 n3))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
@@ -135,6 +140,8 @@ evalExpr0 env = \case
         case Vector.concat m n v1 v2 of
           Just v -> pure $ A0ValLiteral (LitVec v)
           Nothing -> bug $ InconsistentAppBuiltIn bi
+      BIMmult _k _m _n _x1 _x2 ->
+        error "TODO: BIMmult"
   A0Var x ->
     findVal0 env x
   A0Lam (x, a0tye1) a0e2 -> do
@@ -253,6 +260,7 @@ unliftVal = \case
     case c of
       A1ValConstVadd n -> BuiltIn.ass0exprVadd n
       A1ValConstVconcat m n -> BuiltIn.ass0exprVconcat m n
+      A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
   A1ValVar symb -> A0Var (symbolToVar symb)
   A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
   A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)

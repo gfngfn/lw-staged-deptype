@@ -1,6 +1,7 @@
 module Lwsd.BuiltIn
   ( ass0exprVadd,
     ass0exprVconcat,
+    ass0exprMmult,
     initialTypeEnv,
     initialEnv,
   )
@@ -20,6 +21,12 @@ ty1Vec = A1TyPrim . A1TyVec
 
 ty0Vec :: Int -> Ass0TypeExpr
 ty0Vec = A0TyPrim . A0TyVec
+
+ty1Mat :: Ass0Expr -> Ass0Expr -> Ass1TypeExpr
+ty1Mat a0e1 a0e2 = A1TyPrim (A1TyMat a0e1 a0e2)
+
+ty0Mat :: Int -> Int -> Ass0TypeExpr
+ty0Mat m n = A0TyPrim (A0TyMat m n)
 
 (-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
 (-->) a0tye1 = A0TyArrow (Nothing, a0tye1)
@@ -43,7 +50,8 @@ initialTypeEnv =
     TypeEnv.empty
     [ ("add", tyInt --> tyInt --> tyInt),
       ("gen_vadd", tyGenVadd),
-      ("gen_vconcat", tyGenVconcat)
+      ("gen_vconcat", tyGenVconcat),
+      ("gen_mmult", tyGenMmult)
     ]
   where
     tyGenVadd :: Ass0TypeExpr
@@ -59,6 +67,17 @@ initialTypeEnv =
           ( ty1Vec (A0Var "a")
               ==> ty1Vec (A0Var "b")
               ==> ty1Vec (A0App (A0App (A0Var "add") (A0Var "a")) (A0Var "b"))
+          )
+
+    tyGenMmult :: Ass0TypeExpr
+    tyGenMmult =
+      ("a", tyInt)
+        -:> ("b", tyInt)
+        -:> ("c", tyInt)
+        -:> A0TyCode
+          ( ty1Mat (A0Var "a") (A0Var "b")
+              ==> ty1Mat (A0Var "b") (A0Var "c")
+              ==> ty1Mat (A0Var "a") (A0Var "c")
           )
 
 tyValInt :: Ass0TypeVal
@@ -77,6 +96,9 @@ ass0exprVadd n = lam "v1" (ty0Vec n) (lam "v2" (ty0Vec n) (A0AppBuiltIn (BIVadd 
 ass0exprVconcat :: Int -> Int -> Ass0Expr
 ass0exprVconcat m n = lam "v1" (ty0Vec m) (lam "v2" (ty0Vec n) (A0AppBuiltIn (BIVconcat m n "v1" "v2")))
 
+ass0exprMmult :: Int -> Int -> Int -> Ass0Expr
+ass0exprMmult k m n = lam "m1" (ty0Mat k m) (lam "m2" (ty0Mat m n) (A0AppBuiltIn (BIMmult k m n "m1" "m2")))
+
 ass0valAdd :: Ass0Val
 ass0valAdd = clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIAdd "x1" "x2")))
 
@@ -86,6 +108,9 @@ ass0valGenVadd = clo "x1" tyValInt (A0AppBuiltIn (BIGenVadd "x1"))
 ass0valGenVconcat :: Ass0Val
 ass0valGenVconcat = clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIGenVconcat "x1" "x2")))
 
+ass0valGenMmult :: Ass0Val
+ass0valGenMmult = clo "x1" tyValInt (lam "x2" tyInt (lam "x3" tyInt (A0AppBuiltIn (BIGenMmult "x1" "x2" "x3"))))
+
 initialEnv :: Env0
 initialEnv =
   List.foldl'
@@ -93,5 +118,6 @@ initialEnv =
     Map.empty
     [ ("add", ass0valAdd),
       ("gen_vadd", ass0valGenVadd),
-      ("gen_vconcat", ass0valGenVconcat)
+      ("gen_vconcat", ass0valGenVconcat),
+      ("gen_mmult", ass0valGenMmult)
     ]

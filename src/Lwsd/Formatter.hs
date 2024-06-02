@@ -1,5 +1,6 @@
 module Lwsd.Formatter where
 
+import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Lwsd.Evaluator qualified as Evaluator
@@ -34,6 +35,10 @@ render wid = renderDoc wid . disp
 commaSep :: [Doc Ann] -> Doc Ann
 commaSep = sep . punctuate comma
 
+disps :: (Disp a) => [a] -> Doc Ann
+disps [] = mempty
+disps (first : rest) = List.foldl' (\doc x -> doc <> "," <+> disp x) (disp first) rest
+
 deepenParen :: Doc Ann -> Doc Ann
 deepenParen doc = "(" <> nest 2 doc <> ")"
 
@@ -63,11 +68,13 @@ instance Disp Literal where
 
 instance Disp BuiltIn where
   dispGen _ = \case
-    BIAdd x1 x2 -> "ADD(" <> disp x1 <> "," <+> disp x2 <> ")"
+    BIAdd x1 x2 -> "ADD(" <> disps [x1, x2] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
-    BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disp x1 <> "," <+> disp x2 <> ")"
-    BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disp x1 <> "," <+> disp x2 <> ")"
-    BIVconcat m n x1 x2 -> "VCONCAT@{" <> disp m <> "," <+> disp n <> "}(" <> disp x1 <> "," <+> disp x2 <> ")"
+    BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
+    BIGenMmult x1 x2 x3 -> "GEN_MMULT(" <> disps [x1, x2, x3] <> ")"
+    BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
+    BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
+    BIMmult k m n x1 x2 -> "VMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
 
 instance Disp Ass0Expr where
   dispGen req = \case
@@ -211,7 +218,8 @@ instance Disp Ass0Val where
 instance Disp Ass1ValConst where
   dispGen _ = \case
     A1ValConstVadd n -> "vadd@{" <> disp n <> "}"
-    A1ValConstVconcat m n -> "vconcat@{" <> disp m <> "," <+> disp n <> "}"
+    A1ValConstVconcat m n -> "vconcat@{" <> disps [m, n] <> "}"
+    A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
 
 instance Disp Ass1Val where
   dispGen req = \case

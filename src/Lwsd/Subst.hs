@@ -99,6 +99,7 @@ instance HasVar0 Ass1TypeExpr where
         A1TyInt -> Set.empty
         A1TyBool -> Set.empty
         A1TyVec a0e1 -> frees0 a0e1
+        A1TyMat a0e1 a0e2 -> Set.union (frees0 a0e1) (frees0 a0e2)
     A1TyArrow a1tye1 a1tye2 -> Set.union (frees0 a1tye1) (frees0 a1tye2)
 
   subst0 a0e x = \case
@@ -107,6 +108,7 @@ instance HasVar0 Ass1TypeExpr where
         A1TyInt -> A1TyInt
         A1TyBool -> A1TyBool
         A1TyVec a0e1 -> A1TyVec (go a0e1)
+        A1TyMat a0e1 a0e2 -> A1TyMat (go a0e1) (go a0e2)
     A1TyArrow a1tye1 a1tye2 ->
       A1TyArrow (go a1tye1) (go a1tye2)
     where
@@ -142,6 +144,7 @@ instance HasVar0 Type1Equation where
         TyEq1Int -> Set.empty
         TyEq1Bool -> Set.empty
         TyEq1Vec a0e1 a0e2 -> Set.union (frees0 a0e1) (frees0 a0e2)
+        TyEq1Mat a0e11 a0e12 a0e21 a0e22 -> Set.unions $ map frees0 [a0e11, a0e12, a0e21, a0e22]
     TyEq1Arrow ty1eqDom ty1eqCod -> Set.union (frees0 ty1eqDom) (frees0 ty1eqCod)
 
   subst0 a0e x = \case
@@ -151,6 +154,7 @@ instance HasVar0 Type1Equation where
           TyEq1Int -> TyEq1Int
           TyEq1Bool -> TyEq1Bool
           TyEq1Vec a0e1 a0e2 -> TyEq1Vec (go a0e1) (go a0e2)
+          TyEq1Mat a0e11 a0e12 a0e21 a0e22 -> TyEq1Mat (go a0e11) (go a0e12) (go a0e21) (go a0e22)
     TyEq1Arrow ty1eqDom ty1eqCod -> TyEq1Arrow (go ty1eqDom) (go ty1eqCod)
     where
       go :: forall a. (HasVar0 a) => a -> a

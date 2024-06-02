@@ -64,8 +64,10 @@ data BuiltIn
   = BIAdd Var Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
+  | BIGenMmult Var Var Var
   | BIVadd Int Var Var
   | BIVconcat Int Int Var Var
+  | BIMmult Int Int Int Var Var
   deriving stock (Eq, Show)
 
 data ExprF ann = Expr ann (ExprMain ann)
@@ -170,6 +172,7 @@ data Ass1Val
 data Ass1ValConst
   = A1ValConstVadd Int
   | A1ValConstVconcat Int Int
+  | A1ValConstMmult Int Int Int
   deriving stock (Eq, Show)
 
 data Ass0TypeVal
