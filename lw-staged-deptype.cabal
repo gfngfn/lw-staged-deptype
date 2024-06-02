@@ -63,6 +63,7 @@ library
       Lwsd.Evaluator,
       Lwsd.Formatter,
       Lwsd.LibMain,
+      Lwsd.Matrix,
       Lwsd.Parser,
       Lwsd.Subst,
       Lwsd.Syntax,
@@ -139,6 +140,7 @@ test-suite lw-staged-deptype-test
 
     -- Modules included in this executable, other than Spec.
     other-modules:
+        MatrixSpec,
         ParserSpec
 
     -- LANGUAGE extensions used by modules in this package.
