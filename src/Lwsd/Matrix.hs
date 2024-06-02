@@ -5,6 +5,7 @@ module Lwsd.Matrix
     toList,
     size,
     transpose,
+    mult,
   )
 where
 
@@ -55,3 +56,18 @@ transpose (Matrix (firstRow : restRows)) =
           column = firstElem : map fst pairs
           restRows1 = map snd pairs
        in go (column : acc) restElems restRows1
+
+mult :: Int -> Int -> Int -> Matrix -> Matrix -> Maybe Matrix
+mult k m n mat1 mat2 =
+  if size mat1 == (k, m) || size mat2 == (m, n)
+  -- `mat1`: a matrix of size k × m
+  -- `mat2`: a matrix of size m × n
+    then Just $ Matrix [ [ calc row1 column2 | row1 <- rows1 ] | column2 <- columns2 ]
+    else Nothing
+  where
+    Matrix rows1 = mat1 -- `rows1`: a list of length k
+    Matrix columns2 = transpose mat2 -- `columns2`: a list of length n
+
+    calc :: [Int] -> [Int] -> Int
+    calc row column =
+      List.foldl' (+) 0 $ zipWith (*) row column
