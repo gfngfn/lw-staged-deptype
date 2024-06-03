@@ -76,10 +76,12 @@ instance Disp BuiltIn where
     BIAdd x1 x2 -> "ADD(" <> disps [x1, x2] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
+    BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
     BIGenMmult x1 x2 x3 -> "GEN_MMULT(" <> disps [x1, x2, x3] <> ")"
     BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
     BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
-    BIMmult k m n x1 x2 -> "VMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
+    BIMtranspose m n x1 -> "MTRANSPOSE@{" <> disps [m, n] <> "}(" <> disp x1 <> ")"
+    BIMmult k m n x1 x2 -> "MMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
 
 dispRowContents :: [Int] -> Doc Ann
 dispRowContents row = commaSep (disp <$> row)
@@ -242,6 +244,7 @@ instance Disp Ass1ValConst where
   dispGen _ = \case
     A1ValConstVadd n -> "vadd@{" <> disp n <> "}"
     A1ValConstVconcat m n -> "vconcat@{" <> disps [m, n] <> "}"
+    A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
     A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
 
 instance Disp Ass1Val where

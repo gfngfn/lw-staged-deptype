@@ -67,9 +67,11 @@ data BuiltIn
   = BIAdd Var Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
+  | BIGenMtranspose Var Var
   | BIGenMmult Var Var Var
   | BIVadd Int Var Var
   | BIVconcat Int Int Var Var
+  | BIMtranspose Int Int Var
   | BIMmult Int Int Int Var Var
   deriving stock (Eq, Show)
 
@@ -181,6 +183,7 @@ data Ass1Val
 data Ass1ValConst
   = A1ValConstVadd Int
   | A1ValConstVconcat Int Int
+  | A1ValConstMtranspose Int Int
   | A1ValConstMmult Int Int Int
   deriving stock (Eq, Show)
 

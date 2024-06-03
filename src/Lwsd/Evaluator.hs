@@ -133,6 +133,10 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2))
+      BIGenMtranspose x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValBracket (A1ValConst (A1ValConstMtranspose n1 n2))
       BIGenMmult x1 x2 x3 -> do
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
@@ -149,6 +153,11 @@ evalExpr0 env = \case
         v2 <- findVec0 env x2
         case Vector.concat m n v1 v2 of
           Just v -> pure $ A0ValLiteral (ALitVec v)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
+      BIMtranspose m n x1 -> do
+        mat1 <- findMat0 env x1
+        case Matrix.transpose m n mat1 of
+          Just mat -> pure $ A0ValLiteral (ALitMat mat)
           Nothing -> bug $ InconsistentAppBuiltIn bi
       BIMmult k m n x1 x2 -> do
         mat1 <- findMat0 env x1
@@ -274,6 +283,7 @@ unliftVal = \case
     case c of
       A1ValConstVadd n -> BuiltIn.ass0exprVadd n
       A1ValConstVconcat m n -> BuiltIn.ass0exprVconcat m n
+      A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
   A1ValVar symb -> A0Var (symbolToVar symb)
   A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
