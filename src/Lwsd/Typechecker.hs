@@ -13,6 +13,8 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Data.Either.Extra
 import Data.List qualified as List
+import Data.Tuple.Extra
+import Lwsd.Matrix qualified as Matrix
 import Lwsd.Subst
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
@@ -94,6 +96,7 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
           case lit of
             LitInt _ -> A0TyPrim A0TyInt
             LitVec v -> A0TyPrim (A0TyVec (Vector.length v))
+            LitMat m -> A0TyPrim (uncurry A0TyMat (Matrix.size m))
     pure (a0tye, A0Literal lit)
   Var x -> do
     entry <- findVar trav x tyEnv
@@ -141,6 +144,7 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
           case lit of
             LitInt _ -> A1TyPrim A1TyInt
             LitVec v -> A1TyPrim (A1TyVec (A0Literal (LitInt (Vector.length v))))
+            LitMat m -> A1TyPrim (uncurry A1TyMat (both (A0Literal . LitInt) (Matrix.size m)))
     pure (a1tye, A1Literal lit)
   Var x -> do
     entry <- findVar trav x tyEnv

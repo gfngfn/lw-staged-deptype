@@ -43,6 +43,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Generic.Data
 import Generic.Data.Orphans ()
+import Lwsd.Matrix (Matrix)
 import Lwsd.Token (Span)
 import Lwsd.Vector (Vector)
 
@@ -58,6 +59,7 @@ symbolToVar (Symbol n) = Text.pack $ "#S" ++ show n
 data Literal
   = LitInt Int
   | LitVec Vector
+  | LitMat Matrix
   deriving stock (Eq, Show)
 
 data BuiltIn

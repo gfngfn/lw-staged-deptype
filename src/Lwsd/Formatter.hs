@@ -4,6 +4,7 @@ import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Lwsd.Evaluator qualified as Evaluator
+import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
 import Lwsd.Token (LocationInFile (LocationInFile))
 import Lwsd.TypeError
@@ -65,6 +66,10 @@ instance Disp Literal where
   dispGen _ = \case
     LitInt n -> pretty n
     LitVec v -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> Vector.toList v)
+    LitMat m -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRow <$> Matrix.toRows m)
+    where
+      dispRow :: [Int] -> Doc Ann
+      dispRow row = commaSep (disp <$> row)
 
 instance Disp BuiltIn where
   dispGen _ = \case
