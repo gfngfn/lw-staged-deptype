@@ -15,6 +15,8 @@ import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Lwsd.BuiltIn qualified as BuiltIn
+import Lwsd.Matrix (Matrix)
+import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
 import Lwsd.Token (LocationInFile, Span (..))
 import Lwsd.Token qualified as Token
@@ -27,6 +29,7 @@ data Bug
   | NotACodeValue Ass0Val
   | NotAnInteger (Maybe Var) Ass0Val
   | NotAVector Var Ass0Val
+  | NotAMatrix Var Ass0Val
   | FoundSymbol Var Symbol
   | FoundAss0Val Var Ass0Val
   | InconsistentAppBuiltIn BuiltIn
@@ -106,6 +109,13 @@ findVec0 env x = do
     A0ValLiteral (ALitVec v) -> pure v
     _ -> bug $ NotAVector x a0v
 
+findMat0 :: Env0 -> Var -> M Matrix
+findMat0 env x = do
+  a0v <- findVal0 env x
+  case a0v of
+    A0ValLiteral (ALitMat mat) -> pure mat
+    _ -> bug $ NotAMatrix x a0v
+
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
@@ -140,8 +150,12 @@ evalExpr0 env = \case
         case Vector.concat m n v1 v2 of
           Just v -> pure $ A0ValLiteral (ALitVec v)
           Nothing -> bug $ InconsistentAppBuiltIn bi
-      BIMmult _k _m _n _x1 _x2 ->
-        error "TODO: BIMmult"
+      BIMmult k m n x1 x2 -> do
+        mat1 <- findMat0 env x1
+        mat2 <- findMat0 env x2
+        case Matrix.mult k m n mat1 mat2 of
+          Just mat -> pure $ A0ValLiteral (ALitMat mat)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
     findVal0 env x
   A0Lam (x, a0tye1) a0e2 -> do

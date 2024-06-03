@@ -32,12 +32,15 @@ data Token
   | TokArrow
   | TokEqual
   | TokColon
+  | TokComma
   | TokBracket
   | TokEscape
   | TokPersistent
   | TokSemicolon
   | TokVecLeft
   | TokVecRight
+  | TokMatLeft
+  | TokMatRight
   | TokLower Text
   | TokUpper Text
   | TokInt Int
@@ -88,7 +91,7 @@ upperIdent = Text.pack <$> ((:) <$> p1 <*> p2)
     p2 = Mp.many (Mp.satisfy isRestChar) <* Mp.notFollowedBy (Mp.satisfy isRestChar)
 
 integerLiteral :: Tokenizer Int
-integerLiteral = (\s -> read s :: Int) <$> ((:) <$> p1 <*> p2)
+integerLiteral = (\s -> read s :: Int) <$> (((:) <$> p1 <*> p2) <|> ((: []) <$> Mp.single '0'))
   where
     p1 = Mp.satisfy (\c -> Char.isDigit c && c /= '0')
     p2 = Mp.many (Mp.satisfy Char.isDigit) <* Mp.notFollowedBy (Mp.satisfy Char.isDigit)
@@ -100,6 +103,7 @@ token =
       TokRightParen <$ Mp.single ')',
       TokArrow <$ Mp.chunk "->",
       TokColon <$ Mp.single ':',
+      TokComma <$ Mp.single ',',
       TokEqual <$ Mp.single '=',
       TokBracket <$ Mp.single '&',
       TokEscape <$ Mp.single '~',
@@ -107,6 +111,8 @@ token =
       TokSemicolon <$ Mp.single ';',
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",
+      TokMatLeft <$ Mp.chunk "[#",
+      TokMatRight <$ Mp.chunk "#]",
       lowerIdentOrKeyword,
       TokUpper <$> upperIdent,
       TokInt <$> integerLiteral

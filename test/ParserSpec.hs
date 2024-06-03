@@ -74,9 +74,12 @@ typLoc start end = TypeExpr (Span start end)
 spec :: Spec
 spec = do
   describe "Parser.parseExpr (without code locations)" $ do
-    it "parses integer literals" $
+    it "parses integer literals (1)" $
       parseExpr "42"
         `shouldBe` pure (litInt 42)
+    it "parses integer literals (2)" $
+      parseExpr "0"
+        `shouldBe` pure (litInt 0)
     it "parses vector literals (1)" $
       parseExpr "[| |]"
         `shouldBe` pure (litVec [])

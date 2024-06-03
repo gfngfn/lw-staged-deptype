@@ -72,6 +72,22 @@ vec = makeVec <$> token TokVecLeft <*> rest
     makeVec locFirst (elems, locLast) =
       Located (mergeSpan locFirst locLast) elems
 
+mat :: P (Located [[Int]])
+mat = makeMat <$> token TokMatLeft <*> rest
+  where
+    rest =
+      try (makeNonemptyMat <$> nonemptyRow <*> Mp.many (token TokSemicolon *> nonemptyRow) <*> token TokMatRight)
+        <|> (([],) <$> token TokMatRight)
+
+    makeNonemptyMat rowFirst rowsTail locLast =
+      (rowFirst : rowsTail, locLast)
+
+    makeMat locFirst (rows, locLast) =
+      Located (mergeSpan locFirst locLast) rows
+
+    nonemptyRow :: P [Int]
+    nonemptyRow = (:) <$> noLoc int <*> Mp.many (token TokComma *> noLoc int)
+
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
   where
@@ -79,6 +95,7 @@ exprAtom, expr :: P Expr
     atom =
       try (located (Literal . LitInt) <$> int)
         <|> try (located (Literal . LitVec) <$> vec)
+        <|> try (located (Literal . LitMat) <$> mat)
         <|> try (located Var <$> lower)
         <|> (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where

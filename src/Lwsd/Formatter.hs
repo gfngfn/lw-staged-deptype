@@ -313,6 +313,8 @@ instance Disp Evaluator.Bug where
       "Not an integer:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.NotAVector x a0v ->
       "Not a vector:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
+    Evaluator.NotAMatrix x a0v ->
+      "Not a matrix:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.FoundSymbol x symb ->
       "Expected a stage-0 value, but found a symbol:" <+> disp symb <+> "(bound to:" <+> disp x <> ")"
     Evaluator.FoundAss0Val x a0v ->
@@ -339,13 +341,10 @@ instance Disp Evaluator.EvalError where
         <> nest 2 (hardline <> disp a1tyv2)
       where
         makeLineText s =
-          hardline
-            <> disp s
-            <> hats
+          if startLine == endLine
+            then hardline <> disp s <> hats
+            else mempty
           where
             LocationInFile startLine startColumn = locInFileStart
             LocationInFile endLine endColumn = locInFileEnd
-            hats =
-              if startLine == endLine
-                then nest 2 (hardline <> disp (replicate (endColumn - startColumn) '^'))
-                else mempty
+            hats = nest 2 (hardline <> disp (replicate (endColumn - startColumn) '^'))
