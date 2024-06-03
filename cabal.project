@@ -8,4 +8,5 @@ package lw-staged-deptype
   tests: True
   test-show-details: direct
 
-extra-packages: ormolu
+extra-packages:
+  ormolu-0.7.4.0
