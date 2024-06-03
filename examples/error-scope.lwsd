@@ -1,0 +1,5 @@
+let foo =
+  let bar = 42 in
+  &(fun (foo : Vec %bar) -> foo)
+in
+foo
