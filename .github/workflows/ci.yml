@@ -16,7 +16,7 @@ jobs:
       with:
         version: 0.7.4.0
   build:
-    name "Build (GHC ${{ matrix.ghc-version}} on ${{ matrix.os }})"
+    name: "Build (GHC ${{ matrix.ghc-version}} on ${{ matrix.os }})"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
