@@ -5,7 +5,6 @@ import Data.Text (Text)
 import Lwsd.Parser qualified as Parser
 import Lwsd.Syntax
 import Lwsd.Token (Span (..))
-import Lwsd.Vector qualified as Vector
 import Test.Hspec
 
 type TypeExpr0 = TypeExprF ()
@@ -43,7 +42,7 @@ litInt :: Int -> Expr0
 litInt = expr . Literal . LitInt
 
 litVec :: [Int] -> Expr0
-litVec = expr . Literal . LitVec . Vector.fromList
+litVec = expr . Literal . LitVec
 
 var :: Text -> Expr0
 var = expr . Var
@@ -189,7 +188,7 @@ spec = do
         `shouldBe` pure (exprLoc 0 2 $ Literal (LitInt 42))
     it "parses vector literals" $
       Parser.parseExpr "[| 3; 14; 1592 |]"
-        `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec (Vector.fromList [3, 14, 1592])))
+        `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec [3, 14, 1592]))
     it "parses variables" $
       Parser.parseExpr "foo_bar"
         `shouldBe` pure (exprLoc 0 7 $ Var "foo_bar")

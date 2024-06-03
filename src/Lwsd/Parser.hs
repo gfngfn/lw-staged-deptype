@@ -12,7 +12,6 @@ import Data.Void (Void)
 import Lwsd.Syntax
 import Lwsd.Token (Located (..), Span, Token (..), mergeSpan)
 import Lwsd.Token qualified as Token
-import Lwsd.Vector qualified as Vector
 import Text.Megaparsec hiding (Token, parse, some, token, tokens)
 import Text.Megaparsec qualified as Mp
 import Prelude
@@ -79,7 +78,7 @@ exprAtom, expr :: P Expr
     atom :: P Expr
     atom =
       try (located (Literal . LitInt) <$> int)
-        <|> try (located (Literal . LitVec . Vector.fromList) <$> vec)
+        <|> try (located (Literal . LitVec) <$> vec)
         <|> try (located Var <$> lower)
         <|> (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where

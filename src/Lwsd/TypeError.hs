@@ -3,6 +3,7 @@ module Lwsd.TypeError
   )
 where
 
+import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
 
 data TypeError
@@ -26,4 +27,5 @@ data TypeError
   | CannotUseNormalArgAtStage1
   | VarOccursFreelyInAss0Type Var Ass0TypeExpr
   | VarOccursFreelyInAss1Type Var Ass1TypeExpr
+  | InvalidMatrixLiteral Matrix.ConstructionError
   deriving stock (Eq, Show)

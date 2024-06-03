@@ -13,6 +13,7 @@ module Lwsd.Syntax
     TypeExpr,
     ArgForTypeF (..),
     ArgForType,
+    AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
     Type0Equation (..),
@@ -58,8 +59,8 @@ symbolToVar (Symbol n) = Text.pack $ "#S" ++ show n
 
 data Literal
   = LitInt Int
-  | LitVec Vector
-  | LitMat Matrix
+  | LitVec [Int]
+  | LitMat [[Int]]
   deriving stock (Eq, Show)
 
 data BuiltIn
@@ -114,8 +115,14 @@ data ArgForTypeF ann
 
 type ArgForType = ArgForTypeF Span
 
+data AssLiteral
+  = ALitInt Int
+  | ALitVec Vector
+  | ALitMat Matrix
+  deriving stock (Eq, Show)
+
 data Ass0Expr
-  = A0Literal Literal
+  = A0Literal AssLiteral
   | A0AppBuiltIn BuiltIn
   | A0Var Var
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
@@ -125,7 +132,7 @@ data Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass1Expr
-  = A1Literal Literal
+  = A1Literal AssLiteral
   | A1Var Var
   | A1Lam (Var, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
@@ -158,13 +165,13 @@ data Ass1PrimType
   deriving stock (Eq, Show)
 
 data Ass0Val
-  = A0ValLiteral Literal
+  = A0ValLiteral AssLiteral
   | A0ValLam (Var, Ass0TypeVal) Ass0Expr Env0
   | A0ValBracket Ass1Val
   deriving stock (Eq, Show)
 
 data Ass1Val
-  = A1ValLiteral Literal
+  = A1ValLiteral AssLiteral
   | A1ValConst Ass1ValConst
   | A1ValVar Symbol
   | A1ValLam (Symbol, Ass1TypeVal) Ass1Val

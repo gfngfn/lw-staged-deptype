@@ -92,12 +92,16 @@ makeEquation1 trav a1tye1 a1tye2 =
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
   Literal lit -> do
-    let a0tye =
-          case lit of
-            LitInt _ -> A0TyPrim A0TyInt
-            LitVec v -> A0TyPrim (A0TyVec (Vector.length v))
-            LitMat m -> A0TyPrim (uncurry A0TyMat (Matrix.size m))
-    pure (a0tye, A0Literal lit)
+    (a0tye, alit) <-
+      case lit of
+        LitInt n -> pure (A0TyPrim A0TyInt, ALitInt n)
+        LitVec ns -> do
+          let vec = Vector.fromList ns
+          pure (A0TyPrim (A0TyVec (Vector.length vec)), ALitVec vec)
+        LitMat nns -> do
+          mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nns
+          pure (A0TyPrim (uncurry A0TyMat (Matrix.size mat)), ALitMat mat)
+    pure (a0tye, A0Literal alit)
   Var x -> do
     entry <- findVar trav x tyEnv
     case entry of
@@ -140,12 +144,17 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
 typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
 typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
   Literal lit -> do
-    let a1tye =
+    (a1tye, alit) <-
           case lit of
-            LitInt _ -> A1TyPrim A1TyInt
-            LitVec v -> A1TyPrim (A1TyVec (A0Literal (LitInt (Vector.length v))))
-            LitMat m -> A1TyPrim (uncurry A1TyMat (both (A0Literal . LitInt) (Matrix.size m)))
-    pure (a1tye, A1Literal lit)
+            LitInt n ->
+              pure (A1TyPrim A1TyInt, ALitInt n)
+            LitVec ns -> do
+              let vec = Vector.fromList ns
+              pure (A1TyPrim (A1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)
+            LitMat nss -> do
+              mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nss
+              pure (A1TyPrim (uncurry A1TyMat (both (A0Literal . ALitInt) (Matrix.size mat))), ALitMat mat)
+    pure (a1tye, A1Literal alit)
   Var x -> do
     entry <- findVar trav x tyEnv
     case entry of
@@ -192,7 +201,7 @@ validateIntTypedExpr trav = \case
 
 validateIntLiteral :: trav -> (Ass0TypeExpr, Ass0Expr) -> M trav Int
 validateIntLiteral trav = \case
-  (A0TyPrim A0TyInt, A0Literal (LitInt n)) -> pure n
+  (A0TyPrim A0TyInt, A0Literal (ALitInt n)) -> pure n
   (_a0tye, a0e) -> typeError trav $ NotAnIntLitArgAtStage0 a0e
 
 typecheckTypeExpr0 :: trav -> TypeEnv -> TypeExpr -> M trav Ass0TypeExpr

@@ -65,8 +65,8 @@ instance Disp Symbol where
 instance Disp Literal where
   dispGen _ = \case
     LitInt n -> pretty n
-    LitVec v -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> Vector.toList v)
-    LitMat m -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRow <$> Matrix.toRows m)
+    LitVec ns -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> ns)
+    LitMat nss -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRow <$> nss)
     where
       dispRow :: [Int] -> Doc Ann
       dispRow row = commaSep (disp <$> row)
@@ -80,6 +80,15 @@ instance Disp BuiltIn where
     BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
     BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
     BIMmult k m n x1 x2 -> "VMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
+
+dispRowContents :: [Int] -> Doc Ann
+dispRowContents row = commaSep (disp <$> row)
+
+instance Disp AssLiteral where
+  dispGen _ = \case
+    ALitInt n -> pretty n
+    ALitVec v -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> Vector.toList v)
+    ALitMat m -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRowContents <$> Matrix.toRows m)
 
 instance Disp Ass0Expr where
   dispGen req = \case
@@ -209,6 +218,15 @@ instance Disp TypeError where
       "Variable" <+> disp x <+> "occurs in stage-0 type" <+> disp a0tye
     VarOccursFreelyInAss1Type x a1tye ->
       "Variable" <+> disp x <+> "occurs in stage-1 type" <+> disp a1tye
+    InvalidMatrixLiteral e ->
+      "Invalid matrix literal;" <+>
+        case e of
+          Matrix.EmptyRow -> "contains an empty row"
+          Matrix.InconsistencyOfRowLength row1 row2 ->
+            "two rows have different lengths. one:"
+              <> hardline <> dispRowContents row1
+              <> hardline <> "another:"
+              <> hardline <> dispRowContents row2
 
 instance Disp Ass0Val where
   dispGen req = \case

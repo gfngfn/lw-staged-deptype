@@ -96,14 +96,14 @@ findInt0 :: Env0 -> Var -> M Int
 findInt0 env x = do
   a0v <- findVal0 env x
   case a0v of
-    A0ValLiteral (LitInt n) -> pure n
+    A0ValLiteral (ALitInt n) -> pure n
     _ -> bug $ NotAnInteger (Just x) a0v
 
 findVec0 :: Env0 -> Var -> M Vector
 findVec0 env x = do
   a0v <- findVal0 env x
   case a0v of
-    A0ValLiteral (LitVec v) -> pure v
+    A0ValLiteral (ALitVec v) -> pure v
     _ -> bug $ NotAVector x a0v
 
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
@@ -115,7 +115,7 @@ evalExpr0 env = \case
       BIAdd x1 x2 -> do
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
-        pure $ A0ValLiteral (LitInt (n1 + n2))
+        pure $ A0ValLiteral (ALitInt (n1 + n2))
       BIGenVadd x1 -> do
         n1 <- findInt0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
@@ -132,13 +132,13 @@ evalExpr0 env = \case
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
         case Vector.add n v1 v2 of
-          Just v -> pure $ A0ValLiteral (LitVec v)
+          Just v -> pure $ A0ValLiteral (ALitVec v)
           Nothing -> bug $ InconsistentAppBuiltIn bi
       BIVconcat m n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
         case Vector.concat m n v1 v2 of
-          Just v -> pure $ A0ValLiteral (LitVec v)
+          Just v -> pure $ A0ValLiteral (ALitVec v)
           Nothing -> bug $ InconsistentAppBuiltIn bi
       BIMmult _k _m _n _x1 _x2 ->
         error "TODO: BIMmult"
@@ -231,7 +231,7 @@ evalTypeExpr0 env = \case
 
 validateIntLiteral :: Ass0Val -> M Int
 validateIntLiteral = \case
-  A0ValLiteral (LitInt n) -> pure n
+  A0ValLiteral (ALitInt n) -> pure n
   a0v -> bug $ NotAnInteger Nothing a0v
 
 evalTypeExpr1 :: Env0 -> Ass1TypeExpr -> M Ass1TypeVal

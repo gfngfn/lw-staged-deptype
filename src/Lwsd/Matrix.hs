@@ -18,6 +18,7 @@ newtype Matrix = Matrix [[Int]]
 data ConstructionError
   = EmptyRow
   | InconsistencyOfRowLength [Int] [Int]
+  deriving stock (Eq, Show)
 
 fromRows :: [[Int]] -> Either ConstructionError Matrix
 fromRows [] = pure $ Matrix []
