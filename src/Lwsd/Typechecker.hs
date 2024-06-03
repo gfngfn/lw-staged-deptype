@@ -145,15 +145,15 @@ typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
 typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
   Literal lit -> do
     (a1tye, alit) <-
-          case lit of
-            LitInt n ->
-              pure (A1TyPrim A1TyInt, ALitInt n)
-            LitVec ns -> do
-              let vec = Vector.fromList ns
-              pure (A1TyPrim (A1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)
-            LitMat nss -> do
-              mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nss
-              pure (A1TyPrim (uncurry A1TyMat (both (A0Literal . ALitInt) (Matrix.size mat))), ALitMat mat)
+      case lit of
+        LitInt n ->
+          pure (A1TyPrim A1TyInt, ALitInt n)
+        LitVec ns -> do
+          let vec = Vector.fromList ns
+          pure (A1TyPrim (A1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)
+        LitMat nss -> do
+          mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nss
+          pure (A1TyPrim (uncurry A1TyMat (both (A0Literal . ALitInt) (Matrix.size mat))), ALitMat mat)
     pure (a1tye, A1Literal alit)
   Var x -> do
     entry <- findVar trav x tyEnv

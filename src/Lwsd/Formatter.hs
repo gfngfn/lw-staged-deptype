@@ -221,14 +221,17 @@ instance Disp TypeError where
     VarOccursFreelyInAss1Type x a1tye ->
       "Variable" <+> disp x <+> "occurs in stage-1 type" <+> disp a1tye
     InvalidMatrixLiteral e ->
-      "Invalid matrix literal;" <+>
-        case e of
+      "Invalid matrix literal;"
+        <+> case e of
           Matrix.EmptyRow -> "contains an empty row"
           Matrix.InconsistencyOfRowLength row1 row2 ->
             "two rows have different lengths. one:"
-              <> hardline <> dispRowContents row1
-              <> hardline <> "another:"
-              <> hardline <> dispRowContents row2
+              <> hardline
+              <> dispRowContents row1
+              <> hardline
+              <> "another:"
+              <> hardline
+              <> dispRowContents row2
 
 instance Disp Ass0Val where
   dispGen req = \case
