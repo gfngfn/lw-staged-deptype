@@ -12,7 +12,6 @@ import Data.Void (Void)
 import Lwsd.Syntax
 import Lwsd.Token (Located (..), Span, Token (..), mergeSpan)
 import Lwsd.Token qualified as Token
-import Lwsd.Vector qualified as Vector
 import Text.Megaparsec hiding (Token, parse, some, token, tokens)
 import Text.Megaparsec qualified as Mp
 import Prelude
@@ -73,13 +72,30 @@ vec = makeVec <$> token TokVecLeft <*> rest
     makeVec locFirst (elems, locLast) =
       Located (mergeSpan locFirst locLast) elems
 
+mat :: P (Located [[Int]])
+mat = makeMat <$> token TokMatLeft <*> rest
+  where
+    rest =
+      try (makeNonemptyMat <$> nonemptyRow <*> Mp.many (token TokSemicolon *> nonemptyRow) <*> token TokMatRight)
+        <|> (([],) <$> token TokMatRight)
+
+    makeNonemptyMat rowFirst rowsTail locLast =
+      (rowFirst : rowsTail, locLast)
+
+    makeMat locFirst (rows, locLast) =
+      Located (mergeSpan locFirst locLast) rows
+
+    nonemptyRow :: P [Int]
+    nonemptyRow = (:) <$> noLoc int <*> Mp.many (token TokComma *> noLoc int)
+
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
   where
     atom :: P Expr
     atom =
       try (located (Literal . LitInt) <$> int)
-        <|> try (located (Literal . LitVec . Vector.fromList) <$> vec)
+        <|> try (located (Literal . LitVec) <$> vec)
+        <|> try (located (Literal . LitMat) <$> mat)
         <|> try (located Var <$> lower)
         <|> (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where

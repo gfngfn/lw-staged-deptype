@@ -13,6 +13,7 @@ module Lwsd.Syntax
     TypeExpr,
     ArgForTypeF (..),
     ArgForType,
+    AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
     Type0Equation (..),
@@ -43,6 +44,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Generic.Data
 import Generic.Data.Orphans ()
+import Lwsd.Matrix (Matrix)
 import Lwsd.Token (Span)
 import Lwsd.Vector (Vector)
 
@@ -57,15 +59,20 @@ symbolToVar (Symbol n) = Text.pack $ "#S" ++ show n
 
 data Literal
   = LitInt Int
-  | LitVec Vector
+  | LitVec [Int]
+  | LitMat [[Int]]
   deriving stock (Eq, Show)
 
 data BuiltIn
   = BIAdd Var Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
+  | BIGenMtranspose Var Var
+  | BIGenMmult Var Var Var
   | BIVadd Int Var Var
   | BIVconcat Int Int Var Var
+  | BIMtranspose Int Int Var
+  | BIMmult Int Int Int Var Var
   deriving stock (Eq, Show)
 
 data ExprF ann = Expr ann (ExprMain ann)
@@ -110,8 +117,14 @@ data ArgForTypeF ann
 
 type ArgForType = ArgForTypeF Span
 
+data AssLiteral
+  = ALitInt Int
+  | ALitVec Vector
+  | ALitMat Matrix
+  deriving stock (Eq, Show)
+
 data Ass0Expr
-  = A0Literal Literal
+  = A0Literal AssLiteral
   | A0AppBuiltIn BuiltIn
   | A0Var Var
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
@@ -121,7 +134,7 @@ data Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass1Expr
-  = A1Literal Literal
+  = A1Literal AssLiteral
   | A1Var Var
   | A1Lam (Var, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
@@ -138,6 +151,7 @@ data Ass0PrimType
   = A0TyInt
   | A0TyBool
   | A0TyVec Int
+  | A0TyMat Int Int
   deriving stock (Eq, Show)
 
 data Ass1TypeExpr
@@ -149,16 +163,17 @@ data Ass1PrimType
   = A1TyInt
   | A1TyBool
   | A1TyVec Ass0Expr
+  | A1TyMat Ass0Expr Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass0Val
-  = A0ValLiteral Literal
+  = A0ValLiteral AssLiteral
   | A0ValLam (Var, Ass0TypeVal) Ass0Expr Env0
   | A0ValBracket Ass1Val
   deriving stock (Eq, Show)
 
 data Ass1Val
-  = A1ValLiteral Literal
+  = A1ValLiteral AssLiteral
   | A1ValConst Ass1ValConst
   | A1ValVar Symbol
   | A1ValLam (Symbol, Ass1TypeVal) Ass1Val
@@ -168,6 +183,8 @@ data Ass1Val
 data Ass1ValConst
   = A1ValConstVadd Int
   | A1ValConstVconcat Int Int
+  | A1ValConstMtranspose Int Int
+  | A1ValConstMmult Int Int Int
   deriving stock (Eq, Show)
 
 data Ass0TypeVal
@@ -180,6 +197,7 @@ data Ass0PrimTypeVal
   = A0TyValInt
   | A0TyValBool
   | A0TyValVec Int
+  | A0TyValMat Int Int
   deriving stock (Eq, Show)
 
 data Ass1TypeVal
@@ -191,6 +209,7 @@ data Ass1PrimTypeVal
   = A1TyValInt
   | A1TyValBool
   | A1TyValVec Int
+  | A1TyValMat Int Int
   deriving stock (Eq, Show)
 
 data Type0Equation
@@ -203,6 +222,7 @@ data Type0PrimEquation
   = TyEq0Int
   | TyEq0Bool
   | TyEq0Vec Int
+  | TyEq0Mat Int Int
   deriving stock (Eq, Show)
 
 data Type1Equation
@@ -214,6 +234,7 @@ data Type1PrimEquation
   = TyEq1Int
   | TyEq1Bool
   | TyEq1Vec Ass0Expr Ass0Expr
+  | TyEq1Mat Ass0Expr Ass0Expr Ass0Expr Ass0Expr
   deriving stock (Eq, Show)
 
 type Env0 = Map Var EnvEntry
@@ -230,6 +251,7 @@ decomposeType0Equation = \case
       TyEq0Int -> prims A0TyInt
       TyEq0Bool -> prims A0TyBool
       TyEq0Vec n -> prims (A0TyVec n)
+      TyEq0Mat m n -> prims (A0TyMat m n)
   TyEq0Code ty1eq ->
     let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
      in (A0TyCode a1tye1, A0TyCode a1tye2)
@@ -247,6 +269,7 @@ decomposeType1Equation = \case
       TyEq1Int -> prims A1TyInt
       TyEq1Bool -> prims A1TyBool
       TyEq1Vec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
+      TyEq1Mat a0e11 a0e12 a0e21 a0e22 -> (A1TyPrim (A1TyMat a0e11 a0e12), A1TyPrim (A1TyMat a0e21 a0e22))
   TyEq1Arrow ty1eqDom ty1eqCod ->
     let (a1tye11, a1tye21) = decomposeType1Equation ty1eqDom
         (a1tye12, a1tye22) = decomposeType1Equation ty1eqCod

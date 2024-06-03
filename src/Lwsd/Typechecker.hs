@@ -13,6 +13,8 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Data.Either.Extra
 import Data.List qualified as List
+import Data.Tuple.Extra
+import Lwsd.Matrix qualified as Matrix
 import Lwsd.Subst
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
@@ -43,6 +45,7 @@ makeEquation0 trav a0tye1 a0tye2 =
           (A0TyInt, A0TyInt) -> pure TyEq0Int
           (A0TyBool, A0TyBool) -> pure TyEq0Bool
           (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure $ TyEq0Vec n1
+          (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> pure $ TyEq0Mat m1 n1
           _ -> typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
     (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
       case (x1opt, x2opt) of
@@ -77,6 +80,7 @@ makeEquation1 trav a1tye1 a1tye2 =
           (A1TyInt, A1TyInt) -> pure TyEq1Int
           (A1TyBool, A1TyBool) -> pure TyEq1Bool
           (A1TyVec a0e1, A1TyVec a0e2) -> pure $ TyEq1Vec a0e1 a0e2
+          (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) -> pure $ TyEq1Mat a0e11 a0e12 a0e21 a0e22
           _ -> typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
     (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
       ty1eqDom <- makeEquation1 trav a1tye11 a1tye21
@@ -88,11 +92,16 @@ makeEquation1 trav a1tye1 a1tye2 =
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
   Literal lit -> do
-    let a0tye =
-          case lit of
-            LitInt _ -> A0TyPrim A0TyInt
-            LitVec v -> A0TyPrim (A0TyVec (Vector.length v))
-    pure (a0tye, A0Literal lit)
+    (a0tye, alit) <-
+      case lit of
+        LitInt n -> pure (A0TyPrim A0TyInt, ALitInt n)
+        LitVec ns -> do
+          let vec = Vector.fromList ns
+          pure (A0TyPrim (A0TyVec (Vector.length vec)), ALitVec vec)
+        LitMat nns -> do
+          mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nns
+          pure (A0TyPrim (uncurry A0TyMat (Matrix.size mat)), ALitMat mat)
+    pure (a0tye, A0Literal alit)
   Var x -> do
     entry <- findVar trav x tyEnv
     case entry of
@@ -135,11 +144,17 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
 typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
 typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
   Literal lit -> do
-    let a1tye =
+    (a1tye, alit) <-
           case lit of
-            LitInt _ -> A1TyPrim A1TyInt
-            LitVec v -> A1TyPrim (A1TyVec (A0Literal (LitInt (Vector.length v))))
-    pure (a1tye, A1Literal lit)
+            LitInt n ->
+              pure (A1TyPrim A1TyInt, ALitInt n)
+            LitVec ns -> do
+              let vec = Vector.fromList ns
+              pure (A1TyPrim (A1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)
+            LitMat nss -> do
+              mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nss
+              pure (A1TyPrim (uncurry A1TyMat (both (A0Literal . ALitInt) (Matrix.size mat))), ALitMat mat)
+    pure (a1tye, A1Literal alit)
   Var x -> do
     entry <- findVar trav x tyEnv
     case entry of
@@ -179,6 +194,16 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
       A0TyCode a1tye -> pure (a1tye, A1Escape a0e1)
       _ -> typeError trav $ NotACodeType a0tye1
 
+validateIntTypedExpr :: trav -> (Ass0TypeExpr, Ass0Expr) -> M trav Ass0Expr
+validateIntTypedExpr trav = \case
+  (A0TyPrim A0TyInt, a0e) -> pure a0e
+  (a0tye, _) -> typeError trav $ NotAnIntTypedArgAtStage1 a0tye
+
+validateIntLiteral :: trav -> (Ass0TypeExpr, Ass0Expr) -> M trav Int
+validateIntLiteral trav = \case
+  (A0TyPrim A0TyInt, A0Literal (ALitInt n)) -> pure n
+  (_a0tye, a0e) -> typeError trav $ NotAnIntLitArgAtStage0 a0e
+
 typecheckTypeExpr0 :: trav -> TypeEnv -> TypeExpr -> M trav Ass0TypeExpr
 typecheckTypeExpr0 trav tyEnv (TypeExpr _loc tyeMain) = case tyeMain of -- TODO: use `loc`
   TyName tyName args -> do
@@ -193,10 +218,13 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr _loc tyeMain) = case tyeMain of -- TODO:
       case (tyName, results) of
         ("Int", []) -> pure A0TyInt
         ("Bool", []) -> pure A0TyBool
-        ("Vec", [arg]) ->
-          case arg of
-            (A0TyPrim A0TyInt, A0Literal (LitInt n)) -> pure $ A0TyVec n
-            (_a0tye, a0e) -> typeError trav $ NotAnIntLitArgOfVecAtStage0 a0e
+        ("Vec", [arg]) -> do
+          n <- validateIntLiteral trav arg
+          pure $ A0TyVec n
+        ("Mat", [arg1, arg2]) -> do
+          m <- validateIntLiteral trav arg1
+          n <- validateIntLiteral trav arg2
+          pure $ A0TyMat m n
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 tyName (List.length results)
     pure $ A0TyPrim tyPrim
   TyArrow (xOpt, tye1) tye2 -> do
@@ -224,10 +252,13 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr _loc tyeMain) = case tyeMain of -- TODO:
       case (tyName, results) of
         ("Int", []) -> pure A1TyInt
         ("Bool", []) -> pure A1TyBool
-        ("Vec", [(a0tye, a0e)]) ->
-          case a0tye of
-            A0TyPrim A0TyInt -> pure $ A1TyVec a0e
-            _ -> typeError trav $ NotAnIntTypedArgOfVecAtStage1 a0tye
+        ("Vec", [arg]) -> do
+          a0e <- validateIntTypedExpr trav arg
+          pure $ A1TyVec a0e
+        ("Mat", [arg1, arg2]) -> do
+          a0e1 <- validateIntTypedExpr trav arg1
+          a0e2 <- validateIntTypedExpr trav arg2
+          pure $ A1TyMat a0e1 a0e2
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 tyName (List.length results)
     pure $ A1TyPrim a1tyPrim
   TyArrow (xOpt, tye1) tye2 -> do

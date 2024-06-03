@@ -15,6 +15,8 @@ import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Lwsd.BuiltIn qualified as BuiltIn
+import Lwsd.Matrix (Matrix)
+import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
 import Lwsd.Token (LocationInFile, Span (..))
 import Lwsd.Token qualified as Token
@@ -27,6 +29,7 @@ data Bug
   | NotACodeValue Ass0Val
   | NotAnInteger (Maybe Var) Ass0Val
   | NotAVector Var Ass0Val
+  | NotAMatrix Var Ass0Val
   | FoundSymbol Var Symbol
   | FoundAss0Val Var Ass0Val
   | InconsistentAppBuiltIn BuiltIn
@@ -96,15 +99,22 @@ findInt0 :: Env0 -> Var -> M Int
 findInt0 env x = do
   a0v <- findVal0 env x
   case a0v of
-    A0ValLiteral (LitInt n) -> pure n
+    A0ValLiteral (ALitInt n) -> pure n
     _ -> bug $ NotAnInteger (Just x) a0v
 
 findVec0 :: Env0 -> Var -> M Vector
 findVec0 env x = do
   a0v <- findVal0 env x
   case a0v of
-    A0ValLiteral (LitVec v) -> pure v
+    A0ValLiteral (ALitVec v) -> pure v
     _ -> bug $ NotAVector x a0v
+
+findMat0 :: Env0 -> Var -> M Matrix
+findMat0 env x = do
+  a0v <- findVal0 env x
+  case a0v of
+    A0ValLiteral (ALitMat mat) -> pure mat
+    _ -> bug $ NotAMatrix x a0v
 
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
@@ -115,7 +125,7 @@ evalExpr0 env = \case
       BIAdd x1 x2 -> do
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
-        pure $ A0ValLiteral (LitInt (n1 + n2))
+        pure $ A0ValLiteral (ALitInt (n1 + n2))
       BIGenVadd x1 -> do
         n1 <- findInt0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
@@ -123,17 +133,37 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2))
+      BIGenMtranspose x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValBracket (A1ValConst (A1ValConstMtranspose n1 n2))
+      BIGenMmult x1 x2 x3 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        n3 <- findInt0 env x3
+        pure $ A0ValBracket (A1ValConst (A1ValConstMmult n1 n2 n3))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
         case Vector.add n v1 v2 of
-          Just v -> pure $ A0ValLiteral (LitVec v)
+          Just v -> pure $ A0ValLiteral (ALitVec v)
           Nothing -> bug $ InconsistentAppBuiltIn bi
       BIVconcat m n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
         case Vector.concat m n v1 v2 of
-          Just v -> pure $ A0ValLiteral (LitVec v)
+          Just v -> pure $ A0ValLiteral (ALitVec v)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
+      BIMtranspose m n x1 -> do
+        mat1 <- findMat0 env x1
+        case Matrix.transpose m n mat1 of
+          Just mat -> pure $ A0ValLiteral (ALitMat mat)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
+      BIMmult k m n x1 x2 -> do
+        mat1 <- findMat0 env x1
+        mat2 <- findMat0 env x2
+        case Matrix.mult k m n mat1 mat2 of
+          Just mat -> pure $ A0ValLiteral (ALitMat mat)
           Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
     findVal0 env x
@@ -214,12 +244,18 @@ evalTypeExpr0 env = \case
         A0TyInt -> A0TyValInt
         A0TyBool -> A0TyValBool
         A0TyVec n -> A0TyValVec n
+        A0TyMat m n -> A0TyValMat m n
   A0TyArrow (xOpt, a0tye1) a0tye2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0TyValArrow (xOpt, a0tyv1) a0tye2
   A0TyCode a1tye1 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1
+
+validateIntLiteral :: Ass0Val -> M Int
+validateIntLiteral = \case
+  A0ValLiteral (ALitInt n) -> pure n
+  a0v -> bug $ NotAnInteger Nothing a0v
 
 evalTypeExpr1 :: Env0 -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case
@@ -229,10 +265,12 @@ evalTypeExpr1 env = \case
         A1TyInt -> pure A1TyValInt
         A1TyBool -> pure A1TyValBool
         A1TyVec a0e1 -> do
-          a0v <- evalExpr0 env a0e1
-          case a0v of
-            A0ValLiteral (LitInt n) -> pure $ A1TyValVec n
-            _ -> bug $ NotAnInteger Nothing a0v
+          n <- validateIntLiteral =<< evalExpr0 env a0e1
+          pure $ A1TyValVec n
+        A1TyMat a0e1 a0e2 -> do
+          m <- validateIntLiteral =<< evalExpr0 env a0e1
+          n <- validateIntLiteral =<< evalExpr0 env a0e2
+          pure $ A1TyValMat m n
   A1TyArrow a1tye1 a1tye2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
@@ -245,6 +283,8 @@ unliftVal = \case
     case c of
       A1ValConstVadd n -> BuiltIn.ass0exprVadd n
       A1ValConstVconcat m n -> BuiltIn.ass0exprVconcat m n
+      A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
+      A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
   A1ValVar symb -> A0Var (symbolToVar symb)
   A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
   A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)
@@ -257,5 +297,6 @@ unliftTypeVal = \case
         A1TyValInt -> A0TyInt
         A1TyValBool -> A0TyBool
         A1TyValVec n -> A0TyVec n
+        A1TyValMat m n -> A0TyMat m n
   A1TyValArrow a1tyv1 a1tyv2 ->
     A0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
