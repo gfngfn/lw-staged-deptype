@@ -76,9 +76,9 @@ initialTypeEnv =
       ("a", tyInt)
         -:> ("b", tyInt)
         -:> A0TyCode
-        ( ty1Mat (A0Var "a") (A0Var "b")
-            ==> ty1Mat (A0Var "b") (A0Var "a")
-        )
+          ( ty1Mat (A0Var "a") (A0Var "b")
+              ==> ty1Mat (A0Var "b") (A0Var "a")
+          )
 
     tyGenMmult :: Ass0TypeExpr
     tyGenMmult =
