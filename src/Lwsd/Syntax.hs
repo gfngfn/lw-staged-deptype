@@ -65,6 +65,8 @@ data Literal
 
 data BuiltIn
   = BIAdd Var Var
+  | BISub Var Var
+  | BIMult Var Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
   | BIGenMtranspose Var Var

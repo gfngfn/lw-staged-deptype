@@ -74,6 +74,8 @@ instance Disp Literal where
 instance Disp BuiltIn where
   dispGen _ = \case
     BIAdd x1 x2 -> "ADD(" <> disps [x1, x2] <> ")"
+    BISub x1 x2 -> "SUB(" <> disps [x1, x2] <> ")"
+    BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
