@@ -78,6 +78,7 @@ instance Disp BuiltIn where
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
     BIGenMmult x1 x2 x3 -> "GEN_MMULT(" <> disps [x1, x2, x3] <> ")"
+    BIGenMconcatVert x1 x2 x3 -> "GEN_MCONCAT_VERT(" <> disps [x1, x2, x3] <> ")"
     BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
     BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
     BIMtranspose m n x1 -> "MTRANSPOSE@{" <> disps [m, n] <> "}(" <> disp x1 <> ")"
@@ -250,6 +251,7 @@ instance Disp Ass1ValConst where
     A1ValConstVconcat m n -> "vconcat@{" <> disps [m, n] <> "}"
     A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
     A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
+    A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
 
 instance Disp Ass1Val where
   dispGen req = \case

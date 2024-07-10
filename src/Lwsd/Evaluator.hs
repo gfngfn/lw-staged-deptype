@@ -142,6 +142,11 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         n3 <- findInt0 env x3
         pure $ A0ValBracket (A1ValConst (A1ValConstMmult n1 n2 n3))
+      BIGenMconcatVert x1 x2 x3 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        n3 <- findInt0 env x3
+        pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2

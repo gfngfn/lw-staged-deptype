@@ -53,7 +53,8 @@ initialTypeEnv =
       ("gen_vadd", tyGenVadd),
       ("gen_vconcat", tyGenVconcat),
       ("gen_mtranspose", tyGenMtranspose),
-      ("gen_mmult", tyGenMmult)
+      ("gen_mmult", tyGenMmult),
+      ("gen_mconcat_vert", tyGenMconcatVert)
     ]
   where
     tyGenVadd :: Ass0TypeExpr
@@ -68,7 +69,7 @@ initialTypeEnv =
         -:> A0TyCode
           ( ty1Vec (A0Var "a")
               ==> ty1Vec (A0Var "b")
-              ==> ty1Vec (A0App (A0App (A0Var "add") (A0Var "a")) (A0Var "b"))
+              ==> ty1Vec (a0add (A0Var "a") (A0Var "b"))
           )
 
     tyGenMtranspose :: Ass0TypeExpr
@@ -90,6 +91,20 @@ initialTypeEnv =
               ==> ty1Mat (A0Var "b") (A0Var "c")
               ==> ty1Mat (A0Var "a") (A0Var "c")
           )
+
+    tyGenMconcatVert :: Ass0TypeExpr
+    tyGenMconcatVert =
+      ("a", tyInt)
+        -:> ("b", tyInt)
+        -:> ("c", tyInt)
+        -:> A0TyCode
+          ( ty1Mat (A0Var "a") (A0Var "c")
+              ==> ty1Mat (A0Var "b") (A0Var "c")
+              ==> ty1Mat (a0add (A0Var "a") (A0Var "b")) (A0Var "c")
+          )
+
+    a0add :: Ass0Expr -> Ass0Expr -> Ass0Expr
+    a0add a0e1 = A0App (A0App (A0Var "add") a0e1)
 
 tyValInt :: Ass0TypeVal
 tyValInt = A0TyValPrim A0TyValInt
@@ -128,6 +143,9 @@ ass0valGenMtranspose = clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIGenMtr
 ass0valGenMmult :: Ass0Val
 ass0valGenMmult = clo "x1" tyValInt (lam "x2" tyInt (lam "x3" tyInt (A0AppBuiltIn (BIGenMmult "x1" "x2" "x3"))))
 
+ass0valGenMconcatVert :: Ass0Val
+ass0valGenMconcatVert = clo "x1" tyValInt (lam "x2" tyInt (lam "x3" tyInt (A0AppBuiltIn (BIGenMconcatVert "x1" "x2" "x3"))))
+
 initialEnv :: Env0
 initialEnv =
   List.foldl'
@@ -137,5 +155,6 @@ initialEnv =
       ("gen_vadd", ass0valGenVadd),
       ("gen_vconcat", ass0valGenVconcat),
       ("gen_mtranspose", ass0valGenMtranspose),
-      ("gen_mmult", ass0valGenMmult)
+      ("gen_mmult", ass0valGenMmult),
+      ("gen_mconcat_vert", ass0valGenMconcatVert)
     ]
