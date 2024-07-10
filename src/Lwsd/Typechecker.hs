@@ -17,6 +17,7 @@ import Data.Tuple.Extra
 import Lwsd.Matrix qualified as Matrix
 import Lwsd.Subst
 import Lwsd.Syntax
+import Lwsd.Token (Span)
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.TypeError
@@ -36,40 +37,40 @@ findVar :: trav -> Var -> TypeEnv -> M trav TypeEnv.Entry
 findVar trav x tyEnv =
   lift $ maybeToEither (UnboundVar x, trav) $ TypeEnv.findVar x tyEnv
 
-makeEquation0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Type0Equation
-makeEquation0 trav a0tye1 a0tye2 =
-  case (a0tye1, a0tye2) of
-    (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) ->
-      TyEq0Prim
-        <$> case (a0tyPrim1, a0tyPrim2) of
-          (A0TyInt, A0TyInt) -> pure TyEq0Int
-          (A0TyBool, A0TyBool) -> pure TyEq0Bool
-          (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure $ TyEq0Vec n1
-          (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> pure $ TyEq0Mat m1 n1
-          _ -> typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
-    (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
-      case (x1opt, x2opt) of
-        (Nothing, Nothing) -> do
-          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
-          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
-          pure $ TyEq0Arrow Nothing ty0eqDom ty0eqCod
-        (Just x1, Nothing) -> do
-          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
-          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
-          pure $ TyEq0Arrow (Just x1) ty0eqDom ty0eqCod
-        (Nothing, Just x2) -> do
-          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
-          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
-          pure $ TyEq0Arrow (Just x2) ty0eqDom ty0eqCod
-        (Just x1, Just x2) -> do
-          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
-          ty0eqCod <- makeEquation0 trav a0tye12 (subst0 (A0Var x1) x2 a0tye22)
-          pure $ TyEq0Arrow (Just x1) ty0eqDom ty0eqCod
-    (A0TyCode a1tye1, A0TyCode a1tye2) -> do
-      ty1eq <- makeEquation1 trav a1tye1 a1tye2
-      pure $ TyEq0Code ty1eq
-    _ ->
-      typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
+--makeEquation0 :: trav -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Type0Equation
+--makeEquation0 trav a0tye1 a0tye2 =
+--  case (a0tye1, a0tye2) of
+--    (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) ->
+--      TyEq0Prim
+--        <$> case (a0tyPrim1, a0tyPrim2) of
+--          (A0TyInt, A0TyInt) -> pure TyEq0Int
+--          (A0TyBool, A0TyBool) -> pure TyEq0Bool
+--          (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure $ TyEq0Vec n1
+--          (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> pure $ TyEq0Mat m1 n1
+--          _ -> typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
+--    (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
+--      case (x1opt, x2opt) of
+--        (Nothing, Nothing) -> do
+--          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
+--          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
+--          pure $ TyEq0Arrow Nothing ty0eqDom ty0eqCod
+--        (Just x1, Nothing) -> do
+--          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
+--          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
+--          pure $ TyEq0Arrow (Just x1) ty0eqDom ty0eqCod
+--        (Nothing, Just x2) -> do
+--          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
+--          ty0eqCod <- makeEquation0 trav a0tye12 a0tye22
+--          pure $ TyEq0Arrow (Just x2) ty0eqDom ty0eqCod
+--        (Just x1, Just x2) -> do
+--          ty0eqDom <- makeEquation0 trav a0tye11 a0tye21
+--          ty0eqCod <- makeEquation0 trav a0tye12 (subst0 (A0Var x1) x2 a0tye22)
+--          pure $ TyEq0Arrow (Just x1) ty0eqDom ty0eqCod
+--    (A0TyCode a1tye1, A0TyCode a1tye2) -> do
+--      ty1eq <- makeEquation1 trav a1tye1 a1tye2
+--      pure $ TyEq0Code ty1eq
+--    _ ->
+--      typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
 
 makeEquation1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> M trav Type1Equation
 makeEquation1 trav a1tye1 a1tye2 =
@@ -88,6 +89,10 @@ makeEquation1 trav a1tye1 a1tye2 =
       pure $ TyEq1Arrow ty1eqDom ty1eqCod
     _ ->
       typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
+
+makeAssertiveCast :: trav -> Span -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0Expr
+makeAssertiveCast _trav _loc _a0tye1 _a0tye2 =
+  error "TODO: makeAssertiveCast"
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
@@ -117,15 +122,16 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
     case a0tye1 of
       A0TyArrow (x11opt, a0tye11) a0tye12 -> do
         TypecheckConfig {optimizeTrivialAssertion} <- ask
-        ty0eq <- makeEquation0 trav a0tye11 a0tye2
-        let a0tye12' =
-              case x11opt of
-                Just x11 -> subst0 a0e2 x11 a0tye12
-                Nothing -> a0tye12
-        let a0e2' =
-              if optimizeTrivialAssertion && a0tye11 == a0tye2
-                then a0e2 -- Do slight shortcuts
-                else A0TyEqAssert loc ty0eq a0e2
+        a0eCast <- makeAssertiveCast trav loc a0tye11 a0tye2
+        let
+          a0tye12' =
+            case x11opt of
+              Just x11 -> subst0 a0e2 x11 a0tye12
+              Nothing -> a0tye12
+          a0e2' =
+            if optimizeTrivialAssertion && a0tye11 == a0tye2
+              then a0e2 -- Do slight shortcuts
+              else A0App a0eCast a0e2
         pure (a0tye12', A0App a0e1 a0e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage0 a0tye1
@@ -172,11 +178,10 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
         -- Embeds type equality assertion at stage 0 here!
         TypecheckConfig {optimizeTrivialAssertion} <- ask
         ty1eq <- makeEquation1 trav a1tye11 a1tye2
-        let ty0eq = TyEq0Code ty1eq
         let a1e2' =
               if optimizeTrivialAssertion && a1tye11 == a1tye2
                 then a1e2 -- Do slight shortcuts
-                else A1Escape (A0TyEqAssert loc ty0eq (A0Bracket a1e2))
+                else A1Escape (A0TyEqAssert loc ty1eq (A0Bracket a1e2))
         pure (a1tye12, A1App a1e1 a1e2')
       _ ->
         typeError trav $ NotAFunctionTypeForStage1 a1tye1

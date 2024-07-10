@@ -115,27 +115,27 @@ instance HasVar0 Ass1TypeExpr where
       go :: forall a. (HasVar0 a) => a -> a
       go = subst0 a0e x
 
-instance HasVar0 Type0Equation where
-  frees0 = \case
-    TyEq0Prim _ -> Set.empty
-    TyEq0Code ty1eq -> frees0 ty1eq
-    TyEq0Arrow yOpt ty0eqDom ty0eqCod ->
-      Set.union (frees0 ty0eqDom) $
-        case yOpt of
-          Nothing -> frees0 ty0eqCod
-          Just y -> Set.delete y (frees0 ty0eqDom)
-
-  subst0 a0e x = \case
-    TyEq0Prim ty0eqPrim -> TyEq0Prim ty0eqPrim
-    TyEq0Code ty1eq -> TyEq0Code (go ty1eq)
-    TyEq0Arrow yOpt ty0eqDom ty0eqCod ->
-      TyEq0Arrow yOpt (go ty0eqDom) $
-        case yOpt of
-          Nothing -> go ty0eqCod
-          Just y -> if y == x then ty0eqCod else go ty0eqCod
-    where
-      go :: forall a. (HasVar0 a) => a -> a
-      go = subst0 a0e x
+--instance HasVar0 Type0Equation where
+--  frees0 = \case
+--    TyEq0Prim _ -> Set.empty
+--    TyEq0Code ty1eq -> frees0 ty1eq
+--    TyEq0Arrow yOpt ty0eqDom ty0eqCod ->
+--      Set.union (frees0 ty0eqDom) $
+--        case yOpt of
+--          Nothing -> frees0 ty0eqCod
+--          Just y -> Set.delete y (frees0 ty0eqDom)
+--
+--  subst0 a0e x = \case
+--    TyEq0Prim ty0eqPrim -> TyEq0Prim ty0eqPrim
+--    TyEq0Code ty1eq -> TyEq0Code (go ty1eq)
+--    TyEq0Arrow yOpt ty0eqDom ty0eqCod ->
+--      TyEq0Arrow yOpt (go ty0eqDom) $
+--        case yOpt of
+--          Nothing -> go ty0eqCod
+--          Just y -> if y == x then ty0eqCod else go ty0eqCod
+--    where
+--      go :: forall a. (HasVar0 a) => a -> a
+--      go = subst0 a0e x
 
 instance HasVar0 Type1Equation where
   frees0 = \case
