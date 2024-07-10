@@ -6,6 +6,7 @@ module Lwsd.Matrix
     size,
     transpose,
     mult,
+    concatVert,
   )
 where
 
@@ -62,7 +63,7 @@ mult :: Int -> Int -> Int -> Matrix -> Matrix -> Maybe Matrix
 mult k m n mat1 mat2 = do
   let Matrix rows1 = mat1 -- `rows1`: a list of length k
   Matrix columns2 <- transpose m n mat2 -- `columns2`: a list of length n
-  if size mat1 == (k, m) || size mat2 == (m, n)
+  if size mat1 == (k, m) && size mat2 == (m, n)
     -- `mat1`: a matrix of size k × m
     -- `mat2`: a matrix of size m × n
     then pure $ Matrix [[calc row1 column2 | row1 <- rows1] | column2 <- columns2]
@@ -70,3 +71,12 @@ mult k m n mat1 mat2 = do
   where
     calc :: [Int] -> [Int] -> Int
     calc row column = List.foldl' (+) 0 $ zipWith (*) row column
+
+concatVert :: Int -> Int -> Int -> Matrix -> Matrix -> Maybe Matrix
+concatVert m1 m2 n mat1 mat2 =
+  if size mat1 == (m1, n) && size mat2 == (m2, n)
+    then pure $ Matrix (rows1 ++ rows2)
+    else Nothing
+  where
+    Matrix rows1 = mat1
+    Matrix rows2 = mat2

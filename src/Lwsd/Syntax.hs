@@ -65,14 +65,18 @@ data Literal
 
 data BuiltIn
   = BIAdd Var Var
+  | BISub Var Var
+  | BIMult Var Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
   | BIGenMtranspose Var Var
   | BIGenMmult Var Var Var
+  | BIGenMconcatVert Var Var Var
   | BIVadd Int Var Var
   | BIVconcat Int Int Var Var
   | BIMtranspose Int Int Var
   | BIMmult Int Int Int Var Var
+  | BIMconcatVert Int Int Int Var Var
   deriving stock (Eq, Show)
 
 data ExprF ann = Expr ann (ExprMain ann)
@@ -185,6 +189,7 @@ data Ass1ValConst
   | A1ValConstVconcat Int Int
   | A1ValConstMtranspose Int Int
   | A1ValConstMmult Int Int Int
+  | A1ValConstMconcatVert Int Int Int
   deriving stock (Eq, Show)
 
 data Ass0TypeVal

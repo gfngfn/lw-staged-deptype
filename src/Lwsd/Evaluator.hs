@@ -126,6 +126,14 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValLiteral (ALitInt (n1 + n2))
+      BISub x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValLiteral (ALitInt (n1 - n2))
+      BIMult x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValLiteral (ALitInt (n1 * n2))
       BIGenVadd x1 -> do
         n1 <- findInt0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
@@ -142,6 +150,11 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         n3 <- findInt0 env x3
         pure $ A0ValBracket (A1ValConst (A1ValConstMmult n1 n2 n3))
+      BIGenMconcatVert x1 x2 x3 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        n3 <- findInt0 env x3
+        pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
@@ -163,6 +176,12 @@ evalExpr0 env = \case
         mat1 <- findMat0 env x1
         mat2 <- findMat0 env x2
         case Matrix.mult k m n mat1 mat2 of
+          Just mat -> pure $ A0ValLiteral (ALitMat mat)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
+      BIMconcatVert m1 m2 n x1 x2 -> do
+        mat1 <- findMat0 env x1
+        mat2 <- findMat0 env x2
+        case Matrix.concatVert m1 m2 n mat1 mat2 of
           Just mat -> pure $ A0ValLiteral (ALitMat mat)
           Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
@@ -285,6 +304,7 @@ unliftVal = \case
       A1ValConstVconcat m n -> BuiltIn.ass0exprVconcat m n
       A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
+      A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
   A1ValVar symb -> A0Var (symbolToVar symb)
   A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
   A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)
