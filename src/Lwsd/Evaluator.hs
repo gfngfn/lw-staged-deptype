@@ -216,38 +216,6 @@ evalExpr0 env = \case
         let locInFilePair = getLocationInFile sourceSpec loc
         evalError $ AssertionFailure locInFilePair a1tyv1 a1tyv2
 
---    a0v0 <- evalExpr0 env a0e0
---    case ty0eq of
---      TyEq0Prim _ ->
---        -- Equalities on primitive types at stage-0 are all trivial:
---        pure a0v0
---      TyEq0Code ty1eq -> do
---        -- Judges equality of stage-1 types:
---        let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
---        a1tyv1 <- evalTypeExpr1 env a1tye1
---        a1tyv2 <- evalTypeExpr1 env a1tye2
---        if a1tyv1 == a1tyv2 -- We can use `==` for stage-1 types
---          then pure a0v0
---          else do
---            EvalState {sourceSpec} <- get
---            let locInFilePair = getLocationInFile sourceSpec loc
---            evalError $ AssertionFailure locInFilePair a1tyv1 a1tyv2
---      TyEq0Arrow xOpt ty0eqDom ty0eqCod -> do
---        -- Decomposes the equation into two:
---        x <-
---          case xOpt of
---            Just x' -> pure x'
---            Nothing -> symbolToVar <$> generateFreshSymbol
---        f <- symbolToVar <$> generateFreshSymbol
---        let (a0tye11, a0tye21) = decomposeType0Equation ty0eqDom
---        let (a0tye12, _) = decomposeType0Equation ty0eqCod
---        let a1tyeF = A0TyArrow (xOpt, a0tye11) a0tye12
---        let mainLam =
---              A0Lam
---                (x, a0tye21)
---                (A0TyEqAssert loc ty0eqCod (A0App (A0Var f) (A0TyEqAssert loc ty0eqDom (A0Var x))))
---        evalExpr0 env $ A0App (A0Lam (f, a1tyeF) mainLam) a0e0
-
 evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
   A1Literal lit ->
