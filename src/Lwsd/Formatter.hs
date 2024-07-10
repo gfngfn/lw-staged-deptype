@@ -109,10 +109,9 @@ instance Disp Ass0Expr where
        in if req <= Atomic then deepenParen doc else doc
     A0Bracket a1e1 ->
       "&" <> dispGen Atomic a1e1
-    A0TyEqAssert _loc ty1eq a0e0 ->
+    A0TyEqAssert _loc ty1eq ->
       let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
-          doc = group ("{&" <> dispGen Atomic a1tye1 <+> " ▷ &" <+> dispGen Atomic a1tye2 <> "}" <> line <> disp a0e0)
-       in if req <= FunDomain then deepenParen doc else doc
+       in group ("{&" <> dispGen Atomic a1tye1 <+> " ▷ &" <+> dispGen Atomic a1tye2 <> "}")
 
 instance Disp Ass1Expr where
   dispGen req = \case

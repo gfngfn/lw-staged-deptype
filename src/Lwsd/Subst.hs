@@ -25,7 +25,7 @@ instance HasVar0 Ass0Expr where
     A0Lam (y, a0tye1) a0e2 -> Set.union (frees0 a0tye1) (Set.delete y (frees0 a0e2))
     A0App a0e1 a0e2 -> Set.union (frees0 a0e1) (frees0 a0e2)
     A0Bracket a1e1 -> frees0 a1e1
-    A0TyEqAssert _ ty0eq a0e0 -> Set.union (frees0 ty0eq) (frees0 a0e0)
+    A0TyEqAssert _ ty0eq -> frees0 ty0eq
 
   subst0 a0e x = \case
     A0Literal lit ->
@@ -40,8 +40,8 @@ instance HasVar0 Ass0Expr where
       A0App (go a0e1) (go a0e2)
     A0Bracket a1e1 ->
       A0Bracket (go a1e1)
-    A0TyEqAssert loc ty0eq a0e0 ->
-      A0TyEqAssert loc (go ty0eq) (go a0e0)
+    A0TyEqAssert loc ty0eq ->
+      A0TyEqAssert loc (go ty0eq)
     where
       go :: forall a. (HasVar0 a) => a -> a
       go = subst0 a0e x

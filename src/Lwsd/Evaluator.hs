@@ -75,6 +75,11 @@ generateFreshSymbol = do
   put $ currentState {nextSymbolIndex = nextSymbolIndex + 1}
   pure $ Symbol nextSymbolIndex
 
+generateIdentityFunction :: Env0 -> Ass0TypeVal -> M Ass0Val
+generateIdentityFunction env a0tyv = do
+  x <- symbolToVar <$> generateFreshSymbol
+  pure $ A0ValLam (x, a0tyv) (A0Var x) env
+
 findEntry :: Env0 -> Var -> M EnvEntry
 findEntry env x =
   case Map.lookup x env of
@@ -200,12 +205,12 @@ evalExpr0 env = \case
   A0Bracket a1e1 -> do
     a1v1 <- evalExpr1 env a1e1
     pure $ A0ValBracket a1v1
-  A0TyEqAssert loc ty1eq a0e0 -> do
+  A0TyEqAssert loc ty1eq -> do
     let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
     if a1tyv1 == a1tyv2 -- We can use `==` for stage-1 types
-      then evalExpr0 env a0e0
+      then generateIdentityFunction env (A0TyValCode a1tyv1)
       else do
         EvalState {sourceSpec} <- get
         let locInFilePair = getLocationInFile sourceSpec loc

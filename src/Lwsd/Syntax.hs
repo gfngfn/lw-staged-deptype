@@ -134,7 +134,7 @@ data Ass0Expr
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
-  | A0TyEqAssert Span Type1Equation Ass0Expr
+  | A0TyEqAssert Span Type1Equation
   deriving stock (Eq, Show)
 
 data Ass1Expr
