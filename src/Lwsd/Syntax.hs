@@ -73,6 +73,7 @@ data BuiltIn
   | BIVconcat Int Int Var Var
   | BIMtranspose Int Int Var
   | BIMmult Int Int Int Var Var
+  | BIMconcatVert Int Int Int Var Var
   deriving stock (Eq, Show)
 
 data ExprF ann = Expr ann (ExprMain ann)

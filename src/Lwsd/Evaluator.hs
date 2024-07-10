@@ -165,6 +165,12 @@ evalExpr0 env = \case
         case Matrix.mult k m n mat1 mat2 of
           Just mat -> pure $ A0ValLiteral (ALitMat mat)
           Nothing -> bug $ InconsistentAppBuiltIn bi
+      BIMconcatVert m1 m2 n x1 x2 -> do
+        mat1 <- findMat0 env x1
+        mat2 <- findMat0 env x2
+        case Matrix.concatVert m1 m2 n mat1 mat2 of
+          Just mat -> pure $ A0ValLiteral (ALitMat mat)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
     findVal0 env x
   A0Lam (x, a0tye1) a0e2 -> do
