@@ -143,12 +143,15 @@ ass0exprMconcatVert m1 m2 n =
 
 ass0exprMmult :: Int -> Int -> Int -> Ass0Expr
 ass0exprMmult k m n =
-  lam "mat1" (ty0Mat k m)
-    (lam "mat2" (ty0Mat m n)
-      (A0AppBuiltIn (BIMmult k m n "mat1" "mat2")))
+  lam "mat1" (ty0Mat k m) $
+    lam "mat2" (ty0Mat m n) $
+      A0AppBuiltIn (BIMmult k m n "mat1" "mat2")
 
 ass0valBinaryIntArith :: (Var -> Var -> BuiltIn) -> Ass0Val
-ass0valBinaryIntArith f = clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (f "x1" "x2")))
+ass0valBinaryIntArith f =
+  clo "x1" tyValInt $
+    lam "x2" tyInt $
+      A0AppBuiltIn (f "x1" "x2")
 
 ass0valAdd :: Ass0Val
 ass0valAdd = ass0valBinaryIntArith BIAdd
@@ -160,19 +163,35 @@ ass0valMult :: Ass0Val
 ass0valMult = ass0valBinaryIntArith BIMult
 
 ass0valGenVadd :: Ass0Val
-ass0valGenVadd = clo "x1" tyValInt (A0AppBuiltIn (BIGenVadd "x1"))
+ass0valGenVadd =
+  clo "x1" tyValInt $
+    A0AppBuiltIn (BIGenVadd "x1")
 
 ass0valGenVconcat :: Ass0Val
-ass0valGenVconcat = clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIGenVconcat "x1" "x2")))
+ass0valGenVconcat =
+  clo "x1" tyValInt $
+    lam "x2" tyInt $
+      A0AppBuiltIn (BIGenVconcat "x1" "x2")
 
 ass0valGenMtranspose :: Ass0Val
-ass0valGenMtranspose = clo "x1" tyValInt (lam "x2" tyInt (A0AppBuiltIn (BIGenMtranspose "x1" "x2")))
+ass0valGenMtranspose =
+  clo "x1" tyValInt $
+    lam "x2" tyInt $
+      A0AppBuiltIn (BIGenMtranspose "x1" "x2")
 
 ass0valGenMmult :: Ass0Val
-ass0valGenMmult = clo "x1" tyValInt (lam "x2" tyInt (lam "x3" tyInt (A0AppBuiltIn (BIGenMmult "x1" "x2" "x3"))))
+ass0valGenMmult =
+  clo "x1" tyValInt $
+    lam "x2" tyInt $
+      lam "x3" tyInt $
+        A0AppBuiltIn (BIGenMmult "x1" "x2" "x3")
 
 ass0valGenMconcatVert :: Ass0Val
-ass0valGenMconcatVert = clo "x1" tyValInt (lam "x2" tyInt (lam "x3" tyInt (A0AppBuiltIn (BIGenMconcatVert "x1" "x2" "x3"))))
+ass0valGenMconcatVert =
+  clo "x1" tyValInt $
+    lam "x2" tyInt $
+      lam "x3" tyInt $
+        A0AppBuiltIn (BIGenMconcatVert "x1" "x2" "x3")
 
 initialEnv :: Env0
 initialEnv =
