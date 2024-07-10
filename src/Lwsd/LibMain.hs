@@ -4,7 +4,6 @@ module Lwsd.LibMain
   )
 where
 
-import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
@@ -15,7 +14,7 @@ import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.Parser qualified as Parser
 import Lwsd.Syntax
-import Lwsd.Typechecker (TypecheckConfig (..))
+import Lwsd.Typechecker (TypecheckState (..))
 import Lwsd.Typechecker qualified as Typechecker
 import Prelude
 
@@ -36,7 +35,7 @@ handle Argument {inputFilePath, optimize, displayWidth} = do
       putStrLn "-------- parse error: --------"
       putStrLn err
     Right e -> do
-      case runReaderT (Typechecker.typecheckExpr0 id BuiltIn.initialTypeEnv e) typecheckerConfig of
+      case evalStateT (Typechecker.typecheckExpr0 id BuiltIn.initialTypeEnv e) typecheckerConfig of
         Left (tyErr, _travMod) -> do
           putStrLn "-------- type error: --------"
           putRenderedLines tyErr
@@ -71,5 +70,5 @@ handle Argument {inputFilePath, optimize, displayWidth} = do
     putRenderedLines x =
       putStrLn $ Text.unpack $ Formatter.render displayWidth x
 
-    typecheckerConfig :: TypecheckConfig
-    typecheckerConfig = TypecheckConfig {optimizeTrivialAssertion = optimize}
+    typecheckerConfig :: TypecheckState
+    typecheckerConfig = TypecheckState {optimizeTrivialAssertion = optimize, nextVarIndex = 0}

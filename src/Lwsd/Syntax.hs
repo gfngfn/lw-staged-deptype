@@ -16,8 +16,6 @@ module Lwsd.Syntax
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
-    Type0Equation (..),
-    Type0PrimEquation (..),
     Type1Equation (..),
     Type1PrimEquation (..),
     Ass0TypeExpr (..),
@@ -33,7 +31,6 @@ module Lwsd.Syntax
     Ass1PrimTypeVal (..),
     Env0,
     EnvEntry (..),
-    decomposeType0Equation,
     decomposeType1Equation,
   )
 where
@@ -134,7 +131,7 @@ data Ass0Expr
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
-  | A0TyEqAssert Span Type0Equation Ass0Expr
+  | A0TyEqAssert Span Type1Equation
   deriving stock (Eq, Show)
 
 data Ass1Expr
@@ -217,19 +214,6 @@ data Ass1PrimTypeVal
   | A1TyValMat Int Int
   deriving stock (Eq, Show)
 
-data Type0Equation
-  = TyEq0Prim Type0PrimEquation
-  | TyEq0Code Type1Equation
-  | TyEq0Arrow (Maybe Var) Type0Equation Type0Equation
-  deriving stock (Eq, Show)
-
-data Type0PrimEquation
-  = TyEq0Int
-  | TyEq0Bool
-  | TyEq0Vec Int
-  | TyEq0Mat Int Int
-  deriving stock (Eq, Show)
-
 data Type1Equation
   = TyEq1Prim Type1PrimEquation
   | TyEq1Arrow Type1Equation Type1Equation
@@ -248,24 +232,6 @@ data EnvEntry
   = Ass0ValEntry Ass0Val
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
-
-decomposeType0Equation :: Type0Equation -> (Ass0TypeExpr, Ass0TypeExpr)
-decomposeType0Equation = \case
-  TyEq0Prim ty0eqPrim ->
-    case ty0eqPrim of
-      TyEq0Int -> prims A0TyInt
-      TyEq0Bool -> prims A0TyBool
-      TyEq0Vec n -> prims (A0TyVec n)
-      TyEq0Mat m n -> prims (A0TyMat m n)
-  TyEq0Code ty1eq ->
-    let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
-     in (A0TyCode a1tye1, A0TyCode a1tye2)
-  TyEq0Arrow xOpt ty0eqDom ty0eqCod ->
-    let (a0tye11, a0tye21) = decomposeType0Equation ty0eqDom
-        (a0tye12, a0tye22) = decomposeType0Equation ty0eqCod
-     in (A0TyArrow (xOpt, a0tye11) a0tye12, A0TyArrow (xOpt, a0tye21) a0tye22)
-  where
-    prims p = (A0TyPrim p, A0TyPrim p)
 
 decomposeType1Equation :: Type1Equation -> (Ass1TypeExpr, Ass1TypeExpr)
 decomposeType1Equation = \case
