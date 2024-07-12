@@ -53,6 +53,14 @@ lam binder e = expr (Lam binder e)
 app :: Expr0 -> Expr0 -> Expr0
 app e1 e2 = expr (App e1 e2)
 
+binOp :: Var -> Expr0 -> Expr0 -> Expr0
+binOp op e1 e2 = app (app (var op) e1) e2
+
+add, sub, mult :: Expr0 -> Expr0 -> Expr0
+add = binOp "+"
+sub = binOp "-"
+mult = binOp "*"
+
 bracket :: Expr0 -> Expr0
 bracket = expr . Bracket
 
@@ -127,6 +135,21 @@ spec = do
     it "parses escapes (2)" $
       parseExpr "f ~(g x)"
         `shouldBe` pure (app (var "f") (escape (app (var "g") (var "x"))))
+    it "parses binary operators (1)" $
+      parseExpr "2 + 3"
+        `shouldBe` pure (add (litInt 2) (litInt 3))
+    it "parses binary operators (2)" $
+      parseExpr "4 - 3 - 2"
+        `shouldBe` pure (sub (sub (litInt 4) (litInt 3)) (litInt 2))
+    it "parses binary operators (3)" $
+      parseExpr "2 + 3 * 4"
+        `shouldBe` pure (add (litInt 2) (mult (litInt 3) (litInt 4)))
+    it "parses binary operators (3)" $
+      parseExpr "f 2 + 3"
+        `shouldBe` pure (add (app (var "f") (litInt 2)) (litInt 3))
+    it "parses binary operators (4)" $
+      parseExpr "2 + f 3"
+        `shouldBe` pure (add (litInt 2) (app (var "f") (litInt 3)))
   describe "Parser.parseTypeExpr" $ do
     it "parses dependent function types (1)" $
       parseTypeExpr "(n : Int) -> Bool"

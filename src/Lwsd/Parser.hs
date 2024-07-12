@@ -6,6 +6,7 @@ where
 
 import Data.Either.Extra
 import Data.Functor
+import Data.List qualified as List
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Void (Void)
@@ -88,6 +89,13 @@ mat = makeMat <$> token TokMatLeft <*> rest
     nonemptyRow :: P [Int]
     nonemptyRow = (:) <$> noLoc int <*> Mp.many (token TokComma *> noLoc int)
 
+makeBinary :: Expr -> (Located Var, Expr) -> Expr
+makeBinary e1@(Expr loc1 _) (Located locBinOp binOp, e2@(Expr loc2 _)) =
+  Expr (mergeSpan locLeft loc2) (App (Expr locLeft (App eOp e1)) e2)
+  where
+    locLeft = mergeSpan loc1 locBinOp
+    eOp = Expr locBinOp (Var binOp)
+
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
   where
@@ -119,10 +127,27 @@ exprAtom, expr :: P Expr
         makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (App e1 e2)
 
+    mult :: P Expr
+    mult =
+      List.foldl' makeBinary <$> app <*> Mp.many (try ((,) <$> multOp <*> app))
+
+    multOp :: P (Located Var)
+    multOp =
+      (\loc -> Located loc "*") <$> token TokOpMult
+
+    add :: P Expr
+    add =
+      List.foldl' makeBinary <$> mult <*> Mp.many (try ((,) <$> addOp <*> mult))
+
+    addOp :: P (Located Var)
+    addOp =
+      try ((\loc -> Located loc "+") <$> token TokOpAdd)
+        <|> ((\loc -> Located loc "-") <$> token TokOpSub)
+
     lam :: P Expr
     lam =
       try (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
-        <|> app
+        <|> add
       where
         binder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
