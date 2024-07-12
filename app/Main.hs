@@ -16,7 +16,6 @@ main :: IO ()
 main = do
   arg <- execParser (info argumentParser briefDesc)
   wasSuccess <- handle arg
-  if wasSuccess then
-    exitSuccess
-  else
-    exitFailure
+  if wasSuccess
+    then exitSuccess
+    else exitFailure

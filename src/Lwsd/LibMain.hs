@@ -59,10 +59,9 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
                   putStrLn "-------- generated code: --------"
                   putRenderedLines a1v
                   let a0eRuntime = Evaluator.unliftVal a1v
-                  if compileTimeOnly then
-                    success
-                  else
-                    case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
+                  if compileTimeOnly
+                    then success
+                    else case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
                       Left err -> do
                         putStrLn "-------- eval error: --------"
                         putRenderedLines err
@@ -75,10 +74,9 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
                   putStrLn "-------- stage-0 result: --------"
                   putStrLn "(The stage-0 result was not a code value)"
                   putRenderedLines a0v
-                  if compileTimeOnly then
-                    success
-                  else
-                    failure
+                  if compileTimeOnly
+                    then success
+                    else failure
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines x =
