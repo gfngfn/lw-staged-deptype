@@ -50,9 +50,9 @@ initialTypeEnv =
   List.foldl'
     (\tyEnv (x, a0tye) -> TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye) tyEnv)
     TypeEnv.empty
-    [ ("add", tyInt --> tyInt --> tyInt),
-      ("sub", tyInt --> tyInt --> tyInt),
-      ("mult", tyInt --> tyInt --> tyInt),
+    [ ("+", tyInt --> tyInt --> tyInt),
+      ("-", tyInt --> tyInt --> tyInt),
+      ("*", tyInt --> tyInt --> tyInt),
       ("gen_vadd", tyGenVadd),
       ("gen_vconcat", tyGenVconcat),
       ("gen_mtranspose", tyGenMtranspose),
@@ -107,7 +107,7 @@ initialTypeEnv =
           )
 
     a0add :: Ass0Expr -> Ass0Expr -> Ass0Expr
-    a0add a0e1 = A0App (A0App (A0Var "add") a0e1)
+    a0add a0e1 = A0App (A0App (A0Var "+") a0e1)
 
 tyValInt :: Ass0TypeVal
 tyValInt = A0TyValPrim A0TyValInt
@@ -198,9 +198,9 @@ initialEnv =
   List.foldl'
     (\env (x, a0v) -> Map.insert x (Ass0ValEntry a0v) env)
     Map.empty
-    [ ("add", ass0valAdd),
-      ("sub", ass0valSub),
-      ("mult", ass0valMult),
+    [ ("+", ass0valAdd),
+      ("-", ass0valSub),
+      ("*", ass0valMult),
       ("gen_vadd", ass0valGenVadd),
       ("gen_vconcat", ass0valGenVconcat),
       ("gen_mtranspose", ass0valGenMtranspose),
