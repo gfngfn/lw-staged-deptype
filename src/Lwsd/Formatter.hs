@@ -111,7 +111,7 @@ instance Disp Ass0Expr where
       "&" <> dispGen Atomic a1e1
     A0TyEqAssert _loc ty1eq ->
       let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
-       in group ("{&" <> dispGen Atomic a1tye1 <+> " ▷ &" <+> dispGen Atomic a1tye2 <> "}")
+       in group ("{&(" <> disp a1tye1 <> ") ▷ &(" <> disp a1tye2 <> ")}")
 
 instance Disp Ass1Expr where
   dispGen req = \case
