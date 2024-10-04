@@ -21,12 +21,14 @@ import Prelude
 data Argument = Argument
   { inputFilePath :: String,
     optimize :: Bool,
-    displayWidth :: Int
+    displayWidth :: Int,
+    compileTimeOnly :: Bool
   }
   deriving (Read, Show)
 
-handle :: Argument -> IO ()
-handle Argument {inputFilePath, optimize, displayWidth} = do
+-- Returns a boolean that represents success or failure
+handle :: Argument -> IO Bool
+handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
   putStrLn "Lightweight Dependent Types via Staging"
   source <- TextIO.readFile inputFilePath
   let initialEvalState = Evaluator.initialState (SourceSpec source inputFilePath)
@@ -34,11 +36,13 @@ handle Argument {inputFilePath, optimize, displayWidth} = do
     Left err -> do
       putStrLn "-------- parse error: --------"
       putStrLn err
+      failure
     Right e -> do
       case evalStateT (Typechecker.typecheckExpr0 id BuiltIn.initialTypeEnv e) typecheckerConfig of
         Left (tyErr, _travMod) -> do
           putStrLn "-------- type error: --------"
           putRenderedLines tyErr
+          failure
         Right (a1tye, a0e) -> do
           putStrLn "-------- type: --------"
           putRenderedLines a1tye
@@ -48,23 +52,31 @@ handle Argument {inputFilePath, optimize, displayWidth} = do
             Left err -> do
               putStrLn "-------- error during compile-time code generation: --------"
               putRenderedLines err
+              failure
             Right a0v -> do
               case a0v of
                 A0ValBracket a1v -> do
                   putStrLn "-------- generated code: --------"
                   putRenderedLines a1v
                   let a0eRuntime = Evaluator.unliftVal a1v
-                  case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
-                    Left err -> do
-                      putStrLn "-------- eval error: --------"
-                      putRenderedLines err
-                    Right a0vRuntime -> do
-                      putStrLn "-------- result of runtime evaluation: --------"
-                      putRenderedLines a0vRuntime
+                  if compileTimeOnly
+                    then success
+                    else case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
+                      Left err -> do
+                        putStrLn "-------- eval error: --------"
+                        putRenderedLines err
+                        failure
+                      Right a0vRuntime -> do
+                        putStrLn "-------- result of runtime evaluation: --------"
+                        putRenderedLines a0vRuntime
+                        success
                 _ -> do
                   putStrLn "-------- stage-0 result: --------"
                   putStrLn "(The stage-0 result was not a code value)"
                   putRenderedLines a0v
+                  if compileTimeOnly
+                    then success
+                    else failure
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines x =
@@ -72,3 +84,6 @@ handle Argument {inputFilePath, optimize, displayWidth} = do
 
     typecheckerConfig :: TypecheckState
     typecheckerConfig = TypecheckState {optimizeTrivialAssertion = optimize, nextVarIndex = 0}
+
+    success = return True
+    failure = return False

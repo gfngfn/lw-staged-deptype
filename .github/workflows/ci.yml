@@ -71,6 +71,10 @@ jobs:
         run: |
           cabal build all
 
-      - name: "Run tests"
+      - name: "Run unit tests"
         run: |
           cabal test all
+
+      - name: "Run integration tests"
+        run: |
+          bash scripts/run-integration-tests.sh
