@@ -77,4 +77,4 @@ jobs:
 
       - name: "Run integration tests"
         run: |
-          cabal run lw-staged-deptype -- examples/mat.lwsd
+          bash scripts/run-integration-tests.sh
