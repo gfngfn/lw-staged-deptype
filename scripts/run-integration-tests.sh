@@ -5,14 +5,14 @@
 ERRORS=()
 for FILE in integration_tests/success/*.lwsd; do
     echo "======== $FILE (should pass) ========"
-    cabal run lw-staged-deptype -- "$FILE"
+    cabal run lw-staged-deptype -- --optimize "$FILE"
     if [ $? -ne 0 ]; then
         ERRORS+=("$FILE (should pass)")
     fi
 done
 for FILE in integration_tests/failure/*.lwsd; do
     echo "======== $FILE (should be rejected) ========"
-    cabal run lw-staged-deptype -- "$FILE"
+    cabal run lw-staged-deptype -- --optimize "$FILE"
     if [ $? -eq 0 ]; then
         ERRORS+=("$FILE (should be rejected)")
     fi
