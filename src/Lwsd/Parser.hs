@@ -7,7 +7,6 @@ where
 import Data.Either.Extra
 import Data.Functor
 import Data.List qualified as List
-import Data.Set qualified as Set
 import Data.Text (Text)
 import Lwsd.Syntax
 import Lwsd.Token (Token (..))
@@ -19,38 +18,32 @@ import Prelude
 
 type P a = GenP Token a
 
-noLoc :: P (Located a) -> P a
-noLoc p = (\(Located _ x) -> x) <$> p
-
 paren :: P a -> P a
 paren p = token TokLeftParen *> p <* token TokRightParen
 
 lower :: P (Located Text)
 lower =
-  Mp.token
+  expectToken
     ( \case
-        Located loc (TokLower x) -> Just $ Located loc x
+        TokLower x -> Just x
         _ -> Nothing
     )
-    Set.empty
 
 upper :: P (Located Text)
 upper =
-  Mp.token
+  expectToken
     ( \case
-        Located loc (TokUpper x) -> Just $ Located loc x
+        TokUpper x -> Just x
         _ -> Nothing
     )
-    Set.empty
 
 int :: P (Located Int)
 int =
-  Mp.token
+  expectToken
     ( \case
-        Located loc (TokInt n) -> Just $ Located loc n
+        TokInt n -> Just n
         _ -> Nothing
     )
-    Set.empty
 
 vec :: P (Located [Int])
 vec = makeVec <$> token TokVecLeft <*> rest
