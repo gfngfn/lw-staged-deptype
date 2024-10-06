@@ -13,6 +13,8 @@ import Control.Monad.Trans.State
 import Data.Either.Extra qualified as Either
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Lwsd.Matrix qualified as Matrix
 import Lwsd.Vector qualified as Vector
 import Surface.Syntax
@@ -109,11 +111,71 @@ type M a = Either BindingTimeError a
 analysisError :: BindingTimeError -> M a
 analysisError = Left
 
-occurs :: Var -> BIType -> Bool
-occurs = error "TODO: occurs"
+class HasVar a where
+  frees :: a -> Set Var
+  subst :: BExpr -> Var -> a -> a
 
-subst :: BExpr -> Var -> BIType -> BIType
-subst = error "TODO: subst"
+instance HasVar BIType where
+  frees (BIType _meta bityMain) =
+    case bityMain of
+      BITyInt -> Set.empty
+      BITyVecLit _ -> Set.empty
+      BITyVecExpr be -> frees be
+      BITyMatLit _ -> Set.empty
+      BITyMatExpr (be1, be2) -> Set.union (frees be1) (frees be2)
+      BITyArrow (Nothing, btye1) btye2 -> Set.union (frees btye1) (frees btye2)
+      BITyArrow (Just x1, btye1) btye2 -> Set.union (frees btye1) (Set.delete x1 (frees btye2))
+  subst be0 x (BIType meta bityMain) =
+    BIType meta $
+      case bityMain of
+        BITyInt -> bityMain
+        BITyVecLit _ -> bityMain
+        BITyVecExpr be -> BITyVecExpr (f be)
+        BITyMatLit _ -> bityMain
+        BITyMatExpr (be1, be2) -> BITyMatExpr (f be1, f be2)
+        BITyArrow (Nothing, btye1) btye2 -> BITyArrow (Nothing, f btye1) (f btye2)
+        BITyArrow (Just y, btye1) btye2 -> BITyArrow (Just y, f btye1) (if y == x then btye2 else f btye2)
+    where
+      f :: forall a. (HasVar a) => a -> a
+      f = subst be0 x
+
+instance HasVar BExpr where
+  frees (Expr _ann exprMain) =
+    case exprMain of
+      Literal _ -> Set.empty
+      Var x -> Set.singleton x
+      Lam (x, tye1) e2 -> Set.union (frees tye1) (Set.delete x (frees e2))
+      App e1 e2 -> Set.union (frees e1) (frees e2)
+      LetIn x e1 e2 -> Set.union (frees e1) (Set.delete x (frees e2))
+  subst be0 x be@(Expr ann exprMain) =
+    case exprMain of
+      Literal _ -> be
+      Var y -> if y == x then be0 else be
+      Lam (y, tye1) e2 -> Expr ann (Lam (y, f tye1) (if y == x then e2 else f e2))
+      App e1 e2 -> Expr ann (App (f e1) (f e2))
+      LetIn y e1 e2 -> Expr ann (LetIn y (f e1) (if y == x then e2 else f e2))
+    where
+      f :: forall a. (HasVar a) => a -> a
+      f = subst be0 x
+
+instance HasVar BTypeExpr where
+  frees (TypeExpr _ann typeExprMain) =
+    case typeExprMain of
+      TyName _tyName args -> Set.unions (map frees args)
+      TyArrow (Nothing, tye1) tye2 -> Set.union (frees tye1) (frees tye2)
+      TyArrow (Just y, tye1) tye2 -> Set.union (frees tye1) (Set.delete y (frees tye2))
+  subst be0 x (TypeExpr ann typeExprMain) =
+    TypeExpr ann $
+      case typeExprMain of
+        TyName tyName args -> TyName tyName (map f args)
+        TyArrow (Nothing, btye1) btye2 -> TyArrow (Nothing, f btye1) (f btye2)
+        TyArrow (Just y, btye1) btye2 -> TyArrow (Just y, f btye1) (if y == x then btye2 else f btye2)
+    where
+      f :: forall a. (HasVar a) => a -> a
+      f = subst be0 x
+
+occurs :: (HasVar a) => Var -> a -> Bool
+occurs x entity = x `elem` frees entity
 
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BIType, [Constraint])
 extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
