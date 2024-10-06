@@ -71,7 +71,9 @@ library
       Lwsd.TypeEnv,
       Lwsd.TypeError,
       Lwsd.Typechecker,
-      Lwsd.Vector
+      Lwsd.Vector,
+      Surface.Syntax,
+      Surface.SurfaceMain,
 
     -- Modules included in this library but not exported.
     -- other-modules:
