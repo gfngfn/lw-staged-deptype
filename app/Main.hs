@@ -28,6 +28,7 @@ surfaceArgumentParser :: Parser SurfaceMain.Argument
 surfaceArgumentParser =
   SurfaceMain.Argument
     <$> strArgument (metavar "INPUT-FILE-PATH")
+    <*> option auto (value 80 <> short 'w' <> long "display-width" <> help "Set display width")
 
 main :: IO ()
 main = do

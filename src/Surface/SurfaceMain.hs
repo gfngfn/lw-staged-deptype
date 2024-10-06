@@ -4,18 +4,22 @@ module Surface.SurfaceMain
   )
 where
 
+import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
+import Lwsd.Formatter (Disp)
+import Lwsd.Formatter qualified as Formatter
 import Surface.BindingTimeAnalyzer qualified as BindingTimeAnalyzer
 import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
 import Prelude
 
-newtype Argument = Argument
-  { inputFilePath :: String
+data Argument = Argument
+  { inputFilePath :: String,
+    displayWidth :: Int
   }
 
 handle :: Argument -> IO Bool
-handle Argument {inputFilePath} = do
+handle Argument {inputFilePath, displayWidth} = do
   putStrLn "Lightweight Dependent Types via Staging (Surface Language)"
   source <- TextIO.readFile inputFilePath
   case Parser.parseExpr source of
@@ -29,9 +33,20 @@ handle Argument {inputFilePath} = do
           putStrLn "-------- binding-time analysis error: --------"
           print err
           failure
-        Right r -> do
-          print r
+        Right (be, lwe) -> do
+          putStrLn "-------- result of binding-time analysis (E): --------"
+          print e
+          putStrLn "-------- result of binding-time analysis (B): --------"
+          print be
+          putStrLn "-------- result of binding-time analysis (L): --------"
+          print lwe
+          putStrLn "-------- result of binding-time analysis: --------"
+          putRenderedLines lwe
           success
   where
+    putRenderedLines :: (Disp a) => a -> IO ()
+    putRenderedLines x =
+      putStrLn $ Text.unpack $ Formatter.render displayWidth x
+
     success = return True
     failure = return False

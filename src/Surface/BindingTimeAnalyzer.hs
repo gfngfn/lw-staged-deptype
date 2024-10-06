@@ -29,8 +29,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import GHC.Generics
 import Lwsd.Matrix qualified as Matrix
-import Lwsd.Syntax qualified as Lwsd
 import Lwsd.Vector qualified as Vector
+import Lwsd.Syntax qualified as Lwsd
 import Surface.Syntax
 import Util.TokenUtil (Span)
 import Prelude hiding (succ)
@@ -464,6 +464,8 @@ type BCExprMain = ExprMainF (BindingTimeConst, Span)
 
 type BCTypeExpr = TypeExprF (BindingTimeConst, Span)
 
+type BCTypeExprMain = TypeExprMainF (BindingTimeConst, Span)
+
 stageExpr0 :: BCExpr -> Lwsd.Expr
 stageExpr0 (Expr (btc, ann) exprMain) =
   case btc of
@@ -499,15 +501,41 @@ stageExpr1Main = \case
   LetIn x e1 e2 -> Lwsd.LetIn x (stageExpr1 e1) (stageExpr1 e2)
 
 stageTypeExpr0 :: BCTypeExpr -> Lwsd.TypeExpr
-stageTypeExpr0 = error "TODO: stageTypeExpr0"
+stageTypeExpr0 (TypeExpr (btc, ann) typeExprMain) =
+  case btc of
+    BT1 ->
+      let lwtyeMain = stageTypeExpr1Main typeExprMain
+       in Lwsd.TypeExpr ann (Lwsd.TyCode (Lwsd.TypeExpr ann lwtyeMain))
+    BT0 ->
+      Lwsd.TypeExpr ann (stageTypeExpr0Main typeExprMain)
+
+stageTypeExpr0Main :: BCTypeExprMain -> Lwsd.TypeExprMain
+stageTypeExpr0Main = \case
+  TyName tyName args ->
+    case args of
+      [] -> Lwsd.TyName tyName []
+      _ : _ -> error "stageTypeExpr0Main, non-empty `args`"
+  TyArrow (xOpt, tye1) tye2 ->
+    Lwsd.TyArrow (xOpt, stageTypeExpr0 tye1) (stageTypeExpr0 tye2)
 
 stageTypeExpr1 :: BCTypeExpr -> Lwsd.TypeExpr
-stageTypeExpr1 = error "TODO: stageTypeExpr1"
+stageTypeExpr1 (TypeExpr (btc, ann) typeExprMain) =
+  case btc of
+    BT0 -> error "stageTypeExpr1, BT0"
+    BT1 -> Lwsd.TypeExpr ann (stageTypeExpr1Main typeExprMain)
+
+stageTypeExpr1Main :: BCTypeExprMain -> Lwsd.TypeExprMain
+stageTypeExpr1Main = \case
+  TyName tyName args -> Lwsd.TyName tyName (map (Lwsd.PersistentArg . stageExpr0) args)
+  TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
 
 convertLiteral :: Literal -> Lwsd.Literal
-convertLiteral = error "TODO: convertLiteral"
+convertLiteral = \case
+  LitInt n -> Lwsd.LitInt n
+  LitVec ns -> Lwsd.LitVec ns
+  LitMat nss -> Lwsd.LitMat nss
 
-run :: BindingTimeEnv -> Expr -> Either AnalysisError Lwsd.Expr
+run :: BindingTimeEnv -> Expr -> Either AnalysisError (BExpr, Lwsd.Expr)
 run btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
   (_bity, constraints) <- extractConstraintsFromExpr btenv be
@@ -518,8 +546,8 @@ run btenv e = do
           ( \(btv, ann) ->
               case Map.lookup btv solutionMap of
                 Just btc -> (btc, ann)
-                Nothing -> (BT0, ann) -- TODO: reconsider this
+                Nothing -> (BT1, ann) -- TODO: reconsider this
           )
           be
   let lwe = stageExpr0 bce
-  pure lwe
+  pure (be, lwe)

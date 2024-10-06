@@ -12,6 +12,7 @@ module Lwsd.Syntax
     TypeExprF (..),
     TypeExprMainF (..),
     TypeExpr,
+    TypeExprMain,
     ArgForTypeF (..),
     ArgForType,
     AssLiteral (..),
@@ -113,6 +114,8 @@ data TypeExprMainF ann
 
 -- The type for ASTs for type expressions obtained by parsing source programs.
 type TypeExpr = TypeExprF Span
+
+type TypeExprMain = TypeExprMainF Span
 
 data ArgForTypeF ann
   = PersistentArg (ExprF ann)

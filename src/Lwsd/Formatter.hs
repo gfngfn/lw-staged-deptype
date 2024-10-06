@@ -72,6 +72,54 @@ instance Disp Literal where
       dispRow :: [Int] -> Doc Ann
       dispRow row = commaSep (disp <$> row)
 
+instance Disp (ExprF ann) where
+  dispGen req (Expr _ann exprMain) = dispGen req exprMain
+
+instance Disp (ExprMainF ann) where
+  dispGen req = \case
+    Literal lit -> dispGen req lit
+    Var x -> disp x
+    Lam (x, tye1) e2 ->
+      let doc = group ("λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+       in if req <= FunDomain then deepenParen doc else doc
+    App e1 e2 ->
+      let doc = group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
+       in if req <= Atomic then deepenParen doc else doc
+    LetIn x e1 e2 ->
+      let doc = group ("let" <+> disp x <+> "=" <+> disp e1 <+> "in" <+> disp e2)
+       in if req <= FunDomain then deepenParen doc else doc
+    Bracket e1 ->
+      "&" <> dispGen Atomic e1
+    Escape e1 ->
+      "~" <> dispGen Atomic e1
+
+instance Disp (TypeExprF ann) where
+  dispGen req (TypeExpr _ann typeExprMain) = dispGen req typeExprMain
+
+instance Disp (TypeExprMainF ann) where
+  dispGen req = \case
+    TyName tyName args ->
+      case args of
+        [] -> disp tyName
+        _ : _ ->
+          let doc = List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
+           in if req <= Atomic then deepenParen doc else doc
+    TyArrow (xOpt, tye1) tye2 ->
+      let docDom =
+            case xOpt of
+              Just x -> "(" <> disp x <+> ":" <+> disp tye1 <> ")"
+              Nothing -> dispGen FunDomain tye1
+          doc =
+            group (docDom <> " ->" <> line <> disp tye2)
+       in if req <= FunDomain then deepenParen doc else doc
+    TyCode tye1 ->
+      "&" <> dispGen Atomic tye1
+
+instance Disp (ArgForTypeF ann) where
+  dispGen req = \case
+    PersistentArg e -> "%" <> dispGen Atomic e
+    NormalArg e -> dispGen req e
+
 instance Disp BuiltIn where
   dispGen _ = \case
     BIAdd x1 x2 -> "ADD(" <> disps [x1, x2] <> ")"

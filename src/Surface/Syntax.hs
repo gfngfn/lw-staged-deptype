@@ -6,7 +6,7 @@ module Surface.Syntax
     Expr,
     TypeName,
     TypeExprF (..),
-    TypeExprMain (..),
+    TypeExprMainF (..),
     TypeExpr,
   )
 where
@@ -38,10 +38,10 @@ type Expr = ExprF Span
 
 type TypeName = Text
 
-data TypeExprF ann = TypeExpr ann (TypeExprMain ann)
+data TypeExprF ann = TypeExpr ann (TypeExprMainF ann)
   deriving stock (Show, Functor)
 
-data TypeExprMain ann
+data TypeExprMainF ann
   = TyName TypeName [ExprF ann]
   | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
   deriving stock (Show, Functor)

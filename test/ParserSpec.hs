@@ -215,6 +215,9 @@ spec = do
     it "parses vector literals" $
       Parser.parseExpr "[| 3; 14; 1592 |]"
         `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec [3, 14, 1592]))
+    it "parses matrix literals" $
+      Parser.parseExpr "[# 3, 14; 159, 2; 653, 5 #]"
+        `shouldBe` pure (exprLoc 0 27 $ Literal (LitMat [[3, 14], [159, 2], [653, 5]]))
     it "parses variables" $
       Parser.parseExpr "foo_bar"
         `shouldBe` pure (exprLoc 0 7 $ Var "foo_bar")

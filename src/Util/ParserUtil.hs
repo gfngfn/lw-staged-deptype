@@ -71,7 +71,7 @@ genVec :: (Ord token) => token -> token -> token -> GenP token entry -> GenP tok
 genVec tLeft tRight tSemicolon entry = makeVec <$> token tLeft <*> rest
   where
     rest =
-      (makeNonemptyVec <$> entry <*> Mp.many (token tSemicolon *> entry) <*> token tRight)
+      (makeNonemptyVec <$> entry <*> many (token tSemicolon *> entry) <*> token tRight)
         `or` (([],) <$> token tRight)
 
     makeNonemptyVec elemFirst elemsTail locLast =
