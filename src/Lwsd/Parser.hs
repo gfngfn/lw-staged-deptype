@@ -9,6 +9,7 @@ import Data.Either.Extra
 import Data.Functor
 import Data.Generics.Labels ()
 import Data.List qualified as List
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Lwsd.Syntax
 import Lwsd.Token (Token (..))
@@ -71,7 +72,7 @@ exprAtom, expr :: P Expr
 
     app :: P Expr
     app =
-      foldl1 makeApp <$> Mp.some (Mp.try staged)
+      foldl1 makeApp <$> some (Mp.try staged)
       where
         makeApp :: Expr -> Expr -> Expr
         makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
@@ -134,16 +135,15 @@ typeExpr = fun
 
     app :: P TypeExpr
     app =
-      Mp.try (makeTyName <$> upper <*> Mp.some (Mp.try arg))
+      Mp.try (makeTyName <$> upper <*> some (Mp.try arg))
         <|> staged
       where
         makeTyName (Located locFirst t) tyeArgs =
           let loc =
-                case reverse tyeArgs of
-                  [] -> error "Mp.some returned the empty list"
-                  PersistentArg (Expr locLast _) : _ -> mergeSpan locFirst locLast
-                  NormalArg (Expr locLast _) : _ -> mergeSpan locFirst locLast
-           in TypeExpr loc (TyName t tyeArgs)
+                case NonEmpty.last tyeArgs of
+                  PersistentArg (Expr locLast _) -> mergeSpan locFirst locLast
+                  NormalArg (Expr locLast _) -> mergeSpan locFirst locLast
+           in TypeExpr loc (TyName t (NonEmpty.toList tyeArgs))
 
     fun :: P TypeExpr
     fun =

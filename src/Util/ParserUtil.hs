@@ -1,5 +1,6 @@
 module Util.ParserUtil
   ( GenP,
+    some,
     expectToken,
     token,
     noLoc,
@@ -8,6 +9,7 @@ module Util.ParserUtil
   )
 where
 
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set
 import Data.Void (Void)
 import Text.Megaparsec ((<|>))
@@ -16,6 +18,13 @@ import Util.TokenUtil
 import Prelude
 
 type GenP token a = Mp.Parsec Void [Located token] a
+
+some :: (Ord token) => GenP token a -> GenP token (NonEmpty a)
+some p = do
+  xs <- Mp.some p
+  case xs of
+    [] -> error "Text.Megaparsec.some returned the empty list"
+    x : xs' -> pure (x :| xs')
 
 expectToken :: (Ord token) => (token -> Maybe a) -> GenP token (Located a)
 expectToken f =
