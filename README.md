@@ -15,8 +15,9 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
   * This is actually easy because it basically suffices to just add a label `L` to `assert` when type-checking applications `(e_1 e_2)^L` (with a label `L` that indicates a code position) and generating their corresponding `assert`s
 - [x] Prove Soundness of assertion insertion
 - [x] Prove Preservation
-- [ ] Prove Progress
-- [ ] A surface language that can infer some obvious stage-0 annotations
+- [x] Prove Progress
+- [ ] A surface language
+- [ ] Infer some obvious stage-0 annotations
 
 
 ## TODO (implementation)
@@ -26,3 +27,39 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Handle code positions
 - [x] Add `Mat m n` and operations on it
 - [ ] Add realistic examples
+
+
+## Memo
+
+### How to Build
+
+```console
+$ cabal build
+```
+
+
+### How to test
+
+```console
+$ cabal test
+```
+
+
+### How to run
+
+```console
+$ cabal run lw-staged-deptype -- lwsd -w 80 --optimize examples/mat.lwsd
+```
+
+* `-w` (= `--display-width`): sets the length of the terminal width for displaying texts.
+
+```console
+$ cabal run lw-staged-deptype -- surface examples/mat.surf
+```
+
+
+## How to run code formatting
+
+```console
+$ cabal run -O1 ormolu -- --mode inplace $(git ls-files '*.hs')
+```
