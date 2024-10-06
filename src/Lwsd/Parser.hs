@@ -14,7 +14,6 @@ import Data.Text (Text)
 import Lwsd.Syntax
 import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
-import Text.Megaparsec qualified as Mp
 import Util.ParserUtil
 import Util.TokenUtil
 import Prelude hiding (or)
@@ -183,8 +182,8 @@ typeExpr = fun
 
 parse :: P a -> Text -> Either String a
 parse p source = do
-  tokensWithOffsets <- Token.lex source
-  mapLeft Mp.errorBundlePretty $ Mp.parse p "input" tokensWithOffsets
+  locatedTokens <- Token.lex source
+  runParser p locatedTokens
 
 parseExpr :: Text -> Either String Expr
 parseExpr = parse expr

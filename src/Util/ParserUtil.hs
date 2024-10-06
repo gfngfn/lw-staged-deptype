@@ -1,5 +1,6 @@
 module Util.ParserUtil
   ( GenP,
+    runParser,
     some,
     many,
     tries,
@@ -12,6 +13,7 @@ module Util.ParserUtil
   )
 where
 
+import Data.Either.Extra qualified as Either
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.Set qualified as Set
 import Data.Void (Void)
@@ -21,6 +23,10 @@ import Util.TokenUtil
 import Prelude hiding (or)
 
 type GenP token a = Mp.Parsec Void [Located token] a
+
+runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> [Located token] -> Either String a
+runParser p locatedTokens =
+  Either.mapLeft Mp.errorBundlePretty $ Mp.parse p "input" locatedTokens
 
 some :: (Ord token) => GenP token a -> GenP token (NonEmpty a)
 some p = do
