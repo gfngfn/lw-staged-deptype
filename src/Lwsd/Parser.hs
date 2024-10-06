@@ -14,11 +14,10 @@ import Data.Text (Text)
 import Lwsd.Syntax
 import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
-import Text.Megaparsec ((<|>))
 import Text.Megaparsec qualified as Mp
 import Util.ParserUtil
 import Util.TokenUtil
-import Prelude
+import Prelude hiding (or)
 
 type P a = GenP Token a
 
@@ -52,27 +51,31 @@ exprAtom, expr :: P Expr
   where
     atom :: P Expr
     atom =
-      Mp.try (located (Literal . LitInt) <$> int)
-        <|> Mp.try (located (Literal . LitVec) <$> vec)
-        <|> Mp.try (located (Literal . LitMat) <$> mat)
-        <|> Mp.try (located Var <$> lower)
-        <|> (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
+      tries
+        [ located (Literal . LitInt) <$> int,
+          located (Literal . LitVec) <$> vec,
+          located (Literal . LitMat) <$> mat,
+          located Var <$> lower
+        ]
+        (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
 
     staged :: P Expr
     staged =
-      Mp.try (makeStaged Bracket <$> token TokBracket <*> staged)
-        <|> Mp.try (makeStaged Escape <$> token TokEscape <*> staged)
-        <|> atom
+      tries
+        [ makeStaged Bracket <$> token TokBracket <*> staged,
+          makeStaged Escape <$> token TokEscape <*> staged
+        ]
+        atom
       where
         makeStaged constructor loc1 e@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (constructor e)
 
     app :: P Expr
     app =
-      foldl1 makeApp <$> some (Mp.try staged)
+      foldl1 makeApp <$> some staged
       where
         makeApp :: Expr -> Expr -> Expr
         makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
@@ -80,25 +83,33 @@ exprAtom, expr :: P Expr
 
     mult :: P Expr
     mult =
-      List.foldl' makeBinary <$> app <*> Mp.many (Mp.try ((,) <$> multOp <*> app))
+      List.foldl' makeBinary <$> app <*> many ((,) <$> multOp <*> app)
 
     multOp :: P (Located Var)
     multOp =
-      (\loc -> Located loc "*") <$> token TokOpMult
+      expectToken
+        ( \case
+            TokOpMult -> Just "*"
+            _ -> Nothing
+        )
 
     add :: P Expr
     add =
-      List.foldl' makeBinary <$> mult <*> Mp.many (Mp.try ((,) <$> addOp <*> mult))
+      List.foldl' makeBinary <$> mult <*> many ((,) <$> addOp <*> mult)
 
     addOp :: P (Located Var)
     addOp =
-      Mp.try ((\loc -> Located loc "+") <$> token TokOpAdd)
-        <|> ((\loc -> Located loc "-") <$> token TokOpSub)
+      expectToken
+        ( \case
+            TokOpAdd -> Just "+"
+            TokOpSub -> Just "-"
+            _ -> Nothing
+        )
 
     lam :: P Expr
     lam =
-      Mp.try (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
-        <|> add
+      (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
+        `or` add
       where
         binder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
@@ -108,8 +119,8 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      Mp.try (makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
-        <|> lam
+      (makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+        `or` lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetIn x e1 e2)
@@ -119,24 +130,24 @@ typeExpr = fun
   where
     atom :: P TypeExpr
     atom =
-      Mp.try ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
-        <|> (makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen)
+      ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
+        `or` (makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen)
       where
         makeEnclosed loc1 (TypeExpr _ tyeMain) loc2 =
           TypeExpr (mergeSpan loc1 loc2) tyeMain
 
     staged :: P TypeExpr
     staged =
-      Mp.try (makeTyCode <$> token TokBracket <*> staged)
-        <|> atom
+      (makeTyCode <$> token TokBracket <*> staged)
+        `or` atom
       where
         makeTyCode loc1 tye@(TypeExpr loc2 _) =
           TypeExpr (mergeSpan loc1 loc2) (TyCode tye)
 
     app :: P TypeExpr
     app =
-      Mp.try (makeTyName <$> upper <*> some (Mp.try arg))
-        <|> staged
+      (makeTyName <$> upper <*> some arg)
+        `or` staged
       where
         makeTyName (Located locFirst t) tyeArgs =
           let loc =
@@ -147,8 +158,8 @@ typeExpr = fun
 
     fun :: P TypeExpr
     fun =
-      Mp.try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
-        <|> app
+      (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
+        `or` app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
           let (loc, tyDom) =
@@ -159,16 +170,16 @@ typeExpr = fun
 
     funDom :: P (Maybe (Span, Var), TypeExpr)
     funDom =
-      Mp.try (makeFunDom <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen))
-        <|> ((Nothing,) <$> app)
+      (makeFunDom <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen))
+        `or` ((Nothing,) <$> app)
       where
         makeFunDom locFirst x tyeDom =
           (Just (locFirst, x), tyeDom)
 
     arg :: P ArgForType
     arg =
-      Mp.try (PersistentArg <$> (token TokPersistent *> exprAtom))
-        <|> (NormalArg <$> exprAtom)
+      (PersistentArg <$> (token TokPersistent *> exprAtom))
+        `or` (NormalArg <$> exprAtom)
 
 parse :: P a -> Text -> Either String a
 parse p source = do

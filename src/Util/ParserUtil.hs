@@ -1,6 +1,9 @@
 module Util.ParserUtil
   ( GenP,
     some,
+    many,
+    tries,
+    or,
     expectToken,
     token,
     noLoc,
@@ -15,16 +18,25 @@ import Data.Void (Void)
 import Text.Megaparsec ((<|>))
 import Text.Megaparsec qualified as Mp
 import Util.TokenUtil
-import Prelude
+import Prelude hiding (or)
 
 type GenP token a = Mp.Parsec Void [Located token] a
 
 some :: (Ord token) => GenP token a -> GenP token (NonEmpty a)
 some p = do
-  xs <- Mp.some p
+  xs <- Mp.some (Mp.try p)
   case xs of
     [] -> error "Text.Megaparsec.some returned the empty list"
     x : xs' -> pure (x :| xs')
+
+many :: (Ord token) => GenP token a -> GenP token [a]
+many = Mp.many . Mp.try
+
+tries :: (Ord token) => [GenP token a] -> GenP token a -> GenP token a
+tries ps pAcc0 = foldr or pAcc0 ps
+
+or :: (Ord token) => GenP token a -> GenP token a -> GenP token a
+or p1 p2 = Mp.try p1 <|> p2
 
 expectToken :: (Ord token) => (token -> Maybe a) -> GenP token (Located a)
 expectToken f =
@@ -47,8 +59,8 @@ genVec :: (Ord token) => token -> token -> token -> GenP token entry -> GenP tok
 genVec tLeft tRight tSemicolon entry = makeVec <$> token tLeft <*> rest
   where
     rest =
-      Mp.try (makeNonemptyVec <$> entry <*> Mp.many (token tSemicolon *> entry) <*> token tRight)
-        <|> (([],) <$> token tRight)
+      (makeNonemptyVec <$> entry <*> Mp.many (token tSemicolon *> entry) <*> token tRight)
+        `or` (([],) <$> token tRight)
 
     makeNonemptyVec elemFirst elemsTail locLast =
       (elemFirst : elemsTail, locLast)
@@ -60,8 +72,8 @@ genMat :: (Ord token) => token -> token -> token -> token -> GenP token entry ->
 genMat tLeft tRight tSemicolon tComma entry = makeMat <$> token tLeft <*> rest
   where
     rest =
-      Mp.try (makeNonemptyMat <$> nonemptyRow <*> Mp.many (token tSemicolon *> nonemptyRow) <*> token tRight)
-        <|> (([],) <$> token tRight)
+      (makeNonemptyMat <$> nonemptyRow <*> Mp.many (token tSemicolon *> nonemptyRow) <*> token tRight)
+        `or` (([],) <$> token tRight)
 
     makeNonemptyMat rowFirst rowsTail locLast =
       (rowFirst : rowsTail, locLast)
