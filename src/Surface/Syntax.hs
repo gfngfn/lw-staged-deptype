@@ -7,6 +7,7 @@ module Surface.Syntax
 where
 
 import Data.Text (Text)
+import Prelude
 
 type Var = Text
 

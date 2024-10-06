@@ -21,6 +21,7 @@ import Lwsd.Syntax
 import Lwsd.Vector (Vector)
 import Lwsd.Vector qualified as Vector
 import Util.TokenUtil (LocationInFile (..), Span (..), getLocationInFileFromOffset)
+import Prelude
 
 data Bug
   = UnboundVar Var

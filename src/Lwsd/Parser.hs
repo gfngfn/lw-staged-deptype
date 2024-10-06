@@ -4,8 +4,10 @@ module Lwsd.Parser
   )
 where
 
+import Control.Lens
 import Data.Either.Extra
 import Data.Functor
+import Data.Generics.Labels ()
 import Data.List qualified as List
 import Data.Text (Text)
 import Lwsd.Syntax
@@ -23,28 +25,13 @@ paren :: P a -> P a
 paren p = token TokLeftParen *> p <* token TokRightParen
 
 lower :: P (Located Text)
-lower =
-  expectToken
-    ( \case
-        TokLower x -> Just x
-        _ -> Nothing
-    )
+lower = expectToken (^? #_TokLower)
 
 upper :: P (Located Text)
-upper =
-  expectToken
-    ( \case
-        TokUpper x -> Just x
-        _ -> Nothing
-    )
+upper = expectToken (^? #_TokUpper)
 
 int :: P (Located Int)
-int =
-  expectToken
-    ( \case
-        TokInt n -> Just n
-        _ -> Nothing
-    )
+int = expectToken (^? #_TokInt)
 
 vec :: P (Located [Int])
 vec = makeVec <$> token TokVecLeft <*> rest

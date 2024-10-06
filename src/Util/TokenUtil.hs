@@ -25,6 +25,7 @@ import Text.Megaparsec.Char qualified as MpChar
 import Text.Megaparsec.Char.Lexer qualified as MpLexer
 import Text.Megaparsec.Pos qualified as MpPos
 import Text.Megaparsec.Stream qualified as MpStream
+import Prelude
 
 -- The type for code locations (pairs of a start offset and an end offset).
 data Span = Span

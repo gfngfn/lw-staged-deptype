@@ -1,6 +1,7 @@
 module Surface.SurfaceMain where
 
 import Data.Text.IO qualified as TextIO
+import Prelude
 
 newtype Argument = Argument
   { inputFilePath :: String

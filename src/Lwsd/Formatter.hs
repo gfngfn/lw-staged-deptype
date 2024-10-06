@@ -11,6 +11,7 @@ import Lwsd.Vector qualified as Vector
 import Prettyprinter
 import Prettyprinter.Render.Text
 import Util.TokenUtil (LocationInFile (LocationInFile))
+import Prelude
 
 type Ann = ()
 

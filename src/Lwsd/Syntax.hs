@@ -42,8 +42,9 @@ import Data.Text qualified as Text
 import Generic.Data
 import Generic.Data.Orphans ()
 import Lwsd.Matrix (Matrix)
-import Lwsd.Token (Span)
 import Lwsd.Vector (Vector)
+import Util.TokenUtil (Span)
+import Prelude
 
 type Var = Text
 

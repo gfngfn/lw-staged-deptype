@@ -4,8 +4,8 @@ import Data.Functor
 import Data.Text (Text)
 import Lwsd.Parser qualified as Parser
 import Lwsd.Syntax
-import Lwsd.Token (Span (..))
 import Test.Hspec
+import Util.TokenUtil (Span (..))
 
 type TypeExpr0 = TypeExprF ()
 

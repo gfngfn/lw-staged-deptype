@@ -7,6 +7,7 @@ where
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Lwsd.Syntax
+import Prelude
 
 -- TODO (refactor): use `Traversal` to implement `occurs0` and `subst0`
 

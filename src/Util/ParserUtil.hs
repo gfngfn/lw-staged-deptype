@@ -10,6 +10,7 @@ import Data.Set qualified as Set
 import Data.Void (Void)
 import Text.Megaparsec qualified as Mp
 import Util.TokenUtil
+import Prelude
 
 type GenP token a = Mp.Parsec Void [Located token] a
 

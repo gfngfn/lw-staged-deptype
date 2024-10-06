@@ -1,4 +1,4 @@
-module Lwsd.Token
+module Surface.Token
   ( Token (..),
     lex,
   )
@@ -10,7 +10,6 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import GHC.Base
-import GHC.Generics
 import Text.Megaparsec qualified as Mp
 import Util.TokenUtil
 import Prelude hiding (lex)
@@ -22,9 +21,6 @@ data Token
   | TokEqual
   | TokColon
   | TokComma
-  | TokBracket
-  | TokEscape
-  | TokPersistent
   | TokSemicolon
   | TokVecLeft
   | TokVecRight
@@ -39,7 +35,7 @@ data Token
   | TokOpAdd
   | TokOpSub
   | TokOpMult
-  deriving stock (Ord, Eq, Show, Generic)
+  deriving stock (Ord, Eq, Show)
 
 instance Mp.VisualStream [Located Token] where
   showTokens _proxy = show
@@ -71,9 +67,6 @@ token =
       TokColon <$ Mp.single ':',
       TokComma <$ Mp.single ',',
       TokEqual <$ Mp.single '=',
-      TokBracket <$ Mp.single '&',
-      TokEscape <$ Mp.single '~',
-      TokPersistent <$ Mp.single '%',
       TokSemicolon <$ Mp.single ';',
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",
