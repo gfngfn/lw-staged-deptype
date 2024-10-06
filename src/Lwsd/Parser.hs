@@ -13,7 +13,7 @@ import Data.Text (Text)
 import Lwsd.Syntax
 import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
-import Text.Megaparsec hiding (Token, parse, some, token, tokens)
+import Text.Megaparsec ((<|>))
 import Text.Megaparsec qualified as Mp
 import Util.ParserUtil
 import Util.TokenUtil
@@ -34,33 +34,10 @@ int :: P (Located Int)
 int = expectToken (^? #_TokInt)
 
 vec :: P (Located [Int])
-vec = makeVec <$> token TokVecLeft <*> rest
-  where
-    rest =
-      try (makeNonemptyVec <$> noLoc int <*> Mp.many (token TokSemicolon *> noLoc int) <*> token TokVecRight)
-        <|> (([],) <$> token TokVecRight)
-
-    makeNonemptyVec elemFirst elemsTail locLast =
-      (elemFirst : elemsTail, locLast)
-
-    makeVec locFirst (elems, locLast) =
-      Located (mergeSpan locFirst locLast) elems
+vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 
 mat :: P (Located [[Int]])
-mat = makeMat <$> token TokMatLeft <*> rest
-  where
-    rest =
-      try (makeNonemptyMat <$> nonemptyRow <*> Mp.many (token TokSemicolon *> nonemptyRow) <*> token TokMatRight)
-        <|> (([],) <$> token TokMatRight)
-
-    makeNonemptyMat rowFirst rowsTail locLast =
-      (rowFirst : rowsTail, locLast)
-
-    makeMat locFirst (rows, locLast) =
-      Located (mergeSpan locFirst locLast) rows
-
-    nonemptyRow :: P [Int]
-    nonemptyRow = (:) <$> noLoc int <*> Mp.many (token TokComma *> noLoc int)
+mat = genMat TokMatLeft TokMatRight TokSemicolon TokColon (noLoc int)
 
 makeBinary :: Expr -> (Located Var, Expr) -> Expr
 makeBinary e1@(Expr loc1 _) (Located locBinOp binOp, e2@(Expr loc2 _)) =
@@ -74,10 +51,10 @@ exprAtom, expr :: P Expr
   where
     atom :: P Expr
     atom =
-      try (located (Literal . LitInt) <$> int)
-        <|> try (located (Literal . LitVec) <$> vec)
-        <|> try (located (Literal . LitMat) <$> mat)
-        <|> try (located Var <$> lower)
+      Mp.try (located (Literal . LitInt) <$> int)
+        <|> Mp.try (located (Literal . LitVec) <$> vec)
+        <|> Mp.try (located (Literal . LitMat) <$> mat)
+        <|> Mp.try (located Var <$> lower)
         <|> (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
@@ -85,8 +62,8 @@ exprAtom, expr :: P Expr
 
     staged :: P Expr
     staged =
-      try (makeStaged Bracket <$> token TokBracket <*> staged)
-        <|> try (makeStaged Escape <$> token TokEscape <*> staged)
+      Mp.try (makeStaged Bracket <$> token TokBracket <*> staged)
+        <|> Mp.try (makeStaged Escape <$> token TokEscape <*> staged)
         <|> atom
       where
         makeStaged constructor loc1 e@(Expr loc2 _) =
@@ -94,7 +71,7 @@ exprAtom, expr :: P Expr
 
     app :: P Expr
     app =
-      foldl1 makeApp <$> Mp.some (try staged)
+      foldl1 makeApp <$> Mp.some (Mp.try staged)
       where
         makeApp :: Expr -> Expr -> Expr
         makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
@@ -102,7 +79,7 @@ exprAtom, expr :: P Expr
 
     mult :: P Expr
     mult =
-      List.foldl' makeBinary <$> app <*> Mp.many (try ((,) <$> multOp <*> app))
+      List.foldl' makeBinary <$> app <*> Mp.many (Mp.try ((,) <$> multOp <*> app))
 
     multOp :: P (Located Var)
     multOp =
@@ -110,16 +87,16 @@ exprAtom, expr :: P Expr
 
     add :: P Expr
     add =
-      List.foldl' makeBinary <$> mult <*> Mp.many (try ((,) <$> addOp <*> mult))
+      List.foldl' makeBinary <$> mult <*> Mp.many (Mp.try ((,) <$> addOp <*> mult))
 
     addOp :: P (Located Var)
     addOp =
-      try ((\loc -> Located loc "+") <$> token TokOpAdd)
+      Mp.try ((\loc -> Located loc "+") <$> token TokOpAdd)
         <|> ((\loc -> Located loc "-") <$> token TokOpSub)
 
     lam :: P Expr
     lam =
-      try (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
+      Mp.try (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
         <|> add
       where
         binder =
@@ -130,7 +107,7 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      try (makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+      Mp.try (makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         <|> lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
@@ -141,7 +118,7 @@ typeExpr = fun
   where
     atom :: P TypeExpr
     atom =
-      try ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
+      Mp.try ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
         <|> (makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen)
       where
         makeEnclosed loc1 (TypeExpr _ tyeMain) loc2 =
@@ -149,7 +126,7 @@ typeExpr = fun
 
     staged :: P TypeExpr
     staged =
-      try (makeTyCode <$> token TokBracket <*> staged)
+      Mp.try (makeTyCode <$> token TokBracket <*> staged)
         <|> atom
       where
         makeTyCode loc1 tye@(TypeExpr loc2 _) =
@@ -157,7 +134,7 @@ typeExpr = fun
 
     app :: P TypeExpr
     app =
-      try (makeTyName <$> upper <*> Mp.some (try arg))
+      Mp.try (makeTyName <$> upper <*> Mp.some (Mp.try arg))
         <|> staged
       where
         makeTyName (Located locFirst t) tyeArgs =
@@ -170,7 +147,7 @@ typeExpr = fun
 
     fun :: P TypeExpr
     fun =
-      try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
+      Mp.try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
         <|> app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
@@ -182,7 +159,7 @@ typeExpr = fun
 
     funDom :: P (Maybe (Span, Var), TypeExpr)
     funDom =
-      try (makeFunDom <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen))
+      Mp.try (makeFunDom <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen))
         <|> ((Nothing,) <$> app)
       where
         makeFunDom locFirst x tyeDom =
@@ -190,7 +167,7 @@ typeExpr = fun
 
     arg :: P ArgForType
     arg =
-      try (PersistentArg <$> (token TokPersistent *> exprAtom))
+      Mp.try (PersistentArg <$> (token TokPersistent *> exprAtom))
         <|> (NormalArg <$> exprAtom)
 
 parse :: P a -> Text -> Either String a
