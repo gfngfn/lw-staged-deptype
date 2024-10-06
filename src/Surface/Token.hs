@@ -10,6 +10,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import GHC.Base
+import GHC.Generics
 import Text.Megaparsec qualified as Mp
 import Util.TokenUtil
 import Prelude hiding (lex)
@@ -35,7 +36,7 @@ data Token
   | TokOpAdd
   | TokOpSub
   | TokOpMult
-  deriving stock (Ord, Eq, Show)
+  deriving stock (Ord, Eq, Show, Generic)
 
 instance Mp.VisualStream [Located Token] where
   showTokens _proxy = show
