@@ -32,7 +32,7 @@ import Util.TokenUtil (Span)
 import Prelude hiding (succ)
 
 newtype BindingTimeVar = BindingTimeVar Int
-  deriving stock (Show)
+  deriving stock (Ord, Eq, Show)
 
 initialState :: BindingTimeVar
 initialState = BindingTimeVar 0
@@ -88,7 +88,7 @@ assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
         pure $ TyArrow (xOpt, bty1) bty2
 
 data BindingTimeConst = BT0 | BT1
-  deriving stock (Show)
+  deriving stock (Eq, Ord, Show) -- BT0 < BT1
 
 data BindingTime
   = BTConst BindingTimeConst
@@ -126,6 +126,7 @@ data AnalysisError
   | UnboundVar Span Var
   | NotAFunction BIType
   | UnknownTypeOrInvalidArity Span TypeName Int
+  | BindingTimeContradiction
   deriving stock (Show)
 
 data BindingTimeEnvEntry
@@ -336,7 +337,111 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (btv, ann) typeExprMain) =
                   else [CLeq btv (BTVar btv1), CLeq btv (BTVar btv2)]
           pure (BIType (btv, ann) (BITyArrow (x1opt, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
 
-run :: BindingTimeEnv -> Expr -> Either AnalysisError (BIType, [Constraint])
+data SolvingStepResult
+  = NotFound
+  | Subst BindingTimeVar BindingTime
+  | TrivialEliminated [Constraint]
+
+type BindingTimeSubst = Map BindingTimeVar BindingTime
+
+solveConstraints :: [Constraint] -> Either AnalysisError (BindingTimeSubst, [Constraint])
+solveConstraints = go Map.empty
+  where
+    go :: BindingTimeSubst -> [Constraint] -> Either AnalysisError (BindingTimeSubst, [Constraint])
+    go accMap constraints =
+      case step [] constraints of
+        NotFound ->
+          pure (accMap, constraints)
+        Subst btv1 bt2 -> do
+          let accMapNew = Map.insert btv1 bt2 (substSubst btv1 bt2 accMap)
+          constraintssNew <- mapM (substConstraint btv1 bt2) constraints
+          go accMapNew (concat constraintssNew)
+        TrivialEliminated constraintsNew ->
+          go accMap constraintsNew
+
+    step :: [Constraint] -> [Constraint] -> SolvingStepResult
+    step constraintAcc = \case
+      [] -> NotFound
+      CLeq btv1 (BTConst BT0) : _ -> Subst btv1 (BTConst BT0)
+      CLeq _ (BTConst BT1) : rest -> TrivialEliminated (reverse constraintAcc ++ rest)
+      CLeq btv1 (BTVar btv2) : rest | btv1 == btv2 -> TrivialEliminated (reverse constraintAcc ++ rest)
+      CEqual btv1 (BTVar btv2) : rest | btv1 == btv2 -> TrivialEliminated (reverse constraintAcc ++ rest)
+      CEqual btv1 bt2 : _ -> Subst btv1 bt2
+      constraint : rest -> step (constraint : constraintAcc) rest
+
+    substSubst :: BindingTimeVar -> BindingTime -> BindingTimeSubst -> BindingTimeSubst
+    substSubst btv1 bt2 =
+      Map.map
+        ( \case
+            BTConst btc -> BTConst btc
+            BTVar btv -> if btv == btv1 then bt2 else BTVar btv
+        )
+
+    substConstraint :: BindingTimeVar -> BindingTime -> Constraint -> Either AnalysisError [Constraint]
+    substConstraint btv1 bt2 constraint =
+      case bt2 of
+        BTVar btv2 ->
+          case constraint of
+            CLeq btvC1 (BTVar btvC2) ->
+              if btvC1 == btv1 then
+                pure [CLeq btv2 (BTVar btvC2)]
+              else if btvC2 == btv1 then
+                pure [CLeq btvC1 (BTVar btv2)]
+              else
+                pure [constraint]
+            CLeq btvC1 (BTConst btcC2) ->
+              if btvC1 == btv1 then
+                pure [CLeq btv2 (BTConst btcC2)]
+              else
+                pure [constraint]
+            CEqual btvC1 (BTVar btvC2) ->
+              if btvC1 == btv1 then
+                pure [CEqual btv2 (BTVar btvC2)]
+              else if btvC2 == btv1 then
+                pure [CEqual btvC1 (BTVar btv2)]
+              else
+                pure [constraint]
+            CEqual btvC1 (BTConst btcC2) ->
+              if btvC1 == btv1 then
+                pure [CEqual btv2 (BTConst btcC2)]
+              else
+                pure [constraint]
+        BTConst btc2 ->
+          case constraint of
+            CLeq btvC1 (BTVar btvC2) ->
+              if btvC1 == btv1 then
+                case btc2 of
+                  BT0 -> pure []
+                  BT1 -> pure [CEqual btvC2 (BTConst BT1)]
+              else if btvC2 == btv1 then
+                pure [CLeq btvC1 (BTConst btc2)]
+              else
+                pure [constraint]
+            CLeq btvC1 (BTConst btcC2) ->
+              if btvC1 == btv1 then
+                if btc2 <= btcC2 then
+                  pure []
+                else
+                  Left BindingTimeContradiction
+              else
+                pure [constraint]
+            CEqual btvC1 (BTVar btvC2) ->
+              if btvC1 == btv1 then
+                pure [CEqual btvC2 (BTConst btc2)]
+              else
+                pure [constraint]
+            CEqual btvC1 (BTConst btcC2) ->
+              if btvC1 == btv1 then
+                if btc2 == btcC2 then
+                  pure []
+                else
+                  Left BindingTimeContradiction
+              else
+                pure [constraint]
+
+run :: BindingTimeEnv -> Expr -> Either AnalysisError (BIType, Map BindingTimeVar BindingTime, [Constraint])
 run btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
-  extractConstraintsFromExpr btenv be
+  (bity, constraints) <- extractConstraintsFromExpr btenv be
+  (solutionMap, unsolvedConstraints) <- solveConstraints constraints
+  pure (bity, solutionMap, unsolvedConstraints)
