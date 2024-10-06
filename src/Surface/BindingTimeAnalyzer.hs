@@ -91,13 +91,16 @@ data BIType = BIType (BindingTimeVar, Span) BITypeMain
 data BITypeMain
   = BITyInt
   | BITyVecLit Int
+  | BITyVecExpr BExpr
   | BITyMatLit (Int, Int)
-  | BITyArrow (Var, BIType) BIType
+  | BITyMatExpr (BExpr, BExpr)
+  | BITyArrow (Maybe Var, BIType) BIType
 
 data BindingTimeError
   = InvalidMatrixLiteral Span Matrix.ConstructionError
   | UnboundVar Span Var
   | NotAFunction BIType
+  | UnknownTypeOrInvalidArity Span TypeName Int
 
 type BindingTimeEnv = Map Var (BindingTimeVar, BIType)
 
@@ -140,18 +143,20 @@ extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
             if occurs x1 bity2
               then [CEqual btv (BTConst BT0)]
               else [CLeq btv (BTVar btv1), CLeq btv (BTVar btv2)]
-      pure (BIType (btv, ann) (BITyArrow (x1, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
+      pure (BIType (btv, ann) (BITyArrow (Just x1, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
     App e1 e2 -> do
       (bity1@(BIType (btv1, _) bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
       (_bity2, constraints2) <- extractConstraintsFromExpr btenv e2
       case bityMain1 of
-        BITyArrow (x11, _bity11) bity12 ->
+        BITyArrow (x11opt, _bity11) bity12 ->
           -- We could check here that `bity2` and `bity11` are compatible,
           -- but it can be deferred to the upcoming type-checking.
-          if occurs x11 bity12
-            then
-              pure (subst e2 x11 bity12, constraints1 ++ constraints2 ++ [CEqual btv (BTConst BT0)])
-            else
+          case x11opt of
+            Just x11 ->
+              if occurs x11 bity12
+                then pure (subst e2 x11 bity12, constraints1 ++ constraints2 ++ [CEqual btv (BTConst BT0)])
+                else pure (bity12, constraints1 ++ constraints2 ++ [CEqual btv (BTVar btv1)])
+            Nothing ->
               pure (bity12, constraints1 ++ constraints2 ++ [CEqual btv (BTVar btv1)])
         _ ->
           analysisError $ NotAFunction bity1
@@ -159,5 +164,40 @@ extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
       error "TODO: LetIn"
 
 extractConstraintsFromTypeExpr :: BindingTimeEnv -> BTypeExpr -> M (BIType, [Constraint])
-extractConstraintsFromTypeExpr _btenv _btye =
-  error "TODO: extractConstraintsFromTypeExpr"
+extractConstraintsFromTypeExpr btenv (TypeExpr (btv, ann) typeExprMain) =
+  case typeExprMain of
+    TyName tyName args -> do
+      (bityMain, constraints) <-
+        case (tyName, args) of
+          ("Int", []) ->
+            pure (BITyInt, [])
+          ("Vec", [e1]) -> do
+            (BIType (btv1, _) _bity1Main, constraints1) <- extractConstraintsFromExpr btenv e1
+            -- We could check here that `bity1Main` equals `Int`,
+            -- but it can be deferred to the upcoming type-checking.
+            pure (BITyVecExpr e1, constraints1 ++ [CEqual btv1 (BTConst BT0), CEqual btv (BTConst BT1)])
+          ("Mat", [e1, e2]) -> do
+            (BIType (btv1, _) _bity1Main, constraints1) <- extractConstraintsFromExpr btenv e1
+            (BIType (btv2, _) _bity2Main, constraints2) <- extractConstraintsFromExpr btenv e2
+            -- We could check here that both `bity1Main` and `bity2Main` equal `Int`,
+            -- but it can be deferred to the upcoming type-checking.
+            let constraints = [CEqual btv1 (BTConst BT0), CEqual btv2 (BTConst BT0), CEqual btv (BTConst BT1)]
+            pure (BITyMatExpr (e1, e2), constraints1 ++ constraints2 ++ constraints)
+          _ ->
+            analysisError $ UnknownTypeOrInvalidArity ann tyName (length args)
+      pure (BIType (btv, ann) bityMain, constraints)
+    TyArrow (x1opt, tye1) tye2 -> do
+      (bity1@(BIType (btv1, _) _), constraints1) <- extractConstraintsFromTypeExpr btenv tye1
+      case x1opt of
+        Nothing -> do
+          (bity2@(BIType (btv2, _) _), constraints2) <- extractConstraintsFromTypeExpr btenv tye2
+          let constraints = [CLeq btv (BTVar btv1), CLeq btv (BTVar btv2)]
+          pure (BIType (btv, ann) (BITyArrow (Nothing, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
+        Just x1 -> do
+          (bity2@(BIType (btv2, _) _), constraints2) <-
+            extractConstraintsFromTypeExpr (Map.insert x1 (btv, bity1) btenv) tye2
+          let constraints =
+                if occurs x1 bity2
+                  then [CEqual btv (BTConst BT0)]
+                  else [CLeq btv (BTVar btv1), CLeq btv (BTVar btv2)]
+          pure (BIType (btv, ann) (BITyArrow (x1opt, bity1) bity2), constraints1 ++ constraints2 ++ constraints)

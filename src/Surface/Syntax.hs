@@ -4,6 +4,7 @@ module Surface.Syntax
     ExprF (..),
     ExprMain (..),
     Expr,
+    TypeName,
     TypeExprF (..),
     TypeExprMain (..),
     TypeExpr,
