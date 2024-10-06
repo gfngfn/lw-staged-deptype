@@ -222,8 +222,11 @@ extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
               pure (bity12, constraints1 ++ constraints2 ++ [CEqual btv (BTVar btv1)])
         _ ->
           analysisError $ NotAFunction bity1
-    LetIn _x _e1 _e2 -> do
-      error "TODO: LetIn"
+    LetIn x e1 e2 -> do
+      -- Not confident. TODO: check the validity of the following
+      (bity1@(BIType (btv1, _) _), constraints1) <- extractConstraintsFromExpr btenv e1
+      (bity2@(BIType (btv2, _) _), constraints2) <- extractConstraintsFromExpr (Map.insert x (btv, bity1) btenv) e2
+      pure (bity2, constraints1 ++ constraints2 ++ [CLeq btv (BTVar btv1), CLeq btv (BTVar btv2)])
 
 extractConstraintsFromTypeExpr :: BindingTimeEnv -> BTypeExpr -> M (BIType, [Constraint])
 extractConstraintsFromTypeExpr btenv (TypeExpr (btv, ann) typeExprMain) =
