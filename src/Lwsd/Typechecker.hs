@@ -113,8 +113,8 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
         LitVec ns -> do
           let vec = Vector.fromList ns
           pure (A0TyPrim (A0TyVec (Vector.length vec)), ALitVec vec)
-        LitMat nns -> do
-          mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nns
+        LitMat nss -> do
+          mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nss
           pure (A0TyPrim (uncurry A0TyMat (Matrix.size mat)), ALitMat mat)
     pure (a0tye, A0Literal alit)
   Var x -> do
