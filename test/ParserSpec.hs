@@ -11,7 +11,7 @@ type TypeExpr0 = TypeExprF ()
 
 type Expr0 = ExprF ()
 
-typ :: TypeExprMain () -> TypeExpr0
+typ :: TypeExprMainF () -> TypeExpr0
 typ = TypeExpr ()
 
 tyInt :: TypeExpr0
@@ -35,7 +35,7 @@ tyDepFun x tye1 tye2 = typ (TyArrow (Just x, tye1) tye2)
 tyNondepFun :: TypeExpr0 -> TypeExpr0 -> TypeExpr0
 tyNondepFun tye1 tye2 = typ (TyArrow (Nothing, tye1) tye2)
 
-expr :: ExprMain () -> Expr0
+expr :: ExprMainF () -> Expr0
 expr = Expr ()
 
 litInt :: Int -> Expr0
@@ -73,10 +73,10 @@ parseExpr s = fmap void (Parser.parseExpr s)
 parseTypeExpr :: Text -> Either String TypeExpr0
 parseTypeExpr s = fmap void (Parser.parseTypeExpr s)
 
-exprLoc :: Int -> Int -> ExprMain Span -> Expr
+exprLoc :: Int -> Int -> ExprMainF Span -> Expr
 exprLoc start end = Expr (Span start end)
 
-typLoc :: Int -> Int -> TypeExprMain Span -> TypeExpr
+typLoc :: Int -> Int -> TypeExprMainF Span -> TypeExpr
 typLoc start end = TypeExpr (Span start end)
 
 spec :: Spec

@@ -2,7 +2,7 @@ module Surface.Syntax
   ( Var,
     Literal (..),
     ExprF (..),
-    ExprMain (..),
+    ExprMainF (..),
     Expr,
     TypeName,
     TypeExprF (..),
@@ -23,27 +23,27 @@ data Literal
   | LitMat [[Int]]
   deriving stock (Eq, Show)
 
-data ExprF ann = Expr ann (ExprMain ann)
-  deriving stock (Show)
+data ExprF ann = Expr ann (ExprMainF ann)
+  deriving stock (Show, Functor)
 
-data ExprMain ann
+data ExprMainF ann
   = Literal Literal
   | Var Var
   | Lam (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)
   | LetIn Var (ExprF ann) (ExprF ann)
-  deriving stock (Show)
+  deriving stock (Show, Functor)
 
 type Expr = ExprF Span
 
 type TypeName = Text
 
 data TypeExprF ann = TypeExpr ann (TypeExprMain ann)
-  deriving stock (Show)
+  deriving stock (Show, Functor)
 
 data TypeExprMain ann
   = TyName TypeName [ExprF ann]
   | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
-  deriving stock (Show)
+  deriving stock (Show, Functor)
 
 type TypeExpr = TypeExprF Span

@@ -19,13 +19,17 @@ module Surface.BindingTimeAnalyzer
   )
 where
 
+import Control.Lens
 import Control.Monad.Trans.State
 import Data.Either.Extra qualified as Either
+import Data.Generics.Labels ()
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
+import GHC.Generics
 import Lwsd.Matrix qualified as Matrix
+import Lwsd.Syntax qualified as Lwsd
 import Lwsd.Vector qualified as Vector
 import Surface.Syntax
 import Util.TokenUtil (Span)
@@ -93,7 +97,7 @@ data BindingTimeConst = BT0 | BT1
 data BindingTime
   = BTConst BindingTimeConst
   | BTVar BindingTimeVar
-  deriving stock (Show)
+  deriving stock (Show, Generic)
 
 data Constraint
   = CLeq BindingTimeVar BindingTime
@@ -454,9 +458,68 @@ solveConstraints = go Map.empty
                 else
                   pure [constraint]
 
-run :: BindingTimeEnv -> Expr -> Either AnalysisError (BIType, Map BindingTimeVar BindingTime, [Constraint])
+type BCExpr = ExprF (BindingTimeConst, Span)
+
+type BCExprMain = ExprMainF (BindingTimeConst, Span)
+
+type BCTypeExpr = TypeExprF (BindingTimeConst, Span)
+
+stageExpr0 :: BCExpr -> Lwsd.Expr
+stageExpr0 (Expr (btc, ann) exprMain) =
+  case btc of
+    BT1 ->
+      let lweMain = stageExpr1Main exprMain
+       in Lwsd.Expr ann (Lwsd.Bracket (Lwsd.Expr ann lweMain))
+    BT0 ->
+      Lwsd.Expr ann (stageExpr0Main exprMain)
+
+stageExpr0Main :: BCExprMain -> Lwsd.ExprMain
+stageExpr0Main = \case
+  Literal lit -> Lwsd.Literal (convertLiteral lit)
+  Var x -> Lwsd.Var x
+  Lam (x, tye1) e2 -> Lwsd.Lam (x, stageTypeExpr0 tye1) (stageExpr0 e2)
+  App e1 e2 -> Lwsd.App (stageExpr0 e1) (stageExpr0 e2)
+  LetIn x e1 e2 -> Lwsd.LetIn x (stageExpr0 e1) (stageExpr0 e2)
+
+stageExpr1 :: BCExpr -> Lwsd.Expr
+stageExpr1 (Expr (btc, ann) exprMain) =
+  case btc of
+    BT0 ->
+      let lweMain = stageExpr0Main exprMain
+       in Lwsd.Expr ann (Lwsd.Escape (Lwsd.Expr ann lweMain))
+    BT1 ->
+      Lwsd.Expr ann (stageExpr1Main exprMain)
+
+stageExpr1Main :: BCExprMain -> Lwsd.ExprMain
+stageExpr1Main = \case
+  Literal lit -> Lwsd.Literal (convertLiteral lit)
+  Var x -> Lwsd.Var x
+  Lam (x, tye1) e2 -> Lwsd.Lam (x, stageTypeExpr1 tye1) (stageExpr1 e2)
+  App e1 e2 -> Lwsd.App (stageExpr1 e1) (stageExpr1 e2)
+  LetIn x e1 e2 -> Lwsd.LetIn x (stageExpr1 e1) (stageExpr1 e2)
+
+stageTypeExpr0 :: BCTypeExpr -> Lwsd.TypeExpr
+stageTypeExpr0 = error "TODO: stageTypeExpr0"
+
+stageTypeExpr1 :: BCTypeExpr -> Lwsd.TypeExpr
+stageTypeExpr1 = error "TODO: stageTypeExpr1"
+
+convertLiteral :: Literal -> Lwsd.Literal
+convertLiteral = error "TODO: convertLiteral"
+
+run :: BindingTimeEnv -> Expr -> Either AnalysisError Lwsd.Expr
 run btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
-  (bity, constraints) <- extractConstraintsFromExpr btenv be
-  (solutionMap, unsolvedConstraints) <- solveConstraints constraints
-  pure (bity, solutionMap, unsolvedConstraints)
+  (_bity, constraints) <- extractConstraintsFromExpr btenv be
+  (rawSolutionMap, _unsolvedConstraints) <- solveConstraints constraints
+  let solutionMap = Map.mapMaybe (^? #_BTConst) rawSolutionMap
+  let bce =
+        fmap
+          ( \(btv, ann) ->
+              case Map.lookup btv solutionMap of
+                Just btc -> (btc, ann)
+                Nothing -> (BT0, ann) -- TODO: reconsider this
+          )
+          be
+  let lwe = stageExpr0 bce
+  pure lwe

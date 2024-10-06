@@ -5,11 +5,12 @@ module Lwsd.Syntax
     Literal (..),
     BuiltIn (..),
     ExprF (..),
-    ExprMain (..),
+    ExprMainF (..),
     Expr,
+    ExprMain,
     TypeName,
     TypeExprF (..),
-    TypeExprMain (..),
+    TypeExprMainF (..),
     TypeExpr,
     ArgForTypeF (..),
     ArgForType,
@@ -77,11 +78,11 @@ data BuiltIn
   | BIMconcatVert Int Int Int Var Var
   deriving stock (Eq, Show)
 
-data ExprF ann = Expr ann (ExprMain ann)
+data ExprF ann = Expr ann (ExprMainF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ExprF)
 
-data ExprMain ann
+data ExprMainF ann
   = Literal Literal
   | Var Var
   | Lam (Var, TypeExprF ann) (ExprF ann)
@@ -90,23 +91,25 @@ data ExprMain ann
   | Bracket (ExprF ann)
   | Escape (ExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 ExprMain)
+  deriving (Eq1, Show1) via (Generically1 ExprMainF)
 
 -- The type for ASTs for expressions obtained by parsing source programs.
 type Expr = ExprF Span
 
+type ExprMain = ExprMainF Span
+
 type TypeName = Text
 
-data TypeExprF ann = TypeExpr ann (TypeExprMain ann)
+data TypeExprF ann = TypeExpr ann (TypeExprMainF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 TypeExprF)
 
-data TypeExprMain ann
+data TypeExprMainF ann
   = TyName TypeName [ArgForTypeF ann]
   | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
   | TyCode (TypeExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 TypeExprMain)
+  deriving (Eq1, Show1) via (Generically1 TypeExprMainF)
 
 -- The type for ASTs for type expressions obtained by parsing source programs.
 type TypeExpr = TypeExprF Span
