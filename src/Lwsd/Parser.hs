@@ -14,6 +14,7 @@ import Lwsd.Token qualified as Token
 import Text.Megaparsec hiding (Token, parse, some, token, tokens)
 import Text.Megaparsec qualified as Mp
 import Util.ParserUtil
+import Util.TokenUtil
 import Prelude
 
 type P a = GenP Token a

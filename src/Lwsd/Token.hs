@@ -24,7 +24,7 @@ import Text.Megaparsec.Char qualified as MpChar
 import Text.Megaparsec.Char.Lexer qualified as MpLexer
 import Text.Megaparsec.Pos qualified as MpPos
 import Text.Megaparsec.Stream qualified as MpStream
-import Util.ParserUtil hiding (token)
+import Util.TokenUtil
 import Prelude hiding (lex)
 
 data Token

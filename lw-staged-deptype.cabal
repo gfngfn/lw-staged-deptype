@@ -59,7 +59,6 @@ library
 
     -- Modules exported by the library.
     exposed-modules:
-      Util.ParserUtil,
       Lwsd.BuiltIn,
       Lwsd.Evaluator,
       Lwsd.Formatter,
@@ -75,6 +74,8 @@ library
       Lwsd.Vector,
       Surface.Syntax,
       Surface.SurfaceMain,
+      Util.ParserUtil,
+      Util.TokenUtil
 
     -- Modules included in this library but not exported.
     -- other-modules:
