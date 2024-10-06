@@ -4,9 +4,9 @@ module Surface.SurfaceMain
   )
 where
 
-import Control.Monad.Trans.State
 import Data.Text.IO qualified as TextIO
 import Surface.BindingTimeAnalyzer qualified as BindingTimeAnalyzer
+import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
 import Prelude
 
@@ -24,9 +24,14 @@ handle Argument {inputFilePath} = do
       putStrLn err
       failure
     Right e -> do
-      let be = evalState (BindingTimeAnalyzer.assignBindingTimeVarToExpr e) BindingTimeAnalyzer.initialState
-      print be
-      success
+      case BindingTimeAnalyzer.run BuiltIn.initialBindingTimeEnv e of
+        Left err -> do
+          putStrLn "-------- binding-time analysis error: --------"
+          print err
+          failure
+        Right r -> do
+          print r
+          success
   where
     success = return True
     failure = return False

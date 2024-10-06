@@ -1,11 +1,21 @@
 module Surface.BindingTimeAnalyzer
   ( BindingTimeVar,
+    BExpr,
+    BITypeF (..),
+    BITypeMainF (..),
+    BIType,
+    BITypeVoid,
+    ExprVoid,
+    TypeExprVoid,
+    BindingTimeEnvEntry (..),
+    BindingTimeEnv,
     initialState,
     assignBindingTimeVarToExpr,
     BindingTimeConst (..),
     BindingTime (..),
     Constraint (..),
     extractConstraintsFromExpr,
+    run,
   )
 where
 
@@ -78,37 +88,55 @@ assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
         pure $ TyArrow (xOpt, bty1) bty2
 
 data BindingTimeConst = BT0 | BT1
+  deriving stock (Show)
 
 data BindingTime
   = BTConst BindingTimeConst
   | BTVar BindingTimeVar
+  deriving stock (Show)
 
 data Constraint
   = CLeq BindingTimeVar BindingTime
   | CEqual BindingTimeVar BindingTime
+  deriving stock (Show)
 
 -- Intermediate type representations
-data BIType = BIType (BindingTimeVar, Span) BITypeMain
+data BITypeF meta = BIType meta (BITypeMainF meta)
+  deriving stock (Show)
 
-data BITypeMain
+data BITypeMainF meta
   = BITyInt
   | BITyVecLit Int
-  | BITyVecExpr BExpr
+  | BITyVecExpr (ExprF meta)
   | BITyMatLit (Int, Int)
-  | BITyMatExpr (BExpr, BExpr)
-  | BITyArrow (Maybe Var, BIType) BIType
+  | BITyMatExpr (ExprF meta, ExprF meta)
+  | BITyArrow (Maybe Var, BITypeF meta) (BITypeF meta)
+  deriving stock (Show)
 
-data BindingTimeError
+type BIType = BITypeF (BindingTimeVar, Span)
+
+type BITypeVoid = BITypeF ()
+
+type ExprVoid = ExprF ()
+
+type TypeExprVoid = TypeExprF ()
+
+data AnalysisError
   = InvalidMatrixLiteral Span Matrix.ConstructionError
   | UnboundVar Span Var
   | NotAFunction BIType
   | UnknownTypeOrInvalidArity Span TypeName Int
+  deriving stock (Show)
 
-type BindingTimeEnv = Map Var (BindingTimeVar, BIType)
+data BindingTimeEnvEntry
+  = EntryBuiltIn (BITypeF ())
+  | EntryLocallyBound BindingTimeVar BIType
 
-type M a = Either BindingTimeError a
+type BindingTimeEnv = Map Var BindingTimeEnvEntry
 
-analysisError :: BindingTimeError -> M a
+type M a = Either AnalysisError a
+
+analysisError :: AnalysisError -> M a
 analysisError = Left
 
 class HasVar a where
@@ -177,6 +205,43 @@ instance HasVar BTypeExpr where
 occurs :: (HasVar a) => Var -> a -> Bool
 occurs x entity = x `elem` frees entity
 
+enhanceBIType :: BindingTimeVar -> Span -> BITypeVoid -> BIType
+enhanceBIType btv ann (BIType () bityMain) =
+  BIType (btv, ann) $
+    case bityMain of
+      BITyInt -> BITyInt
+      BITyVecLit n -> BITyVecLit n
+      BITyVecExpr e -> BITyVecExpr (fExpr e)
+      BITyMatLit nPair -> BITyMatLit nPair
+      BITyMatExpr (e1, e2) -> BITyMatExpr (fExpr e1, fExpr e2)
+      BITyArrow (xOpt, bity1) bity2 -> BITyArrow (xOpt, fBIType bity1) (fBIType bity2)
+  where
+    fBIType = enhanceBIType btv ann
+    fExpr = enhanceExpr btv ann
+
+enhanceExpr :: BindingTimeVar -> Span -> ExprVoid -> BExpr
+enhanceExpr btv ann (Expr () exprMain) =
+  Expr (btv, ann) $
+    case exprMain of
+      Literal lit -> Literal lit
+      Var x -> Var x
+      Lam (x, tye1) e2 -> Lam (x, fTypeExpr tye1) (fExpr e2)
+      App e1 e2 -> App (fExpr e1) (fExpr e2)
+      LetIn x e1 e2 -> LetIn x (fExpr e1) (fExpr e2)
+  where
+    fExpr = enhanceExpr btv ann
+    fTypeExpr = enhanceTypeExpr btv ann
+
+enhanceTypeExpr :: BindingTimeVar -> Span -> TypeExprVoid -> BTypeExpr
+enhanceTypeExpr btv ann (TypeExpr () typeExprMain) =
+  TypeExpr (btv, ann) $
+    case typeExprMain of
+      TyName tyName args -> TyName tyName (map fExpr args)
+      TyArrow (xOpt, tye1) tye2 -> TyArrow (xOpt, fTypeExpr tye1) (fTypeExpr tye2)
+  where
+    fExpr = enhanceExpr btv ann
+    fTypeExpr = enhanceTypeExpr btv ann
+
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BIType, [Constraint])
 extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
   case exprMain of
@@ -196,11 +261,14 @@ extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
       case Map.lookup x btenv of
         Nothing ->
           analysisError $ UnboundVar ann x
-        Just (btv', bity) ->
+        Just (EntryBuiltIn bityVoid) ->
+          pure (enhanceBIType btv ann bityVoid, []) -- TODO: remove `ann`
+        Just (EntryLocallyBound btv' bity) ->
           pure (bity, [CEqual btv (BTVar btv')])
     Lam (x1, btye1) e2 -> do
       (bity1@(BIType (btv1, _) _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
-      (bity2@(BIType (btv2, _) _), constraints2) <- extractConstraintsFromExpr (Map.insert x1 (btv, bity1) btenv) e2
+      (bity2@(BIType (btv2, _) _), constraints2) <-
+        extractConstraintsFromExpr (Map.insert x1 (EntryLocallyBound btv bity1) btenv) e2
       let constraints =
             if occurs x1 bity2
               then [CEqual btv (BTConst BT0)]
@@ -225,7 +293,8 @@ extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
     LetIn x e1 e2 -> do
       -- Not confident. TODO: check the validity of the following
       (bity1@(BIType (btv1, _) _), constraints1) <- extractConstraintsFromExpr btenv e1
-      (bity2@(BIType (btv2, _) _), constraints2) <- extractConstraintsFromExpr (Map.insert x (btv, bity1) btenv) e2
+      (bity2@(BIType (btv2, _) _), constraints2) <-
+        extractConstraintsFromExpr (Map.insert x (EntryLocallyBound btv bity1) btenv) e2
       pure (bity2, constraints1 ++ constraints2 ++ [CLeq btv (BTVar btv1), CLeq btv (BTVar btv2)])
 
 extractConstraintsFromTypeExpr :: BindingTimeEnv -> BTypeExpr -> M (BIType, [Constraint])
@@ -260,9 +329,14 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (btv, ann) typeExprMain) =
           pure (BIType (btv, ann) (BITyArrow (Nothing, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
         Just x1 -> do
           (bity2@(BIType (btv2, _) _), constraints2) <-
-            extractConstraintsFromTypeExpr (Map.insert x1 (btv, bity1) btenv) tye2
+            extractConstraintsFromTypeExpr (Map.insert x1 (EntryLocallyBound btv bity1) btenv) tye2
           let constraints =
                 if occurs x1 bity2
                   then [CEqual btv (BTConst BT0)]
                   else [CLeq btv (BTVar btv1), CLeq btv (BTVar btv2)]
           pure (BIType (btv, ann) (BITyArrow (x1opt, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
+
+run :: BindingTimeEnv -> Expr -> Either AnalysisError (BIType, [Constraint])
+run btenv e = do
+  let be = evalState (assignBindingTimeVarToExpr e) initialState
+  extractConstraintsFromExpr btenv be

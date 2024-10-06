@@ -73,6 +73,7 @@ library
       Lwsd.Typechecker,
       Lwsd.Vector,
       Surface.BindingTimeAnalyzer,
+      Surface.BuiltIn,
       Surface.Parser,
       Surface.Syntax,
       Surface.SurfaceMain,
