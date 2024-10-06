@@ -383,61 +383,76 @@ solveConstraints = go Map.empty
         BTVar btv2 ->
           case constraint of
             CLeq btvC1 (BTVar btvC2) ->
-              if btvC1 == btv1 then
-                pure [CLeq btv2 (BTVar btvC2)]
-              else if btvC2 == btv1 then
-                pure [CLeq btvC1 (BTVar btv2)]
-              else
-                pure [constraint]
+              if btvC1 == btv1
+                then
+                  pure [CLeq btv2 (BTVar btvC2)]
+                else
+                  if btvC2 == btv1
+                    then
+                      pure [CLeq btvC1 (BTVar btv2)]
+                    else
+                      pure [constraint]
             CLeq btvC1 (BTConst btcC2) ->
-              if btvC1 == btv1 then
-                pure [CLeq btv2 (BTConst btcC2)]
-              else
-                pure [constraint]
+              if btvC1 == btv1
+                then
+                  pure [CLeq btv2 (BTConst btcC2)]
+                else
+                  pure [constraint]
             CEqual btvC1 (BTVar btvC2) ->
-              if btvC1 == btv1 then
-                pure [CEqual btv2 (BTVar btvC2)]
-              else if btvC2 == btv1 then
-                pure [CEqual btvC1 (BTVar btv2)]
-              else
-                pure [constraint]
+              if btvC1 == btv1
+                then
+                  pure [CEqual btv2 (BTVar btvC2)]
+                else
+                  if btvC2 == btv1
+                    then
+                      pure [CEqual btvC1 (BTVar btv2)]
+                    else
+                      pure [constraint]
             CEqual btvC1 (BTConst btcC2) ->
-              if btvC1 == btv1 then
-                pure [CEqual btv2 (BTConst btcC2)]
-              else
-                pure [constraint]
+              if btvC1 == btv1
+                then
+                  pure [CEqual btv2 (BTConst btcC2)]
+                else
+                  pure [constraint]
         BTConst btc2 ->
           case constraint of
             CLeq btvC1 (BTVar btvC2) ->
-              if btvC1 == btv1 then
-                case btc2 of
+              if btvC1 == btv1
+                then case btc2 of
                   BT0 -> pure []
                   BT1 -> pure [CEqual btvC2 (BTConst BT1)]
-              else if btvC2 == btv1 then
-                pure [CLeq btvC1 (BTConst btc2)]
-              else
-                pure [constraint]
+                else
+                  if btvC2 == btv1
+                    then
+                      pure [CLeq btvC1 (BTConst btc2)]
+                    else
+                      pure [constraint]
             CLeq btvC1 (BTConst btcC2) ->
-              if btvC1 == btv1 then
-                if btc2 <= btcC2 then
-                  pure []
+              if btvC1 == btv1
+                then
+                  if btc2 <= btcC2
+                    then
+                      pure []
+                    else
+                      Left BindingTimeContradiction
                 else
-                  Left BindingTimeContradiction
-              else
-                pure [constraint]
+                  pure [constraint]
             CEqual btvC1 (BTVar btvC2) ->
-              if btvC1 == btv1 then
-                pure [CEqual btvC2 (BTConst btc2)]
-              else
-                pure [constraint]
-            CEqual btvC1 (BTConst btcC2) ->
-              if btvC1 == btv1 then
-                if btc2 == btcC2 then
-                  pure []
+              if btvC1 == btv1
+                then
+                  pure [CEqual btvC2 (BTConst btc2)]
                 else
-                  Left BindingTimeContradiction
-              else
-                pure [constraint]
+                  pure [constraint]
+            CEqual btvC1 (BTConst btcC2) ->
+              if btvC1 == btv1
+                then
+                  if btc2 == btcC2
+                    then
+                      pure []
+                    else
+                      Left BindingTimeContradiction
+                else
+                  pure [constraint]
 
 run :: BindingTimeEnv -> Expr -> Either AnalysisError (BIType, Map BindingTimeVar BindingTime, [Constraint])
 run btenv e = do
