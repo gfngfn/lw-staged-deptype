@@ -72,6 +72,7 @@ library
       Lwsd.TypeError,
       Lwsd.Typechecker,
       Lwsd.Vector,
+      Surface.BindingTimeAnalyzer,
       Surface.Parser,
       Surface.Syntax,
       Surface.SurfaceMain,
