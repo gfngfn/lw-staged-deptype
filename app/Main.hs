@@ -1,8 +1,8 @@
 module Main where
 
 import Lwsd.LibMain qualified as LwsdMain
-import Surface.SurfaceMain qualified as SurfaceMain
 import Options.Applicative
+import Surface.SurfaceMain qualified as SurfaceMain
 import System.Exit
 
 data Argument
@@ -13,7 +13,8 @@ argumentParser :: Parser Argument
 argumentParser =
   subparser
     ( command "lwsd" (info (LwsdArgument <$> lwsdArgumentParser) (progDesc "Handles staged programs"))
-        <> command "surface" (info (SurfaceArgument <$> surfaceArgumentParser) (progDesc "Handles non-staged programs")))
+        <> command "surface" (info (SurfaceArgument <$> surfaceArgumentParser) (progDesc "Handles non-staged programs"))
+    )
 
 lwsdArgumentParser :: Parser LwsdMain.Argument
 lwsdArgumentParser =
