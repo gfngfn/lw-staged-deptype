@@ -9,23 +9,15 @@ import Data.Functor
 import Data.List qualified as List
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Void (Void)
 import Lwsd.Syntax
-import Lwsd.Token (Located (..), Span, Token (..), mergeSpan)
+import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
 import Text.Megaparsec hiding (Token, parse, some, token, tokens)
 import Text.Megaparsec qualified as Mp
+import Util.ParserUtil
 import Prelude
 
-type P a = Mp.Parsec Void [Located Token] a
-
-token :: Token -> P Span
-token tExpected =
-  Mp.token
-    ( \(Located loc t) ->
-        if t == tExpected then Just loc else Nothing
-    )
-    Set.empty
+type P a = GenP Token a
 
 noLoc :: P (Located a) -> P a
 noLoc p = (\(Located _ x) -> x) <$> p

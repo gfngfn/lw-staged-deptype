@@ -3,7 +3,8 @@ module Surface.Syntax
     ExprMain (..),
     TypeExprF (..),
     TypeExprMain (..),
-  ) where
+  )
+where
 
 import Data.Text (Text)
 

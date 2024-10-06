@@ -24,6 +24,7 @@ import Text.Megaparsec.Char qualified as MpChar
 import Text.Megaparsec.Char.Lexer qualified as MpLexer
 import Text.Megaparsec.Pos qualified as MpPos
 import Text.Megaparsec.Stream qualified as MpStream
+import Util.ParserUtil hiding (token)
 import Prelude hiding (lex)
 
 data Token
@@ -123,19 +124,6 @@ token =
       TokUpper <$> upperIdent,
       TokInt <$> integerLiteral
     ]
-
--- The type for code locations (pairs of a start offset and an end offset).
-data Span = Span
-  { start :: Int,
-    end :: Int
-  }
-  deriving (Eq, Ord, Show)
-
-mergeSpan :: Span -> Span -> Span
-mergeSpan (Span {start}) (Span {end}) = Span {start, end}
-
-data Located a = Located Span a
-  deriving (Eq, Ord, Show, Functor)
 
 tokenWithOffsets :: Tokenizer (Located Token)
 tokenWithOffsets = do
