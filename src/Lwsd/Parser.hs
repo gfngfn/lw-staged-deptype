@@ -8,7 +8,6 @@ import Control.Lens
 import Data.Either.Extra
 import Data.Functor
 import Data.Generics.Labels ()
-import Data.List qualified as List
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Lwsd.Syntax
@@ -38,8 +37,8 @@ vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 mat :: P (Located [[Int]])
 mat = genMat TokMatLeft TokMatRight TokSemicolon TokColon (noLoc int)
 
-makeBinary :: Expr -> (Located Var, Expr) -> Expr
-makeBinary e1@(Expr loc1 _) (Located locBinOp binOp, e2@(Expr loc2 _)) =
+makeBinOpApp :: Expr -> Located Var -> Expr -> Expr
+makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
   Expr (mergeSpan locLeft loc2) (App (Expr locLeft (App eOp e1)) e2)
   where
     locLeft = mergeSpan loc1 locBinOp
@@ -82,28 +81,28 @@ exprAtom, expr :: P Expr
 
     mult :: P Expr
     mult =
-      List.foldl' makeBinary <$> app <*> many ((,) <$> multOp <*> app)
-
-    multOp :: P (Located Var)
-    multOp =
-      expectToken
-        ( \case
-            TokOpMult -> Just "*"
-            _ -> Nothing
-        )
+      binSep makeBinOpApp multOp app
+      where
+        multOp :: P (Located Var)
+        multOp =
+          expectToken
+            ( \case
+                TokOpMult -> Just "*"
+                _ -> Nothing
+            )
 
     add :: P Expr
     add =
-      List.foldl' makeBinary <$> mult <*> many ((,) <$> addOp <*> mult)
-
-    addOp :: P (Located Var)
-    addOp =
-      expectToken
-        ( \case
-            TokOpAdd -> Just "+"
-            TokOpSub -> Just "-"
-            _ -> Nothing
-        )
+      binSep makeBinOpApp addOp mult
+      where
+        addOp :: P (Located Var)
+        addOp =
+          expectToken
+            ( \case
+                TokOpAdd -> Just "+"
+                TokOpSub -> Just "-"
+                _ -> Nothing
+            )
 
     lam :: P Expr
     lam =
