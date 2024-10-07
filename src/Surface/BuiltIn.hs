@@ -46,15 +46,15 @@ initialBindingTimeEnv =
     [ ("+", persistent bityArith),
       ("-", persistent bityArith),
       ("*", persistent bityArith),
-      ("vadd", fixed0 bityVadd),
-      ("vconcat", fixed0 bityVconcat),
-      ("mtranspose", fixed0 bityMtranspose),
-      ("mmult", fixed0 bityMmult),
-      ("mconcat_vert", fixed0 bityMconcatVert)
+      ("vadd", fixed0 "gen_vadd" bityVadd),
+      ("vconcat", fixed0 "gen_vconcat" bityVconcat),
+      ("mtranspose", fixed0 "gen_mtranspose" bityMtranspose),
+      ("mmult", fixed0 "gen_mmult" bityMmult),
+      ("mconcat_vert", fixed0 "gen_mconcat_vert" bityMconcatVert)
     ]
   where
     persistent = EntryBuiltInPersistent
-    fixed0 = EntryBuiltInFixed BT0
+    fixed0 x' = EntryBuiltInFixed x' BT0
 
     bityArith :: BITypeF ()
     bityArith =

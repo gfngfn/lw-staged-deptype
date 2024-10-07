@@ -6,11 +6,11 @@ where
 
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
-import Lwsd.Syntax qualified as Lwsd
 import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.LibMain qualified as LwsdMain
+import Lwsd.Syntax qualified as Lwsd
 import Surface.BindingTimeAnalyzer qualified as BindingTimeAnalyzer
 import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
