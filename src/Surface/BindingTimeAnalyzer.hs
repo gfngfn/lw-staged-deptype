@@ -29,8 +29,8 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import GHC.Generics
 import Lwsd.Matrix qualified as Matrix
-import Lwsd.Vector qualified as Vector
 import Lwsd.Syntax qualified as Lwsd
+import Lwsd.Vector qualified as Vector
 import Surface.Syntax
 import Util.TokenUtil (Span)
 import Prelude hiding (succ)

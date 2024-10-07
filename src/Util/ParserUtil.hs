@@ -84,7 +84,7 @@ genMat :: (Ord token) => token -> token -> token -> token -> GenP token entry ->
 genMat tLeft tRight tSemicolon tComma entry = makeMat <$> token tLeft <*> rest
   where
     rest =
-      (makeNonemptyMat <$> nonemptyRow <*> Mp.many (token tSemicolon *> nonemptyRow) <*> token tRight)
+      (makeNonemptyMat <$> nonemptyRow <*> many (token tSemicolon *> nonemptyRow) <*> token tRight)
         `or` (([],) <$> token tRight)
 
     makeNonemptyMat rowFirst rowsTail locLast =
@@ -94,4 +94,4 @@ genMat tLeft tRight tSemicolon tComma entry = makeMat <$> token tLeft <*> rest
       Located (mergeSpan locFirst locLast) rows
 
     nonemptyRow =
-      (:) <$> entry <*> Mp.many (token tComma *> entry)
+      (:) <$> entry <*> many (token tComma *> entry)

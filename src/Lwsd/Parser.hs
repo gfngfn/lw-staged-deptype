@@ -35,7 +35,7 @@ vec :: P (Located [Int])
 vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 
 mat :: P (Located [[Int]])
-mat = genMat TokMatLeft TokMatRight TokSemicolon TokColon (noLoc int)
+mat = genMat TokMatLeft TokMatRight TokSemicolon TokComma (noLoc int)
 
 makeBinOpApp :: Expr -> Located Var -> Expr -> Expr
 makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
