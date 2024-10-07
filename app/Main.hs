@@ -28,7 +28,9 @@ surfaceArgumentParser :: Parser SurfaceMain.Argument
 surfaceArgumentParser =
   SurfaceMain.Argument
     <$> strArgument (metavar "INPUT-FILE-PATH")
+    <*> switch (short 'o' <> long "optimize" <> help "Do slight optimization about assertion insertion")
     <*> option auto (value 80 <> short 'w' <> long "display-width" <> help "Set display width")
+    <*> switch (long "compile-time-only" <> help "Execute only compile-time computation")
 
 main :: IO ()
 main = do

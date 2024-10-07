@@ -1,4 +1,9 @@
-module Lwsd.Formatter where
+module Lwsd.Formatter
+  ( Disp (..),
+    render,
+    renderExprAtStage0,
+  )
+where
 
 import Data.List qualified as List
 import Data.Text (Text)
@@ -18,10 +23,19 @@ import Prelude
 type Ann = AnsiStyle
 
 bindingTime0Style :: AnsiStyle
-bindingTime0Style = color Cyan
+bindingTime0Style = color Green
 
 bindingTime1Style :: AnsiStyle
-bindingTime1Style = color Magenta
+bindingTime1Style = color Red
+
+stage0Style :: AnsiStyle
+stage0Style = color Cyan
+
+stage1Style :: AnsiStyle
+stage1Style = color Magenta
+
+stagingOperatorStyle :: AnsiStyle
+stagingOperatorStyle = color Yellow
 
 data Associativity
   = Atomic
@@ -42,6 +56,9 @@ renderDoc wid doc =
 render :: (Disp a) => Int -> a -> Text
 render wid = renderDoc wid . disp
 
+renderExprAtStage0 :: Int -> ExprF a -> Text
+renderExprAtStage0 wid = renderDoc wid . annotate stage0Style . disp
+
 commaSep :: [Doc Ann] -> Doc Ann
 commaSep = sep . punctuate comma
 
@@ -51,13 +68,6 @@ disps (first : rest) = List.foldl' (\doc x -> doc <> "," <+> disp x) (disp first
 
 deepenParen :: Doc Ann -> Doc Ann
 deepenParen doc = "(" <> nest 2 doc <> ")"
-
-deepenParenCommaSep :: [Doc Ann] -> Doc Ann
-deepenParenCommaSep docs = "(" <> nest 2 (sep (punctuate comma (addFirstBreak docs))) <> ")"
-
-addFirstBreak :: [Doc Ann] -> [Doc Ann]
-addFirstBreak [] = []
-addFirstBreak (doc : docs) = (line' <> doc) : docs
 
 instance Disp Text where
   dispGen _ = pretty
@@ -97,9 +107,9 @@ instance Disp (ExprMainF ann) where
       let doc = group ("let" <+> disp x <+> "=" <+> disp e1 <+> "in" <+> disp e2)
        in if req <= FunDomain then deepenParen doc else doc
     Bracket e1 ->
-      "&" <> dispGen Atomic e1
+      annotate stagingOperatorStyle "&" <> annotate stage1Style (dispGen Atomic e1)
     Escape e1 ->
-      "~" <> dispGen Atomic e1
+      annotate stagingOperatorStyle "~" <> annotate stage0Style (dispGen Atomic e1)
 
 instance Disp (TypeExprF ann) where
   dispGen req (TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -125,7 +135,7 @@ instance Disp (TypeExprMainF ann) where
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
-    PersistentArg e -> "%" <> dispGen Atomic e
+    PersistentArg e -> annotate stagingOperatorStyle "%" <> annotate stage0Style (dispGen Atomic e)
     NormalArg e -> dispGen req e
 
 instance Disp BuiltIn where

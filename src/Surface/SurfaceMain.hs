@@ -6,8 +6,11 @@ where
 
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
+import Lwsd.Syntax qualified as Lwsd
+import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
+import Lwsd.LibMain qualified as LwsdMain
 import Surface.BindingTimeAnalyzer qualified as BindingTimeAnalyzer
 import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
@@ -15,11 +18,13 @@ import Prelude
 
 data Argument = Argument
   { inputFilePath :: String,
-    displayWidth :: Int
+    optimize :: Bool,
+    displayWidth :: Int,
+    compileTimeOnly :: Bool
   }
 
 handle :: Argument -> IO Bool
-handle Argument {inputFilePath, displayWidth} = do
+handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
   putStrLn "Lightweight Dependent Types via Staging (Surface Language)"
   source <- TextIO.readFile inputFilePath
   case Parser.parseExpr source of
@@ -34,15 +39,26 @@ handle Argument {inputFilePath, displayWidth} = do
           putRenderedLines analyErr
           failure
         Right (bce, lwe) -> do
-          putStrLn "-------- result of binding-time analysis (B): --------"
-          putRenderedLines bce
           putStrLn "-------- result of binding-time analysis: --------"
-          putRenderedLines lwe
-          success
+          putRenderedLines bce
+          putStrLn "-------- result of staging: --------"
+          putRenderedLinesOfExpr lwe
+          let lwArg =
+                LwsdMain.Argument
+                  { LwsdMain.inputFilePath = inputFilePath,
+                    LwsdMain.optimize = optimize,
+                    LwsdMain.displayWidth = displayWidth,
+                    LwsdMain.compileTimeOnly = compileTimeOnly
+                  }
+          let sourceSpec = Evaluator.SourceSpec source inputFilePath
+          LwsdMain.typecheckAndEval lwArg sourceSpec lwe
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines x =
       putStrLn $ Text.unpack $ Formatter.render displayWidth x
 
-    success = return True
+    putRenderedLinesOfExpr :: Lwsd.Expr -> IO ()
+    putRenderedLinesOfExpr x =
+      putStrLn $ Text.unpack $ Formatter.renderExprAtStage0 displayWidth x
+
     failure = return False
