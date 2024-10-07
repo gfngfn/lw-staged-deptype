@@ -50,14 +50,14 @@ fresh = do
   put (succ btv)
   pure btv
 
-type BExpr = ExprF (BindingTimeVar, Span)
+type BExpr = ExprF (BindingTime, Span)
 
-type BTypeExpr = TypeExprF (BindingTimeVar, Span)
+type BTypeExpr = TypeExprF (BindingTime, Span)
 
 assignBindingTimeVarToExpr :: Expr -> Assigner BExpr
 assignBindingTimeVarToExpr (Expr ann exprMain) = do
   btv <- fresh
-  Expr (btv, ann)
+  Expr (BTVar btv, ann)
     <$> case exprMain of
       Literal lit ->
         pure $ Literal lit
@@ -79,7 +79,7 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
 assignBindingTimeVarToTypeExpr :: TypeExpr -> Assigner BTypeExpr
 assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
   btv <- fresh
-  TypeExpr (btv, ann)
+  TypeExpr (BTVar btv, ann)
     <$> case typeExprMain of
       TyName tyName es -> do
         bes <- mapM assignBindingTimeVarToExpr es
@@ -98,8 +98,8 @@ data BindingTime
   deriving stock (Show, Generic)
 
 data Constraint
-  = CLeq Span BindingTimeVar BindingTime
-  | CEqual Span BindingTimeVar BindingTime
+  = CLeq Span BindingTime BindingTime
+  | CEqual Span BindingTime BindingTime
   deriving stock (Show)
 
 -- Intermediate type representations
@@ -115,7 +115,7 @@ data BITypeMainF meta
   | BITyArrow (Maybe Var, BITypeF meta) (BITypeF meta)
   deriving stock (Show)
 
-type BIType = BITypeF (BindingTimeVar, Span)
+type BIType = BITypeF (BindingTime, Span)
 
 data AnalysisError
   = InvalidMatrixLiteral Span Matrix.ConstructionError
@@ -127,8 +127,8 @@ data AnalysisError
 
 data BindingTimeEnvEntry
   = EntryBuiltInPersistent (BITypeF ())
-  | EntryBuiltInFixed (BITypeF BindingTimeConst)
-  | EntryLocallyBound BindingTimeVar BIType
+  | EntryBuiltInFixed BindingTimeConst (BITypeF BindingTimeConst)
+  | EntryLocallyBound BindingTime BIType
 
 type BindingTimeEnv = Map Var BindingTimeEnvEntry
 
@@ -203,10 +203,9 @@ instance HasVar BTypeExpr where
 occurs :: (HasVar a) => Var -> a -> Bool
 occurs x entity = x `elem` frees entity
 
--- TODO: remove `ann`
-enhanceBIType :: BindingTimeVar -> Span -> BITypeF () -> BIType
-enhanceBIType btv ann (BIType () bityMain) =
-  BIType (btv, ann) $
+enhanceBIType :: (a -> (BindingTime, Span)) -> BITypeF a -> BIType
+enhanceBIType enh (BIType meta bityMain) =
+  BIType (enh meta) $
     case bityMain of
       BITyInt -> BITyInt
       BITyVecLit n -> BITyVecLit n
@@ -215,13 +214,12 @@ enhanceBIType btv ann (BIType () bityMain) =
       BITyMatExpr (e1, e2) -> BITyMatExpr (fExpr e1, fExpr e2)
       BITyArrow (xOpt, bity1) bity2 -> BITyArrow (xOpt, fBIType bity1) (fBIType bity2)
   where
-    fBIType = enhanceBIType btv ann
-    fExpr = enhanceExpr btv ann
+    fBIType = enhanceBIType enh
+    fExpr = enhanceExpr enh
 
--- TODO: remove `ann`
-enhanceExpr :: BindingTimeVar -> Span -> ExprF () -> BExpr
-enhanceExpr btv ann (Expr () exprMain) =
-  Expr (btv, ann) $
+enhanceExpr :: (a -> (BindingTime, Span)) -> ExprF a -> BExpr
+enhanceExpr enh (Expr meta exprMain) =
+  Expr (enh meta) $
     case exprMain of
       Literal lit -> Literal lit
       Var x -> Var x
@@ -229,22 +227,21 @@ enhanceExpr btv ann (Expr () exprMain) =
       App e1 e2 -> App (fExpr e1) (fExpr e2)
       LetIn x e1 e2 -> LetIn x (fExpr e1) (fExpr e2)
   where
-    fExpr = enhanceExpr btv ann
-    fTypeExpr = enhanceTypeExpr btv ann
+    fExpr = enhanceExpr enh
+    fTypeExpr = enhanceTypeExpr enh
 
--- TODO: remove `ann`
-enhanceTypeExpr :: BindingTimeVar -> Span -> TypeExprF () -> BTypeExpr
-enhanceTypeExpr btv ann (TypeExpr () typeExprMain) =
-  TypeExpr (btv, ann) $
+enhanceTypeExpr :: (a -> (BindingTime, Span)) -> TypeExprF a -> BTypeExpr
+enhanceTypeExpr enh (TypeExpr meta typeExprMain) =
+  TypeExpr (enh meta) $
     case typeExprMain of
       TyName tyName args -> TyName tyName (map fExpr args)
       TyArrow (xOpt, tye1) tye2 -> TyArrow (xOpt, fTypeExpr tye1) (fTypeExpr tye2)
   where
-    fExpr = enhanceExpr btv ann
-    fTypeExpr = enhanceTypeExpr btv ann
+    fExpr = enhanceExpr enh
+    fTypeExpr = enhanceTypeExpr enh
 
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BIType, [Constraint])
-extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
+extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) =
   case exprMain of
     Literal lit -> do
       bityMain <-
@@ -257,39 +254,39 @@ extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
           LitMat nss -> do
             mat <- Either.mapLeft (InvalidMatrixLiteral ann) $ Matrix.fromRows nss
             pure $ BITyMatLit (Matrix.size mat)
-      pure (BIType (btv, ann) bityMain, [])
+      pure (BIType (bt, ann) bityMain, [])
     Var x ->
       case Map.lookup x btenv of
         Nothing ->
           analysisError $ UnboundVar ann x
         Just (EntryBuiltInPersistent bityVoid) ->
-          pure (enhanceBIType btv ann bityVoid, []) -- TODO: remove `ann`
-        Just (EntryBuiltInFixed _) ->
-          error "TODO: EntryBuiltInFixed"
-        Just (EntryLocallyBound btv' bity) ->
-          pure (bity, [CEqual ann btv (BTVar btv')])
+          pure (enhanceBIType (\() -> (bt, ann)) bityVoid, []) -- TODO: refine `ann`
+        Just (EntryBuiltInFixed btc' bityConst) ->
+          pure (enhanceBIType (\btc -> (BTConst btc, ann)) bityConst, [CEqual ann bt (BTConst btc')])
+        Just (EntryLocallyBound bt' bity) ->
+          pure (bity, [CEqual ann bt bt'])
     Lam (x1, btye1) e2 -> do
-      (bity1@(BIType (btv1, _) _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
+      (bity1@(BIType (bt1, _) _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
       (bity2@(BIType (btv2, _) _), constraints2) <-
-        extractConstraintsFromExpr (Map.insert x1 (EntryLocallyBound btv bity1) btenv) e2
+        extractConstraintsFromExpr (Map.insert x1 (EntryLocallyBound bt bity1) btenv) e2
       let constraints =
             if occurs x1 bity2
-              then [CEqual ann btv (BTConst BT0)]
-              else [CLeq ann btv (BTVar btv1), CLeq ann btv (BTVar btv2)]
-      pure (BIType (btv, ann) (BITyArrow (Just x1, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
+              then [CEqual ann bt (BTConst BT0)]
+              else [CLeq ann bt bt1, CLeq ann bt btv2]
+      pure (BIType (bt, ann) (BITyArrow (Just x1, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
     App e1 e2 -> do
-      (bity1@(BIType (btv1, _) bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
-      (_bity2@(BIType (btv2, _) _bityMain2), constraints2) <- extractConstraintsFromExpr btenv e2
+      (bity1@(BIType (bt1, _) bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
+      (_bity2@(BIType (bt2, _) _bityMain2), constraints2) <- extractConstraintsFromExpr btenv e2
       case bityMain1 of
-        BITyArrow (x11opt, _bity11@(BIType (btv11, _) _bityMain11)) bity12 ->
+        BITyArrow (x11opt, _bity11@(BIType (bt11, _) _bityMain11)) bity12 ->
           -- We could check here that `bity2` and `bity11` are compatible,
           -- but it can be deferred to the upcoming type-checking.
-          let constraints0 = [CEqual ann btv (BTVar btv1), CEqual ann btv2 (BTVar btv11)]
+          let constraints0 = [CEqual ann bt bt1, CEqual ann bt2 bt11]
               constraints = constraints1 ++ constraints2 ++ constraints0
            in case x11opt of
                 Just x11 ->
                   if occurs x11 bity12
-                    then pure (subst e2 x11 bity12, constraints ++ [CEqual ann btv (BTConst BT0)])
+                    then pure (subst e2 x11 bity12, constraints ++ [CEqual ann bt (BTConst BT0)])
                     else pure (bity12, constraints)
                 Nothing ->
                   pure (bity12, constraints)
@@ -298,13 +295,13 @@ extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
            in analysisError $ NotAFunction ann1 bity1
     LetIn x e1 e2 -> do
       -- Not confident. TODO: check the validity of the following
-      (bity1@(BIType (btv1, _) _), constraints1) <- extractConstraintsFromExpr btenv e1
-      (bity2@(BIType (btv2, _) _), constraints2) <-
-        extractConstraintsFromExpr (Map.insert x (EntryLocallyBound btv bity1) btenv) e2
-      pure (bity2, constraints1 ++ constraints2 ++ [CLeq ann btv (BTVar btv1), CLeq ann btv (BTVar btv2)])
+      (bity1@(BIType (bt1, _) _), constraints1) <- extractConstraintsFromExpr btenv e1
+      (bity2@(BIType (bt2, _) _), constraints2) <-
+        extractConstraintsFromExpr (Map.insert x (EntryLocallyBound bt bity1) btenv) e2
+      pure (bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
 
 extractConstraintsFromTypeExpr :: BindingTimeEnv -> BTypeExpr -> M (BIType, [Constraint])
-extractConstraintsFromTypeExpr btenv (TypeExpr (btv, ann) typeExprMain) =
+extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
   case typeExprMain of
     TyName tyName args -> do
       (bityMain, constraints) <-
@@ -312,40 +309,41 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (btv, ann) typeExprMain) =
           ("Int", []) ->
             pure (BITyInt, [])
           ("Vec", [e1]) -> do
-            (BIType (btv1, _) _bity1Main, constraints1) <- extractConstraintsFromExpr btenv e1
+            (BIType (bt1, _) _bity1Main, constraints1) <- extractConstraintsFromExpr btenv e1
             -- We could check here that `bity1Main` equals `Int`,
             -- but it can be deferred to the upcoming type-checking.
-            pure (BITyVecExpr e1, constraints1 ++ [CEqual ann btv1 (BTConst BT0), CEqual ann btv (BTConst BT1)])
+            pure (BITyVecExpr e1, constraints1 ++ [CEqual ann bt1 (BTConst BT0), CEqual ann bt (BTConst BT1)])
           ("Mat", [e1, e2]) -> do
-            (BIType (btv1, _) _bity1Main, constraints1) <- extractConstraintsFromExpr btenv e1
-            (BIType (btv2, _) _bity2Main, constraints2) <- extractConstraintsFromExpr btenv e2
+            (BIType (bt1, _) _bity1Main, constraints1) <- extractConstraintsFromExpr btenv e1
+            (BIType (bt2, _) _bity2Main, constraints2) <- extractConstraintsFromExpr btenv e2
             -- We could check here that both `bity1Main` and `bity2Main` equal `Int`,
             -- but it can be deferred to the upcoming type-checking.
-            let constraints = [CEqual ann btv1 (BTConst BT0), CEqual ann btv2 (BTConst BT0), CEqual ann btv (BTConst BT1)]
+            let constraints = [CEqual ann bt1 (BTConst BT0), CEqual ann bt2 (BTConst BT0), CEqual ann bt (BTConst BT1)]
             pure (BITyMatExpr (e1, e2), constraints1 ++ constraints2 ++ constraints)
           _ ->
             analysisError $ UnknownTypeOrInvalidArity ann tyName (length args)
-      pure (BIType (btv, ann) bityMain, constraints)
+      pure (BIType (bt, ann) bityMain, constraints)
     TyArrow (x1opt, tye1) tye2 -> do
-      (bity1@(BIType (btv1, _) _), constraints1) <- extractConstraintsFromTypeExpr btenv tye1
+      (bity1@(BIType (bt1, _) _), constraints1) <- extractConstraintsFromTypeExpr btenv tye1
       case x1opt of
         Nothing -> do
-          (bity2@(BIType (btv2, _) _), constraints2) <- extractConstraintsFromTypeExpr btenv tye2
-          let constraints = [CLeq ann btv (BTVar btv1), CLeq ann btv (BTVar btv2)]
-          pure (BIType (btv, ann) (BITyArrow (Nothing, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
+          (bity2@(BIType (bt2, _) _), constraints2) <- extractConstraintsFromTypeExpr btenv tye2
+          let constraints = [CLeq ann bt bt1, CLeq ann bt bt2]
+          pure (BIType (bt, ann) (BITyArrow (Nothing, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
         Just x1 -> do
-          (bity2@(BIType (btv2, _) _), constraints2) <-
-            extractConstraintsFromTypeExpr (Map.insert x1 (EntryLocallyBound btv bity1) btenv) tye2
+          (bity2@(BIType (bt2, _) _), constraints2) <-
+            extractConstraintsFromTypeExpr (Map.insert x1 (EntryLocallyBound bt bity1) btenv) tye2
           let constraints =
                 if occurs x1 bity2
-                  then [CEqual ann btv (BTConst BT0)]
-                  else [CLeq ann btv (BTVar btv1), CLeq ann btv (BTVar btv2)]
-          pure (BIType (btv, ann) (BITyArrow (x1opt, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
+                  then [CEqual ann bt (BTConst BT0)]
+                  else [CLeq ann bt bt1, CLeq ann bt bt2]
+          pure (BIType (bt, ann) (BITyArrow (x1opt, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
 
 data SolvingStepResult
   = NotFound
   | Subst BindingTimeVar BindingTime
   | TrivialEliminated [Constraint]
+  | ContradictionDetected Span
 
 type BindingTimeSubst = Map BindingTimeVar BindingTime
 
@@ -357,21 +355,31 @@ solveConstraints = go Map.empty
       case step [] constraints of
         NotFound ->
           pure (accMap, constraints)
-        Subst btv1 bt2 -> do
-          let accMapNew = Map.insert btv1 bt2 (substSubst btv1 bt2 accMap)
-          constraintssNew <- mapM (substConstraint btv1 bt2) constraints
-          go accMapNew (concat constraintssNew)
+        Subst btvFrom btTo -> do
+          let accMapNew = Map.insert btvFrom btTo (substSubst btvFrom btTo accMap)
+          let constraintsNew = map (substConstraint btvFrom btTo) constraints
+          go accMapNew constraintsNew
         TrivialEliminated constraintsNew ->
           go accMap constraintsNew
+        ContradictionDetected ann ->
+          Left $ BindingTimeContradiction ann
 
     step :: [Constraint] -> [Constraint] -> SolvingStepResult
     step constraintAcc = \case
       [] -> NotFound
-      CLeq _ann btv1 (BTConst BT0) : _ -> Subst btv1 (BTConst BT0)
+      CLeq _ann (BTVar btv1) (BTVar btv2) : rest | btv1 == btv2 -> TrivialEliminated (reverse constraintAcc ++ rest)
+      CLeq _ann (BTVar btv1) (BTConst BT0) : _ -> Subst btv1 (BTConst BT0)
+      CLeq _ann (BTConst BT1) (BTVar btv2) : _ -> Subst btv2 (BTConst BT1)
+      CLeq _ann (BTConst BT0) _ : rest -> TrivialEliminated (reverse constraintAcc ++ rest)
       CLeq _ann _ (BTConst BT1) : rest -> TrivialEliminated (reverse constraintAcc ++ rest)
-      CLeq _ann btv1 (BTVar btv2) : rest | btv1 == btv2 -> TrivialEliminated (reverse constraintAcc ++ rest)
-      CEqual _ann btv1 (BTVar btv2) : rest | btv1 == btv2 -> TrivialEliminated (reverse constraintAcc ++ rest)
-      CEqual _ann btv1 bt2 : _ -> Subst btv1 bt2
+      CLeq ann (BTConst BT1) (BTConst BT0) : _ -> ContradictionDetected ann
+      CEqual _ann (BTVar btv1) (BTVar btv2) : rest | btv1 == btv2 -> TrivialEliminated (reverse constraintAcc ++ rest)
+      CEqual _ann (BTVar btv1) bt2 : _ -> Subst btv1 bt2
+      CEqual _ann bt1 (BTVar btv2) : _ -> Subst btv2 bt1
+      CEqual ann (BTConst btc1) (BTConst btc2) : rest ->
+        if btc1 == btc2
+          then TrivialEliminated (reverse constraintAcc ++ rest)
+          else ContradictionDetected ann
       constraint : rest -> step (constraint : constraintAcc) rest
 
     substSubst :: BindingTimeVar -> BindingTime -> BindingTimeSubst -> BindingTimeSubst
@@ -382,82 +390,97 @@ solveConstraints = go Map.empty
             BTVar btv -> if btv == btv1 then bt2 else BTVar btv
         )
 
-    substConstraint :: BindingTimeVar -> BindingTime -> Constraint -> Either AnalysisError [Constraint]
-    substConstraint btv1 bt2 constraint =
-      case bt2 of
-        BTVar btv2 ->
-          case constraint of
-            CLeq ann btvC1 (BTVar btvC2) ->
-              if btvC1 == btv1
-                then
-                  pure [CLeq ann btv2 (BTVar btvC2)]
-                else
-                  if btvC2 == btv1
-                    then
-                      pure [CLeq ann btvC1 (BTVar btv2)]
-                    else
-                      pure [constraint]
-            CLeq ann btvC1 (BTConst btcC2) ->
-              if btvC1 == btv1
-                then
-                  pure [CLeq ann btv2 (BTConst btcC2)]
-                else
-                  pure [constraint]
-            CEqual ann btvC1 (BTVar btvC2) ->
-              if btvC1 == btv1
-                then
-                  pure [CEqual ann btv2 (BTVar btvC2)]
-                else
-                  if btvC2 == btv1
-                    then
-                      pure [CEqual ann btvC1 (BTVar btv2)]
-                    else
-                      pure [constraint]
-            CEqual ann btvC1 (BTConst btcC2) ->
-              if btvC1 == btv1
-                then
-                  pure [CEqual ann btv2 (BTConst btcC2)]
-                else
-                  pure [constraint]
-        BTConst btc2 ->
-          case constraint of
-            CLeq ann btvC1 (BTVar btvC2) ->
-              if btvC1 == btv1
-                then case btc2 of
-                  BT0 -> pure []
-                  BT1 -> pure [CEqual ann btvC2 (BTConst BT1)]
-                else
-                  if btvC2 == btv1
-                    then
-                      pure [CLeq ann btvC1 (BTConst btc2)]
-                    else
-                      pure [constraint]
-            CLeq ann btvC1 (BTConst btcC2) ->
-              if btvC1 == btv1
-                then
-                  if btc2 <= btcC2
-                    then
-                      pure []
-                    else
-                      Left $ BindingTimeContradiction ann
-                else
-                  pure [constraint]
-            CEqual ann btvC1 (BTVar btvC2) ->
-              if btvC1 == btv1
-                then
-                  pure [CEqual ann btvC2 (BTConst btc2)]
-                else
-                  pure [constraint]
-            CEqual ann btvC1 (BTConst btcC2) ->
-              if btvC1 == btv1
-                then
-                  if btc2 == btcC2
-                    then
-                      pure []
-                    else
-                      Left $ BindingTimeContradiction ann
-                else
-                  pure [constraint]
+    substConstraint :: BindingTimeVar -> BindingTime -> Constraint -> Constraint
+    substConstraint btvFrom btTo = \case
+      CLeq ann bt1 bt2 -> CLeq ann (f bt1) (f bt2)
+      CEqual ann bt1 bt2 -> CEqual ann (f bt1) (f bt2)
+      where
+        f = substBindingTime btvFrom btTo
+
+    substBindingTime :: BindingTimeVar -> BindingTime -> BindingTime -> BindingTime
+    substBindingTime btvFrom btTo bt =
+      case bt of
+        BTVar btv -> if btv == btvFrom then btTo else bt
+        BTConst _ -> bt
+
+--      case bt2 of
+--        BTVar btv2 ->
+--          case constraint of
+--            CLeq ann (BTVar btvC1) (BTVar btvC2) ->
+--              if btvC1 == btv1
+--                then
+--                  pure [CLeq ann (BTVar btv2) (BTVar btvC2)]
+--                else
+--                  if btvC2 == btv1
+--                    then
+--                      pure [CLeq ann (BTVar btvC1) (BTVar btv2)]
+--                    else
+--                      pure [constraint]
+--            CLeq ann (BTVar btvC1) (BTConst btcC2) ->
+--              if btvC1 == btv1
+--                then
+--                  pure [CLeq ann (BTVar btv2) (BTConst btcC2)]
+--                else
+--                  pure [constraint]
+--            CLeq ann (BTConst btcC1) (BTVar btvC2) ->
+--              if btvC2 == btv1
+--                then
+--                  pure [CLeq ]
+--            CEqual ann (BTVar btvC1) (BTVar btvC2) ->
+--              if btvC1 == btv1
+--                then
+--                  pure [CEqual ann btv2 (BTVar btvC2)]
+--                else
+--                  if btvC2 == btv1
+--                    then
+--                      pure [CEqual ann btvC1 (BTVar btv2)]
+--                    else
+--                      pure [constraint]
+--            CEqual ann btvC1 (BTConst btcC2) ->
+--              if btvC1 == btv1
+--                then
+--                  pure [CEqual ann btv2 (BTConst btcC2)]
+--                else
+--                  pure [constraint]
+--        BTConst btc2 ->
+--          case constraint of
+--            CLeq ann btvC1 (BTVar btvC2) ->
+--              if btvC1 == btv1
+--                then case btc2 of
+--                  BT0 -> pure []
+--                  BT1 -> pure [CEqual ann btvC2 (BTConst BT1)]
+--                else
+--                  if btvC2 == btv1
+--                    then
+--                      pure [CLeq ann btvC1 (BTConst btc2)]
+--                    else
+--                      pure [constraint]
+--            CLeq ann btvC1 (BTConst btcC2) ->
+--              if btvC1 == btv1
+--                then
+--                  if btc2 <= btcC2
+--                    then
+--                      pure []
+--                    else
+--                      Left $ BindingTimeContradiction ann
+--                else
+--                  pure [constraint]
+--            CEqual ann btvC1 (BTVar btvC2) ->
+--              if btvC1 == btv1
+--                then
+--                  pure [CEqual ann btvC2 (BTConst btc2)]
+--                else
+--                  pure [constraint]
+--            CEqual ann btvC1 (BTConst btcC2) ->
+--              if btvC1 == btv1
+--                then
+--                  if btc2 == btcC2
+--                    then
+--                      pure []
+--                    else
+--                      Left $ BindingTimeContradiction ann
+--                else
+--                  pure [constraint]
 
 type BCExpr = ExprF (BindingTimeConst, Span)
 
@@ -544,10 +567,14 @@ run btenv e = do
   let solutionMap = Map.mapMaybe (^? #_BTConst) rawSolutionMap
   let bce =
         fmap
-          ( \(btv, ann) ->
-              case Map.lookup btv solutionMap of
-                Just btc -> (btc, ann)
-                Nothing -> (BT1, ann) -- TODO: reconsider this
+          ( \(bt, ann) ->
+              case bt of
+                BTConst btc ->
+                  (btc, ann)
+                BTVar btv ->
+                  case Map.lookup btv solutionMap of
+                    Just btc -> (btc, ann)
+                    Nothing -> (BT1, ann) -- TODO: reconsider this
           )
           be
   let lwe = stageExpr0 bce
