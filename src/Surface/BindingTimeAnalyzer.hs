@@ -4,6 +4,10 @@ module Surface.BindingTimeAnalyzer
     BITypeF (..),
     BITypeMainF (..),
     BIType,
+    BCExpr,
+    BCExprMain,
+    BCTypeExpr,
+    BCTypeExprMain,
     AnalysisError (..),
     BindingTimeEnvEntry (..),
     BindingTimeEnv,
@@ -476,7 +480,7 @@ convertLiteral = \case
   LitVec ns -> Lwsd.LitVec ns
   LitMat nss -> Lwsd.LitMat nss
 
-run :: BindingTimeEnv -> Expr -> Either AnalysisError (BExpr, Lwsd.Expr)
+run :: BindingTimeEnv -> Expr -> Either AnalysisError (BCExpr, Lwsd.Expr)
 run btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
   (_bity, constraints) <- extractConstraintsFromExpr btenv be
@@ -495,4 +499,4 @@ run btenv e = do
           )
           be
   let lwe = stageExpr0 bce
-  pure (be, lwe)
+  pure (bce, lwe)

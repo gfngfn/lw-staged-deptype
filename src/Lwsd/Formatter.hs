@@ -11,6 +11,7 @@ import Lwsd.Vector qualified as Vector
 import Prettyprinter
 import Prettyprinter.Render.Text
 import Surface.BindingTimeAnalyzer qualified as Bta
+import Surface.Syntax qualified as Surface
 import Util.TokenUtil (LocationInFile (LocationInFile))
 import Prelude
 
@@ -428,3 +429,45 @@ instance Disp Bta.AnalysisError where
     Bta.BindingTimeContradiction ann ->
       -- TODO: pretty-print code positions
       disp (show ann) <+> "Binding-time contradiction"
+
+instance Disp Surface.Literal where
+  dispGen _ = \case
+    Surface.LitInt n -> pretty n
+    Surface.LitVec ns -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> ns)
+    Surface.LitMat nss -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRow <$> nss)
+    where
+      dispRow :: [Int] -> Doc Ann
+      dispRow row = commaSep (disp <$> row)
+
+instance Disp Bta.BCExpr where
+  dispGen _ (Surface.Expr (btc, _ann) exprMain) =
+    case btc of
+      Bta.BT0 -> group ("$0(" <> disp exprMain <> ")")
+      Bta.BT1 -> group ("$1(" <> disp exprMain <> ")")
+
+instance Disp Bta.BCExprMain where
+  dispGen _ = \case
+    Surface.Literal lit -> disp lit
+    Surface.Var x -> disp x
+    Surface.Lam (x, tye1) e2 -> group ("λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+    Surface.App e1 e2 -> group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
+    Surface.LetIn x e1 e2 -> group ("let" <+> disp x <+> "=" <+> disp e1 <+> "in" <+> disp e2)
+
+instance Disp Bta.BCTypeExpr where
+  dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =
+    case btc of
+      Bta.BT0 -> group ("$0(" <> disp typeExprMain <> ")")
+      Bta.BT1 -> group ("$1(" <> disp typeExprMain <> ")")
+
+instance Disp Bta.BCTypeExprMain where
+  dispGen _ = \case
+    Surface.TyName tyName args ->
+      case args of
+        [] -> disp tyName
+        _ : _ -> List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
+    Surface.TyArrow (xOpt, tye1) tye2 ->
+      let docDom =
+            case xOpt of
+              Just x -> "(" <> disp x <+> ":" <+> disp tye1 <> ")"
+              Nothing -> dispGen FunDomain tye1
+       in group (docDom <> " ->" <> line <> disp tye2)

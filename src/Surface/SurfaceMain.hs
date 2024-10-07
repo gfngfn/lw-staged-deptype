@@ -33,9 +33,9 @@ handle Argument {inputFilePath, displayWidth} = do
           putStrLn "-------- binding-time analysis error: --------"
           putRenderedLines analyErr
           failure
-        Right (be, lwe) -> do
+        Right (bce, lwe) -> do
           putStrLn "-------- result of binding-time analysis (B): --------"
-          print be
+          putRenderedLines bce
           putStrLn "-------- result of binding-time analysis: --------"
           putRenderedLines lwe
           success
