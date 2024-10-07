@@ -281,18 +281,20 @@ extractConstraintsFromExpr btenv (Expr (btv, ann) exprMain) =
       pure (BIType (btv, ann) (BITyArrow (Just x1, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
     App e1 e2 -> do
       (bity1@(BIType (btv1, _) bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
-      (_bity2, constraints2) <- extractConstraintsFromExpr btenv e2
+      (_bity2@(BIType (btv2, _) _bityMain2), constraints2) <- extractConstraintsFromExpr btenv e2
       case bityMain1 of
-        BITyArrow (x11opt, _bity11) bity12 ->
+        BITyArrow (x11opt, _bity11@(BIType (btv11, _) _bityMain11)) bity12 ->
           -- We could check here that `bity2` and `bity11` are compatible,
           -- but it can be deferred to the upcoming type-checking.
-          case x11opt of
-            Just x11 ->
-              if occurs x11 bity12
-                then pure (subst e2 x11 bity12, constraints1 ++ constraints2 ++ [CEqual btv (BTConst BT0)])
-                else pure (bity12, constraints1 ++ constraints2 ++ [CEqual btv (BTVar btv1)])
-            Nothing ->
-              pure (bity12, constraints1 ++ constraints2 ++ [CEqual btv (BTVar btv1)])
+          let constraints0 = [CEqual btv (BTVar btv1), CEqual btv2 (BTVar btv11)]
+              constraints = constraints1 ++ constraints2 ++ constraints0
+           in case x11opt of
+                Just x11 ->
+                  if occurs x11 bity12
+                    then pure (subst e2 x11 bity12, constraints ++ [CEqual btv (BTConst BT0)])
+                    else pure (bity12, constraints)
+                Nothing ->
+                  pure (bity12, constraints)
         _ ->
           analysisError $ NotAFunction bity1
     LetIn x e1 e2 -> do
