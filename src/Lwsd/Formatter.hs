@@ -10,6 +10,7 @@ import Lwsd.TypeError
 import Lwsd.Vector qualified as Vector
 import Prettyprinter
 import Prettyprinter.Render.Text
+import Surface.BindingTimeAnalyzer qualified as Bta
 import Util.TokenUtil (LocationInFile (LocationInFile))
 import Prelude
 
@@ -218,6 +219,18 @@ instance Disp Ass1TypeExpr where
       let doc = group (dispGen FunDomain a1tye1 <> " ->" <> line <> disp a1tye2)
        in if req <= FunDomain then deepenParen doc else doc
 
+instance Disp Matrix.ConstructionError where
+  dispGen _ = \case
+    Matrix.EmptyRow -> "contains an empty row"
+    Matrix.InconsistencyOfRowLength row1 row2 ->
+      "two rows have different lengths. one:"
+        <> hardline
+        <> dispRowContents row1
+        <> hardline
+        <> "another:"
+        <> hardline
+        <> dispRowContents row2
+
 instance Disp TypeError where
   dispGen _ = \case
     UnboundVar x ->
@@ -273,17 +286,7 @@ instance Disp TypeError where
     VarOccursFreelyInAss1Type x a1tye ->
       "Variable" <+> disp x <+> "occurs in stage-1 type" <+> disp a1tye
     InvalidMatrixLiteral e ->
-      "Invalid matrix literal;"
-        <+> case e of
-          Matrix.EmptyRow -> "contains an empty row"
-          Matrix.InconsistencyOfRowLength row1 row2 ->
-            "two rows have different lengths. one:"
-              <> hardline
-              <> dispRowContents row1
-              <> hardline
-              <> "another:"
-              <> hardline
-              <> dispRowContents row2
+      "Invalid matrix literal;" <+> disp e
 
 instance Disp Ass0Val where
   dispGen req = \case
@@ -407,3 +410,21 @@ instance Disp Evaluator.EvalError where
             LocationInFile startLine startColumn = locInFileStart
             LocationInFile endLine endColumn = locInFileEnd
             hats = nest 2 (hardline <> disp (replicate (endColumn - startColumn) '^'))
+
+instance Disp Bta.AnalysisError where
+  dispGen _ = \case
+    Bta.InvalidMatrixLiteral ann err ->
+      -- TODO: pretty-print code positions
+      disp (show ann) <+> "Invalid matrix literal;" <+> disp err
+    Bta.UnboundVar ann x ->
+      -- TODO: pretty-print code positions
+      disp (show ann) <+> "Unbound variable" <+> disp x
+    Bta.NotAFunction ann bity ->
+      -- TODO: pretty-print code positions
+      disp (show ann) <+> "Not a function type;" <+> disp (show bity) -- TODO: pretty print types
+    Bta.UnknownTypeOrInvalidArity ann tyName arity ->
+      -- TODO: pretty-print code positions
+      disp (show ann) <+> "Unknown type or invalid arity:" <+> disp tyName <> "," <+> disp arity
+    Bta.BindingTimeContradiction ann ->
+      -- TODO: pretty-print code positions
+      disp (show ann) <+> "Binding-time contradiction"

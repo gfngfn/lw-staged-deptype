@@ -5,47 +5,62 @@ where
 
 import Data.List qualified as List
 import Data.Map qualified as Map
-import Surface.BindingTimeAnalyzer (BITypeF (..), BITypeMainF (..), BITypeVoid, BindingTimeEnv, BindingTimeEnvEntry (..), ExprVoid)
+import Surface.BindingTimeAnalyzer (BITypeF (..), BITypeMainF (..), BindingTimeConst (..), BindingTimeEnv, BindingTimeEnvEntry (..))
 import Surface.Syntax
 import Prelude
 
-wrapBIType :: BITypeMainF () -> BITypeVoid
-wrapBIType = BIType ()
+type BITypeVoid = BITypeF BindingTimeConst
+
+type ExprVoid = ExprF BindingTimeConst
+
+wrap0 :: BITypeMainF BindingTimeConst -> BITypeVoid
+wrap0 = BIType BT0
+
+wrap1 :: BITypeMainF BindingTimeConst -> BITypeVoid
+wrap1 = BIType BT1
 
 bityInt :: BITypeVoid
-bityInt = wrapBIType BITyInt
+bityInt = wrap0 BITyInt
 
 bityVec :: ExprVoid -> BITypeVoid
-bityVec = wrapBIType . BITyVecExpr
+bityVec = wrap1 . BITyVecExpr
 
 bityMat :: ExprVoid -> ExprVoid -> BITypeVoid
-bityMat be1 be2 = wrapBIType $ BITyMatExpr (be1, be2)
+bityMat be1 be2 = wrap1 $ BITyMatExpr (be1, be2)
 
 (-->) :: BITypeVoid -> BITypeVoid -> BITypeVoid
-(-->) bity1 bity2 = wrapBIType $ BITyArrow (Nothing, bity1) bity2
+(-->) bity1 bity2 = wrap1 $ BITyArrow (Nothing, bity1) bity2
 
 infixr 0 -->
 
 (-:>) :: (Var, BITypeVoid) -> BITypeVoid -> BITypeVoid
-(-:>) (x, bity1) bity2 = wrapBIType $ BITyArrow (Just x, bity1) bity2
+(-:>) (x, bity1) bity2 = wrap0 $ BITyArrow (Just x, bity1) bity2
 
 infixr 0 -:>
 
 initialBindingTimeEnv :: BindingTimeEnv
 initialBindingTimeEnv =
   List.foldl'
-    (\btenv (x, bity) -> Map.insert x (EntryBuiltIn bity) btenv)
+    (\btenv (x, entry) -> Map.insert x entry btenv)
     Map.empty
-    [ ("+", bityInt --> bityInt --> bityInt),
-      ("-", bityInt --> bityInt --> bityInt),
-      ("*", bityInt --> bityInt --> bityInt),
-      ("vadd", bityVadd),
-      ("vconcat", bityVconcat),
-      ("mtranspose", bityMtranspose),
-      ("mmult", bityMmult),
-      ("mconcat_vert", bityMconcatVert)
+    [ ("+", EntryBuiltInPersistent bityArith),
+      ("-", EntryBuiltInPersistent bityArith),
+      ("*", EntryBuiltInPersistent bityArith),
+      ("vadd", EntryBuiltInFixed bityVadd),
+      ("vconcat", EntryBuiltInFixed bityVconcat),
+      ("mtranspose", EntryBuiltInFixed bityMtranspose),
+      ("mmult", EntryBuiltInFixed bityMmult),
+      ("mconcat_vert", EntryBuiltInFixed bityMconcatVert)
     ]
   where
+    bityArith :: BITypeF ()
+    bityArith =
+      int `arrow` (int `arrow` int)
+      where
+        wrap = BIType ()
+        int = wrap BITyInt
+        arrow bity1 bity2 = wrap $ BITyArrow (Nothing, bity1) bity2
+
     bityVadd :: BITypeVoid
     bityVadd =
       ("a", bityInt)
@@ -90,7 +105,7 @@ initialBindingTimeEnv =
     bAdd be1 = bApp (bApp (bVar "+") be1)
 
     bVar :: Var -> ExprVoid
-    bVar x = Expr () (Var x)
+    bVar x = Expr BT0 (Var x)
 
     bApp :: ExprVoid -> ExprVoid -> ExprVoid
-    bApp be1 be2 = Expr () (App be1 be2)
+    bApp be1 be2 = Expr BT0 (App be1 be2)

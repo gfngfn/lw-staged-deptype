@@ -29,13 +29,11 @@ handle Argument {inputFilePath, displayWidth} = do
       failure
     Right e -> do
       case BindingTimeAnalyzer.run BuiltIn.initialBindingTimeEnv e of
-        Left err -> do
+        Left analyErr -> do
           putStrLn "-------- binding-time analysis error: --------"
-          print err
+          putRenderedLines analyErr
           failure
         Right (be, lwe) -> do
-          putStrLn "-------- result of binding-time analysis (E): --------"
-          print e
           putStrLn "-------- result of binding-time analysis (B): --------"
           print be
           putStrLn "-------- result of binding-time analysis (L): --------"
