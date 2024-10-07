@@ -36,8 +36,6 @@ handle Argument {inputFilePath, displayWidth} = do
         Right (be, lwe) -> do
           putStrLn "-------- result of binding-time analysis (B): --------"
           print be
-          putStrLn "-------- result of binding-time analysis (L): --------"
-          print lwe
           putStrLn "-------- result of binding-time analysis: --------"
           putRenderedLines lwe
           success

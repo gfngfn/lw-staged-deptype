@@ -383,12 +383,8 @@ solveConstraints = go Map.empty
       constraint : rest -> step (constraint : constraintAcc) rest
 
     substSubst :: BindingTimeVar -> BindingTime -> BindingTimeSubst -> BindingTimeSubst
-    substSubst btv1 bt2 =
-      Map.map
-        ( \case
-            BTConst btc -> BTConst btc
-            BTVar btv -> if btv == btv1 then bt2 else BTVar btv
-        )
+    substSubst btvFrom btTo =
+      Map.map (substBindingTime btvFrom btTo)
 
     substConstraint :: BindingTimeVar -> BindingTime -> Constraint -> Constraint
     substConstraint btvFrom btTo = \case
@@ -402,85 +398,6 @@ solveConstraints = go Map.empty
       case bt of
         BTVar btv -> if btv == btvFrom then btTo else bt
         BTConst _ -> bt
-
---      case bt2 of
---        BTVar btv2 ->
---          case constraint of
---            CLeq ann (BTVar btvC1) (BTVar btvC2) ->
---              if btvC1 == btv1
---                then
---                  pure [CLeq ann (BTVar btv2) (BTVar btvC2)]
---                else
---                  if btvC2 == btv1
---                    then
---                      pure [CLeq ann (BTVar btvC1) (BTVar btv2)]
---                    else
---                      pure [constraint]
---            CLeq ann (BTVar btvC1) (BTConst btcC2) ->
---              if btvC1 == btv1
---                then
---                  pure [CLeq ann (BTVar btv2) (BTConst btcC2)]
---                else
---                  pure [constraint]
---            CLeq ann (BTConst btcC1) (BTVar btvC2) ->
---              if btvC2 == btv1
---                then
---                  pure [CLeq ]
---            CEqual ann (BTVar btvC1) (BTVar btvC2) ->
---              if btvC1 == btv1
---                then
---                  pure [CEqual ann btv2 (BTVar btvC2)]
---                else
---                  if btvC2 == btv1
---                    then
---                      pure [CEqual ann btvC1 (BTVar btv2)]
---                    else
---                      pure [constraint]
---            CEqual ann btvC1 (BTConst btcC2) ->
---              if btvC1 == btv1
---                then
---                  pure [CEqual ann btv2 (BTConst btcC2)]
---                else
---                  pure [constraint]
---        BTConst btc2 ->
---          case constraint of
---            CLeq ann btvC1 (BTVar btvC2) ->
---              if btvC1 == btv1
---                then case btc2 of
---                  BT0 -> pure []
---                  BT1 -> pure [CEqual ann btvC2 (BTConst BT1)]
---                else
---                  if btvC2 == btv1
---                    then
---                      pure [CLeq ann btvC1 (BTConst btc2)]
---                    else
---                      pure [constraint]
---            CLeq ann btvC1 (BTConst btcC2) ->
---              if btvC1 == btv1
---                then
---                  if btc2 <= btcC2
---                    then
---                      pure []
---                    else
---                      Left $ BindingTimeContradiction ann
---                else
---                  pure [constraint]
---            CEqual ann btvC1 (BTVar btvC2) ->
---              if btvC1 == btv1
---                then
---                  pure [CEqual ann btvC2 (BTConst btc2)]
---                else
---                  pure [constraint]
---            CEqual ann btvC1 (BTConst btcC2) ->
---              if btvC1 == btv1
---                then
---                  if btc2 == btcC2
---                    then
---                      pure []
---                    else
---                      Left $ BindingTimeContradiction ann
---                else
---                  pure [constraint]
 
 type BCExpr = ExprF (BindingTimeConst, Span)
 
@@ -574,7 +491,7 @@ run btenv e = do
                 BTVar btv ->
                   case Map.lookup btv solutionMap of
                     Just btc -> (btc, ann)
-                    Nothing -> (BT1, ann) -- TODO: reconsider this
+                    Nothing -> (BT1, ann) -- Defaults to runtime. TODO: reconsider this
           )
           be
   let lwe = stageExpr0 bce
