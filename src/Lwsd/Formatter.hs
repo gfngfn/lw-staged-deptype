@@ -9,13 +9,19 @@ import Lwsd.Syntax
 import Lwsd.TypeError
 import Lwsd.Vector qualified as Vector
 import Prettyprinter
-import Prettyprinter.Render.Text
+import Prettyprinter.Render.Terminal
 import Surface.BindingTimeAnalyzer qualified as Bta
 import Surface.Syntax qualified as Surface
 import Util.TokenUtil (LocationInFile (LocationInFile))
 import Prelude
 
-type Ann = ()
+type Ann = AnsiStyle
+
+bindingTime0Style :: AnsiStyle
+bindingTime0Style = color Cyan
+
+bindingTime1Style :: AnsiStyle
+bindingTime1Style = color Magenta
 
 data Associativity
   = Atomic
@@ -441,9 +447,11 @@ instance Disp Surface.Literal where
 
 instance Disp Bta.BCExpr where
   dispGen _ (Surface.Expr (btc, _ann) exprMain) =
-    case btc of
-      Bta.BT0 -> group ("$0(" <> disp exprMain <> ")")
-      Bta.BT1 -> group ("$1(" <> disp exprMain <> ")")
+    let (f, prefix) =
+          case btc of
+            Bta.BT0 -> (annotate bindingTime0Style, "$0")
+            Bta.BT1 -> (annotate bindingTime1Style, "$1")
+     in group (f (prefix <> "(") <> disp exprMain <> f ")")
 
 instance Disp Bta.BCExprMain where
   dispGen _ = \case
@@ -455,9 +463,11 @@ instance Disp Bta.BCExprMain where
 
 instance Disp Bta.BCTypeExpr where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =
-    case btc of
-      Bta.BT0 -> group ("$0(" <> disp typeExprMain <> ")")
-      Bta.BT1 -> group ("$1(" <> disp typeExprMain <> ")")
+    let (f, prefix) =
+          case btc of
+            Bta.BT0 -> (annotate bindingTime0Style, "$0")
+            Bta.BT1 -> (annotate bindingTime1Style, "$1")
+     in group (f (prefix <> "(") <> disp typeExprMain <> f ")")
 
 instance Disp Bta.BCTypeExprMain where
   dispGen _ = \case
