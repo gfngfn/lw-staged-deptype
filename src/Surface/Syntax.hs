@@ -4,10 +4,12 @@ module Surface.Syntax
     ExprF (..),
     ExprMainF (..),
     Expr,
+    ExprMain,
     TypeName,
     TypeExprF (..),
     TypeExprMainF (..),
     TypeExpr,
+    TypeExprMain,
   )
 where
 
@@ -36,6 +38,8 @@ data ExprMainF ann
 
 type Expr = ExprF Span
 
+type ExprMain = ExprMainF Span
+
 type TypeName = Text
 
 data TypeExprF ann = TypeExpr ann (TypeExprMainF ann)
@@ -47,3 +51,5 @@ data TypeExprMainF ann
   deriving stock (Show, Functor)
 
 type TypeExpr = TypeExprF Span
+
+type TypeExprMain = TypeExprMainF Span

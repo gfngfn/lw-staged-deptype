@@ -6,7 +6,6 @@ module Lwsd.LibMain
 where
 
 import Control.Monad.Trans.State
-import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
 import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.Evaluator qualified as Evaluator
@@ -38,11 +37,11 @@ typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e
       putStrLn "-------- type error: --------"
       putRenderedLines tyErr
       failure
-    Right (a1tye, a0e) -> do
+    Right (a0tye, a0e) -> do
       putStrLn "-------- type: --------"
-      putRenderedLines a1tye
+      putRenderedLinesAtStage0 a0tye
       putStrLn "-------- elaborated expression: --------"
-      putRenderedLines a0e
+      putRenderedLinesAtStage0 a0e
       case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) initialEvalState of
         Left err -> do
           putStrLn "-------- error during compile-time code generation: --------"
@@ -52,7 +51,7 @@ typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e
           case a0v of
             A0ValBracket a1v -> do
               putStrLn "-------- generated code: --------"
-              putRenderedLines a1v
+              putRenderedLinesAtStage1 a1v
               let a0eRuntime = Evaluator.unliftVal a1v
               if compileTimeOnly
                 then success
@@ -63,19 +62,24 @@ typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e
                     failure
                   Right a0vRuntime -> do
                     putStrLn "-------- result of runtime evaluation: --------"
-                    putRenderedLines a0vRuntime
+                    putRenderedLinesAtStage0 a0vRuntime
                     success
             _ -> do
               putStrLn "-------- stage-0 result: --------"
               putStrLn "(The stage-0 result was not a code value)"
-              putRenderedLines a0v
+              putRenderedLinesAtStage0 a0v
               if compileTimeOnly
                 then success
                 else failure
   where
     putRenderedLines :: (Disp a) => a -> IO ()
-    putRenderedLines x =
-      putStrLn $ Text.unpack $ Formatter.render displayWidth x
+    putRenderedLines = Formatter.putRenderedLines displayWidth
+
+    putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
+    putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth
+
+    putRenderedLinesAtStage1 :: (Disp a) => a -> IO ()
+    putRenderedLinesAtStage1 = Formatter.putRenderedLinesAtStage1 displayWidth
 
     typecheckerConfig :: TypecheckState
     typecheckerConfig = TypecheckState {optimizeTrivialAssertion = optimize, nextVarIndex = 0}

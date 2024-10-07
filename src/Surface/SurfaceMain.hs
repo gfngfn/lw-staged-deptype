@@ -4,13 +4,11 @@ module Surface.SurfaceMain
   )
 where
 
-import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
 import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.LibMain qualified as LwsdMain
-import Lwsd.Syntax qualified as Lwsd
 import Surface.BindingTimeAnalyzer qualified as BindingTimeAnalyzer
 import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
@@ -33,6 +31,8 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
       putStrLn err
       failure
     Right e -> do
+      putStrLn "-------- parsed expression: --------"
+      putRenderedLines e
       case BindingTimeAnalyzer.run BuiltIn.initialBindingTimeEnv e of
         Left analyErr -> do
           putStrLn "-------- binding-time analysis error: --------"
@@ -42,7 +42,7 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
           putStrLn "-------- result of binding-time analysis: --------"
           putRenderedLines bce
           putStrLn "-------- result of staging: --------"
-          putRenderedLinesOfExpr lwe
+          putRenderedLinesAtStage0 lwe
           let lwArg =
                 LwsdMain.Argument
                   { LwsdMain.inputFilePath = inputFilePath,
@@ -54,11 +54,9 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
           LwsdMain.typecheckAndEval lwArg sourceSpec lwe
   where
     putRenderedLines :: (Disp a) => a -> IO ()
-    putRenderedLines x =
-      putStrLn $ Text.unpack $ Formatter.render displayWidth x
+    putRenderedLines = Formatter.putRenderedLines displayWidth
 
-    putRenderedLinesOfExpr :: Lwsd.Expr -> IO ()
-    putRenderedLinesOfExpr x =
-      putStrLn $ Text.unpack $ Formatter.renderExprAtStage0 displayWidth x
+    putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
+    putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth
 
     failure = return False
