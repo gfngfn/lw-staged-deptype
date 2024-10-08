@@ -251,19 +251,19 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) =
       (e2', _bity2@(BIType (bt2, _) _bityMain2), constraints2) <- extractConstraintsFromExpr btenv e2
       (bity, constraints) <-
         case bityMain1 of
-          BITyArrow (x11opt, _bity11@(BIType (bt11, _) _bityMain11)) bity12 ->
+          BITyArrow (x11opt, _bity11@(BIType (bt11, _) _bityMain11)) bity12 -> do
             let constraints0 = [CEqual ann bt bt1, CEqual ann bt2 bt11]
-                constraints = constraints1 ++ constraints2 ++ constraints0
-             in case x11opt of
-                  Just x11 ->
-                    if occurs x11 bity12
-                      then pure (subst e2 x11 bity12, constraints ++ [CEqual ann bt (BTConst BT0)])
-                      else pure (bity12, constraints)
-                  Nothing ->
-                    pure (bity12, constraints)
-          _ ->
+            let constraints = constraints1 ++ constraints2 ++ constraints0
+            case x11opt of
+              Just x11 ->
+                if occurs x11 bity12
+                  then pure (subst e2 x11 bity12, constraints ++ [CEqual ann bt (BTConst BT0)])
+                  else pure (bity12, constraints)
+              Nothing ->
+                pure (bity12, constraints)
+          _ -> do
             let Expr (_, ann1) _ = e1
-             in analysisError $ NotAFunction ann1 bity1
+            analysisError $ NotAFunction ann1 bity1
       pure (Expr (bt, ann) (App e1' e2'), bity, constraints)
     LetIn x e1 e2 -> do
       -- Not confident. TODO: check the validity of the following
@@ -380,11 +380,8 @@ type BCTypeExprMain = TypeExprMainF (BindingTimeConst, Span)
 stageExpr0 :: BCExpr -> Lwsd.Expr
 stageExpr0 (Expr (btc, ann) exprMain) =
   case btc of
-    BT1 ->
-      let lweMain = stageExpr1Main exprMain
-       in Lwsd.Expr ann (Lwsd.Bracket (Lwsd.Expr ann lweMain))
-    BT0 ->
-      Lwsd.Expr ann (stageExpr0Main exprMain)
+    BT0 -> Lwsd.Expr ann (stageExpr0Main exprMain)
+    BT1 -> Lwsd.Expr ann (Lwsd.Bracket (Lwsd.Expr ann (stageExpr1Main exprMain)))
 
 stageExpr0Main :: BCExprMain -> Lwsd.ExprMain
 stageExpr0Main = \case
@@ -397,11 +394,8 @@ stageExpr0Main = \case
 stageExpr1 :: BCExpr -> Lwsd.Expr
 stageExpr1 (Expr (btc, ann) exprMain) =
   case btc of
-    BT0 ->
-      let lweMain = stageExpr0Main exprMain
-       in Lwsd.Expr ann (Lwsd.Escape (Lwsd.Expr ann lweMain))
-    BT1 ->
-      Lwsd.Expr ann (stageExpr1Main exprMain)
+    BT0 -> Lwsd.Expr ann (Lwsd.Escape (Lwsd.Expr ann (stageExpr0Main exprMain)))
+    BT1 -> Lwsd.Expr ann (stageExpr1Main exprMain)
 
 stageExpr1Main :: BCExprMain -> Lwsd.ExprMain
 stageExpr1Main = \case
@@ -414,11 +408,8 @@ stageExpr1Main = \case
 stageTypeExpr0 :: BCTypeExpr -> Lwsd.TypeExpr
 stageTypeExpr0 (TypeExpr (btc, ann) typeExprMain) =
   case btc of
-    BT1 ->
-      let lwtyeMain = stageTypeExpr1Main typeExprMain
-       in Lwsd.TypeExpr ann (Lwsd.TyCode (Lwsd.TypeExpr ann lwtyeMain))
-    BT0 ->
-      Lwsd.TypeExpr ann (stageTypeExpr0Main typeExprMain)
+    BT1 -> Lwsd.TypeExpr ann (Lwsd.TyCode (Lwsd.TypeExpr ann (stageTypeExpr1Main typeExprMain)))
+    BT0 -> Lwsd.TypeExpr ann (stageTypeExpr0Main typeExprMain)
 
 stageTypeExpr0Main :: BCTypeExprMain -> Lwsd.TypeExprMain
 stageTypeExpr0Main = \case
@@ -452,10 +443,7 @@ run fallBackToBindingTime0 btenv e = do
   (be', _bity, constraints) <- extractConstraintsFromExpr btenv be
   (rawSolutionMap, _unsolvedConstraints) <- solveConstraints constraints
   let solutionMap = Map.mapMaybe (^? #_BTConst) rawSolutionMap
-  let btcFallback =
-        if fallBackToBindingTime0
-          then BT0
-          else BT1
+  let btcFallback = if fallBackToBindingTime0 then BT0 else BT1
   let bce =
         fmap
           ( \(bt, ann) ->
