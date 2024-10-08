@@ -517,18 +517,12 @@ instance Disp Evaluator.EvalError where
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case
-    Bta.InvalidMatrixLiteral ann err ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Invalid matrix literal;" <+> disp err
     Bta.UnboundVar ann x ->
       -- TODO: pretty-print code positions
       disp (show ann) <+> "Unbound variable" <+> disp x
     Bta.NotAFunction ann bity ->
       -- TODO: pretty-print code positions
       disp (show ann) <+> "Not a function type;" <+> disp (show bity) -- TODO: pretty print types
-    Bta.UnknownTypeOrInvalidArity ann tyName arity ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Unknown type or invalid arity:" <+> disp tyName <> "," <+> disp arity
     Bta.BindingTimeContradiction ann ->
       -- TODO: pretty-print code positions
       disp (show ann) <+> "Binding-time contradiction"
