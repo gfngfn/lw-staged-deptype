@@ -86,7 +86,7 @@ typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e
 
 -- Returns a boolean that represents success or failure
 handle :: Argument -> IO Bool
-handle arg@Argument {inputFilePath} = do
+handle arg@Argument {inputFilePath, displayWidth} = do
   putStrLn "Lightweight Dependent Types via Staging"
   source <- TextIO.readFile inputFilePath
   case Parser.parseExpr source of
@@ -94,6 +94,11 @@ handle arg@Argument {inputFilePath} = do
       putStrLn "-------- parse error: --------"
       putStrLn err
       failure
-    Right e ->
+    Right e -> do
+      putStrLn "-------- parsed expression: --------"
+      putRenderedLinesAtStage0 e
       let sourceSpec = Evaluator.SourceSpec source inputFilePath
-       in typecheckAndEval arg sourceSpec e
+      typecheckAndEval arg sourceSpec e
+  where
+    putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
+    putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth
