@@ -18,11 +18,12 @@ data Argument = Argument
   { inputFilePath :: String,
     optimize :: Bool,
     displayWidth :: Int,
-    compileTimeOnly :: Bool
+    compileTimeOnly :: Bool,
+    fallBackToBindingTime0 :: Bool
   }
 
 handle :: Argument -> IO Bool
-handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
+handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly, fallBackToBindingTime0} = do
   putStrLn "Lightweight Dependent Types via Staging (Surface Language)"
   source <- TextIO.readFile inputFilePath
   case Parser.parseExpr source of
@@ -33,7 +34,7 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
     Right e -> do
       putStrLn "-------- parsed expression: --------"
       putRenderedLines e
-      case BindingTimeAnalyzer.run BuiltIn.initialBindingTimeEnv e of
+      case BindingTimeAnalyzer.run fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
         Left analyErr -> do
           putStrLn "-------- binding-time analysis error: --------"
           putRenderedLines analyErr

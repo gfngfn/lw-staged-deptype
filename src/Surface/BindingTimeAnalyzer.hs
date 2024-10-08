@@ -489,12 +489,16 @@ convertLiteral = \case
   LitVec ns -> Lwsd.LitVec ns
   LitMat nss -> Lwsd.LitMat nss
 
-run :: BindingTimeEnv -> Expr -> Either AnalysisError (BCExpr, Lwsd.Expr)
-run btenv e = do
+run :: Bool -> BindingTimeEnv -> Expr -> Either AnalysisError (BCExpr, Lwsd.Expr)
+run fallBackToBindingTime0 btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
   (be', _bity, constraints) <- extractConstraintsFromExpr btenv be
   (rawSolutionMap, _unsolvedConstraints) <- solveConstraints constraints
   let solutionMap = Map.mapMaybe (^? #_BTConst) rawSolutionMap
+  let btcFallback =
+        if fallBackToBindingTime0
+          then BT0
+          else BT1
   let bce =
         fmap
           ( \(bt, ann) ->
@@ -504,7 +508,7 @@ run btenv e = do
                 BTVar btv ->
                   case Map.lookup btv solutionMap of
                     Just btc -> (btc, ann)
-                    Nothing -> (BT1, ann) -- Defaults to runtime. TODO: reconsider this
+                    Nothing -> (btcFallback, ann)
           )
           be'
   let lwe = stageExpr0 bce

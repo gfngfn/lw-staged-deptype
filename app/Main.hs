@@ -31,6 +31,7 @@ surfaceArgumentParser =
     <*> switch (short 'o' <> long "optimize" <> help "Do slight optimization about assertion insertion")
     <*> option auto (value 80 <> short 'w' <> long "display-width" <> help "Set display width")
     <*> switch (long "compile-time-only" <> help "Execute only compile-time computation")
+    <*> switch (short 'f' <> long "fall-back-to-stage-0" <> help "Make ambiguous binding times fall back to 0 (for inlining)")
 
 main :: IO ()
 main = do
