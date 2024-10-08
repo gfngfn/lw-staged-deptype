@@ -14,6 +14,7 @@ import Data.Map qualified as Map
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
+import Prelude
 
 tyInt :: Ass0TypeExpr
 tyInt = A0TyPrim A0TyInt

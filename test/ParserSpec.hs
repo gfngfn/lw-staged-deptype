@@ -4,14 +4,14 @@ import Data.Functor
 import Data.Text (Text)
 import Lwsd.Parser qualified as Parser
 import Lwsd.Syntax
-import Lwsd.Token (Span (..))
 import Test.Hspec
+import Util.TokenUtil (Span (..))
 
 type TypeExpr0 = TypeExprF ()
 
 type Expr0 = ExprF ()
 
-typ :: TypeExprMain () -> TypeExpr0
+typ :: TypeExprMainF () -> TypeExpr0
 typ = TypeExpr ()
 
 tyInt :: TypeExpr0
@@ -35,7 +35,7 @@ tyDepFun x tye1 tye2 = typ (TyArrow (Just x, tye1) tye2)
 tyNondepFun :: TypeExpr0 -> TypeExpr0 -> TypeExpr0
 tyNondepFun tye1 tye2 = typ (TyArrow (Nothing, tye1) tye2)
 
-expr :: ExprMain () -> Expr0
+expr :: ExprMainF () -> Expr0
 expr = Expr ()
 
 litInt :: Int -> Expr0
@@ -73,10 +73,10 @@ parseExpr s = fmap void (Parser.parseExpr s)
 parseTypeExpr :: Text -> Either String TypeExpr0
 parseTypeExpr s = fmap void (Parser.parseTypeExpr s)
 
-exprLoc :: Int -> Int -> ExprMain Span -> Expr
+exprLoc :: Int -> Int -> ExprMainF Span -> Expr
 exprLoc start end = Expr (Span start end)
 
-typLoc :: Int -> Int -> TypeExprMain Span -> TypeExpr
+typLoc :: Int -> Int -> TypeExprMainF Span -> TypeExpr
 typLoc start end = TypeExpr (Span start end)
 
 spec :: Spec
@@ -215,6 +215,9 @@ spec = do
     it "parses vector literals" $
       Parser.parseExpr "[| 3; 14; 1592 |]"
         `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec [3, 14, 1592]))
+    it "parses matrix literals" $
+      Parser.parseExpr "[# 3, 14; 159, 2; 653, 5 #]"
+        `shouldBe` pure (exprLoc 0 27 $ Literal (LitMat [[3, 14], [159, 2], [653, 5]]))
     it "parses variables" $
       Parser.parseExpr "foo_bar"
         `shouldBe` pure (exprLoc 0 7 $ Var "foo_bar")

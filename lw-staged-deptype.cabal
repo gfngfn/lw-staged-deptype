@@ -71,7 +71,15 @@ library
       Lwsd.TypeEnv,
       Lwsd.TypeError,
       Lwsd.Typechecker,
-      Lwsd.Vector
+      Lwsd.Vector,
+      Surface.BindingTimeAnalyzer,
+      Surface.BuiltIn,
+      Surface.Parser,
+      Surface.Syntax,
+      Surface.SurfaceMain,
+      Surface.Token,
+      Util.ParserUtil,
+      Util.TokenUtil
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -85,9 +93,12 @@ library
         containers ^>= 0.6.7,
         extra ^>= 1.7.14,
         generic-data ^>= 1.1.0.0,
+        generic-lens,
+        lens,
         megaparsec ^>= 9.6.1,
         parser-combinators ^>= 1.3.0,
         prettyprinter ^>= 1.7.1,
+        prettyprinter-ansi-terminal ^>= 1.1.3,
         text ^>= 2.1,
         transformers ^>= 0.5.6.2
 
@@ -97,9 +108,16 @@ library
     -- Base language which the package is written in.
     default-language: GHC2021
     default-extensions:
+        DataKinds
         DerivingStrategies
         DerivingVia
+        FlexibleInstances
+        FunctionalDependencies
+        KindSignatures
         LambdaCase
+        MultiParamTypeClasses
+        NoImplicitPrelude
+        OverloadedLabels
         OverloadedStrings
         RecursiveDo
         ScopedTypeVariables

@@ -5,6 +5,7 @@ where
 
 import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
+import Prelude
 
 data TypeError
   = UnboundVar Var

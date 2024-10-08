@@ -18,11 +18,11 @@ import Data.Tuple.Extra
 import Lwsd.Matrix qualified as Matrix
 import Lwsd.Subst
 import Lwsd.Syntax
-import Lwsd.Token (Span)
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.TypeError
 import Lwsd.Vector qualified as Vector
+import Util.TokenUtil (Span)
 import Prelude
 
 data TypecheckState = TypecheckState
@@ -113,8 +113,8 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
         LitVec ns -> do
           let vec = Vector.fromList ns
           pure (A0TyPrim (A0TyVec (Vector.length vec)), ALitVec vec)
-        LitMat nns -> do
-          mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nns
+        LitMat nss -> do
+          mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral e, trav)) $ Matrix.fromRows nss
           pure (A0TyPrim (uncurry A0TyMat (Matrix.size mat)), ALitMat mat)
     pure (a0tye, A0Literal alit)
   Var x -> do

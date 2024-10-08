@@ -1,4 +1,4 @@
-module Lwsd.Token
+module Surface.Token
   ( Token (..),
     lex,
   )
@@ -22,9 +22,6 @@ data Token
   | TokEqual
   | TokColon
   | TokComma
-  | TokBracket
-  | TokEscape
-  | TokPersistent
   | TokSemicolon
   | TokVecLeft
   | TokVecRight
@@ -71,9 +68,6 @@ token =
       TokColon <$ Mp.single ':',
       TokComma <$ Mp.single ',',
       TokEqual <$ Mp.single '=',
-      TokBracket <$ Mp.single '&',
-      TokEscape <$ Mp.single '~',
-      TokPersistent <$ Mp.single '%',
       TokSemicolon <$ Mp.single ';',
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",

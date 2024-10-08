@@ -1,4 +1,4 @@
-module Lwsd.Parser
+module Surface.Parser
   ( parseExpr,
     parseTypeExpr,
   )
@@ -10,9 +10,9 @@ import Data.Functor
 import Data.Generics.Labels ()
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
-import Lwsd.Syntax
-import Lwsd.Token (Token (..))
-import Lwsd.Token qualified as Token
+import Surface.Syntax
+import Surface.Token (Token (..))
+import Surface.Token qualified as Token
 import Util.ParserUtil
 import Util.TokenUtil
 import Prelude hiding (or)
@@ -60,20 +60,9 @@ exprAtom, expr :: P Expr
         located constructor (Located loc e) = Expr loc (constructor e)
         makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
 
-    staged :: P Expr
-    staged =
-      tries
-        [ makeStaged Bracket <$> token TokBracket <*> staged,
-          makeStaged Escape <$> token TokEscape <*> staged
-        ]
-        atom
-      where
-        makeStaged constructor loc1 e@(Expr loc2 _) =
-          Expr (mergeSpan loc1 loc2) (constructor e)
-
     app :: P Expr
     app =
-      foldl1 makeApp <$> some staged
+      foldl1 makeApp <$> some atom
       where
         makeApp :: Expr -> Expr -> Expr
         makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
@@ -134,24 +123,14 @@ typeExpr = fun
         makeEnclosed loc1 (TypeExpr _ tyeMain) loc2 =
           TypeExpr (mergeSpan loc1 loc2) tyeMain
 
-    staged :: P TypeExpr
-    staged =
-      (makeTyCode <$> token TokBracket <*> staged)
-        `or` atom
-      where
-        makeTyCode loc1 tye@(TypeExpr loc2 _) =
-          TypeExpr (mergeSpan loc1 loc2) (TyCode tye)
-
     app :: P TypeExpr
     app =
-      (makeTyName <$> upper <*> some arg)
-        `or` staged
+      (makeTyName <$> upper <*> some exprAtom)
+        `or` atom
       where
         makeTyName (Located locFirst t) tyeArgs =
-          let loc =
-                case NonEmpty.last tyeArgs of
-                  PersistentArg (Expr locLast _) -> mergeSpan locFirst locLast
-                  NormalArg (Expr locLast _) -> mergeSpan locFirst locLast
+          let Expr locLast _ = NonEmpty.last tyeArgs
+              loc = mergeSpan locFirst locLast
            in TypeExpr loc (TyName t (NonEmpty.toList tyeArgs))
 
     fun :: P TypeExpr
@@ -173,11 +152,6 @@ typeExpr = fun
       where
         makeFunDom locFirst x tyeDom =
           (Just (locFirst, x), tyeDom)
-
-    arg :: P ArgForType
-    arg =
-      (PersistentArg <$> (token TokPersistent *> exprAtom))
-        `or` (NormalArg <$> exprAtom)
 
 parse :: P a -> Text -> Either String a
 parse p source = do

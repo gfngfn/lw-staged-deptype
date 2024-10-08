@@ -18,10 +18,10 @@ import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.Matrix (Matrix)
 import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
-import Lwsd.Token (LocationInFile, Span (..))
-import Lwsd.Token qualified as Token
 import Lwsd.Vector (Vector)
 import Lwsd.Vector qualified as Vector
+import Util.TokenUtil (LocationInFile (..), Span (..), getLocationInFileFromOffset)
+import Prelude
 
 data Bug
   = UnboundVar Var
@@ -49,8 +49,8 @@ getLocationInFile :: SourceSpec -> Span -> (LocationInFile, LocationInFile, Mayb
 getLocationInFile SourceSpec {source, inputFilePath} Span {start, end} =
   (locInFileStart, locInFileEnd, maybeLineText)
   where
-    (locInFileStart, maybeLineText) = Token.getLocationInFileFromOffset inputFilePath source start
-    (locInFileEnd, _) = Token.getLocationInFileFromOffset inputFilePath source end
+    (locInFileStart, maybeLineText) = getLocationInFileFromOffset inputFilePath source start
+    (locInFileEnd, _) = getLocationInFileFromOffset inputFilePath source end
 
 data EvalState = EvalState
   { nextSymbolIndex :: Int,

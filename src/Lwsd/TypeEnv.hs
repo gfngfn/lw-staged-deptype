@@ -9,6 +9,7 @@ where
 
 import Data.List.Extra qualified as List
 import Lwsd.Syntax
+import Prelude
 
 newtype TypeEnv = TypeEnv [(Var, Entry)]
 
