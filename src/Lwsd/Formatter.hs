@@ -20,7 +20,7 @@ import Prettyprinter
 import Prettyprinter.Render.Terminal
 import Surface.BindingTimeAnalyzer qualified as Bta
 import Surface.Syntax qualified as Surface
-import Util.TokenUtil (LocationInFile (LocationInFile))
+import Util.LocationInFile (LocationInFile (LocationInFile))
 import Prelude
 
 type Ann = AnsiStyle

@@ -5,13 +5,14 @@ module Surface.SurfaceMain
 where
 
 import Data.Text.IO qualified as TextIO
-import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.LibMain qualified as LwsdMain
 import Surface.BindingTimeAnalyzer qualified as BindingTimeAnalyzer
 import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
+import Util.LocationInFile (SourceSpec (SourceSpec))
+import Util.LocationInFile qualified as LocationInFile
 import Prelude
 
 data Argument = Argument
@@ -51,7 +52,11 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly, fallBac
                     LwsdMain.displayWidth = displayWidth,
                     LwsdMain.compileTimeOnly = compileTimeOnly
                   }
-          let sourceSpec = Evaluator.SourceSpec source inputFilePath
+          let sourceSpec =
+                SourceSpec
+                  { LocationInFile.source = source,
+                    LocationInFile.inputFilePath = inputFilePath
+                  }
           LwsdMain.typecheckAndEval lwArg sourceSpec lwe
   where
     putRenderedLines :: (Disp a) => a -> IO ()

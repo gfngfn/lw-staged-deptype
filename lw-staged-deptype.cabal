@@ -78,6 +78,7 @@ library
       Surface.Syntax,
       Surface.SurfaceMain,
       Surface.Token,
+      Util.LocationInFile,
       Util.ParserUtil,
       Util.TokenUtil
 
