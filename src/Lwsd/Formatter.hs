@@ -334,18 +334,18 @@ instance Disp TypeError where
   dispGen _ = \case
     UnboundVar spanInFile x ->
       "Unbound variable" <+> disp x <+> disp spanInFile
-    NotAStage0Var x ->
-      "Not a stage-0 variable:" <+> disp x
-    NotAStage1Var x ->
-      "Not a stage-1 variable:" <+> disp x
-    UnknownTypeOrInvalidArityAtStage0 tyName n ->
-      "Unknown type or invalid arity (at stage 0):" <+> disp tyName <> "," <+> disp n
-    UnknownTypeOrInvalidArityAtStage1 tyName n ->
-      "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n
-    NotAnIntLitArgAtStage0 a0e ->
-      "An argument expression at stage 0 was not an integer literal:" <+> disp a0e
-    NotAnIntTypedArgAtStage1 a0tye ->
-      "An argument expression at stage 1 was not Int-typed:" <+> disp a0tye
+    NotAStage0Var spanInFile x ->
+      "Not a stage-0 variable:" <+> disp x <+> disp spanInFile
+    NotAStage1Var spanInFile x ->
+      "Not a stage-1 variable:" <+> disp x <+> disp spanInFile
+    UnknownTypeOrInvalidArityAtStage0 spanInFile tyName n ->
+      "Unknown type or invalid arity (at stage 0):" <+> disp tyName <> "," <+> disp n <+> disp spanInFile
+    UnknownTypeOrInvalidArityAtStage1 spanInFile tyName n ->
+      "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n <+> disp spanInFile
+    NotAnIntLitArgAtStage0 spanInFile a0e ->
+      "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
+    NotAnIntTypedArgAtStage1 spanInFile a0tye ->
+      "An argument expression at stage 1 is not Int-typed:" <+> stage0Style (disp a0tye) <+> disp spanInFile
     TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
       "Type contradiction at stage 0"
         <+> disp spanInFile
@@ -364,30 +364,30 @@ instance Disp TypeError where
         <> hardline
         <> "right:"
         <> nest 2 (hardline <> stage1Style (disp a1tye2))
-    NotAFunctionTypeForStage0 a0tye ->
-      "Not a function type (for stage 0): " <+> disp a0tye
-    NotAFunctionTypeForStage1 a1tye ->
-      "Not a function type (for stage 1): " <+> disp a1tye
-    NotACodeType a0tye ->
-      "Not a code type:" <+> disp a0tye
-    CannotUseEscapeAtStage0 ->
-      "Cannot use Escape (~) at stage 0"
-    CannotUseBracketAtStage1 ->
-      "Cannot use Bracket (&) at stage 1"
-    FunctionTypeCannotBeDependentAtStage1 x ->
-      "Function types cannot be dependent at stage 1:" <+> disp x
-    CannotUseCodeTypeAtStage1 ->
-      "Cannot use code types at stage 1"
-    CannotUsePersistentArgAtStage0 ->
-      "Cannot use persistent arguments at stage 0"
-    CannotUseNormalArgAtStage1 ->
-      "Cannot use normal arguments at stage 1"
-    VarOccursFreelyInAss0Type x a0tye ->
-      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> disp a0tye
-    VarOccursFreelyInAss1Type x a1tye ->
-      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> disp a1tye
-    InvalidMatrixLiteral e ->
-      "Invalid matrix literal;" <+> disp e
+    NotAFunctionTypeForStage0 spanInFile a0tye ->
+      "Not a function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    NotAFunctionTypeForStage1 spanInFile a1tye ->
+      "Not a function type (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    NotACodeType spanInFile a0tye ->
+      "Not a code type:" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    CannotUseEscapeAtStage0 spanInFile ->
+      "Cannot use Escape (~) at stage 0" <+> disp spanInFile
+    CannotUseBracketAtStage1 spanInFile ->
+      "Cannot use Bracket (&) at stage 1" <+> disp spanInFile
+    FunctionTypeCannotBeDependentAtStage1 spanInFile x ->
+      "Function types cannot be dependent at stage 1:" <+> disp x <+> disp spanInFile
+    CannotUseCodeTypeAtStage1 spanInFile ->
+      "Cannot use code types at stage 1" <+> disp spanInFile
+    CannotUsePersistentArgAtStage0 spanInFile ->
+      "Cannot use persistent arguments at stage 0" <+> disp spanInFile
+    CannotUseNormalArgAtStage1 spanInFile ->
+      "Cannot use normal arguments at stage 1" <+> disp spanInFile
+    VarOccursFreelyInAss0Type spanInFile x a0tye ->
+      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    VarOccursFreelyInAss1Type spanInFile x a1tye ->
+      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    InvalidMatrixLiteral spanInFile e ->
+      "Invalid matrix literal;" <+> disp e <+> disp spanInFile
 
 instance Disp Ass0Val where
   dispGen req = \case
