@@ -18,7 +18,7 @@ import Prettyprinter
 import Prettyprinter.Render.Terminal
 import Surface.BindingTimeAnalyzer qualified as Bta
 import Surface.Syntax qualified as Surface
-import Util.LocationInFile (LocationInFile (LocationInFile))
+import Util.LocationInFile (LocationInFile (LocationInFile), SpanInFile (..))
 import Util.Matrix qualified as Matrix
 import Util.Vector qualified as Vector
 import Prelude
@@ -465,6 +465,24 @@ instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
     "line" <+> disp l <> ", column" <+> disp c
 
+instance Disp SpanInFile where
+  dispGen _ (SpanInFile {startLocation, endLocation, contents}) =
+    "(from"
+      <+> disp startLocation
+      <+> "to"
+      <+> disp endLocation
+      <> ")"
+      <> maybe mempty makeLineText contents
+    where
+      makeLineText s =
+        if startLine == endLine
+          then hardline <> disp s <> hats
+          else mempty
+        where
+          LocationInFile startLine startColumn = startLocation
+          LocationInFile endLine endColumn = endLocation
+          hats = nest 2 (hardline <> disp (replicate (endColumn - startColumn) '^'))
+
 instance Disp Evaluator.Bug where
   dispGen _ = \case
     Evaluator.UnboundVar x ->
@@ -492,28 +510,15 @@ instance Disp Evaluator.EvalError where
   dispGen _ = \case
     Evaluator.Bug bug ->
       "Bug:" <+> disp bug
-    Evaluator.AssertionFailure (locInFileStart, locInFileEnd, maybeLineText) a1tyv1 a1tyv2 ->
-      "Assertion failure (from"
-        <+> disp locInFileStart
-        <+> "to"
-        <+> disp locInFileEnd
-        <> ")"
-        <> maybe mempty makeLineText maybeLineText
+    Evaluator.AssertionFailure spanInFile a1tyv1 a1tyv2 ->
+      "Assertion failure"
+        <+> disp spanInFile
         <> hardline
         <> "left:"
         <> nest 2 (hardline <> disp a1tyv1)
         <> hardline
         <> "right:"
         <> nest 2 (hardline <> disp a1tyv2)
-      where
-        makeLineText s =
-          if startLine == endLine
-            then hardline <> disp s <> hats
-            else mempty
-          where
-            LocationInFile startLine startColumn = locInFileStart
-            LocationInFile endLine endColumn = locInFileEnd
-            hats = nest 2 (hardline <> disp (replicate (endColumn - startColumn) '^'))
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case

@@ -2,6 +2,7 @@ module Util.LocationInFile
   ( LocationInFile (..),
     getLocationInFileFromOffset,
     SourceSpec (..),
+    SpanInFile (..),
     getSpanInFile,
   )
 where
@@ -44,9 +45,15 @@ data SourceSpec = SourceSpec
     inputFilePath :: String
   }
 
-getSpanInFile :: SourceSpec -> Span -> (LocationInFile, LocationInFile, Maybe String)
+data SpanInFile = SpanInFile
+  { startLocation :: LocationInFile,
+    endLocation :: LocationInFile,
+    contents :: Maybe String
+  }
+
+getSpanInFile :: SourceSpec -> Span -> SpanInFile
 getSpanInFile SourceSpec {source, inputFilePath} Span {start, end} =
-  (locInFileStart, locInFileEnd, maybeLineText)
+  SpanInFile {startLocation, endLocation, contents}
   where
-    (locInFileStart, maybeLineText) = getLocationInFileFromOffset inputFilePath source start
-    (locInFileEnd, _) = getLocationInFileFromOffset inputFilePath source end
+    (startLocation, contents) = getLocationInFileFromOffset inputFilePath source start
+    (endLocation, _) = getLocationInFileFromOffset inputFilePath source end

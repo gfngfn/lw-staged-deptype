@@ -14,7 +14,7 @@ import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.Syntax
-import Util.LocationInFile (LocationInFile, SourceSpec, getSpanInFile)
+import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.Matrix (Matrix)
 import Util.Matrix qualified as Matrix
 import Util.Vector (Vector)
@@ -35,8 +35,7 @@ data Bug
 
 data EvalError
   = Bug Bug
-  | AssertionFailure (LocationInFile, LocationInFile, Maybe String) Ass1TypeVal Ass1TypeVal
-  deriving stock (Eq, Show)
+  | AssertionFailure SpanInFile Ass1TypeVal Ass1TypeVal
 
 data EvalState = EvalState
   { nextSymbolIndex :: Int,
