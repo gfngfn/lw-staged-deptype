@@ -54,7 +54,8 @@ generateFreshVar = do
   pure $ Text.pack ("#X" ++ show nextVarIndex)
 
 makeAssertiveCast :: trav -> Span -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0Expr
-makeAssertiveCast trav loc a0tye1 a0tye2 =
+makeAssertiveCast trav loc a0tye1 a0tye2 = do
+  spanInFile <- askSpanInFile loc
   case (a0tye1, a0tye2) of
     (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) -> do
       a0tyPrim <-
@@ -63,7 +64,7 @@ makeAssertiveCast trav loc a0tye1 a0tye2 =
           (A0TyBool, A0TyBool) -> pure A0TyBool
           (A0TyVec n1, A0TyVec n2) | n1 == n2 -> pure $ A0TyVec n1
           (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> pure $ A0TyMat m1 n2
-          _ -> typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
+          _ -> typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
       x <- generateFreshVar
       pure $ A0Lam (x, A0TyPrim a0tyPrim) (A0Var x)
     (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
@@ -89,28 +90,35 @@ makeAssertiveCast trav loc a0tye1 a0tye2 =
               (A0Lam (x', a0tye11) (A0App a0eCodCast (A0App (A0Var f) (A0Var x'))))
               (A0App a0eDomCast (A0Var x))
     (A0TyCode a1tye1, A0TyCode a1tye2) -> do
-      ty1eq <- makeEquation1 trav a1tye1 a1tye2
+      ty1eq <- makeEquation1 trav loc a1tye1 a1tye2
       pure $ A0TyEqAssert loc ty1eq
     _ ->
-      typeError trav $ TypeContradictionAtStage0 a0tye1 a0tye2
+      typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
 
-makeEquation1 :: trav -> Ass1TypeExpr -> Ass1TypeExpr -> M trav Type1Equation
-makeEquation1 trav a1tye1 a1tye2 =
-  case (a1tye1, a1tye2) of
-    (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
-      TyEq1Prim
-        <$> case (a1tyPrim1, a1tyPrim2) of
-          (A1TyInt, A1TyInt) -> pure TyEq1Int
-          (A1TyBool, A1TyBool) -> pure TyEq1Bool
-          (A1TyVec a0e1, A1TyVec a0e2) -> pure $ TyEq1Vec a0e1 a0e2
-          (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) -> pure $ TyEq1Mat a0e11 a0e12 a0e21 a0e22
-          _ -> typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
-    (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
-      ty1eqDom <- makeEquation1 trav a1tye11 a1tye21
-      ty1eqCod <- makeEquation1 trav a1tye12 a1tye22
-      pure $ TyEq1Arrow ty1eqDom ty1eqCod
-    _ ->
-      typeError trav $ TypeContradictionAtStage1 a1tye1 a1tye2
+makeEquation1 :: trav -> Span -> Ass1TypeExpr -> Ass1TypeExpr -> M trav Type1Equation
+makeEquation1 trav loc a1tye1' a1tye2' = do
+  spanInFile <- askSpanInFile loc
+  case go a1tye1' a1tye2' of
+    Nothing -> typeError trav $ TypeContradictionAtStage1 spanInFile a1tye1' a1tye2'
+    Just ty1eq -> pure ty1eq
+  where
+    go :: Ass1TypeExpr -> Ass1TypeExpr -> Maybe Type1Equation
+    go a1tye1 a1tye2 =
+      case (a1tye1, a1tye2) of
+        (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
+          TyEq1Prim
+            <$> case (a1tyPrim1, a1tyPrim2) of
+              (A1TyInt, A1TyInt) -> pure TyEq1Int
+              (A1TyBool, A1TyBool) -> pure TyEq1Bool
+              (A1TyVec a0e1, A1TyVec a0e2) -> pure $ TyEq1Vec a0e1 a0e2
+              (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) -> pure $ TyEq1Mat a0e11 a0e12 a0e21 a0e22
+              _ -> Nothing
+        (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
+          ty1eqDom <- go a1tye11 a1tye21
+          ty1eqCod <- go a1tye12 a1tye22
+          pure $ TyEq1Arrow ty1eqDom ty1eqCod
+        _ ->
+          Nothing
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
@@ -194,7 +202,7 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
       A1TyArrow a1tye11 a1tye12 -> do
         -- Embeds type equality assertion at stage 0 here!
         TypecheckState {optimizeTrivialAssertion} <- get
-        ty1eq <- makeEquation1 trav a1tye11 a1tye2
+        ty1eq <- makeEquation1 trav loc a1tye11 a1tye2
         let a1e2' =
               if optimizeTrivialAssertion && a1tye11 == a1tye2
                 then a1e2 -- Do slight shortcuts

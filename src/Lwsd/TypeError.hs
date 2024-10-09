@@ -16,8 +16,8 @@ data TypeError
   | UnknownTypeOrInvalidArityAtStage1 TypeName Int
   | NotAnIntLitArgAtStage0 Ass0Expr
   | NotAnIntTypedArgAtStage1 Ass0TypeExpr
-  | TypeContradictionAtStage0 Ass0TypeExpr Ass0TypeExpr
-  | TypeContradictionAtStage1 Ass1TypeExpr Ass1TypeExpr
+  | TypeContradictionAtStage0 SpanInFile Ass0TypeExpr Ass0TypeExpr
+  | TypeContradictionAtStage1 SpanInFile Ass1TypeExpr Ass1TypeExpr
   | NotAFunctionTypeForStage0 Ass0TypeExpr
   | NotAFunctionTypeForStage1 Ass1TypeExpr
   | NotACodeType Ass0TypeExpr

@@ -346,22 +346,24 @@ instance Disp TypeError where
       "An argument expression at stage 0 was not an integer literal:" <+> disp a0e
     NotAnIntTypedArgAtStage1 a0tye ->
       "An argument expression at stage 1 was not Int-typed:" <+> disp a0tye
-    TypeContradictionAtStage0 a0tye1 a0tye2 ->
-      "Type contradiction at stage 0."
+    TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
+      "Type contradiction at stage 0"
+        <+> disp spanInFile
         <> hardline
         <> "left:"
-        <> nest 2 (hardline <> disp a0tye1)
+        <> nest 2 (hardline <> stage0Style (disp a0tye1))
         <> hardline
         <> "right:"
-        <> nest 2 (hardline <> disp a0tye2)
-    TypeContradictionAtStage1 a1tye1 a1tye2 ->
-      "Type contradiction at stage 1."
+        <> nest 2 (hardline <> stage0Style (disp a0tye2))
+    TypeContradictionAtStage1 spanInFile a1tye1 a1tye2 ->
+      "Type contradiction at stage 1"
+        <+> disp spanInFile
         <> hardline
         <> "left:"
-        <> nest 2 (hardline <> disp a1tye1)
+        <> nest 2 (hardline <> stage1Style (disp a1tye1))
         <> hardline
         <> "right:"
-        <> nest 2 (hardline <> disp a1tye2)
+        <> nest 2 (hardline <> stage1Style (disp a1tye2))
     NotAFunctionTypeForStage0 a0tye ->
       "Not a function type (for stage 0): " <+> disp a0tye
     NotAFunctionTypeForStage1 a1tye ->
