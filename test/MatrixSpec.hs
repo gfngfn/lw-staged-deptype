@@ -1,8 +1,8 @@
 module MatrixSpec (spec) where
 
-import Lwsd.Matrix (Matrix)
-import Lwsd.Matrix qualified as Matrix
 import Test.Hspec
+import Util.Matrix (Matrix)
+import Util.Matrix qualified as Matrix
 
 make :: [[Int]] -> Matrix
 make rows =

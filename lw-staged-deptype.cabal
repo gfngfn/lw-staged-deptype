@@ -63,7 +63,6 @@ library
       Lwsd.Evaluator,
       Lwsd.Formatter,
       Lwsd.LibMain,
-      Lwsd.Matrix,
       Lwsd.Parser,
       Lwsd.Subst,
       Lwsd.Syntax,
@@ -71,7 +70,6 @@ library
       Lwsd.TypeEnv,
       Lwsd.TypeError,
       Lwsd.Typechecker,
-      Lwsd.Vector,
       Surface.BindingTimeAnalyzer,
       Surface.BuiltIn,
       Surface.Parser,
@@ -79,8 +77,10 @@ library
       Surface.SurfaceMain,
       Surface.Token,
       Util.LocationInFile,
+      Util.Matrix,
       Util.ParserUtil,
-      Util.TokenUtil
+      Util.TokenUtil,
+      Util.Vector
 
     -- Modules included in this library but not exported.
     -- other-modules:

@@ -1,4 +1,4 @@
-module Lwsd.Matrix
+module Util.Matrix
   ( Matrix,
     ConstructionError (..),
     fromRows,

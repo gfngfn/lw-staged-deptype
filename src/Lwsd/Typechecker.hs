@@ -15,14 +15,14 @@ import Data.Either.Extra
 import Data.List qualified as List
 import Data.Text qualified as Text
 import Data.Tuple.Extra
-import Lwsd.Matrix qualified as Matrix
 import Lwsd.Subst
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.TypeError
-import Lwsd.Vector qualified as Vector
+import Util.Matrix qualified as Matrix
 import Util.TokenUtil (Span)
+import Util.Vector qualified as Vector
 import Prelude
 
 data TypecheckState = TypecheckState

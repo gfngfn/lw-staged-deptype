@@ -3,8 +3,8 @@ module Lwsd.TypeError
   )
 where
 
-import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
+import Util.Matrix qualified as Matrix
 import Prelude
 
 data TypeError

@@ -13,12 +13,12 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Lwsd.BuiltIn qualified as BuiltIn
-import Lwsd.Matrix (Matrix)
-import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
-import Lwsd.Vector (Vector)
-import Lwsd.Vector qualified as Vector
 import Util.LocationInFile (LocationInFile, SourceSpec, getSpanInFile)
+import Util.Matrix (Matrix)
+import Util.Matrix qualified as Matrix
+import Util.Vector (Vector)
+import Util.Vector qualified as Vector
 import Prelude
 
 data Bug

@@ -12,15 +12,15 @@ import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Lwsd.Evaluator qualified as Evaluator
-import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
 import Lwsd.TypeError
-import Lwsd.Vector qualified as Vector
 import Prettyprinter
 import Prettyprinter.Render.Terminal
 import Surface.BindingTimeAnalyzer qualified as Bta
 import Surface.Syntax qualified as Surface
 import Util.LocationInFile (LocationInFile (LocationInFile))
+import Util.Matrix qualified as Matrix
+import Util.Vector qualified as Vector
 import Prelude
 
 type Ann = AnsiStyle
