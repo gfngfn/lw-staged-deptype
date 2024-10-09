@@ -34,6 +34,12 @@ failure = return False
 typecheckAndEval :: Argument -> SourceSpec -> Expr -> IO Bool
 typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e = do
   let initialEvalState = Evaluator.initialState sourceSpec
+  let typecheckerConfig =
+        TypecheckState
+          { optimizeTrivialAssertion = optimize,
+            sourceSpec,
+            nextVarIndex = 0
+          }
   case evalStateT (Typechecker.typecheckExpr0 id BuiltIn.initialTypeEnv e) typecheckerConfig of
     Left (tyErr, _travMod) -> do
       putStrLn "-------- type error: --------"
@@ -82,9 +88,6 @@ typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e
 
     putRenderedLinesAtStage1 :: (Disp a) => a -> IO ()
     putRenderedLinesAtStage1 = Formatter.putRenderedLinesAtStage1 displayWidth
-
-    typecheckerConfig :: TypecheckState
-    typecheckerConfig = TypecheckState {optimizeTrivialAssertion = optimize, nextVarIndex = 0}
 
 -- Returns a boolean that represents success or failure
 handle :: Argument -> IO Bool

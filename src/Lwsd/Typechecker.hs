@@ -20,6 +20,7 @@ import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.TypeError
+import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.Matrix qualified as Matrix
 import Util.TokenUtil (Span)
 import Util.Vector qualified as Vector
@@ -27,6 +28,7 @@ import Prelude
 
 data TypecheckState = TypecheckState
   { optimizeTrivialAssertion :: Bool,
+    sourceSpec :: SourceSpec,
     nextVarIndex :: Int
   }
 
@@ -35,9 +37,15 @@ type M trav a = StateT TypecheckState (Either (TypeError, trav)) a
 typeError :: trav -> TypeError -> M trav b
 typeError trav e = lift $ Left (e, trav)
 
-findVar :: trav -> Var -> TypeEnv -> M trav TypeEnv.Entry
-findVar trav x tyEnv =
-  lift $ maybeToEither (UnboundVar x, trav) $ TypeEnv.findVar x tyEnv
+askSpanInFile :: Span -> M trav SpanInFile
+askSpanInFile loc = do
+  TypecheckState {sourceSpec} <- get
+  pure $ getSpanInFile sourceSpec loc
+
+findVar :: trav -> Span -> Var -> TypeEnv -> M trav TypeEnv.Entry
+findVar trav loc x tyEnv = do
+  spanInFile <- askSpanInFile loc
+  lift $ maybeToEither (UnboundVar spanInFile x, trav) $ TypeEnv.findVar x tyEnv
 
 generateFreshVar :: M trav Var
 generateFreshVar = do
@@ -118,7 +126,7 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = case eMain of
           pure (A0TyPrim (uncurry A0TyMat (Matrix.size mat)), ALitMat mat)
     pure (a0tye, A0Literal alit)
   Var x -> do
-    entry <- findVar trav x tyEnv
+    entry <- findVar trav loc x tyEnv
     case entry of
       TypeEnv.Ass0Entry a0tye -> pure (a0tye, A0Var x)
       TypeEnv.Ass1Entry _ -> typeError trav $ NotAStage0Var x
@@ -171,7 +179,7 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = case eMain of
           pure (A1TyPrim (uncurry A1TyMat (both (A0Literal . ALitInt) (Matrix.size mat))), ALitMat mat)
     pure (a1tye, A1Literal alit)
   Var x -> do
-    entry <- findVar trav x tyEnv
+    entry <- findVar trav loc x tyEnv
     case entry of
       TypeEnv.Ass0Entry _ -> typeError trav $ NotAStage1Var x
       TypeEnv.Ass1Entry a1tye -> pure (a1tye, A1Var x)

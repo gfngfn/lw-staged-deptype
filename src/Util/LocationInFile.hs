@@ -50,6 +50,7 @@ data SpanInFile = SpanInFile
     endLocation :: LocationInFile,
     contents :: Maybe String
   }
+  deriving stock (Eq, Show)
 
 getSpanInFile :: SourceSpec -> Span -> SpanInFile
 getSpanInFile SourceSpec {source, inputFilePath} Span {start, end} =

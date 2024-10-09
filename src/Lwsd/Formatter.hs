@@ -332,8 +332,8 @@ instance Disp Matrix.ConstructionError where
 
 instance Disp TypeError where
   dispGen _ = \case
-    UnboundVar x ->
-      "Unbound variable" <+> disp x
+    UnboundVar spanInFile x ->
+      "Unbound variable" <+> disp x <+> disp spanInFile
     NotAStage0Var x ->
       "Not a stage-0 variable:" <+> disp x
     NotAStage1Var x ->
@@ -463,7 +463,7 @@ instance Disp Ass1TypeVal where
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
-    "line" <+> disp l <> ", column" <+> disp c
+    "line" <+> disp l <> ", column" <+> disp (c - 1)
 
 instance Disp SpanInFile where
   dispGen _ (SpanInFile {startLocation, endLocation, contents}) =
@@ -476,12 +476,13 @@ instance Disp SpanInFile where
     where
       makeLineText s =
         if startLine == endLine
-          then hardline <> disp s <> hats
+          then hardline <> disp s <> hardline <> indentation <> hats
           else mempty
         where
           LocationInFile startLine startColumn = startLocation
           LocationInFile endLine endColumn = endLocation
-          hats = nest 2 (hardline <> disp (replicate (endColumn - startColumn) '^'))
+          indentation = disp (replicate (startColumn - 1) ' ')
+          hats = disp (replicate (endColumn - startColumn) '^')
 
 instance Disp Evaluator.Bug where
   dispGen _ = \case

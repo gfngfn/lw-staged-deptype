@@ -4,11 +4,12 @@ module Lwsd.TypeError
 where
 
 import Lwsd.Syntax
+import Util.LocationInFile (SpanInFile)
 import Util.Matrix qualified as Matrix
 import Prelude
 
 data TypeError
-  = UnboundVar Var
+  = UnboundVar SpanInFile Var
   | NotAStage0Var Var
   | NotAStage1Var Var
   | UnknownTypeOrInvalidArityAtStage0 TypeName Int
