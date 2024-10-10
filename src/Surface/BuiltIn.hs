@@ -9,14 +9,14 @@ import Surface.BindingTime.Core (BITypeF (..), BITypeMainF (..), BindingTimeCons
 import Surface.Syntax
 import Prelude
 
-type BITypeVoid = BITypeF BindingTimeConst
+type BITypeVoid = BITypeF BindingTimeConst BindingTimeConst
 
 type ExprVoid = ExprF BindingTimeConst
 
-wrap0 :: BITypeMainF BindingTimeConst -> BITypeVoid
+wrap0 :: BITypeMainF BindingTimeConst BindingTimeConst -> BITypeVoid
 wrap0 = BIType BT0
 
-wrap1 :: BITypeMainF BindingTimeConst -> BITypeVoid
+wrap1 :: BITypeMainF BindingTimeConst BindingTimeConst -> BITypeVoid
 wrap1 = BIType BT1
 
 bityInt :: BITypeVoid
@@ -56,7 +56,7 @@ initialBindingTimeEnv =
     persistent = EntryBuiltInPersistent
     fixed0 x' = EntryBuiltInFixed x' BT0
 
-    bityArith :: BITypeF ()
+    bityArith :: BITypeF () ()
     bityArith =
       int `arrow` (int `arrow` int)
       where
