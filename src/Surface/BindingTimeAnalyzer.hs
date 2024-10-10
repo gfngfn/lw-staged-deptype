@@ -213,7 +213,7 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
           let tye' = TypeExpr (bt, ann) (TyArrow (Just x1, tye1') tye2')
           pure (tye', BIType (bt, ann) (BITyArrow (x1opt, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
 
-stage :: Bool -> BindingTimeEnv -> Expr -> M (BCExpr, Lwsd.Expr)
+stage :: Bool -> BindingTimeEnv -> Expr -> M (BCExprF Span, Lwsd.Expr)
 stage fallBackToBindingTime0 btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
   (be', _bity, constraints) <- extractConstraintsFromExpr btenv be
@@ -241,7 +241,7 @@ stage fallBackToBindingTime0 btenv e = do
   let lwe = stageExpr0 bce
   pure (bce, lwe)
 
-run :: SourceSpec -> Bool -> BindingTimeEnv -> Expr -> Either AnalysisError (BCExpr, Lwsd.Expr)
+run :: SourceSpec -> Bool -> BindingTimeEnv -> Expr -> Either AnalysisError (BCExprF Span, Lwsd.Expr)
 run sourceSpec fallBackToBindingTime0 btenv e =
   runReaderT (stage fallBackToBindingTime0 btenv e) analysisConfig
   where

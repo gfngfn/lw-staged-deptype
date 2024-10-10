@@ -534,7 +534,7 @@ instance Disp Bta.AnalysisError where
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
 
-instance Disp Bta.BCExpr where
+instance Disp (Bta.BCExprF ann) where
   dispGen _ (Surface.Expr (btc, _ann) exprMain) =
     let (f, prefix) =
           case btc of
@@ -542,7 +542,7 @@ instance Disp Bta.BCExpr where
             Bta.BT1 -> (bindingTime1Style, "$1")
      in group (f (prefix <> "(") <> disp exprMain <> f ")")
 
-instance Disp Bta.BCExprMain where
+instance Disp (Bta.BCExprMainF ann) where
   dispGen _ = \case
     Surface.Literal lit -> disp lit
     Surface.Var x -> disp x
@@ -550,7 +550,7 @@ instance Disp Bta.BCExprMain where
     Surface.App e1 e2 -> group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
     Surface.LetIn x e1 e2 -> group ("let" <+> disp x <+> "=" <+> disp e1 <+> "in" <+> disp e2)
 
-instance Disp Bta.BCTypeExpr where
+instance Disp (Bta.BCTypeExprF ann) where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =
     let (f, prefix) =
           case btc of
@@ -558,7 +558,7 @@ instance Disp Bta.BCTypeExpr where
             Bta.BT1 -> (bindingTime1Style, "$1")
      in group (f (prefix <> "(") <> disp typeExprMain <> f ")")
 
-instance Disp Bta.BCTypeExprMain where
+instance Disp (Bta.BCTypeExprMainF ann) where
   dispGen _ = \case
     Surface.TyName tyName args ->
       case args of
