@@ -70,6 +70,8 @@ library
       Lwsd.TypeEnv,
       Lwsd.TypeError,
       Lwsd.Typechecker,
+      Surface.BindingTime.Constraint,
+      Surface.BindingTime.Core,
       Surface.BindingTimeAnalyzer,
       Surface.BuiltIn,
       Surface.Parser,

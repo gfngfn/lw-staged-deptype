@@ -1,16 +1,11 @@
 module Surface.BindingTimeAnalyzer
   ( BindingTimeVar,
     BExpr,
-    BITypeF (..),
-    BITypeMainF (..),
-    BIType,
     BCExpr,
     BCExprMain,
     BCTypeExpr,
     BCTypeExprMain,
     AnalysisError (..),
-    BindingTimeEnvEntry (..),
-    BindingTimeEnv,
     BindingTimeConst (..),
     BindingTime (..),
     run,
@@ -22,19 +17,14 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Generics.Labels ()
-import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Set (Set)
-import Data.Set qualified as Set
-import GHC.Generics
 import Lwsd.Syntax qualified as Lwsd
+import Surface.BindingTime.Constraint
+import Surface.BindingTime.Core
 import Surface.Syntax
 import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.TokenUtil (Span)
 import Prelude hiding (succ)
-
-newtype BindingTimeVar = BindingTimeVar Int
-  deriving stock (Ord, Eq, Show)
 
 initialState :: BindingTimeVar
 initialState = BindingTimeVar 0
@@ -49,10 +39,6 @@ fresh = do
   btv <- get
   put (succ btv)
   pure btv
-
-type BExpr = ExprF (BindingTime, Span)
-
-type BTypeExpr = TypeExprF (BindingTime, Span)
 
 assignBindingTimeVarToExpr :: Expr -> Assigner BExpr
 assignBindingTimeVarToExpr (Expr ann exprMain) = do
@@ -89,37 +75,6 @@ assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
         bty2 <- assignBindingTimeVarToTypeExpr ty2
         pure $ TyArrow (xOpt, bty1) bty2
 
-data BindingTimeConst = BT0 | BT1
-  deriving stock (Eq, Ord, Show) -- BT0 < BT1
-
-data BindingTime
-  = BTConst BindingTimeConst
-  | BTVar BindingTimeVar
-  deriving stock (Show, Generic)
-
-data Constraint
-  = CLeq Span BindingTime BindingTime
-  | CEqual Span BindingTime BindingTime
-  deriving stock (Show)
-
--- Intermediate, minimal type representations for binding-time analysis
-data BITypeF meta = BIType meta (BITypeMainF meta)
-  deriving stock (Show)
-
-data BITypeMainF meta
-  = BITyBase [ExprF meta]
-  | BITyArrow (Maybe Var, BITypeF meta) (BITypeF meta)
-  deriving stock (Show)
-
-type BIType = BITypeF (BindingTime, Span)
-
-data BindingTimeEnvEntry
-  = EntryBuiltInPersistent (BITypeF ())
-  | EntryBuiltInFixed Var BindingTimeConst (BITypeF BindingTimeConst)
-  | EntryLocallyBound BindingTime BIType
-
-type BindingTimeEnv = Map Var BindingTimeEnvEntry
-
 data AnalysisError
   = UnboundVar SpanInFile Var
   | NotAFunction SpanInFile BIType
@@ -139,64 +94,6 @@ askSpanInFile :: Span -> M SpanInFile
 askSpanInFile loc = do
   AnalysisConfig {sourceSpec} <- ask
   pure $ getSpanInFile sourceSpec loc
-
-class HasVar a where
-  frees :: a -> Set Var
-  subst :: BExpr -> Var -> a -> a
-
-instance HasVar BIType where
-  frees (BIType _meta bityMain) =
-    case bityMain of
-      BITyBase bes -> Set.unions (map frees bes)
-      BITyArrow (Nothing, btye1) btye2 -> Set.union (frees btye1) (frees btye2)
-      BITyArrow (Just x1, btye1) btye2 -> Set.union (frees btye1) (Set.delete x1 (frees btye2))
-  subst be0 x (BIType meta bityMain) =
-    BIType meta $
-      case bityMain of
-        BITyBase bes -> BITyBase (map f bes)
-        BITyArrow (Nothing, btye1) btye2 -> BITyArrow (Nothing, f btye1) (f btye2)
-        BITyArrow (Just y, btye1) btye2 -> BITyArrow (Just y, f btye1) (if y == x then btye2 else f btye2)
-    where
-      f :: forall a. (HasVar a) => a -> a
-      f = subst be0 x
-
-instance HasVar BExpr where
-  frees (Expr _ann exprMain) =
-    case exprMain of
-      Literal _ -> Set.empty
-      Var x -> Set.singleton x
-      Lam (x, tye1) e2 -> Set.union (frees tye1) (Set.delete x (frees e2))
-      App e1 e2 -> Set.union (frees e1) (frees e2)
-      LetIn x e1 e2 -> Set.union (frees e1) (Set.delete x (frees e2))
-  subst be0 x be@(Expr ann exprMain) =
-    case exprMain of
-      Literal _ -> be
-      Var y -> if y == x then be0 else be
-      Lam (y, tye1) e2 -> Expr ann (Lam (y, f tye1) (if y == x then e2 else f e2))
-      App e1 e2 -> Expr ann (App (f e1) (f e2))
-      LetIn y e1 e2 -> Expr ann (LetIn y (f e1) (if y == x then e2 else f e2))
-    where
-      f :: forall a. (HasVar a) => a -> a
-      f = subst be0 x
-
-instance HasVar BTypeExpr where
-  frees (TypeExpr _ann typeExprMain) =
-    case typeExprMain of
-      TyName _tyName args -> Set.unions (map frees args)
-      TyArrow (Nothing, tye1) tye2 -> Set.union (frees tye1) (frees tye2)
-      TyArrow (Just y, tye1) tye2 -> Set.union (frees tye1) (Set.delete y (frees tye2))
-  subst be0 x (TypeExpr ann typeExprMain) =
-    TypeExpr ann $
-      case typeExprMain of
-        TyName tyName args -> TyName tyName (map f args)
-        TyArrow (Nothing, btye1) btye2 -> TyArrow (Nothing, f btye1) (f btye2)
-        TyArrow (Just y, btye1) btye2 -> TyArrow (Just y, f btye1) (if y == x then btye2 else f btye2)
-    where
-      f :: forall a. (HasVar a) => a -> a
-      f = subst be0 x
-
-occurs :: (HasVar a) => Var -> a -> Bool
-occurs x entity = x `elem` frees entity
 
 enhanceBIType :: (a -> (BindingTime, Span)) -> BITypeF a -> BIType
 enhanceBIType enh (BIType meta bityMain) =
@@ -231,7 +128,7 @@ enhanceTypeExpr enh (TypeExpr meta typeExprMain) =
     fExpr = enhanceExpr enh
     fTypeExpr = enhanceTypeExpr enh
 
-extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BExpr, BIType, [Constraint])
+extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BExpr, BIType, [Constraint Span])
 extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
   spanInFile <- askSpanInFile ann
   case exprMain of
@@ -287,7 +184,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       let e' = Expr (bt, ann) (LetIn x e1' e2')
       pure (e', bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
 
-extractConstraintsFromTypeExpr :: BindingTimeEnv -> BTypeExpr -> M (BTypeExpr, BIType, [Constraint])
+extractConstraintsFromTypeExpr :: BindingTimeEnv -> BTypeExpr -> M (BTypeExpr, BIType, [Constraint Span])
 extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
   case typeExprMain of
     TyName tyName args -> do
@@ -322,67 +219,6 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
                   else [CLeq ann bt bt1, CLeq ann bt bt2]
           let tye' = TypeExpr (bt, ann) (TyArrow (Just x1, tye1') tye2')
           pure (tye', BIType (bt, ann) (BITyArrow (x1opt, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
-
-data SolvingStepResult
-  = NotFound
-  | Subst BindingTimeVar BindingTime
-  | TrivialEliminated [Constraint]
-  | ContradictionDetected Span
-
-type BindingTimeSubst = Map BindingTimeVar BindingTime
-
-solveConstraints :: [Constraint] -> M (BindingTimeSubst, [Constraint])
-solveConstraints = go Map.empty
-  where
-    go :: BindingTimeSubst -> [Constraint] -> M (BindingTimeSubst, [Constraint])
-    go accMap constraints =
-      case step [] constraints of
-        NotFound ->
-          pure (accMap, constraints)
-        Subst btvFrom btTo -> do
-          let accMapNew = Map.insert btvFrom btTo (substSubst btvFrom btTo accMap)
-          let constraintsNew = map (substConstraint btvFrom btTo) constraints
-          go accMapNew constraintsNew
-        TrivialEliminated constraintsNew ->
-          go accMap constraintsNew
-        ContradictionDetected ann -> do
-          spanInFile <- askSpanInFile ann
-          analysisError $ BindingTimeContradiction spanInFile
-
-    step :: [Constraint] -> [Constraint] -> SolvingStepResult
-    step constraintAcc = \case
-      [] -> NotFound
-      CLeq _ann (BTVar btv1) (BTVar btv2) : rest | btv1 == btv2 -> TrivialEliminated (reverse constraintAcc ++ rest)
-      CLeq _ann (BTVar btv1) (BTConst BT0) : _ -> Subst btv1 (BTConst BT0)
-      CLeq _ann (BTConst BT1) (BTVar btv2) : _ -> Subst btv2 (BTConst BT1)
-      CLeq _ann (BTConst BT0) _ : rest -> TrivialEliminated (reverse constraintAcc ++ rest)
-      CLeq _ann _ (BTConst BT1) : rest -> TrivialEliminated (reverse constraintAcc ++ rest)
-      CLeq ann (BTConst BT1) (BTConst BT0) : _ -> ContradictionDetected ann
-      CEqual _ann (BTVar btv1) (BTVar btv2) : rest | btv1 == btv2 -> TrivialEliminated (reverse constraintAcc ++ rest)
-      CEqual _ann (BTVar btv1) bt2 : _ -> Subst btv1 bt2
-      CEqual _ann bt1 (BTVar btv2) : _ -> Subst btv2 bt1
-      CEqual ann (BTConst btc1) (BTConst btc2) : rest ->
-        if btc1 == btc2
-          then TrivialEliminated (reverse constraintAcc ++ rest)
-          else ContradictionDetected ann
-      constraint : rest -> step (constraint : constraintAcc) rest
-
-    substSubst :: BindingTimeVar -> BindingTime -> BindingTimeSubst -> BindingTimeSubst
-    substSubst btvFrom btTo =
-      Map.map (substBindingTime btvFrom btTo)
-
-    substConstraint :: BindingTimeVar -> BindingTime -> Constraint -> Constraint
-    substConstraint btvFrom btTo = \case
-      CLeq ann bt1 bt2 -> CLeq ann (f bt1) (f bt2)
-      CEqual ann bt1 bt2 -> CEqual ann (f bt1) (f bt2)
-      where
-        f = substBindingTime btvFrom btTo
-
-    substBindingTime :: BindingTimeVar -> BindingTime -> BindingTime -> BindingTime
-    substBindingTime btvFrom btTo bt =
-      case bt of
-        BTVar btv -> if btv == btvFrom then btTo else bt
-        BTConst _ -> bt
 
 type BCExpr = ExprF (BindingTimeConst, Span)
 
@@ -456,7 +292,13 @@ stage :: Bool -> BindingTimeEnv -> Expr -> M (BCExpr, Lwsd.Expr)
 stage fallBackToBindingTime0 btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
   (be', _bity, constraints) <- extractConstraintsFromExpr btenv be
-  (rawSolutionMap, _unsolvedConstraints) <- solveConstraints constraints
+  (rawSolutionMap, _unsolvedConstraints) <-
+    case solveConstraints constraints of
+      Left ann -> do
+        spanInFile <- askSpanInFile ann
+        analysisError $ BindingTimeContradiction spanInFile
+      Right pair ->
+        pure pair
   let solutionMap = Map.mapMaybe (^? #_BTConst) rawSolutionMap
   let btcFallback = if fallBackToBindingTime0 then BT0 else BT1
   let bce =

@@ -5,7 +5,7 @@ where
 
 import Data.List qualified as List
 import Data.Map qualified as Map
-import Surface.BindingTimeAnalyzer (BITypeF (..), BITypeMainF (..), BindingTimeConst (..), BindingTimeEnv, BindingTimeEnvEntry (..))
+import Surface.BindingTime.Core (BITypeF (..), BITypeMainF (..), BindingTimeConst (..), BindingTimeEnv, BindingTimeEnvEntry (..))
 import Surface.Syntax
 import Prelude
 
