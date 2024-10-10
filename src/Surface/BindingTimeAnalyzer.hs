@@ -18,6 +18,8 @@ module Surface.BindingTimeAnalyzer
 where
 
 import Control.Lens
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Generics.Labels ()
 import Data.Map (Map)
@@ -27,6 +29,7 @@ import Data.Set qualified as Set
 import GHC.Generics
 import Lwsd.Syntax qualified as Lwsd
 import Surface.Syntax
+import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.TokenUtil (Span)
 import Prelude hiding (succ)
 
@@ -110,12 +113,6 @@ data BITypeMainF meta
 
 type BIType = BITypeF (BindingTime, Span)
 
-data AnalysisError
-  = UnboundVar Span Var
-  | NotAFunction Span BIType
-  | BindingTimeContradiction Span
-  deriving stock (Show)
-
 data BindingTimeEnvEntry
   = EntryBuiltInPersistent (BITypeF ())
   | EntryBuiltInFixed Var BindingTimeConst (BITypeF BindingTimeConst)
@@ -123,10 +120,25 @@ data BindingTimeEnvEntry
 
 type BindingTimeEnv = Map Var BindingTimeEnvEntry
 
-type M a = Either AnalysisError a
+data AnalysisError
+  = UnboundVar SpanInFile Var
+  | NotAFunction SpanInFile BIType
+  | BindingTimeContradiction SpanInFile
+  deriving stock (Show)
+
+data AnalysisConfig = AnalysisConfig
+  { sourceSpec :: SourceSpec
+  }
+
+type M a = ReaderT AnalysisConfig (Either AnalysisError) a
 
 analysisError :: AnalysisError -> M a
-analysisError = Left
+analysisError = lift . Left
+
+askSpanInFile :: Span -> M SpanInFile
+askSpanInFile loc = do
+  AnalysisConfig {sourceSpec} <- ask
+  pure $ getSpanInFile sourceSpec loc
 
 class HasVar a where
   frees :: a -> Set Var
@@ -220,7 +232,8 @@ enhanceTypeExpr enh (TypeExpr meta typeExprMain) =
     fTypeExpr = enhanceTypeExpr enh
 
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BExpr, BIType, [Constraint])
-extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) =
+extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
+  spanInFile <- askSpanInFile ann
   case exprMain of
     Literal lit -> do
       pure (Expr (bt, ann) (Literal lit), BIType (bt, ann) (BITyBase []), [])
@@ -228,7 +241,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) =
       (x', bity, constraints) <-
         case Map.lookup x btenv of
           Nothing ->
-            analysisError $ UnboundVar ann x
+            analysisError $ UnboundVar spanInFile x
           Just (EntryBuiltInPersistent bityVoid) ->
             pure (x, enhanceBIType (\() -> (bt, ann)) bityVoid, []) -- TODO: refine `ann`
           Just (EntryBuiltInFixed x' btc' bityConst) ->
@@ -263,7 +276,8 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) =
                 pure (bity12, constraints)
           _ -> do
             let Expr (_, ann1) _ = e1
-            analysisError $ NotAFunction ann1 bity1
+            spanInFile1 <- askSpanInFile ann1
+            analysisError $ NotAFunction spanInFile1 bity1
       pure (Expr (bt, ann) (App e1' e2'), bity, constraints)
     LetIn x e1 e2 -> do
       -- Not confident. TODO: check the validity of the following
@@ -317,10 +331,10 @@ data SolvingStepResult
 
 type BindingTimeSubst = Map BindingTimeVar BindingTime
 
-solveConstraints :: [Constraint] -> Either AnalysisError (BindingTimeSubst, [Constraint])
+solveConstraints :: [Constraint] -> M (BindingTimeSubst, [Constraint])
 solveConstraints = go Map.empty
   where
-    go :: BindingTimeSubst -> [Constraint] -> Either AnalysisError (BindingTimeSubst, [Constraint])
+    go :: BindingTimeSubst -> [Constraint] -> M (BindingTimeSubst, [Constraint])
     go accMap constraints =
       case step [] constraints of
         NotFound ->
@@ -331,8 +345,9 @@ solveConstraints = go Map.empty
           go accMapNew constraintsNew
         TrivialEliminated constraintsNew ->
           go accMap constraintsNew
-        ContradictionDetected ann ->
-          analysisError $ BindingTimeContradiction ann
+        ContradictionDetected ann -> do
+          spanInFile <- askSpanInFile ann
+          analysisError $ BindingTimeContradiction spanInFile
 
     step :: [Constraint] -> [Constraint] -> SolvingStepResult
     step constraintAcc = \case
@@ -437,8 +452,8 @@ convertLiteral = \case
   LitVec ns -> Lwsd.LitVec ns
   LitMat nss -> Lwsd.LitMat nss
 
-run :: Bool -> BindingTimeEnv -> Expr -> Either AnalysisError (BCExpr, Lwsd.Expr)
-run fallBackToBindingTime0 btenv e = do
+stage :: Bool -> BindingTimeEnv -> Expr -> M (BCExpr, Lwsd.Expr)
+stage fallBackToBindingTime0 btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
   (be', _bity, constraints) <- extractConstraintsFromExpr btenv be
   (rawSolutionMap, _unsolvedConstraints) <- solveConstraints constraints
@@ -458,3 +473,9 @@ run fallBackToBindingTime0 btenv e = do
           be'
   let lwe = stageExpr0 bce
   pure (bce, lwe)
+
+run :: SourceSpec -> Bool -> BindingTimeEnv -> Expr -> Either AnalysisError (BCExpr, Lwsd.Expr)
+run sourceSpec fallBackToBindingTime0 btenv e =
+  runReaderT (stage fallBackToBindingTime0 btenv e) analysisConfig
+  where
+    analysisConfig = AnalysisConfig {sourceSpec}

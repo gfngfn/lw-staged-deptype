@@ -525,15 +525,12 @@ instance Disp Evaluator.EvalError where
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case
-    Bta.UnboundVar ann x ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Unbound variable" <+> disp x
-    Bta.NotAFunction ann bity ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Not a function type;" <+> disp (show bity) -- TODO: pretty print types
-    Bta.BindingTimeContradiction ann ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Binding-time contradiction"
+    Bta.UnboundVar spanInFile x ->
+      "Unbound variable" <+> disp x <+> disp spanInFile
+    Bta.NotAFunction spanInFile bity ->
+      "Not a function type;" <+> disp (show bity) <+> disp spanInFile
+    Bta.BindingTimeContradiction spanInFile ->
+      "Binding-time contradiction" <+> disp spanInFile
 
 instance Disp Bta.BCExpr where
   dispGen _ (Surface.Expr (btc, _ann) exprMain) =

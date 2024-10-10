@@ -27,6 +27,11 @@ handle :: Argument -> IO Bool
 handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly, fallBackToBindingTime0} = do
   putStrLn "Lightweight Dependent Types via Staging (Surface Language)"
   source <- TextIO.readFile inputFilePath
+  let sourceSpec =
+        SourceSpec
+          { LocationInFile.source = source,
+            LocationInFile.inputFilePath = inputFilePath
+          }
   case Parser.parseExpr source of
     Left err -> do
       putStrLn "-------- parse error: --------"
@@ -35,7 +40,7 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly, fallBac
     Right e -> do
       putStrLn "-------- parsed expression: --------"
       putRenderedLines e
-      case BindingTimeAnalyzer.run fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
+      case BindingTimeAnalyzer.run sourceSpec fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
         Left analyErr -> do
           putStrLn "-------- binding-time analysis error: --------"
           putRenderedLines analyErr
@@ -51,11 +56,6 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly, fallBac
                     LwsdMain.optimize = optimize,
                     LwsdMain.displayWidth = displayWidth,
                     LwsdMain.compileTimeOnly = compileTimeOnly
-                  }
-          let sourceSpec =
-                SourceSpec
-                  { LocationInFile.source = source,
-                    LocationInFile.inputFilePath = inputFilePath
                   }
           LwsdMain.typecheckAndEval lwArg sourceSpec lwe
   where
