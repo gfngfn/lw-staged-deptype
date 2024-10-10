@@ -38,23 +38,39 @@ $ cabal build
 ```
 
 
-### How to test
-
-```console
-$ cabal test
-```
-
-
 ### How to run
+
+#### The staged language (`lwsd`)
 
 ```console
 $ cabal run lw-staged-deptype -- lwsd -w 80 --optimize examples/mat.lwsd
 ```
 
-* `-w` (= `--display-width`): sets the length of the terminal width for displaying texts.
+Options:
+
+* `-O`, `--optimize`: Inserts only non-trivial cast assertions
+* `-c`, `--compile-time-only`: Stops after the compile-time evaluation
+* `-w`, `--display-width`: Sets the length of the terminal width for displaying texts. Default: `80`
+
+
+### The non-staged surface language (`surface`)
 
 ```console
 $ cabal run lw-staged-deptype -- surface examples/mat.surf
+```
+
+Options:
+
+* `-d`, `--default-to-stage-0`: Makes ambiguous binding times default to 0, which promotes inlining
+* `-O`, `--optmize`: Same as `lwsd`
+* `-c`, `--compile-time-only`: Same as `lwsd`
+* `-w`, `--display-width`: Same as `lwsd`
+
+
+### How to test
+
+```console
+$ cabal test
 ```
 
 
