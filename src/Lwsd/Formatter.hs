@@ -16,6 +16,8 @@ import Lwsd.Syntax
 import Lwsd.TypeError
 import Prettyprinter
 import Prettyprinter.Render.Terminal
+import Surface.BindingTime.Core qualified as Bta
+import Surface.BindingTime.Stager qualified as Bta
 import Surface.BindingTimeAnalyzer qualified as Bta
 import Surface.Syntax qualified as Surface
 import Util.LocationInFile (LocationInFile (LocationInFile), SpanInFile (..))
