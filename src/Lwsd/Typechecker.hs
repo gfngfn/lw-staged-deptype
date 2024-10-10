@@ -260,8 +260,10 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       results <-
         mapM
           ( \case
-              PersistentArg _ ->
-                typeError trav $ CannotUsePersistentArgAtStage0 spanInFile
+              PersistentArg e -> do
+                let Expr loc' _ = e
+                spanInFile' <- askSpanInFile loc'
+                typeError trav $ CannotUsePersistentArgAtStage0 spanInFile'
               NormalArg e -> do
                 let Expr loc' _ = e
                 (a0tye, a0e) <- typecheckExpr0 trav tyEnv e
