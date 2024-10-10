@@ -1,22 +1,19 @@
-module Surface.BindingTimeAnalyzer
+module Surface.BindingTime.Analyzer
   ( AnalysisError (..),
     run,
   )
 where
 
-import Control.Lens
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
-import Data.Generics.Labels ()
 import Data.Map qualified as Map
-import Lwsd.Syntax qualified as Lwsd
+import Surface.BindingTime.AnalysisError
 import Surface.BindingTime.Constraint
 import Surface.BindingTime.Core
-import Surface.BindingTime.Stager
 import Surface.Syntax
 import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
-import Util.TokenUtil (Span)
+import Util.TokenUtil
 import Prelude hiding (succ)
 
 initialState :: BindingTimeVar
@@ -67,12 +64,6 @@ assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
         bty1 <- assignBindingTimeVarToTypeExpr ty1
         bty2 <- assignBindingTimeVarToTypeExpr ty2
         pure $ TyArrow (xOpt, bty1) bty2
-
-data AnalysisError
-  = UnboundVar SpanInFile Var
-  | NotAFunction SpanInFile BIType
-  | BindingTimeContradiction SpanInFile
-  deriving stock (Show)
 
 data AnalysisConfig = AnalysisConfig
   { sourceSpec :: SourceSpec
@@ -213,36 +204,10 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
           let tye' = TypeExpr (bt, ann) (TyArrow (Just x1, tye1') tye2')
           pure (tye', BIType (bt, ann) (BITyArrow (x1opt, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
 
-stage :: Bool -> BindingTimeEnv -> Expr -> M (BCExprF Span, Lwsd.Expr)
-stage fallBackToBindingTime0 btenv e = do
+run :: SourceSpec -> BindingTimeEnv -> Expr -> Either AnalysisError (BExpr, [Constraint Span])
+run sourceSpec btenv e = do
   let be = evalState (assignBindingTimeVarToExpr e) initialState
-  (be', _bity, constraints) <- extractConstraintsFromExpr btenv be
-  (rawSolutionMap, _unsolvedConstraints) <-
-    case solveConstraints constraints of
-      Left ann -> do
-        spanInFile <- askSpanInFile ann
-        analysisError $ BindingTimeContradiction spanInFile
-      Right pair ->
-        pure pair
-  let solutionMap = Map.mapMaybe (^? #_BTConst) rawSolutionMap
-  let btcFallback = if fallBackToBindingTime0 then BT0 else BT1
-  let bce =
-        fmap
-          ( \(bt, ann) ->
-              case bt of
-                BTConst btc ->
-                  (btc, ann)
-                BTVar btv ->
-                  case Map.lookup btv solutionMap of
-                    Just btc -> (btc, ann)
-                    Nothing -> (btcFallback, ann)
-          )
-          be'
-  let lwe = stageExpr0 bce
-  pure (bce, lwe)
-
-run :: SourceSpec -> Bool -> BindingTimeEnv -> Expr -> Either AnalysisError (BCExprF Span, Lwsd.Expr)
-run sourceSpec fallBackToBindingTime0 btenv e =
-  runReaderT (stage fallBackToBindingTime0 btenv e) analysisConfig
+  (be', _bity, constraints) <- runReaderT (extractConstraintsFromExpr btenv be) analysisConfig
+  pure (be', constraints)
   where
     analysisConfig = AnalysisConfig {sourceSpec}
