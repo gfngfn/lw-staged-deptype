@@ -15,6 +15,8 @@ import Lwsd.Parser qualified as Parser
 import Lwsd.Syntax
 import Lwsd.Typechecker (TypecheckState (..))
 import Lwsd.Typechecker qualified as Typechecker
+import Util.LocationInFile (SourceSpec (SourceSpec))
+import Util.LocationInFile qualified as LocationInFile
 import Prelude
 
 data Argument = Argument
@@ -29,9 +31,15 @@ success, failure :: IO Bool
 success = return True
 failure = return False
 
-typecheckAndEval :: Argument -> Evaluator.SourceSpec -> Expr -> IO Bool
+typecheckAndEval :: Argument -> SourceSpec -> Expr -> IO Bool
 typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e = do
   let initialEvalState = Evaluator.initialState sourceSpec
+  let typecheckerConfig =
+        TypecheckState
+          { optimizeTrivialAssertion = optimize,
+            sourceSpec,
+            nextVarIndex = 0
+          }
   case evalStateT (Typechecker.typecheckExpr0 id BuiltIn.initialTypeEnv e) typecheckerConfig of
     Left (tyErr, _travMod) -> do
       putStrLn "-------- type error: --------"
@@ -81,9 +89,6 @@ typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e
     putRenderedLinesAtStage1 :: (Disp a) => a -> IO ()
     putRenderedLinesAtStage1 = Formatter.putRenderedLinesAtStage1 displayWidth
 
-    typecheckerConfig :: TypecheckState
-    typecheckerConfig = TypecheckState {optimizeTrivialAssertion = optimize, nextVarIndex = 0}
-
 -- Returns a boolean that represents success or failure
 handle :: Argument -> IO Bool
 handle arg@Argument {inputFilePath, displayWidth} = do
@@ -97,7 +102,11 @@ handle arg@Argument {inputFilePath, displayWidth} = do
     Right e -> do
       putStrLn "-------- parsed expression: --------"
       putRenderedLinesAtStage0 e
-      let sourceSpec = Evaluator.SourceSpec source inputFilePath
+      let sourceSpec =
+            SourceSpec
+              { LocationInFile.source = source,
+                LocationInFile.inputFilePath = inputFilePath
+              }
       typecheckAndEval arg sourceSpec e
   where
     putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()

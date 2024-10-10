@@ -1,0 +1,1 @@
+let f = fun(n : Int) -> fun(v : Vec (n + 1)) -> v in f

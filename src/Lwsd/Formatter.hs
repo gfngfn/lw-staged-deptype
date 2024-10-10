@@ -12,15 +12,15 @@ import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Lwsd.Evaluator qualified as Evaluator
-import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
 import Lwsd.TypeError
-import Lwsd.Vector qualified as Vector
 import Prettyprinter
 import Prettyprinter.Render.Terminal
 import Surface.BindingTimeAnalyzer qualified as Bta
 import Surface.Syntax qualified as Surface
-import Util.TokenUtil (LocationInFile (LocationInFile))
+import Util.LocationInFile (LocationInFile (LocationInFile), SpanInFile (..))
+import Util.Matrix qualified as Matrix
+import Util.Vector qualified as Vector
 import Prelude
 
 type Ann = AnsiStyle
@@ -332,60 +332,62 @@ instance Disp Matrix.ConstructionError where
 
 instance Disp TypeError where
   dispGen _ = \case
-    UnboundVar x ->
-      "Unbound variable" <+> disp x
-    NotAStage0Var x ->
-      "Not a stage-0 variable:" <+> disp x
-    NotAStage1Var x ->
-      "Not a stage-1 variable:" <+> disp x
-    UnknownTypeOrInvalidArityAtStage0 tyName n ->
-      "Unknown type or invalid arity (at stage 0):" <+> disp tyName <> "," <+> disp n
-    UnknownTypeOrInvalidArityAtStage1 tyName n ->
-      "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n
-    NotAnIntLitArgAtStage0 a0e ->
-      "An argument expression at stage 0 was not an integer literal:" <+> disp a0e
-    NotAnIntTypedArgAtStage1 a0tye ->
-      "An argument expression at stage 1 was not Int-typed:" <+> disp a0tye
-    TypeContradictionAtStage0 a0tye1 a0tye2 ->
-      "Type contradiction at stage 0."
+    UnboundVar spanInFile x ->
+      "Unbound variable" <+> disp x <+> disp spanInFile
+    NotAStage0Var spanInFile x ->
+      "Not a stage-0 variable:" <+> disp x <+> disp spanInFile
+    NotAStage1Var spanInFile x ->
+      "Not a stage-1 variable:" <+> disp x <+> disp spanInFile
+    UnknownTypeOrInvalidArityAtStage0 spanInFile tyName n ->
+      "Unknown type or invalid arity (at stage 0):" <+> disp tyName <> "," <+> disp n <+> disp spanInFile
+    UnknownTypeOrInvalidArityAtStage1 spanInFile tyName n ->
+      "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n <+> disp spanInFile
+    NotAnIntLitArgAtStage0 spanInFile a0e ->
+      "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
+    NotAnIntTypedArgAtStage1 spanInFile a0tye ->
+      "An argument expression at stage 1 is not Int-typed:" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
+      "Type contradiction at stage 0"
+        <+> disp spanInFile
         <> hardline
         <> "left:"
-        <> nest 2 (hardline <> disp a0tye1)
+        <> nest 2 (hardline <> stage0Style (disp a0tye1))
         <> hardline
         <> "right:"
-        <> nest 2 (hardline <> disp a0tye2)
-    TypeContradictionAtStage1 a1tye1 a1tye2 ->
-      "Type contradiction at stage 1."
+        <> nest 2 (hardline <> stage0Style (disp a0tye2))
+    TypeContradictionAtStage1 spanInFile a1tye1 a1tye2 ->
+      "Type contradiction at stage 1"
+        <+> disp spanInFile
         <> hardline
         <> "left:"
-        <> nest 2 (hardline <> disp a1tye1)
+        <> nest 2 (hardline <> stage1Style (disp a1tye1))
         <> hardline
         <> "right:"
-        <> nest 2 (hardline <> disp a1tye2)
-    NotAFunctionTypeForStage0 a0tye ->
-      "Not a function type (for stage 0): " <+> disp a0tye
-    NotAFunctionTypeForStage1 a1tye ->
-      "Not a function type (for stage 1): " <+> disp a1tye
-    NotACodeType a0tye ->
-      "Not a code type:" <+> disp a0tye
-    CannotUseEscapeAtStage0 ->
-      "Cannot use Escape (~) at stage 0"
-    CannotUseBracketAtStage1 ->
-      "Cannot use Bracket (&) at stage 1"
-    FunctionTypeCannotBeDependentAtStage1 x ->
-      "Function types cannot be dependent at stage 1:" <+> disp x
-    CannotUseCodeTypeAtStage1 ->
-      "Cannot use code types at stage 1"
-    CannotUsePersistentArgAtStage0 ->
-      "Cannot use persistent arguments at stage 0"
-    CannotUseNormalArgAtStage1 ->
-      "Cannot use normal arguments at stage 1"
-    VarOccursFreelyInAss0Type x a0tye ->
-      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> disp a0tye
-    VarOccursFreelyInAss1Type x a1tye ->
-      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> disp a1tye
-    InvalidMatrixLiteral e ->
-      "Invalid matrix literal;" <+> disp e
+        <> nest 2 (hardline <> stage1Style (disp a1tye2))
+    NotAFunctionTypeForStage0 spanInFile a0tye ->
+      "Not a function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    NotAFunctionTypeForStage1 spanInFile a1tye ->
+      "Not a function type (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    NotACodeType spanInFile a0tye ->
+      "Not a code type:" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    CannotUseEscapeAtStage0 spanInFile ->
+      "Cannot use Escape (~) at stage 0" <+> disp spanInFile
+    CannotUseBracketAtStage1 spanInFile ->
+      "Cannot use Bracket (&) at stage 1" <+> disp spanInFile
+    FunctionTypeCannotBeDependentAtStage1 spanInFile x ->
+      "Function types cannot be dependent at stage 1:" <+> disp x <+> disp spanInFile
+    CannotUseCodeTypeAtStage1 spanInFile ->
+      "Cannot use code types at stage 1" <+> disp spanInFile
+    CannotUsePersistentArgAtStage0 spanInFile ->
+      "Cannot use persistent arguments at stage 0" <+> disp spanInFile
+    CannotUseNormalArgAtStage1 spanInFile ->
+      "Cannot use normal arguments at stage 1" <+> disp spanInFile
+    VarOccursFreelyInAss0Type spanInFile x a0tye ->
+      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    VarOccursFreelyInAss1Type spanInFile x a1tye ->
+      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    InvalidMatrixLiteral spanInFile e ->
+      "Invalid matrix literal;" <+> disp e <+> disp spanInFile
 
 instance Disp Ass0Val where
   dispGen req = \case
@@ -463,7 +465,26 @@ instance Disp Ass1TypeVal where
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
-    "line" <+> disp l <> ", column" <+> disp c
+    "line" <+> disp l <> ", column" <+> disp (c - 1)
+
+instance Disp SpanInFile where
+  dispGen _ (SpanInFile {startLocation, endLocation, contents}) =
+    "(from"
+      <+> disp startLocation
+      <+> "to"
+      <+> disp endLocation
+      <> ")"
+      <> maybe mempty makeLineText contents
+    where
+      makeLineText s =
+        if startLine == endLine
+          then hardline <> disp s <> hardline <> indentation <> hats
+          else mempty
+        where
+          LocationInFile startLine startColumn = startLocation
+          LocationInFile endLine endColumn = endLocation
+          indentation = disp (replicate (startColumn - 1) ' ')
+          hats = disp (replicate (endColumn - startColumn) '^')
 
 instance Disp Evaluator.Bug where
   dispGen _ = \case
@@ -492,46 +513,24 @@ instance Disp Evaluator.EvalError where
   dispGen _ = \case
     Evaluator.Bug bug ->
       "Bug:" <+> disp bug
-    Evaluator.AssertionFailure (locInFileStart, locInFileEnd, maybeLineText) a1tyv1 a1tyv2 ->
-      "Assertion failure (from"
-        <+> disp locInFileStart
-        <+> "to"
-        <+> disp locInFileEnd
-        <> ")"
-        <> maybe mempty makeLineText maybeLineText
+    Evaluator.AssertionFailure spanInFile a1tyv1 a1tyv2 ->
+      "Assertion failure"
+        <+> disp spanInFile
         <> hardline
         <> "left:"
         <> nest 2 (hardline <> disp a1tyv1)
         <> hardline
         <> "right:"
         <> nest 2 (hardline <> disp a1tyv2)
-      where
-        makeLineText s =
-          if startLine == endLine
-            then hardline <> disp s <> hats
-            else mempty
-          where
-            LocationInFile startLine startColumn = locInFileStart
-            LocationInFile endLine endColumn = locInFileEnd
-            hats = nest 2 (hardline <> disp (replicate (endColumn - startColumn) '^'))
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case
-    Bta.InvalidMatrixLiteral ann err ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Invalid matrix literal;" <+> disp err
-    Bta.UnboundVar ann x ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Unbound variable" <+> disp x
-    Bta.NotAFunction ann bity ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Not a function type;" <+> disp (show bity) -- TODO: pretty print types
-    Bta.UnknownTypeOrInvalidArity ann tyName arity ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Unknown type or invalid arity:" <+> disp tyName <> "," <+> disp arity
-    Bta.BindingTimeContradiction ann ->
-      -- TODO: pretty-print code positions
-      disp (show ann) <+> "Binding-time contradiction"
+    Bta.UnboundVar spanInFile x ->
+      "Unbound variable" <+> disp x <+> disp spanInFile
+    Bta.NotAFunction spanInFile bity ->
+      "Not a function type;" <+> disp (show bity) <+> disp spanInFile
+    Bta.BindingTimeContradiction spanInFile ->
+      "Binding-time contradiction" <+> disp spanInFile
 
 instance Disp Bta.BCExpr where
   dispGen _ (Surface.Expr (btc, _ann) exprMain) =

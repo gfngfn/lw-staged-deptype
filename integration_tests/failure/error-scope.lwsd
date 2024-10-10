@@ -1,5 +1,5 @@
 let foo =
   let bar = 42 in
-  &(fun (foo : Vec %bar) -> foo)
+  &(fun (x : Vec %bar) -> x)
 in
 foo

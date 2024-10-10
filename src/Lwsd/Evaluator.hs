@@ -5,7 +5,6 @@ module Lwsd.Evaluator
     unliftVal,
     Bug (..),
     EvalError (..),
-    SourceSpec (..),
     EvalState,
   )
 where
@@ -13,14 +12,13 @@ where
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
-import Data.Text (Text)
 import Lwsd.BuiltIn qualified as BuiltIn
-import Lwsd.Matrix (Matrix)
-import Lwsd.Matrix qualified as Matrix
 import Lwsd.Syntax
-import Lwsd.Vector (Vector)
-import Lwsd.Vector qualified as Vector
-import Util.TokenUtil (LocationInFile (..), Span (..), getLocationInFileFromOffset)
+import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
+import Util.Matrix (Matrix)
+import Util.Matrix qualified as Matrix
+import Util.Vector (Vector)
+import Util.Vector qualified as Vector
 import Prelude
 
 data Bug
@@ -37,20 +35,7 @@ data Bug
 
 data EvalError
   = Bug Bug
-  | AssertionFailure (LocationInFile, LocationInFile, Maybe String) Ass1TypeVal Ass1TypeVal
-  deriving stock (Eq, Show)
-
-data SourceSpec = SourceSpec
-  { source :: Text,
-    inputFilePath :: String
-  }
-
-getLocationInFile :: SourceSpec -> Span -> (LocationInFile, LocationInFile, Maybe String)
-getLocationInFile SourceSpec {source, inputFilePath} Span {start, end} =
-  (locInFileStart, locInFileEnd, maybeLineText)
-  where
-    (locInFileStart, maybeLineText) = getLocationInFileFromOffset inputFilePath source start
-    (locInFileEnd, _) = getLocationInFileFromOffset inputFilePath source end
+  | AssertionFailure SpanInFile Ass1TypeVal Ass1TypeVal
 
 data EvalState = EvalState
   { nextSymbolIndex :: Int,
@@ -213,7 +198,7 @@ evalExpr0 env = \case
       then generateIdentityFunction env (A0TyValCode a1tyv1)
       else do
         EvalState {sourceSpec} <- get
-        let locInFilePair = getLocationInFile sourceSpec loc
+        let locInFilePair = getSpanInFile sourceSpec loc
         evalError $ AssertionFailure locInFilePair a1tyv1 a1tyv2
 
 evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val

@@ -1,0 +1,2 @@
+let forget = fun(m : &Int) -> 3 in
+&(fun(n : Int) -> fun(v : Vec %(forget &n)) -> v)

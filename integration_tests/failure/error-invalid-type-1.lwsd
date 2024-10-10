@@ -1,0 +1,1 @@
+let f = fun(m : Int) -> fun(n : Int) -> &(fun(v : Vec %m %n) -> v) in f 3 2

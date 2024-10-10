@@ -5,26 +5,33 @@ module Surface.SurfaceMain
 where
 
 import Data.Text.IO qualified as TextIO
-import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.LibMain qualified as LwsdMain
 import Surface.BindingTimeAnalyzer qualified as BindingTimeAnalyzer
 import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
+import Util.LocationInFile (SourceSpec (SourceSpec))
+import Util.LocationInFile qualified as LocationInFile
 import Prelude
 
 data Argument = Argument
   { inputFilePath :: String,
     optimize :: Bool,
     displayWidth :: Int,
-    compileTimeOnly :: Bool
+    compileTimeOnly :: Bool,
+    fallBackToBindingTime0 :: Bool
   }
 
 handle :: Argument -> IO Bool
-handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
+handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly, fallBackToBindingTime0} = do
   putStrLn "Lightweight Dependent Types via Staging (Surface Language)"
   source <- TextIO.readFile inputFilePath
+  let sourceSpec =
+        SourceSpec
+          { LocationInFile.source = source,
+            LocationInFile.inputFilePath = inputFilePath
+          }
   case Parser.parseExpr source of
     Left err -> do
       putStrLn "-------- parse error: --------"
@@ -33,7 +40,7 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
     Right e -> do
       putStrLn "-------- parsed expression: --------"
       putRenderedLines e
-      case BindingTimeAnalyzer.run BuiltIn.initialBindingTimeEnv e of
+      case BindingTimeAnalyzer.run sourceSpec fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
         Left analyErr -> do
           putStrLn "-------- binding-time analysis error: --------"
           putRenderedLines analyErr
@@ -50,7 +57,6 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly} = do
                     LwsdMain.displayWidth = displayWidth,
                     LwsdMain.compileTimeOnly = compileTimeOnly
                   }
-          let sourceSpec = Evaluator.SourceSpec source inputFilePath
           LwsdMain.typecheckAndEval lwArg sourceSpec lwe
   where
     putRenderedLines :: (Disp a) => a -> IO ()

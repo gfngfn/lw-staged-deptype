@@ -1,0 +1,1 @@
+fun(n : Int) -> fun(v : Vec %n) -> v
