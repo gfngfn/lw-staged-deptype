@@ -165,7 +165,8 @@ test-suite lw-staged-deptype-test
     -- Modules included in this executable, other than Spec.
     other-modules:
         MatrixSpec,
-        ParserSpec
+        ParserSpec,
+        ConstraintSpec
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -182,6 +183,8 @@ test-suite lw-staged-deptype-test
     -- Test dependencies.
     build-depends:
         base ^>=4.17.2.1,
+        containers ^>= 0.6.7,
+        extra ^>= 1.7.14,
         hspec ^>= 2.11.7,
         hspec-discover ^>= 2.11.7,
         lw-staged-deptype,

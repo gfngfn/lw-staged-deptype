@@ -13,7 +13,7 @@ import Prelude
 data Constraint ann
   = CLeq ann BindingTime BindingTime
   | CEqual ann BindingTime BindingTime
-  deriving stock (Show)
+  deriving stock (Eq, Show)
 
 type BindingTimeSubst = Map BindingTimeVar BindingTime
 

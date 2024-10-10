@@ -23,7 +23,7 @@ import Util.TokenUtil
 import Prelude
 
 newtype BindingTimeVar = BindingTimeVar Int
-  deriving stock (Ord, Eq, Show)
+  deriving stock (Eq, Ord, Show)
 
 data BindingTimeConst = BT0 | BT1
   deriving stock (Eq, Ord, Show) -- BT0 < BT1
@@ -31,7 +31,7 @@ data BindingTimeConst = BT0 | BT1
 data BindingTime
   = BTConst BindingTimeConst
   | BTVar BindingTimeVar
-  deriving stock (Show, Generic)
+  deriving stock (Eq, Show, Generic)
 
 -- Intermediate, minimal type representations for binding-time analysis
 data BITypeF bt ann = BIType bt (BITypeMainF bt ann)
