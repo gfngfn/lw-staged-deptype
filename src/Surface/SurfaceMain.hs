@@ -8,7 +8,7 @@ import Data.Text.IO qualified as TextIO
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.LibMain qualified as LwsdMain
-import Surface.BindingTimeAnalyzer qualified as BindingTimeAnalyzer
+import Surface.BindingTime qualified as BindingTime
 import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
 import Util.LocationInFile (SourceSpec (SourceSpec))
@@ -40,7 +40,7 @@ handle Argument {inputFilePath, optimize, displayWidth, compileTimeOnly, fallBac
     Right e -> do
       putStrLn "-------- parsed expression: --------"
       putRenderedLines e
-      case BindingTimeAnalyzer.run sourceSpec fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
+      case BindingTime.analyze sourceSpec fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
         Left analyErr -> do
           putStrLn "-------- binding-time analysis error: --------"
           putRenderedLines analyErr
