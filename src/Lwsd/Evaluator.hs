@@ -124,6 +124,10 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValLiteral (ALitInt (n1 * n2))
+      BILeq x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValLiteral (ALitBool (n1 <= n2))
       BIGenVadd x1 -> do
         n1 <- findInt0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))

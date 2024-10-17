@@ -67,6 +67,7 @@ data BuiltIn
   = BIAdd Var Var
   | BISub Var Var
   | BIMult Var Var
+  | BILeq Var Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
   | BIGenMtranspose Var Var
@@ -128,6 +129,7 @@ type ArgForType = ArgForTypeF Span
 
 data AssLiteral
   = ALitInt Int
+  | ALitBool Bool
   | ALitVec Vector
   | ALitMat Matrix
   deriving stock (Eq, Show)

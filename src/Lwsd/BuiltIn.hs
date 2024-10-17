@@ -19,6 +19,9 @@ import Prelude
 tyInt :: Ass0TypeExpr
 tyInt = A0TyPrim A0TyInt
 
+tyBool :: Ass0TypeExpr
+tyBool = A0TyPrim A0TyBool
+
 ty1Vec :: Ass0Expr -> Ass1TypeExpr
 ty1Vec = A1TyPrim . A1TyVec
 
@@ -54,6 +57,7 @@ initialTypeEnv =
     [ ("+", tyInt --> tyInt --> tyInt),
       ("-", tyInt --> tyInt --> tyInt),
       ("*", tyInt --> tyInt --> tyInt),
+      ("<=", tyInt --> tyInt --> tyBool),
       ("gen_vadd", tyGenVadd),
       ("gen_vconcat", tyGenVconcat),
       ("gen_mtranspose", tyGenMtranspose),
@@ -148,20 +152,23 @@ ass0exprMmult k m n =
     lam "mat2" (ty0Mat m n) $
       A0AppBuiltIn (BIMmult k m n "mat1" "mat2")
 
-ass0valBinaryIntArith :: (Var -> Var -> BuiltIn) -> Ass0Val
-ass0valBinaryIntArith f =
+ass0valBinaryInt :: (Var -> Var -> BuiltIn) -> Ass0Val
+ass0valBinaryInt f =
   clo "x1" tyValInt $
     lam "x2" tyInt $
       A0AppBuiltIn (f "x1" "x2")
 
 ass0valAdd :: Ass0Val
-ass0valAdd = ass0valBinaryIntArith BIAdd
+ass0valAdd = ass0valBinaryInt BIAdd
 
 ass0valSub :: Ass0Val
-ass0valSub = ass0valBinaryIntArith BISub
+ass0valSub = ass0valBinaryInt BISub
 
 ass0valMult :: Ass0Val
-ass0valMult = ass0valBinaryIntArith BIMult
+ass0valMult = ass0valBinaryInt BIMult
+
+ass0valLeq :: Ass0Val
+ass0valLeq = ass0valBinaryInt BILeq
 
 ass0valGenVadd :: Ass0Val
 ass0valGenVadd =
@@ -202,6 +209,7 @@ initialEnv =
     [ ("+", ass0valAdd),
       ("-", ass0valSub),
       ("*", ass0valMult),
+      ("<=", ass0valLeq),
       ("gen_vadd", ass0valGenVadd),
       ("gen_vconcat", ass0valGenVconcat),
       ("gen_mtranspose", ass0valGenMtranspose),

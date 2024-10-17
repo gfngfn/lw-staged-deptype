@@ -172,6 +172,7 @@ instance Disp BuiltIn where
     BIAdd x1 x2 -> "ADD(" <> disps [x1, x2] <> ")"
     BISub x1 x2 -> "SUB(" <> disps [x1, x2] <> ")"
     BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
+    BILeq x1 x2 -> "LEQ(" <> disps [x1, x2] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
@@ -235,6 +236,8 @@ dispRowContents row = commaSep (disp <$> row)
 instance Disp AssLiteral where
   dispGen _ = \case
     ALitInt n -> pretty n
+    ALitBool True -> "true"
+    ALitBool False -> "false"
     ALitVec v -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> Vector.toList v)
     ALitMat m -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRowContents <$> Matrix.toRows m)
 
