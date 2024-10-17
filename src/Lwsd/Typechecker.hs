@@ -202,6 +202,15 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
           let Expr loc0 _ = e0
           spanInFile0 <- askSpanInFile loc0
           typeError trav $ NotABoolTypeForStage0 spanInFile0 a0tye0
+    As e1 tye2 -> do
+      (a0tye1, a0e1) <- typecheckExpr0 trav tyEnv e1
+      a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
+      a0eCast <- makeAssertiveCast trav loc a0tye1 a0tye2
+      let a0e =
+            if optimizeTrivialAssertion && alphaEquivalent a0tye1 a0tye2
+              then a0e1
+              else A0App a0eCast a0e1
+      pure (a0tye2, a0e)
     Bracket e1 -> do
       (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
       pure (A0TyCode a1tye1, A0Bracket a1e1)
@@ -288,6 +297,15 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
           let Expr loc0 _ = e0
           spanInFile0 <- askSpanInFile loc0
           typeError trav $ NotABoolTypeForStage1 spanInFile0 a1tye0
+    As e1 tye2 -> do
+      (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
+      a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
+      ty1eq <- makeEquation1 trav loc a1tye1 a1tye2
+      let a1e =
+            if optimizeTrivialAssertion && alphaEquivalent a1tye1 a1tye2
+              then a1e1
+              else A1Escape (A0App (A0TyEqAssert loc ty1eq) (A0Bracket a1e1))
+      pure (a1tye2, a1e)
     Bracket _ ->
       typeError trav $ CannotUseBracketAtStage1 spanInFile
     Escape e1 -> do

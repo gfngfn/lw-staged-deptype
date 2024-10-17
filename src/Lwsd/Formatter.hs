@@ -135,6 +135,9 @@ instance Disp (ExprMainF ann) where
     IfThenElse e0 e1 e2 ->
       let doc = group ("if" <+> nest 2 (line <> disp e0) <+> "then" <+> nest 2 (line <> disp e1) <+> "else" <+> nest 2 (line <> disp e2))
        in if req <= FunDomain then deepenParen doc else doc
+    As e1 tye2 ->
+      let doc = group (disp e1 <+> "as" <+> disp tye2)
+       in if req <= FunDomain then deepenParen doc else doc
     Bracket e1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic e1)
     Escape e1 ->

@@ -79,9 +79,17 @@ exprAtom, expr :: P Expr
         makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (App e1 e2)
 
+    as :: P Expr
+    as =
+      (makeAs <$> app <*> (token TokAs *> typeExpr))
+        `or` app
+      where
+        makeAs e1@(Expr loc1 _) tye2@(TypeExpr loc2 _) =
+          Expr (mergeSpan loc1 loc2) (As e1 tye2)
+
     mult :: P Expr
     mult =
-      binSep makeBinOpApp multOp app
+      binSep makeBinOpApp multOp as
       where
         multOp :: P (Located Var)
         multOp =
