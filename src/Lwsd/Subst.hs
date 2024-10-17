@@ -29,6 +29,7 @@ instance HasVar0 Ass0Expr where
     A0Var y -> Set.singleton y
     A0Lam (y, a0tye1) a0e2 -> Set.union (frees0 a0tye1) (Set.delete y (frees0 a0e2))
     A0App a0e1 a0e2 -> Set.union (frees0 a0e1) (frees0 a0e2)
+    A0IfThenElse a0e0 a0e1 a0e2 -> Set.union (Set.union (frees0 a0e0) (frees0 a0e1)) (frees0 a0e2)
     A0Bracket a1e1 -> frees0 a1e1
     A0TyEqAssert _ ty0eq -> frees0 ty0eq
 
@@ -43,6 +44,8 @@ instance HasVar0 Ass0Expr where
       A0Lam (y, go a0tye1) (if y == x then a0e2 else go a0e2)
     A0App a0e1 a0e2 ->
       A0App (go a0e1) (go a0e2)
+    A0IfThenElse a0e0 a0e1 a0e2 ->
+      A0IfThenElse (go a0e0) (go a0e1) (go a0e2)
     A0Bracket a1e1 ->
       A0Bracket (go a1e1)
     A0TyEqAssert loc ty0eq ->
@@ -57,6 +60,7 @@ instance HasVar0 Ass1Expr where
     A1Var _ -> Set.empty -- Does not collect stage-1 variables
     A1Lam (y, a1tye1) a1e2 -> Set.union (frees0 a1tye1) (Set.delete y (frees0 a1e2))
     A1App a1e1 a1e2 -> Set.union (frees0 a1e1) (frees0 a1e2)
+    A1IfThenElse a1e0 a1e1 a1e2 -> Set.union (Set.union (frees0 a1e0) (frees0 a1e1)) (frees0 a1e2)
     A1Escape a0e1 -> frees0 a0e1
 
   subst0 a0e x = \case
@@ -68,6 +72,8 @@ instance HasVar0 Ass1Expr where
       A1Lam (y, go a1tye1) (if y == x then a1e2 else go a1e2)
     A1App a1e1 a1e2 ->
       A1App (go a1e1) (go a1e2)
+    A1IfThenElse a1e0 a1e1 a1e2 ->
+      A1IfThenElse (go a1e0) (go a1e1) (go a1e2)
     A1Escape a0e1 ->
       A1Escape (go a0e1)
     where

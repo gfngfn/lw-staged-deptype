@@ -28,6 +28,7 @@ data Bug
   | NotAnInteger (Maybe Var) Ass0Val
   | NotAVector Var Ass0Val
   | NotAMatrix Var Ass0Val
+  | NotABoolean Ass0Val
   | FoundSymbol Var Symbol
   | FoundAss0Val Var Ass0Val
   | InconsistentAppBuiltIn BuiltIn
@@ -191,6 +192,15 @@ evalExpr0 env = \case
         evalExpr0 (Map.insert x (Ass0ValEntry a0v2) env1) a0e12
       _ ->
         bug $ NotAClosure a0v1
+  A0IfThenElse a0e0 a0e1 a0e2 -> do
+    a0v0 <- evalExpr0 env a0e0
+    case a0v0 of
+      A0ValLiteral (ALitBool b) ->
+        if b
+          then evalExpr0 env a0e1
+          else evalExpr0 env a0e2
+      _ ->
+        bug $ NotABoolean a0v0
   A0Bracket a1e1 -> do
     a1v1 <- evalExpr1 env a1e1
     pure $ A0ValBracket a1v1
@@ -221,6 +231,11 @@ evalExpr1 env = \case
     a1v1 <- evalExpr1 env a1e1
     a1v2 <- evalExpr1 env a1e2
     pure $ A1ValApp a1v1 a1v2
+  A1IfThenElse a1e0 a1e1 a1e2 -> do
+    a1v0 <- evalExpr1 env a1e0
+    a1v1 <- evalExpr1 env a1e1
+    a1v2 <- evalExpr1 env a1e2
+    pure $ A1ValIfThenElse a1v0 a1v1 a1v2
   A1Escape a0e1 -> do
     a0v1 <- evalExpr0 env a0e1
     case a0v1 of
@@ -280,6 +295,7 @@ unliftVal = \case
   A1ValVar symb -> A0Var (symbolToVar symb)
   A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
   A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)
+  A1ValIfThenElse a1v0 a1v1 a1v2 -> A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
 
 unliftTypeVal :: Ass1TypeVal -> Ass0TypeExpr
 unliftTypeVal = \case

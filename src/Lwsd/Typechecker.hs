@@ -186,8 +186,22 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
       if x `occurs0` a0tye2
         then typeError trav $ VarOccursFreelyInAss0Type spanInFile x a0tye2
         else pure (a0tye2, A0App (A0Lam (x, a0tye1) a0e2) a0e1)
-    IfThenElse _e0 _e1 _e2 ->
-      error "TODO: typecheckExpr0, IfThenElse"
+    IfThenElse e0 e1 e2 -> do
+      (a0tye0, a0e0) <- typecheckExpr0 trav tyEnv e0
+      case a0tye0 of
+        A0TyPrim A0TyBool -> do
+          (a0tye1, a0e1) <- typecheckExpr0 trav tyEnv e1
+          (a0tye2, a0e2) <- typecheckExpr0 trav tyEnv e2
+          a0eCast <- makeAssertiveCast trav loc a0tye2 a0tye1
+          let a0e2' =
+                if optimizeTrivialAssertion && alphaEquivalent a0tye2 a0tye1
+                  then a0e2 -- Do slight shortcuts
+                  else A0App a0eCast a0e2
+          pure (a0tye1, A0IfThenElse a0e0 a0e1 a0e2')
+        _ -> do
+          let Expr loc0 _ = e0
+          spanInFile0 <- askSpanInFile loc0
+          typeError trav $ NotABoolTypeForStage0 spanInFile0 a0tye0
     Bracket e1 -> do
       (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
       pure (A0TyCode a1tye1, A0Bracket a1e1)
@@ -258,8 +272,22 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
       if x `occurs0` a1tye2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x a1tye2
         else pure (a1tye2, A1App (A1Lam (x, a1tye1) a1e2) a1e1)
-    IfThenElse _e0 _e1 _e2 ->
-      error "TODO: typecheckExpr1, IfThenElse"
+    IfThenElse e0 e1 e2 -> do
+      (a1tye0, a1e0) <- typecheckExpr1 trav tyEnv e0
+      case a1tye0 of
+        A1TyPrim A1TyBool -> do
+          (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
+          (a1tye2, a1e2) <- typecheckExpr1 trav tyEnv e2
+          ty1eq <- makeEquation1 trav loc a1tye2 a1tye1
+          let a1e2' =
+                if optimizeTrivialAssertion && alphaEquivalent a1tye2 a1tye1
+                  then a1e2
+                  else A1Escape (A0App (A0TyEqAssert loc ty1eq) (A0Bracket a1e2))
+          pure (a1tye1, A1IfThenElse a1e0 a1e1 a1e2')
+        _ -> do
+          let Expr loc0 _ = e0
+          spanInFile0 <- askSpanInFile loc0
+          typeError trav $ NotABoolTypeForStage1 spanInFile0 a1tye0
     Bracket _ ->
       typeError trav $ CannotUseBracketAtStage1 spanInFile
     Escape e1 -> do

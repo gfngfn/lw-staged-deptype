@@ -254,6 +254,9 @@ instance Disp Ass0Expr where
        in if req <= Atomic then deepenParen doc else doc
     A0Bracket a1e1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic a1e1)
+    A0IfThenElse a0e0 a0e1 a0e2 ->
+      let doc = group ("if" <+> nest 2 (line <> disp a0e0) <+> "then" <+> nest 2 (line <> disp a0e1) <+> "else" <+> nest 2 (line <> disp a0e2))
+       in if req <= FunDomain then deepenParen doc else doc
     A0TyEqAssert _loc ty1eq ->
       let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
        in group
@@ -278,6 +281,9 @@ instance Disp Ass1Expr where
     A1App a1e1 a1e2 ->
       let doc = dispGen FunDomain a1e1 <+> dispGen Atomic a1e2
        in if req <= Atomic then deepenParen doc else doc
+    A1IfThenElse a1e0 a1e1 a1e2 ->
+      let doc = group ("if" <+> nest 2 (line <> disp a1e0) <+> "then" <+> nest 2 (line <> disp a1e1) <+> "else" <+> nest 2 (line <> disp a1e2))
+       in if req <= FunDomain then deepenParen doc else doc
     A1Escape a0e1 ->
       stagingOperatorStyle "~" <> stage0Style (dispGen Atomic a0e1)
 
@@ -379,6 +385,10 @@ instance Disp TypeError where
       "Not a function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
     NotAFunctionTypeForStage1 spanInFile a1tye ->
       "Not a function type (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    NotABoolTypeForStage0 spanInFile a0tye ->
+      "Not bool (at stage 0):" <+> stage1Style (disp a0tye) <+> disp spanInFile
+    NotABoolTypeForStage1 spanInFile a1tye ->
+      "Not bool (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
     NotACodeType spanInFile a0tye ->
       "Not a code type:" <+> stage0Style (disp a0tye) <+> disp spanInFile
     CannotUseEscapeAtStage0 spanInFile ->
@@ -429,6 +439,9 @@ instance Disp Ass1Val where
     A1ValApp a1v1 a1v2 ->
       let doc = group (dispGen FunDomain a1v1 <> nest 2 (line <> dispGen Atomic a1v2))
        in if req <= Atomic then deepenParen doc else doc
+    A1ValIfThenElse a1v0 a1v1 a1v2 ->
+      let doc = group ("if" <+> nest 2 (line <> disp a1v0) <+> "then" <+> nest 2 (line <> disp a1v1) <+> "else" <+> nest 2 (line <> disp a1v2))
+       in if req <= FunDomain then deepenParen doc else doc
 
 instance Disp Ass0TypeVal where
   dispGen req = \case
@@ -513,6 +526,8 @@ instance Disp Evaluator.Bug where
       "Not a vector:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.NotAMatrix x a0v ->
       "Not a matrix:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
+    Evaluator.NotABoolean a0v ->
+      "Not a Boolean:" <+> disp a0v
     Evaluator.FoundSymbol x symb ->
       "Expected a stage-0 value, but found a symbol:" <+> disp symb <+> "(bound to:" <+> disp x <> ")"
     Evaluator.FoundAss0Val x a0v ->

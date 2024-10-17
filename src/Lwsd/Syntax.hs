@@ -140,6 +140,7 @@ data Ass0Expr
   | A0Var Var
   | A0Lam (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
+  | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
   | A0TyEqAssert Span Type1Equation
   deriving stock (Eq, Show)
@@ -149,6 +150,7 @@ data Ass1Expr
   | A1Var Var
   | A1Lam (Var, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
+  | A1IfThenElse Ass1Expr Ass1Expr Ass1Expr
   | A1Escape Ass0Expr
   deriving stock (Eq, Show)
 
@@ -189,6 +191,7 @@ data Ass1Val
   | A1ValVar Symbol
   | A1ValLam (Symbol, Ass1TypeVal) Ass1Val
   | A1ValApp Ass1Val Ass1Val
+  | A1ValIfThenElse Ass1Val Ass1Val Ass1Val
   deriving stock (Eq, Show)
 
 data Ass1ValConst
