@@ -186,6 +186,8 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
       if x `occurs0` a0tye2
         then typeError trav $ VarOccursFreelyInAss0Type spanInFile x a0tye2
         else pure (a0tye2, A0App (A0Lam (x, a0tye1) a0e2) a0e1)
+    IfThenElse _e0 _e1 _e2 ->
+      error "TODO: typecheckExpr0, IfThenElse"
     Bracket e1 -> do
       (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
       pure (A0TyCode a1tye1, A0Bracket a1e1)
@@ -256,6 +258,8 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
       if x `occurs0` a1tye2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x a1tye2
         else pure (a1tye2, A1App (A1Lam (x, a1tye1) a1e2) a1e1)
+    IfThenElse _e0 _e1 _e2 ->
+      error "TODO: typecheckExpr1, IfThenElse"
     Bracket _ ->
       typeError trav $ CannotUseBracketAtStage1 spanInFile
     Escape e1 -> do

@@ -104,13 +104,26 @@ exprAtom, expr :: P Expr
                 _ -> Nothing
             )
 
+    comp :: P Expr
+    comp =
+      binSep makeBinOpApp compOp add
+      where
+        compOp :: P (Located Var)
+        compOp =
+          expectToken
+            ( \case
+                TokOpLeq -> Just "<="
+                _ -> Nothing
+            )
+
     lam :: P Expr
     lam =
       tries
         [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
-          makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr
+          makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr,
+          makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
         ]
-        add
+        comp
       where
         binder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
@@ -120,6 +133,9 @@ exprAtom, expr :: P Expr
 
         makeRecLam locFirst fBinder xBinder e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (Lam (Just fBinder) xBinder e)
+
+        makeIf locFirst e0 e1 e2@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
 
     letin :: P Expr
     letin =

@@ -130,7 +130,10 @@ instance Disp (ExprMainF ann) where
       let doc = group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
        in if req <= Atomic then deepenParen doc else doc
     LetIn x e1 e2 ->
-      let doc = group ("let" <+> disp x <+> "=" <+> disp e1 <+> "in" <+> disp e2)
+      let doc = group ("let" <+> disp x <+> "=" <+> nest 2 (line <> disp e1) <+> "in" <+> disp e2)
+       in if req <= FunDomain then deepenParen doc else doc
+    IfThenElse e0 e1 e2 ->
+      let doc = group ("if" <+> nest 2 (line <> disp e0) <+> "then" <+> nest 2 (line <> disp e1) <+> "else" <+> nest 2 (line <> disp e2))
        in if req <= FunDomain then deepenParen doc else doc
     Bracket e1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic e1)

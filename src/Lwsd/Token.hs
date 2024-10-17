@@ -37,9 +37,13 @@ data Token
   | TokRec
   | TokLet
   | TokIn
+  | TokIf
+  | TokThen
+  | TokElse
   | TokOpAdd
   | TokOpSub
   | TokOpMult
+  | TokOpLeq
   deriving stock (Ord, Eq, Show, Generic)
 
 instance Mp.VisualStream [Located Token] where
@@ -54,7 +58,10 @@ keywordMap =
     [ ("fun", TokFun),
       ("rec", TokRec),
       ("let", TokLet),
-      ("in", TokIn)
+      ("in", TokIn),
+      ("if", TokIf),
+      ("then", TokThen),
+      ("else", TokElse)
     ]
 
 lowerIdentOrKeyword :: Tokenizer Token
@@ -84,6 +91,7 @@ token =
       TokOpAdd <$ Mp.single '+',
       TokOpSub <$ Mp.single '-',
       TokOpMult <$ Mp.single '*',
+      TokOpLeq <$ Mp.chunk "<=",
       lowerIdentOrKeyword,
       TokUpper <$> upperIdent,
       TokInt <$> integerLiteral
