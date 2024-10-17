@@ -1,0 +1,8 @@
+let aux = rec(self : (p : Int) -> (q : Int) -> &(Vec %p) -> &(Vec %(p * q))) -> fun(n : Int) -> fun(m : Int) -> fun(e : &(Vec %n)) ->
+  if m <= 0 then
+    &[| |]
+  else
+    gen_vappend n ((m - 1) * n) e (self (m - 1) n)
+in
+let gen_vappend = fun(n : Int) -> fun(m : Int) -> &(fun(v : Vec %n) -> ~(aux n m &v)) in
+&(~(gen_vappend 3 5) [| 4; 6; 9 |])
