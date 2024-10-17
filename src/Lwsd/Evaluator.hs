@@ -64,7 +64,7 @@ generateFreshSymbol = do
 generateIdentityFunction :: Env0 -> Ass0TypeVal -> M Ass0Val
 generateIdentityFunction env a0tyv = do
   x <- symbolToVar <$> generateFreshSymbol
-  pure $ A0ValLam (x, a0tyv) (A0Var x) env
+  pure $ A0ValLam Nothing (x, a0tyv) (A0Var x) env
 
 findEntry :: Env0 -> Var -> M EnvEntry
 findEntry env x =
@@ -181,15 +181,25 @@ evalExpr0 env = \case
           Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
     findVal0 env x
-  A0Lam (x, a0tye1) a0e2 -> do
+  A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
-    pure $ A0ValLam (x, a0tyv1) a0e2 env
+    pure $ A0ValLam Nothing (x, a0tyv1) a0e2 env
+  A0Lam (Just (f, a0tyeRec)) (x, a0tye1) a0e2 -> do
+    a0tyvRec <- evalTypeExpr0 env a0tyeRec
+    a0tyv1 <- evalTypeExpr0 env a0tye1
+    pure $ A0ValLam (Just (f, a0tyvRec)) (x, a0tyv1) a0e2 env
   A0App a0e1 a0e2 -> do
     a0v1 <- evalExpr0 env a0e1
     a0v2 <- evalExpr0 env a0e2
     case a0v1 of
-      A0ValLam (x, _a0tyv11) a0e12 env1 ->
-        evalExpr0 (Map.insert x (Ass0ValEntry a0v2) env1) a0e12
+      A0ValLam Nothing (x, _a0tyv11) a0e12 env1 ->
+        evalExpr0
+          (Map.insert x (Ass0ValEntry a0v2) env1)
+          a0e12
+      A0ValLam (Just (f, _a0tyvRec)) (x, _a0tyv11) a0e12 env1 ->
+        evalExpr0
+          (Map.insert x (Ass0ValEntry a0v2) (Map.insert f (Ass0ValEntry a0v1) env1))
+          a0e12
       _ ->
         bug $ NotAClosure a0v1
   A0IfThenElse a0e0 a0e1 a0e2 -> do
@@ -293,7 +303,7 @@ unliftVal = \case
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
   A1ValVar symb -> A0Var (symbolToVar symb)
-  A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
+  A1ValLam (symb, a1tyv1) a1v2 -> A0Lam Nothing (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
   A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)
   A1ValIfThenElse a1v0 a1v1 a1v2 -> A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
 

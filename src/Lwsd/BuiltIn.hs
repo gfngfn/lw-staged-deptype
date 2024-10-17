@@ -119,10 +119,10 @@ tyValInt = A0TyValPrim A0TyValInt
 
 -- Makes a closure equipped with `initialEnv`.
 clo :: Var -> Ass0TypeVal -> Ass0Expr -> Ass0Val
-clo x a0tyv1 a0tye2 = A0ValLam (x, a0tyv1) a0tye2 initialEnv
+clo x a0tyv1 a0tye2 = A0ValLam Nothing (x, a0tyv1) a0tye2 initialEnv
 
 lam :: Var -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
-lam x a0tye1 = A0Lam (x, a0tye1)
+lam x a0tye1 = A0Lam Nothing (x, a0tye1)
 
 ass0exprVadd :: Int -> Ass0Expr
 ass0exprVadd n =

@@ -249,8 +249,11 @@ instance Disp Ass0Expr where
     A0Literal lit -> disp lit
     A0AppBuiltIn bi -> disp bi
     A0Var y -> disp y
-    A0Lam (y, a0tye1) a0e2 ->
+    A0Lam Nothing (y, a0tye1) a0e2 ->
       let doc = group ("λ" <> disp y <+> ":" <+> disp a0tye1 <> "." <> nest 2 (line <> disp a0e2))
+       in if req <= FunDomain then deepenParen doc else doc
+    A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 ->
+      let doc = group ("rec" <+> disp f <+> ":" <+> disp a0tyeRec <> "." <+> "λ" <> disp y <+> ":" <+> disp a0tye1 <> "." <> nest 2 (line <> disp a0e2))
        in if req <= FunDomain then deepenParen doc else doc
     A0App a0e1 a0e2 ->
       let doc = group (dispGen FunDomain a0e1 <> nest 2 (line <> dispGen Atomic a0e2))
@@ -417,8 +420,11 @@ instance Disp Ass0Val where
   dispGen req = \case
     A0ValLiteral lit ->
       disp lit
-    A0ValLam (x, a0tyv1) a0v2 _env ->
+    A0ValLam Nothing (x, a0tyv1) a0v2 _env ->
       let doc = group ("λ" <> disp x <+> ":" <+> disp a0tyv1 <> "." <> nest 2 (line <> disp a0v2))
+       in if req <= FunDomain then deepenParen doc else doc
+    A0ValLam (Just (f, a0tyvRec)) (x, a0tyv1) a0v2 _env ->
+      let doc = group ("rec" <+> disp f <+> ":" <+> disp a0tyvRec <> "." <+> "λ" <> disp x <+> ":" <+> disp a0tyv1 <> "." <> nest 2 (line <> disp a0v2))
        in if req <= FunDomain then deepenParen doc else doc
     A0ValBracket a1v1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic a1v1)

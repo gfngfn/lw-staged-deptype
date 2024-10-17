@@ -139,7 +139,7 @@ data Ass0Expr
   = A0Literal AssLiteral
   | A0AppBuiltIn BuiltIn
   | A0Var Var
-  | A0Lam (Var, Ass0TypeExpr) Ass0Expr
+  | A0Lam (Maybe (Var, Ass0TypeExpr)) (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
@@ -182,7 +182,7 @@ data Ass1PrimType
 
 data Ass0Val
   = A0ValLiteral AssLiteral
-  | A0ValLam (Var, Ass0TypeVal) Ass0Expr Env0
+  | A0ValLam (Maybe (Var, Ass0TypeVal)) (Var, Ass0TypeVal) Ass0Expr Env0
   | A0ValBracket Ass1Val
   deriving stock (Eq, Show)
 

@@ -24,14 +24,24 @@ alphaEquivalent = (==) -- TODO: generalize this
 
 instance HasVar0 Ass0Expr where
   frees0 = \case
-    A0Literal _ -> Set.empty
-    A0AppBuiltIn _ -> Set.empty -- We do not see variables for built-in functions
-    A0Var y -> Set.singleton y
-    A0Lam (y, a0tye1) a0e2 -> Set.union (frees0 a0tye1) (Set.delete y (frees0 a0e2))
-    A0App a0e1 a0e2 -> Set.union (frees0 a0e1) (frees0 a0e2)
-    A0IfThenElse a0e0 a0e1 a0e2 -> Set.union (Set.union (frees0 a0e0) (frees0 a0e1)) (frees0 a0e2)
-    A0Bracket a1e1 -> frees0 a1e1
-    A0TyEqAssert _ ty0eq -> frees0 ty0eq
+    A0Literal _ ->
+      Set.empty
+    A0AppBuiltIn _ ->
+      Set.empty -- We do not see variables for built-in functions
+    A0Var y ->
+      Set.singleton y
+    A0Lam Nothing (y, a0tye1) a0e2 ->
+      Set.union (frees0 a0tye1) (Set.delete y (frees0 a0e2))
+    A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 ->
+      Set.union (Set.union (frees0 a0tyeRec) (frees0 a0tye1)) (Set.delete f (Set.delete y (frees0 a0e2)))
+    A0App a0e1 a0e2 ->
+      Set.union (frees0 a0e1) (frees0 a0e2)
+    A0IfThenElse a0e0 a0e1 a0e2 ->
+      Set.union (Set.union (frees0 a0e0) (frees0 a0e1)) (frees0 a0e2)
+    A0Bracket a1e1 ->
+      frees0 a1e1
+    A0TyEqAssert _ ty0eq ->
+      frees0 ty0eq
 
   subst0 a0e x = \case
     A0Literal lit ->
@@ -40,8 +50,10 @@ instance HasVar0 Ass0Expr where
       A0AppBuiltIn bi -- We do not see variables for built-in functions
     A0Var y ->
       if y == x then a0e else A0Var y
-    A0Lam (y, a0tye1) a0e2 ->
-      A0Lam (y, go a0tye1) (if y == x then a0e2 else go a0e2)
+    A0Lam Nothing (y, a0tye1) a0e2 ->
+      A0Lam Nothing (y, go a0tye1) (if y == x then a0e2 else go a0e2)
+    A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 ->
+      A0Lam (Just (f, go a0tyeRec)) (y, go a0tye1) (if f == x || y == x then a0e2 else go a0e2)
     A0App a0e1 a0e2 ->
       A0App (go a0e1) (go a0e2)
     A0IfThenElse a0e0 a0e1 a0e2 ->

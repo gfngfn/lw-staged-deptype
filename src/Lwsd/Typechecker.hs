@@ -66,7 +66,7 @@ makeAssertiveCast trav loc a0tye1 a0tye2 = do
           (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> pure $ A0TyMat m1 n2
           _ -> typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
       x <- generateFreshVar
-      pure $ A0Lam (x, A0TyPrim a0tyPrim) (A0Var x)
+      pure $ A0Lam Nothing (x, A0TyPrim a0tyPrim) (A0Var x)
     (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
       a0eDomCast <- makeAssertiveCast trav loc a0tye11 a0tye21
       (x, a0tye22') <-
@@ -84,10 +84,10 @@ makeAssertiveCast trav loc a0tye1 a0tye2 = do
       f <- generateFreshVar
       x' <- generateFreshVar
       pure $
-        A0Lam (f, a0tye1) $
-          A0Lam (x, a0tye21) $
+        A0Lam Nothing (f, a0tye1) $
+          A0Lam Nothing (x, a0tye21) $
             A0App
-              (A0Lam (x', a0tye11) (A0App a0eCodCast (A0App (A0Var f) (A0Var x'))))
+              (A0Lam Nothing (x', a0tye11) (A0App a0eCodCast (A0App (A0Var f) (A0Var x'))))
               (A0App a0eDomCast (A0Var x))
     (A0TyCode a1tye1, A0TyCode a1tye2) -> do
       ty1eq <- makeEquation1 trav loc a1tye1 a1tye2
@@ -144,7 +144,7 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
     Lam Nothing (x1, tye1) e2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
       (a0tye2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) e2
-      pure (A0TyArrow (Just x1, a0tye1) a0tye2, A0Lam (x1, a0tye1) a0e2)
+      pure (A0TyArrow (Just x1, a0tye1) a0tye2, A0Lam Nothing (x1, a0tye1) a0e2)
     Lam (Just (f, tyeRec)) (x1, tye1) e2 -> do
       a0tyeRec <- typecheckTypeExpr0 trav tyEnv tyeRec
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
@@ -155,7 +155,7 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
           e2
       let a0tyeSynth = A0TyArrow (Just x1, a0tye1) a0tye2
       a0eCast <- makeAssertiveCast trav loc a0tyeSynth a0tyeRec
-      let a0eLam = A0Lam (x1, a0tye1) a0e2 -- TODO: add `f`
+      let a0eLam = A0Lam (Just (f, a0tyeRec)) (x1, a0tye1) a0e2
           a0e =
             if optimizeTrivialAssertion && alphaEquivalent a0tyeSynth a0tyeRec
               then a0eLam
@@ -185,7 +185,7 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
       (a0tye2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) e2
       if x `occurs0` a0tye2
         then typeError trav $ VarOccursFreelyInAss0Type spanInFile x a0tye2
-        else pure (a0tye2, A0App (A0Lam (x, a0tye1) a0e2) a0e1)
+        else pure (a0tye2, A0App (A0Lam Nothing (x, a0tye1) a0e2) a0e1)
     IfThenElse e0 e1 e2 -> do
       (a0tye0, a0e0) <- typecheckExpr0 trav tyEnv e0
       case a0tye0 of
