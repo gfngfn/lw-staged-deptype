@@ -1,6 +1,7 @@
 module Lwsd.Subst
   ( HasVar0 (..),
     occurs0,
+    alphaEquivalent,
   )
 where
 
@@ -17,6 +18,9 @@ class HasVar0 a where
 
 occurs0 :: (HasVar0 a) => Var -> a -> Bool
 occurs0 x e = x `elem` frees0 e
+
+alphaEquivalent :: (Eq a) => a -> a -> Bool
+alphaEquivalent = (==) -- TODO: generalize this
 
 instance HasVar0 Ass0Expr where
   frees0 = \case

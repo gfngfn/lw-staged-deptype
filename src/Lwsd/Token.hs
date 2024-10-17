@@ -34,6 +34,7 @@ data Token
   | TokUpper Text
   | TokInt Int
   | TokFun
+  | TokRec
   | TokLet
   | TokIn
   | TokOpAdd
@@ -51,6 +52,7 @@ keywordMap :: Map Text Token
 keywordMap =
   Map.fromList
     [ ("fun", TokFun),
+      ("rec", TokRec),
       ("let", TokLet),
       ("in", TokIn)
     ]

@@ -120,8 +120,11 @@ instance Disp (ExprMainF ann) where
   dispGen req = \case
     Literal lit -> dispGen req lit
     Var x -> disp x
-    Lam (x, tye1) e2 ->
+    Lam Nothing (x, tye1) e2 ->
       let doc = group ("λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+       in if req <= FunDomain then deepenParen doc else doc
+    Lam (Just (f, tyeRec)) (x, tye1) e2 ->
+      let doc = group ("rec" <+> disp f <+> ":" <+> disp tyeRec <> "." <+> "λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
        in if req <= FunDomain then deepenParen doc else doc
     App e1 e2 ->
       let doc = group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))

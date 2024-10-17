@@ -47,8 +47,8 @@ litVec = expr . Literal . LitVec
 var :: Text -> Expr0
 var = expr . Var
 
-lam :: (Var, TypeExpr0) -> Expr0 -> Expr0
-lam binder e = expr (Lam binder e)
+nonrecLam :: (Var, TypeExpr0) -> Expr0 -> Expr0
+nonrecLam binder e = expr (Lam Nothing binder e)
 
 app :: Expr0 -> Expr0 -> Expr0
 app e1 e2 = expr (App e1 e2)
@@ -114,15 +114,15 @@ spec = do
         `shouldBe` pure (app (app (var "x") (litInt 42)) (var "z"))
     it "parses lambda abstractions (1)" $
       parseExpr "fun (x : Int) -> x"
-        `shouldBe` pure (lam ("x", tyInt) (var "x"))
+        `shouldBe` pure (nonrecLam ("x", tyInt) (var "x"))
     it "parses lambda abstractions (2)" $
       let ty = tyDepFun "n" tyInt tyBool
        in parseExpr "fun (x : (n : Int) -> Bool) -> x y"
-            `shouldBe` pure (lam ("x", ty) (app (var "x") (var "y")))
+            `shouldBe` pure (nonrecLam ("x", ty) (app (var "x") (var "y")))
     it "parses let expressions" $
       let ty = tyDepFun "n" tyInt tyBool
        in parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
-            `shouldBe` pure (expr (LetIn "f" (lam ("x", ty) (app (var "x") (var "y"))) (var "f")))
+            `shouldBe` pure (expr (LetIn "f" (nonrecLam ("x", ty) (app (var "x") (var "y"))) (var "f")))
     it "parses brackets (1)" $
       parseExpr "f &x y"
         `shouldBe` pure (app (app (var "f") (bracket (var "x"))) (var "y"))
@@ -256,6 +256,7 @@ spec = do
           e =
             exprLoc 0 34 $
               Lam
+                Nothing
                 ("x", ty)
                 (exprLoc 31 34 $ App (exprLoc 31 32 $ Var "x") (exprLoc 33 34 $ Var "y"))
        in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"

@@ -122,6 +122,7 @@ makeEquation1 trav loc a1tye1' a1tye2' = do
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv (Expr loc eMain) = do
+  TypecheckState {optimizeTrivialAssertion} <- get
   spanInFile <- askSpanInFile loc
   case eMain of
     Literal lit -> do
@@ -140,23 +141,38 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
       case entry of
         TypeEnv.Ass0Entry a0tye -> pure (a0tye, A0Var x)
         TypeEnv.Ass1Entry _ -> typeError trav $ NotAStage0Var spanInFile x
-    Lam (x1, tye1) e2 -> do
+    Lam Nothing (x1, tye1) e2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
       (a0tye2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) e2
       pure (A0TyArrow (Just x1, a0tye1) a0tye2, A0Lam (x1, a0tye1) a0e2)
+    Lam (Just (f, tyeRec)) (x1, tye1) e2 -> do
+      a0tyeRec <- typecheckTypeExpr0 trav tyEnv tyeRec
+      a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
+      (a0tye2, a0e2) <-
+        typecheckExpr0
+          trav
+          (TypeEnv.addVar f (TypeEnv.Ass0Entry a0tyeRec) (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv))
+          e2
+      let a0tyeSynth = A0TyArrow (Just x1, a0tye1) a0tye2
+      a0eCast <- makeAssertiveCast trav loc a0tyeSynth a0tyeRec
+      let a0eLam = A0Lam (x1, a0tye1) a0e2 -- TODO: add `f`
+          a0e =
+            if optimizeTrivialAssertion && alphaEquivalent a0tyeSynth a0tyeRec
+              then a0eLam
+              else A0App a0eCast a0eLam
+      pure (a0tyeRec, a0e)
     App e1 e2 -> do
       (a0tye1, a0e1) <- typecheckExpr0 trav tyEnv e1
       (a0tye2, a0e2) <- typecheckExpr0 trav tyEnv e2
       case a0tye1 of
         A0TyArrow (x11opt, a0tye11) a0tye12 -> do
-          TypecheckState {optimizeTrivialAssertion} <- get
-          a0eCast <- makeAssertiveCast trav loc a0tye11 a0tye2
+          a0eCast <- makeAssertiveCast trav loc a0tye2 a0tye11
           let a0tye12' =
                 case x11opt of
                   Just x11 -> subst0 a0e2 x11 a0tye12
                   Nothing -> a0tye12
               a0e2' =
-                if optimizeTrivialAssertion && a0tye11 == a0tye2
+                if optimizeTrivialAssertion && alphaEquivalent a0tye2 a0tye11
                   then a0e2 -- Do slight shortcuts
                   else A0App a0eCast a0e2
           pure (a0tye12', A0App a0e1 a0e2')
@@ -178,6 +194,7 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
 
 typecheckExpr1 :: trav -> TypeEnv -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
 typecheckExpr1 trav tyEnv (Expr loc eMain) = do
+  TypecheckState {optimizeTrivialAssertion} <- get
   spanInFile <- askSpanInFile loc
   case eMain of
     Literal lit -> do
@@ -197,20 +214,35 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
       case entry of
         TypeEnv.Ass0Entry _ -> typeError trav $ NotAStage1Var spanInFile x
         TypeEnv.Ass1Entry a1tye -> pure (a1tye, A1Var x)
-    Lam (x1, tye1) e2 -> do
+    Lam Nothing (x1, tye1) e2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       (a1tye2, a1e2) <- typecheckExpr1 trav (TypeEnv.addVar x1 (TypeEnv.Ass1Entry a1tye1) tyEnv) e2
       pure (A1TyArrow a1tye1 a1tye2, A1Lam (x1, a1tye1) a1e2)
+    Lam (Just (f, tyeRec)) (x1, tye1) e2 -> do
+      a1tyeRec <- typecheckTypeExpr1 trav tyEnv tyeRec
+      a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
+      (a1tye2, a1e2) <-
+        typecheckExpr1
+          trav
+          (TypeEnv.addVar f (TypeEnv.Ass1Entry a1tyeRec) (TypeEnv.addVar x1 (TypeEnv.Ass1Entry a1tye1) tyEnv))
+          e2
+      let a1tyeSynth = A1TyArrow a1tye1 a1tye2
+      ty1eq <- makeEquation1 trav loc a1tyeSynth a1tyeRec
+      let a1eLam = A1Lam (x1, a1tye1) a1e2 -- TODO: add `f`
+          a1e =
+            if optimizeTrivialAssertion && alphaEquivalent a1tyeSynth a1tyeRec
+              then a1eLam -- Do slight shortcuts
+              else A1Escape (A0App (A0TyEqAssert loc ty1eq) (A0Bracket a1eLam))
+      pure (a1tyeRec, a1e)
     App e1 e2 -> do
       (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
       (a1tye2, a1e2) <- typecheckExpr1 trav tyEnv e2
       case a1tye1 of
         A1TyArrow a1tye11 a1tye12 -> do
           -- Embeds type equality assertion at stage 0 here!
-          TypecheckState {optimizeTrivialAssertion} <- get
-          ty1eq <- makeEquation1 trav loc a1tye11 a1tye2
+          ty1eq <- makeEquation1 trav loc a1tye2 a1tye11
           let a1e2' =
-                if optimizeTrivialAssertion && a1tye11 == a1tye2
+                if optimizeTrivialAssertion && alphaEquivalent a1tye2 a1tye11
                   then a1e2 -- Do slight shortcuts
                   else A1Escape (A0App (A0TyEqAssert loc ty1eq) (A0Bracket a1e2))
           pure (a1tye12, A1App a1e1 a1e2')
