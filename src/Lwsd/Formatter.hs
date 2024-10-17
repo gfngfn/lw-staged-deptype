@@ -281,8 +281,11 @@ instance Disp Ass1Expr where
   dispGen req = \case
     A1Literal lit -> disp lit
     A1Var x -> disp x
-    A1Lam (x, a1tye1) a1e2 ->
+    A1Lam Nothing (x, a1tye1) a1e2 ->
       let doc = "λ" <> disp x <+> ":" <+> disp a1tye1 <> "." <+> disp a1e2
+       in if req <= FunDomain then deepenParen doc else doc
+    A1Lam (Just (f, a1tyeRec)) (x, a1tye1) a1e2 ->
+      let doc = group ("rec" <+> disp f <+> ":" <+> disp a1tyeRec <> "." <+> "λ" <> disp x <+> ":" <+> disp a1tye1 <> "." <+> disp a1e2)
        in if req <= FunDomain then deepenParen doc else doc
     A1App a1e1 a1e2 ->
       let doc = dispGen FunDomain a1e1 <+> dispGen Atomic a1e2
@@ -442,8 +445,11 @@ instance Disp Ass1Val where
     A1ValLiteral lit -> disp lit
     A1ValConst c -> disp c
     A1ValVar symb -> disp symb
-    A1ValLam (symb, a1tyv1) a1v2 ->
-      let doc = "λ" <> disp symb <+> ":" <+> disp a1tyv1 <> "." <+> disp a1v2
+    A1ValLam Nothing (symbX, a1tyv1) a1v2 ->
+      let doc = group ("λ" <> disp symbX <+> ":" <+> disp a1tyv1 <> "." <+> disp a1v2)
+       in if req <= FunDomain then deepenParen doc else doc
+    A1ValLam (Just (symbF, a1tyvRec)) (symbX, a1tyv1) a1v2 ->
+      let doc = group ("rec" <+> disp symbF <+> ":" <+> disp a1tyvRec <> "." <+> "λ" <> disp symbX <+> ":" <+> disp a1tyv1 <> "." <+> disp a1v2)
        in if req <= FunDomain then deepenParen doc else doc
     A1ValApp a1v1 a1v2 ->
       let doc = group (dispGen FunDomain a1v1 <> nest 2 (line <> dispGen Atomic a1v2))

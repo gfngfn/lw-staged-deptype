@@ -232,11 +232,18 @@ evalExpr1 env = \case
   A1Var x -> do
     symb <- findSymbol env x
     pure $ A1ValVar symb
-  A1Lam (x, a1tye1) a1e2 -> do
+  A1Lam Nothing (x, a1tye1) a1e2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
-    symb <- generateFreshSymbol
-    a1v1 <- evalExpr1 (Map.insert x (SymbolEntry symb) env) a1e2
-    pure $ A1ValLam (symb, a1tyv1) a1v1
+    symbX <- generateFreshSymbol
+    a1v1 <- evalExpr1 (Map.insert x (SymbolEntry symbX) env) a1e2
+    pure $ A1ValLam Nothing (symbX, a1tyv1) a1v1
+  A1Lam (Just (f, a1tyeRec)) (x, a1tye1) a1e2 -> do
+    a1tyvRec <- evalTypeExpr1 env a1tyeRec
+    a1tyv1 <- evalTypeExpr1 env a1tye1
+    symbF <- generateFreshSymbol
+    symbX <- generateFreshSymbol
+    a1v1 <- evalExpr1 (Map.insert x (SymbolEntry symbX) (Map.insert f (SymbolEntry symbF) env)) a1e2
+    pure $ A1ValLam (Just (symbF, a1tyvRec)) (symbX, a1tyv1) a1v1
   A1App a1e1 a1e2 -> do
     a1v1 <- evalExpr1 env a1e1
     a1v2 <- evalExpr1 env a1e2
@@ -294,7 +301,8 @@ evalTypeExpr1 env = \case
 
 unliftVal :: Ass1Val -> Ass0Expr
 unliftVal = \case
-  A1ValLiteral lit -> A0Literal lit
+  A1ValLiteral lit ->
+    A0Literal lit
   A1ValConst c ->
     case c of
       A1ValConstVadd n -> BuiltIn.ass0exprVadd n
@@ -302,10 +310,16 @@ unliftVal = \case
       A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
-  A1ValVar symb -> A0Var (symbolToVar symb)
-  A1ValLam (symb, a1tyv1) a1v2 -> A0Lam Nothing (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
-  A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)
-  A1ValIfThenElse a1v0 a1v1 a1v2 -> A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
+  A1ValVar symbX ->
+    A0Var (symbolToVar symbX)
+  A1ValLam Nothing (symbX, a1tyv1) a1v2 ->
+    A0Lam Nothing (symbolToVar symbX, unliftTypeVal a1tyv1) (unliftVal a1v2)
+  A1ValLam (Just (symbF, a1tyvRec)) (symbX, a1tyv1) a1v2 ->
+    A0Lam (Just (symbolToVar symbF, unliftTypeVal a1tyvRec)) (symbolToVar symbX, unliftTypeVal a1tyv1) (unliftVal a1v2)
+  A1ValApp a1v1 a1v2 ->
+    A0App (unliftVal a1v1) (unliftVal a1v2)
+  A1ValIfThenElse a1v0 a1v1 a1v2 ->
+    A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
 
 unliftTypeVal :: Ass1TypeVal -> Ass0TypeExpr
 unliftTypeVal = \case

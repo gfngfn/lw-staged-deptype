@@ -149,7 +149,7 @@ data Ass0Expr
 data Ass1Expr
   = A1Literal AssLiteral
   | A1Var Var
-  | A1Lam (Var, Ass1TypeExpr) Ass1Expr
+  | A1Lam (Maybe (Var, Ass1TypeExpr)) (Var, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
   | A1IfThenElse Ass1Expr Ass1Expr Ass1Expr
   | A1Escape Ass0Expr
@@ -190,7 +190,7 @@ data Ass1Val
   = A1ValLiteral AssLiteral
   | A1ValConst Ass1ValConst
   | A1ValVar Symbol
-  | A1ValLam (Symbol, Ass1TypeVal) Ass1Val
+  | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) Ass1Val
   | A1ValApp Ass1Val Ass1Val
   | A1ValIfThenElse Ass1Val Ass1Val Ass1Val
   deriving stock (Eq, Show)

@@ -68,20 +68,30 @@ instance HasVar0 Ass0Expr where
 
 instance HasVar0 Ass1Expr where
   frees0 = \case
-    A1Literal _ -> Set.empty
-    A1Var _ -> Set.empty -- Does not collect stage-1 variables
-    A1Lam (y, a1tye1) a1e2 -> Set.union (frees0 a1tye1) (Set.delete y (frees0 a1e2))
-    A1App a1e1 a1e2 -> Set.union (frees0 a1e1) (frees0 a1e2)
-    A1IfThenElse a1e0 a1e1 a1e2 -> Set.union (Set.union (frees0 a1e0) (frees0 a1e1)) (frees0 a1e2)
-    A1Escape a0e1 -> frees0 a0e1
+    A1Literal _ ->
+      Set.empty
+    A1Var _ ->
+      Set.empty -- Does not collect stage-1 variables
+    A1Lam Nothing (y, a1tye1) a1e2 ->
+      Set.union (frees0 a1tye1) (Set.delete y (frees0 a1e2))
+    A1Lam (Just (f, a1tyeRec)) (y, a1tye1) a1e2 ->
+      Set.union (Set.union (frees0 a1tyeRec) (frees0 a1tye1)) (Set.delete f (Set.delete y (frees0 a1e2)))
+    A1App a1e1 a1e2 ->
+      Set.union (frees0 a1e1) (frees0 a1e2)
+    A1IfThenElse a1e0 a1e1 a1e2 ->
+      Set.union (Set.union (frees0 a1e0) (frees0 a1e1)) (frees0 a1e2)
+    A1Escape a0e1 ->
+      frees0 a0e1
 
   subst0 a0e x = \case
     A1Literal lit ->
       A1Literal lit
     A1Var y ->
       A1Var y -- Does not change since we substitute stage-0 variables.
-    A1Lam (y, a1tye1) a1e2 ->
-      A1Lam (y, go a1tye1) (if y == x then a1e2 else go a1e2)
+    A1Lam Nothing (y, a1tye1) a1e2 ->
+      A1Lam Nothing (y, go a1tye1) (if y == x then a1e2 else go a1e2)
+    A1Lam (Just (f, a1tyeRec)) (y, a1tye1) a1e2 ->
+      A1Lam (Just (f, go a1tyeRec)) (y, go a1tye1) (if y == f || y == x then a1e2 else go a1e2)
     A1App a1e1 a1e2 ->
       A1App (go a1e1) (go a1e2)
     A1IfThenElse a1e0 a1e1 a1e2 ->

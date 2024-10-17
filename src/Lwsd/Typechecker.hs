@@ -242,7 +242,7 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
     Lam Nothing (x1, tye1) e2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       (a1tye2, a1e2) <- typecheckExpr1 trav (TypeEnv.addVar x1 (TypeEnv.Ass1Entry a1tye1) tyEnv) e2
-      pure (A1TyArrow a1tye1 a1tye2, A1Lam (x1, a1tye1) a1e2)
+      pure (A1TyArrow a1tye1 a1tye2, A1Lam Nothing (x1, a1tye1) a1e2)
     Lam (Just (f, tyeRec)) (x1, tye1) e2 -> do
       a1tyeRec <- typecheckTypeExpr1 trav tyEnv tyeRec
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
@@ -253,7 +253,7 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
           e2
       let a1tyeSynth = A1TyArrow a1tye1 a1tye2
       ty1eq <- makeEquation1 trav loc a1tyeSynth a1tyeRec
-      let a1eLam = A1Lam (x1, a1tye1) a1e2 -- TODO: add `f`
+      let a1eLam = A1Lam (Just (f, a1tyeRec)) (x1, a1tye1) a1e2
           a1e =
             if optimizeTrivialAssertion && alphaEquivalent a1tyeSynth a1tyeRec
               then a1eLam -- Do slight shortcuts
@@ -280,7 +280,7 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
       (a1tye2, a1e2) <- typecheckExpr1 trav (TypeEnv.addVar x (TypeEnv.Ass1Entry a1tye1) tyEnv) e2
       if x `occurs0` a1tye2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x a1tye2
-        else pure (a1tye2, A1App (A1Lam (x, a1tye1) a1e2) a1e1)
+        else pure (a1tye2, A1App (A1Lam Nothing (x, a1tye1) a1e2) a1e1)
     IfThenElse e0 e1 e2 -> do
       (a1tye0, a1e0) <- typecheckExpr1 trav tyEnv e0
       case a1tye0 of
