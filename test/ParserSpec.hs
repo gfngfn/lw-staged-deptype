@@ -50,6 +50,9 @@ var = expr . Var
 nonrecLam :: (Var, TypeExpr0) -> Expr0 -> Expr0
 nonrecLam binder e = expr (Lam Nothing binder e)
 
+recLam :: (Var, TypeExpr0) -> (Var, TypeExpr0) -> Expr0 -> Expr0
+recLam binderF binderX e = expr (Lam (Just binderF) binderX e)
+
 app :: Expr0 -> Expr0 -> Expr0
 app e1 e2 = expr (App e1 e2)
 
@@ -60,6 +63,9 @@ add, sub, mult :: Expr0 -> Expr0 -> Expr0
 add = binOp "+"
 sub = binOp "-"
 mult = binOp "*"
+
+upcast :: Expr0 -> TypeExpr0 -> Expr0
+upcast e1 tye2 = expr (As e1 tye2)
 
 bracket :: Expr0 -> Expr0
 bracket = expr . Bracket
@@ -119,10 +125,16 @@ spec = do
       let ty = tyDepFun "n" tyInt tyBool
        in parseExpr "fun (x : (n : Int) -> Bool) -> x y"
             `shouldBe` pure (nonrecLam ("x", ty) (app (var "x") (var "y")))
-    it "parses let expressions" $
+    it "parses recursive lambda abstractions" $
+      parseExpr "rec (self : Int -> Int) -> fun (x : Int) -> x"
+        `shouldBe` pure (recLam ("self", tyNondepFun tyInt tyInt) ("x", tyInt) (var "x"))
+    it "parses let-expressions" $
       let ty = tyDepFun "n" tyInt tyBool
        in parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
             `shouldBe` pure (expr (LetIn "f" (nonrecLam ("x", ty) (app (var "x") (var "y"))) (var "f")))
+    it "parses if-expressions" $
+      parseExpr "if b then x + 1 else x"
+        `shouldBe` pure (expr (IfThenElse (var "b") (add (var "x") (litInt 1)) (var "x")))
     it "parses brackets (1)" $
       parseExpr "f &x y"
         `shouldBe` pure (app (app (var "f") (bracket (var "x"))) (var "y"))
@@ -150,6 +162,9 @@ spec = do
     it "parses binary operators (4)" $
       parseExpr "2 + f 3"
         `shouldBe` pure (add (litInt 2) (app (var "f") (litInt 3)))
+    it "parses upcasts" $
+      parseExpr "[| |] as Vec %n"
+        `shouldBe` pure (upcast (litVec []) (tyPersVec (var "n")))
   describe "Parser.parseTypeExpr" $ do
     it "parses dependent function types (1)" $
       parseTypeExpr "(n : Int) -> Bool"
