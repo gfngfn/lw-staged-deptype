@@ -9,7 +9,7 @@ import Util.LocationInFile (SpanInFile)
 import Prelude
 
 data AnalysisError
-  = UnboundVar SpanInFile Var
+  = UnboundVar SpanInFile Var [(Var, BindingTimeEnvEntry)]
   | NotAFunction SpanInFile BIType
   | NotABase SpanInFile BIType
   | BindingTimeContradiction SpanInFile

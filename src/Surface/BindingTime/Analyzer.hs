@@ -139,7 +139,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       (x', bity, constraints) <-
         case Map.lookup x btenv of
           Nothing ->
-            analysisError $ UnboundVar spanInFile x
+            analysisError $ UnboundVar spanInFile x (Map.toList btenv)
           Just (EntryBuiltInPersistent bityVoid) ->
             -- TODO: refine `ann`
             pure (x, enhanceBIType (\() -> bt) (\() -> (bt, ann)) bityVoid, [])
@@ -164,17 +164,17 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       (btyeRec', bityRec, constraintsRec) <- extractConstraintsFromTypeExpr btenv btyeRec
       (btye1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
       (e2', bity2@(BIType bt2 _), constraints2) <-
-        extractConstraintsFromExpr
-          (Map.insert x1 (EntryLocallyBound bt bity1) (Map.insert f (EntryLocallyBound bt bityRec) btenv))
-          e2
-      let bity' = BIType bt (BITyArrow (Just x1, bity1) bity2)
-      constraintsEq <- makeConstraintsFromBITypeEquation ann bity' bityRec
+          extractConstraintsFromExpr
+            (Map.insert x1 (EntryLocallyBound bt bity1) (Map.insert f (EntryLocallyBound bt bityRec) btenv))
+            e2
+      let bitySynth = BIType bt (BITyArrow (Just x1, bity1) bity2)
+      constraintsEq <- makeConstraintsFromBITypeEquation ann bitySynth bityRec
       let constraints =
             if occurs x1 bity2
               then [CEqual ann bt (BTConst BT0)]
               else [CLeq ann bt bt1, CLeq ann bt bt2]
       let e' = Expr (bt, ann) (Lam (Just (f, btyeRec')) (x1, btye1') e2')
-      pure (e', bity', constraintsRec ++ constraints1 ++ constraints2 ++ constraintsEq ++ constraints)
+      pure (e', bitySynth, constraintsRec ++ constraints1 ++ constraints2 ++ constraintsEq ++ constraints)
     App e1 e2 -> do
       (e1', bity1@(BIType bt1 bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
       (e2', _bity2@(BIType bt2 _bityMain2), constraints2) <- extractConstraintsFromExpr btenv e2

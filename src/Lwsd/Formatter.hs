@@ -124,6 +124,10 @@ dispIfThenElse req e0 e1 e2 =
     docThen = "then" <> nest 2 (line <> disp e1)
     docElse = "else" <> nest 2 (line <> disp e2)
 
+dispAs :: (Disp expr, Disp ty) => Associativity -> expr -> ty -> Doc Ann
+dispAs req e1 tye2 =
+  deepenParenWhen (req <= FunDomain) $ group (disp e1 <+> "as" <+> disp tye2)
+
 dispPersistent :: (Disp expr) => expr -> Doc Ann
 dispPersistent e =
   stagingOperatorStyle "%" <> stage0Style (dispGen Atomic e)
@@ -166,7 +170,7 @@ dispNameWithArgs :: (Disp arg) => Associativity -> Doc Ann -> (arg -> Doc Ann) -
 dispNameWithArgs req name dispArg args =
   case args of
     [] -> name
-    _ : _ -> deepenParenWhen (req <= Atomic) (List.foldl' (<+>) mempty (name : map dispArg args))
+    _ : _ -> deepenParenWhen (req <= Atomic) (List.foldl' (<+>) name (map dispArg args))
 
 instance Disp Text where
   dispGen _ = pretty
@@ -198,7 +202,7 @@ instance Disp (ExprMainF ann) where
     App e1 e2 -> dispApp req e1 e2
     LetIn x e1 e2 -> dispLetIn req x e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
-    As e1 tye2 -> deepenParenWhen (req <= FunDomain) $ group $ disp e1 <+> "as" <+> disp tye2
+    As e1 tye2 -> dispAs req e1 tye2
     Bracket e1 -> dispBracket e1
     Escape e1 -> dispEscape e1
 
@@ -251,6 +255,7 @@ instance Disp Surface.ExprMain where
     Surface.App e1 e2 -> dispApp req e1 e2
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
+    Surface.As e1 tye2 -> dispAs req e1 tye2
 
 instance Disp Surface.TypeExpr where
   dispGen req (Surface.TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -505,8 +510,9 @@ instance Disp Evaluator.EvalError where
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case
-    Bta.UnboundVar spanInFile x ->
+    Bta.UnboundVar spanInFile x btenv ->
       "Unbound variable" <+> disp x <+> disp spanInFile
+        <+> disp (show (map fst btenv)) -- temporary. TODO: remove this
     Bta.NotAFunction spanInFile bity ->
       "Not a function type;" <+> disp (show bity) <+> disp spanInFile
     Bta.NotABase spanInFile bity ->
@@ -538,6 +544,7 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.App e1 e2 -> dispApp req e1 e2
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
+    Surface.As e1 tye2 -> dispAs req e1 tye2
 
 instance Disp (Bta.BCTypeExprF ann) where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =

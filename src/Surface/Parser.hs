@@ -118,32 +118,30 @@ exprAtom, expr :: P Expr
     lam =
       tries
         [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
-          makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) *> expr
+          makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr,
+          makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
         ]
         comp
       where
         binder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
 
-        makeNonrecLam locFirst binderX e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (Lam Nothing binderX e)
+        makeNonrecLam locFirst xBinder e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (Lam Nothing xBinder e)
 
-        makeRecLam locFirst binderF binderX e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (Lam (Just binderF) binderX e)
+        makeRecLam locFirst fBinder xBinder e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (Lam (Just fBinder) xBinder e)
+
+        makeIf locFirst e0 e1 e2@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
 
     letin :: P Expr
     letin =
-      tries
-        [ makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
-          makeIfThenElse <$> token TokIf <*> letin <*> (token TokThen *> letin) <*> (token TokElse *> letin)
-        ]
-        lam
+      (makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+        `or` lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetIn x e1 e2)
-
-        makeIfThenElse locFirst e0 e1 e2@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
 
 typeExpr :: P TypeExpr
 typeExpr = fun
