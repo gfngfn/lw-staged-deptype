@@ -92,6 +92,41 @@ disps (first : rest) = List.foldl' (\doc x -> doc <> "," <+> disp x) (disp first
 deepenParen :: Doc Ann -> Doc Ann
 deepenParen doc = "(" <> nest 2 doc <> ")"
 
+deepenParenWhen :: Bool -> Doc Ann -> Doc Ann
+deepenParenWhen b = if b then deepenParen else id
+
+dispNonrecLam :: (Disp var, Disp typeExpr, Disp expr) => Associativity -> var -> typeExpr -> expr -> Doc Ann
+dispNonrecLam req x tye1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group ("λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+
+dispRecLam :: (Disp var, Disp typeExpr, Disp expr) => Associativity -> var -> typeExpr -> var -> typeExpr -> expr -> Doc Ann
+dispRecLam req f tyeRec x tye1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group (docBinderF <+> docBinderX <> nest 2 (line <> disp e2))
+  where
+    docBinderF = "rec" <+> disp f <+> ":" <+> disp tyeRec <> "."
+    docBinderX = "λ" <> disp x <+> ":" <+> disp tye1 <> "."
+
+dispApp :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
+dispApp req e1 e2 =
+  deepenParenWhen (req <= Atomic) $
+    group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
+
+dispLetIn :: (Disp var, Disp expr) => Associativity -> var -> expr -> expr -> Doc Ann
+dispLetIn req x e1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group ("let" <+> disp x <+> "=" <+> nest 2 (line <> disp e1) <+> "in" <+> disp e2)
+
+dispIfThenElse :: (Disp expr) => Associativity -> expr -> expr -> expr -> Doc Ann
+dispIfThenElse req e0 e1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group (docIf <+> docThen <+> docElse)
+  where
+    docIf = "if" <+> nest 2 (line <> disp e0)
+    docThen = "then" <+> nest 2 (line <> disp e1)
+    docElse = "else" <+> nest 2 (line <> disp e2)
+
 instance Disp Text where
   dispGen _ = pretty
 
@@ -120,28 +155,14 @@ instance Disp (ExprMainF ann) where
   dispGen req = \case
     Literal lit -> dispGen req lit
     Var x -> disp x
-    Lam Nothing (x, tye1) e2 ->
-      let doc = group ("λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
-       in if req <= FunDomain then deepenParen doc else doc
-    Lam (Just (f, tyeRec)) (x, tye1) e2 ->
-      let doc = group ("rec" <+> disp f <+> ":" <+> disp tyeRec <> "." <+> "λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
-       in if req <= FunDomain then deepenParen doc else doc
-    App e1 e2 ->
-      let doc = group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
-       in if req <= Atomic then deepenParen doc else doc
-    LetIn x e1 e2 ->
-      let doc = group ("let" <+> disp x <+> "=" <+> nest 2 (line <> disp e1) <+> "in" <+> disp e2)
-       in if req <= FunDomain then deepenParen doc else doc
-    IfThenElse e0 e1 e2 ->
-      let doc = group ("if" <+> nest 2 (line <> disp e0) <+> "then" <+> nest 2 (line <> disp e1) <+> "else" <+> nest 2 (line <> disp e2))
-       in if req <= FunDomain then deepenParen doc else doc
-    As e1 tye2 ->
-      let doc = group (disp e1 <+> "as" <+> disp tye2)
-       in if req <= FunDomain then deepenParen doc else doc
-    Bracket e1 ->
-      stagingOperatorStyle "&" <> stage1Style (dispGen Atomic e1)
-    Escape e1 ->
-      stagingOperatorStyle "~" <> stage0Style (dispGen Atomic e1)
+    Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
+    Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
+    App e1 e2 -> dispApp req e1 e2
+    LetIn x e1 e2 -> dispLetIn req x e1 e2
+    IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
+    As e1 tye2 -> deepenParenWhen (req <= FunDomain) $ group $ disp e1 <+> "as" <+> disp tye2
+    Bracket e1 -> stagingOperatorStyle "&" <> stage1Style (dispGen Atomic e1)
+    Escape e1 -> stagingOperatorStyle "~" <> stage0Style (dispGen Atomic e1)
 
 instance Disp (TypeExprF ann) where
   dispGen req (TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -151,17 +172,13 @@ instance Disp (TypeExprMainF ann) where
     TyName tyName args ->
       case args of
         [] -> disp tyName
-        _ : _ ->
-          let doc = List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
-           in if req <= Atomic then deepenParen doc else doc
+        _ : _ -> deepenParenWhen (req <= Atomic) $ List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
     TyArrow (xOpt, tye1) tye2 ->
       let docDom =
             case xOpt of
               Just x -> "(" <> disp x <+> ":" <+> disp tye1 <> ")"
               Nothing -> dispGen FunDomain tye1
-          doc =
-            group (docDom <> " ->" <> line <> disp tye2)
-       in if req <= FunDomain then deepenParen doc else doc
+       in deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp tye2)
     TyCode tye1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic tye1)
 
@@ -203,15 +220,9 @@ instance Disp Surface.ExprMain where
   dispGen req = \case
     Surface.Literal lit -> dispGen req lit
     Surface.Var x -> disp x
-    Surface.Lam (x, tye1) e2 ->
-      let doc = group ("λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
-       in if req <= FunDomain then deepenParen doc else doc
-    Surface.App e1 e2 ->
-      let doc = group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
-       in if req <= Atomic then deepenParen doc else doc
-    Surface.LetIn x e1 e2 ->
-      let doc = group ("let" <+> disp x <+> "=" <+> disp e1 <+> "in" <+> disp e2)
-       in if req <= FunDomain then deepenParen doc else doc
+    Surface.Lam (x, tye1) e2 -> dispNonrecLam req x tye1 e2
+    Surface.App e1 e2 -> dispApp req e1 e2
+    Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
 
 instance Disp Surface.TypeExpr where
   dispGen req (Surface.TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -221,17 +232,13 @@ instance Disp Surface.TypeExprMain where
     Surface.TyName tyName args ->
       case args of
         [] -> disp tyName
-        _ : _ ->
-          let doc = List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
-           in if req <= Atomic then deepenParen doc else doc
+        _ : _ -> deepenParenWhen (req <= Atomic) $ List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
     Surface.TyArrow (xOpt, tye1) tye2 ->
       let docDom =
             case xOpt of
               Just x -> "(" <> disp x <+> ":" <+> disp tye1 <> ")"
               Nothing -> dispGen FunDomain tye1
-          doc =
-            group (docDom <> " ->" <> line <> disp tye2)
-       in if req <= FunDomain then deepenParen doc else doc
+       in deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp tye2)
 
 dispRowContents :: [Int] -> Doc Ann
 dispRowContents row = commaSep (disp <$> row)
@@ -250,19 +257,15 @@ instance Disp Ass0Expr where
     A0AppBuiltIn bi -> disp bi
     A0Var y -> disp y
     A0Lam Nothing (y, a0tye1) a0e2 ->
-      let doc = group ("λ" <> disp y <+> ":" <+> disp a0tye1 <> "." <> nest 2 (line <> disp a0e2))
-       in if req <= FunDomain then deepenParen doc else doc
+      dispNonrecLam req y a0tye1 a0e2
     A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 ->
-      let doc = group ("rec" <+> disp f <+> ":" <+> disp a0tyeRec <> "." <+> "λ" <> disp y <+> ":" <+> disp a0tye1 <> "." <> nest 2 (line <> disp a0e2))
-       in if req <= FunDomain then deepenParen doc else doc
+      dispRecLam req f a0tyeRec y a0tye1 a0e2
     A0App a0e1 a0e2 ->
-      let doc = group (dispGen FunDomain a0e1 <> nest 2 (line <> dispGen Atomic a0e2))
-       in if req <= Atomic then deepenParen doc else doc
+      dispApp req a0e1 a0e2
     A0Bracket a1e1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic a1e1)
     A0IfThenElse a0e0 a0e1 a0e2 ->
-      let doc = group ("if" <+> nest 2 (line <> disp a0e0) <+> "then" <+> nest 2 (line <> disp a0e1) <+> "else" <+> nest 2 (line <> disp a0e2))
-       in if req <= FunDomain then deepenParen doc else doc
+      dispIfThenElse req a0e0 a0e1 a0e2
     A0TyEqAssert _loc ty1eq ->
       let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
        in group
@@ -282,17 +285,13 @@ instance Disp Ass1Expr where
     A1Literal lit -> disp lit
     A1Var x -> disp x
     A1Lam Nothing (x, a1tye1) a1e2 ->
-      let doc = "λ" <> disp x <+> ":" <+> disp a1tye1 <> "." <+> disp a1e2
-       in if req <= FunDomain then deepenParen doc else doc
+      dispNonrecLam req x a1tye1 a1e2
     A1Lam (Just (f, a1tyeRec)) (x, a1tye1) a1e2 ->
-      let doc = group ("rec" <+> disp f <+> ":" <+> disp a1tyeRec <> "." <+> "λ" <> disp x <+> ":" <+> disp a1tye1 <> "." <+> disp a1e2)
-       in if req <= FunDomain then deepenParen doc else doc
+      dispRecLam req f a1tyeRec x a1tye1 a1e2
     A1App a1e1 a1e2 ->
-      let doc = dispGen FunDomain a1e1 <+> dispGen Atomic a1e2
-       in if req <= Atomic then deepenParen doc else doc
+      dispApp req a1e1 a1e2
     A1IfThenElse a1e0 a1e1 a1e2 ->
-      let doc = group ("if" <+> nest 2 (line <> disp a1e0) <+> "then" <+> nest 2 (line <> disp a1e1) <+> "else" <+> nest 2 (line <> disp a1e2))
-       in if req <= FunDomain then deepenParen doc else doc
+      dispIfThenElse req a1e0 a1e1 a1e2
     A1Escape a0e1 ->
       stagingOperatorStyle "~" <> stage0Style (dispGen Atomic a0e1)
 
@@ -300,24 +299,19 @@ instance Disp Ass0PrimType where
   dispGen req = \case
     A0TyInt -> "Int"
     A0TyBool -> "Bool"
-    A0TyVec n ->
-      let doc = "Vec" <+> disp n
-       in if req <= Atomic then deepenParen doc else doc
-    A0TyMat m n ->
-      let doc = "Mat" <+> disp m <+> disp n
-       in if req <= Atomic then deepenParen doc else doc
+    A0TyVec n -> deepenParenWhen (req <= Atomic) ("Vec" <+> disp n)
+    A0TyMat m n -> deepenParenWhen (req <= Atomic) ("Mat" <+> disp m <+> disp n)
 
 instance Disp Ass0TypeExpr where
   dispGen req = \case
-    A0TyPrim a0tyPrim -> disp a0tyPrim
+    A0TyPrim a0tyPrim ->
+      disp a0tyPrim
     A0TyArrow (xOpt, a0tye1) a0tye2 ->
       let docDom =
             case xOpt of
               Just x -> "(" <> disp x <+> ":" <+> disp a0tye1 <> ")"
               Nothing -> dispGen FunDomain a0tye1
-          doc =
-            group (docDom <> " ->" <> line <> disp a0tye2)
-       in if req <= FunDomain then deepenParen doc else doc
+       in deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp a0tye2)
     A0TyCode a1tye1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic a1tye1)
 
@@ -326,23 +320,23 @@ instance Disp Ass1PrimType where
     A1TyInt -> "Int"
     A1TyBool -> "Bool"
     A1TyVec a0e ->
-      let doc = "Vec" <+> stagingOperatorStyle "%" <> stage0Style (dispGen Atomic a0e)
-       in if req <= Atomic then deepenParen doc else doc
+      deepenParenWhen (req <= Atomic) $
+        "Vec" <+> stagingOperatorStyle "%" <> stage0Style (dispGen Atomic a0e)
     A1TyMat a0e1 a0e2 ->
-      let doc =
-            "Mat"
-              <+> stagingOperatorStyle "%"
-              <> stage0Style (dispGen Atomic a0e1)
-              <+> stagingOperatorStyle "%"
-              <> stage0Style (dispGen Atomic a0e2)
-       in if req <= Atomic then deepenParen doc else doc
+      deepenParenWhen (req <= Atomic) $
+        "Mat"
+          <+> stagingOperatorStyle "%"
+          <> stage0Style (dispGen Atomic a0e1)
+          <+> stagingOperatorStyle "%"
+          <> stage0Style (dispGen Atomic a0e2)
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case
-    A1TyPrim a1tyPrim -> dispGen req a1tyPrim
+    A1TyPrim a1tyPrim ->
+      dispGen req a1tyPrim
     A1TyArrow a1tye1 a1tye2 ->
-      let doc = group (dispGen FunDomain a1tye1 <> " ->" <> line <> disp a1tye2)
-       in if req <= FunDomain then deepenParen doc else doc
+      deepenParenWhen (req <= FunDomain) $
+        group (dispGen FunDomain a1tye1 <+> "->" <> line <> disp a1tye2)
 
 instance Disp Matrix.ConstructionError where
   dispGen _ = \case
@@ -424,11 +418,9 @@ instance Disp Ass0Val where
     A0ValLiteral lit ->
       disp lit
     A0ValLam Nothing (x, a0tyv1) a0v2 _env ->
-      let doc = group ("λ" <> disp x <+> ":" <+> disp a0tyv1 <> "." <> nest 2 (line <> disp a0v2))
-       in if req <= FunDomain then deepenParen doc else doc
+      dispNonrecLam req x a0tyv1 a0v2
     A0ValLam (Just (f, a0tyvRec)) (x, a0tyv1) a0v2 _env ->
-      let doc = group ("rec" <+> disp f <+> ":" <+> disp a0tyvRec <> "." <+> "λ" <> disp x <+> ":" <+> disp a0tyv1 <> "." <> nest 2 (line <> disp a0v2))
-       in if req <= FunDomain then deepenParen doc else doc
+      dispRecLam req f a0tyvRec x a0tyv1 a0v2
     A0ValBracket a1v1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic a1v1)
 
@@ -446,17 +438,13 @@ instance Disp Ass1Val where
     A1ValConst c -> disp c
     A1ValVar symb -> disp symb
     A1ValLam Nothing (symbX, a1tyv1) a1v2 ->
-      let doc = group ("λ" <> disp symbX <+> ":" <+> disp a1tyv1 <> "." <+> disp a1v2)
-       in if req <= FunDomain then deepenParen doc else doc
+      dispNonrecLam req symbX a1tyv1 a1v2
     A1ValLam (Just (symbF, a1tyvRec)) (symbX, a1tyv1) a1v2 ->
-      let doc = group ("rec" <+> disp symbF <+> ":" <+> disp a1tyvRec <> "." <+> "λ" <> disp symbX <+> ":" <+> disp a1tyv1 <> "." <+> disp a1v2)
-       in if req <= FunDomain then deepenParen doc else doc
+      dispRecLam req symbF a1tyvRec symbX a1tyv1 a1v2
     A1ValApp a1v1 a1v2 ->
-      let doc = group (dispGen FunDomain a1v1 <> nest 2 (line <> dispGen Atomic a1v2))
-       in if req <= Atomic then deepenParen doc else doc
+      dispApp req a1v1 a1v2
     A1ValIfThenElse a1v0 a1v1 a1v2 ->
-      let doc = group ("if" <+> nest 2 (line <> disp a1v0) <+> "then" <+> nest 2 (line <> disp a1v1) <+> "else" <+> nest 2 (line <> disp a1v2))
-       in if req <= FunDomain then deepenParen doc else doc
+      dispIfThenElse req a1v0 a1v1 a1v2
 
 instance Disp Ass0TypeVal where
   dispGen req = \case
@@ -464,20 +452,14 @@ instance Disp Ass0TypeVal where
       case a0tyvPrim of
         A0TyValInt -> "Int"
         A0TyValBool -> "Bool"
-        A0TyValVec n ->
-          let doc = "Vec" <+> disp n
-           in if req <= Atomic then deepenParen doc else doc
-        A0TyValMat m n ->
-          let doc = "Mat" <+> disp m <+> disp n
-           in if req <= Atomic then deepenParen doc else doc
+        A0TyValVec n -> deepenParenWhen (req <= Atomic) ("Vec" <+> disp n)
+        A0TyValMat m n -> deepenParenWhen (req <= Atomic) ("Mat" <+> disp m <+> disp n)
     A0TyValArrow (xOpt, a0tyv1) a0tye2 ->
       let docDom =
             case xOpt of
               Just x -> "(" <> disp x <+> ":" <+> disp a0tyv1 <> ")"
               Nothing -> dispGen FunDomain a0tyv1
-          doc =
-            group (docDom <> " ->" <> line <> disp a0tye2)
-       in if req <= FunDomain then deepenParen doc else doc
+       in deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp a0tye2)
     A0TyValCode a1tyv1 ->
       stagingOperatorStyle "&" <> stage1Style (dispGen Atomic a1tyv1)
 
@@ -488,19 +470,18 @@ instance Disp Ass1TypeVal where
         A1TyValInt -> "Int"
         A1TyValBool -> "Bool"
         A1TyValVec a0v ->
-          let doc = "Vec" <+> stagingOperatorStyle "%" <> stage0Style (dispGen Atomic a0v)
-           in if req <= Atomic then deepenParen doc else doc
+          deepenParenWhen (req <= Atomic) $
+            "Vec" <+> stagingOperatorStyle "%" <> stage0Style (dispGen Atomic a0v)
         A1TyValMat a0v1 a0v2 ->
-          let doc =
-                "Mat"
-                  <+> stagingOperatorStyle "%"
-                  <> stage0Style (dispGen Atomic a0v1)
-                  <+> stagingOperatorStyle "&"
-                  <> stage0Style (dispGen Atomic a0v2)
-           in if req <= Atomic then deepenParen doc else doc
+          deepenParenWhen (req <= Atomic) $
+            "Mat"
+              <+> stagingOperatorStyle "%"
+              <> stage0Style (dispGen Atomic a0v1)
+              <+> stagingOperatorStyle "&"
+              <> stage0Style (dispGen Atomic a0v2)
     A1TyValArrow a1tyv1 a1tyv2 ->
-      let doc = group (dispGen FunDomain a1tyv1 <> " ->" <> line <> disp a1tyv2)
-       in if req <= FunDomain then deepenParen doc else doc
+      deepenParenWhen (req <= FunDomain) $
+        group (dispGen FunDomain a1tyv1 <> " ->" <> line <> disp a1tyv2)
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
