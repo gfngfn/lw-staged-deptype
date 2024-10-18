@@ -37,6 +37,7 @@ data Token
   | TokIf
   | TokThen
   | TokElse
+  | TokAs
   | TokOpAdd
   | TokOpSub
   | TokOpMult
@@ -58,7 +59,8 @@ keywordMap =
       ("in", TokIn),
       ("if", TokIf),
       ("then", TokThen),
-      ("else", TokElse)
+      ("else", TokElse),
+      ("as", TokAs)
     ]
 
 lowerIdentOrKeyword :: Tokenizer Token

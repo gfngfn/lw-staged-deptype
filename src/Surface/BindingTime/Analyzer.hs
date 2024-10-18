@@ -61,6 +61,10 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         be1 <- assignBindingTimeVarToExpr e1
         be2 <- assignBindingTimeVarToExpr e2
         pure $ IfThenElse be0 be1 be2
+      As e1 tye2 -> do
+        be1 <- assignBindingTimeVarToExpr e1
+        btye2 <- assignBindingTimeVarToTypeExpr tye2
+        pure $ As be1 btye2
 
 assignBindingTimeVarToTypeExpr :: TypeExpr -> Assigner BTypeExpr
 assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
@@ -110,6 +114,7 @@ enhanceExpr enh (Expr meta exprMain) =
       App e1 e2 -> App (fExpr e1) (fExpr e2)
       LetIn x e1 e2 -> LetIn x (fExpr e1) (fExpr e2)
       IfThenElse e0 e1 e2 -> IfThenElse (fExpr e0) (fExpr e1) (fExpr e2)
+      As e1 tye2 -> As (fExpr e1) (fTypeExpr tye2)
   where
     fExpr = enhanceExpr enh
     fTypeExpr = enhanceTypeExpr enh
@@ -210,6 +215,11 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
           let e' = Expr (bt, ann) (IfThenElse e0' e1' e2')
           constraintsEq <- makeConstraintsFromBITypeEquation ann bity1 bity2
           pure (e', bity1, constraints0 ++ constraints1 ++ constraints2 ++ constraintsEq ++ [CEqual ann bt bt0])
+    As e1 btye2 -> do
+      -- Not confident. TODO: check the validity of the following
+      (e1', (BIType bt1 _), constraints1) <- extractConstraintsFromExpr btenv e1
+      (btye2', bity2@(BIType bt2 _), constraints2) <- extractConstraintsFromTypeExpr btenv btye2
+      pure (Expr (bt, ann) (As e1' btye2'), bity2, constraints1 ++ constraints2 ++ [CLeq ann bt1 bt2])
 
 makeConstraintsFromBITypeEquation :: Span -> BIType -> BIType -> M [Constraint Span]
 makeConstraintsFromBITypeEquation ann = go

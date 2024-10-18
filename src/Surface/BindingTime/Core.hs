@@ -93,6 +93,8 @@ instance HasVar BExpr where
         Set.union (frees e1) (Set.delete x (frees e2))
       IfThenElse e0 e1 e2 ->
         Set.unions [frees e0, frees e1, frees e2]
+      As e1 tye2 ->
+        Set.union (frees e1) (frees tye2)
 
   subst be0 x be@(Expr ann exprMain) =
     case exprMain of
@@ -110,6 +112,8 @@ instance HasVar BExpr where
         Expr ann (LetIn y (go e1) (if y == x then e2 else go e2))
       IfThenElse e0 e1 e2 ->
         Expr ann (IfThenElse (go e0) (go e1) (go e2))
+      As e1 tye2 ->
+        Expr ann (As (go e1) (go tye2))
     where
       go :: forall a. (HasVar a) => a -> a
       go = subst be0 x

@@ -42,6 +42,8 @@ stageExpr0Main = \case
     Lwsd.LetIn x (stageExpr0 e1) (stageExpr0 e2)
   IfThenElse e0 e1 e2 ->
     Lwsd.IfThenElse (stageExpr0 e0) (stageExpr0 e1) (stageExpr0 e2)
+  As e1 tye2 ->
+    Lwsd.As (stageExpr0 e1) (stageTypeExpr0 tye2)
 
 stageExpr1 :: BCExprF ann -> Lwsd.ExprF ann
 stageExpr1 (Expr (btc, ann) exprMain) =
@@ -65,6 +67,8 @@ stageExpr1Main = \case
     Lwsd.LetIn x (stageExpr1 e1) (stageExpr1 e2)
   IfThenElse e0 e1 e2 ->
     Lwsd.IfThenElse (stageExpr1 e0) (stageExpr1 e1) (stageExpr1 e2)
+  As e1 tye2 ->
+    Lwsd.As (stageExpr1 e1) (stageTypeExpr1 tye2)
 
 stageTypeExpr0 :: BCTypeExprF ann -> Lwsd.TypeExprF ann
 stageTypeExpr0 (TypeExpr (btc, ann) typeExprMain) =
