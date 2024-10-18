@@ -93,10 +93,22 @@ exprAtom, expr :: P Expr
                 _ -> Nothing
             )
 
+    comp :: P Expr
+    comp =
+      binSep makeBinOpApp compOp add
+      where
+        compOp :: P (Located Var)
+        compOp =
+          expectToken
+            ( \case
+                TokOpLeq -> Just "<="
+                _ -> Nothing
+            )
+
     lam :: P Expr
     lam =
       (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
-        `or` add
+        `or` comp
       where
         binder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))

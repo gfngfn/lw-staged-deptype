@@ -39,6 +39,7 @@ data Token
   | TokOpAdd
   | TokOpSub
   | TokOpMult
+  | TokOpLeq
   deriving stock (Ord, Eq, Show, Generic)
 
 instance Mp.VisualStream [Located Token] where
@@ -82,6 +83,7 @@ token =
       TokOpAdd <$ Mp.single '+',
       TokOpSub <$ Mp.single '-',
       TokOpMult <$ Mp.single '*',
+      TokOpLeq <$ Mp.chunk "<=",
       lowerIdentOrKeyword,
       TokUpper <$> upperIdent,
       TokInt <$> integerLiteral
