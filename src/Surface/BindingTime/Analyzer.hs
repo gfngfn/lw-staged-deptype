@@ -164,9 +164,9 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       (btyeRec', bityRec, constraintsRec) <- extractConstraintsFromTypeExpr btenv btyeRec
       (btye1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
       (e2', bity2@(BIType bt2 _), constraints2) <-
-          extractConstraintsFromExpr
-            (Map.insert x1 (EntryLocallyBound bt bity1) (Map.insert f (EntryLocallyBound bt bityRec) btenv))
-            e2
+        extractConstraintsFromExpr
+          (Map.insert x1 (EntryLocallyBound bt bity1) (Map.insert f (EntryLocallyBound bt bityRec) btenv))
+          e2
       let bitySynth = BIType bt (BITyArrow (Just x1, bity1) bity2)
       constraintsEq <- makeConstraintsFromBITypeEquation ann bitySynth bityRec
       let constraints =
