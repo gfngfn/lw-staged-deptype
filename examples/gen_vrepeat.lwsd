@@ -1,0 +1,8 @@
+let aux = rec(self : (p : Int) -> (q : Int) -> &(Vec %p) -> &(Vec %(p * q))) -> fun(n : Int) -> fun(m : Int) -> fun(e : &(Vec %n)) ->
+  if m <= 0 then
+    &[| |] as &(Vec %(n * m))
+  else
+    &(~(gen_vconcat n (n * (m - 1))) ~e ~(self n (m - 1) e))
+in
+let gen_vrepeat = fun(n : Int) -> fun(m : Int) -> &(fun(v : Vec %n) -> ~(aux n m &v)) in
+&(~(gen_vrepeat 3 5) [| 4; 6; 9 |])

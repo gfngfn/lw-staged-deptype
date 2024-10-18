@@ -4,73 +4,14 @@ import Data.Functor
 import Data.Text (Text)
 import Lwsd.Parser qualified as Parser
 import Lwsd.Syntax
+import SyntaxUtil
 import Test.Hspec
 import Util.TokenUtil (Span (..))
 
-type TypeExpr0 = TypeExprF ()
-
-type Expr0 = ExprF ()
-
-typ :: TypeExprMainF () -> TypeExpr0
-typ = TypeExpr ()
-
-tyInt :: TypeExpr0
-tyInt = typ (TyName "Int" [])
-
-tyBool :: TypeExpr0
-tyBool = typ (TyName "Bool" [])
-
-tyNormalVec :: Expr0 -> TypeExpr0
-tyNormalVec e = typ (TyName "Vec" [NormalArg e])
-
-tyPersVec :: Expr0 -> TypeExpr0
-tyPersVec e = typ (TyName "Vec" [PersistentArg e])
-
-tyCode :: TypeExpr0 -> TypeExpr0
-tyCode = typ . TyCode
-
-tyDepFun :: Var -> TypeExpr0 -> TypeExpr0 -> TypeExpr0
-tyDepFun x tye1 tye2 = typ (TyArrow (Just x, tye1) tye2)
-
-tyNondepFun :: TypeExpr0 -> TypeExpr0 -> TypeExpr0
-tyNondepFun tye1 tye2 = typ (TyArrow (Nothing, tye1) tye2)
-
-expr :: ExprMainF () -> Expr0
-expr = Expr ()
-
-litInt :: Int -> Expr0
-litInt = expr . Literal . LitInt
-
-litVec :: [Int] -> Expr0
-litVec = expr . Literal . LitVec
-
-var :: Text -> Expr0
-var = expr . Var
-
-lam :: (Var, TypeExpr0) -> Expr0 -> Expr0
-lam binder e = expr (Lam binder e)
-
-app :: Expr0 -> Expr0 -> Expr0
-app e1 e2 = expr (App e1 e2)
-
-binOp :: Var -> Expr0 -> Expr0 -> Expr0
-binOp op e1 e2 = app (app (var op) e1) e2
-
-add, sub, mult :: Expr0 -> Expr0 -> Expr0
-add = binOp "+"
-sub = binOp "-"
-mult = binOp "*"
-
-bracket :: Expr0 -> Expr0
-bracket = expr . Bracket
-
-escape :: Expr0 -> Expr0
-escape = expr . Escape
-
-parseExpr :: Text -> Either String Expr0
+parseExpr :: Text -> Either String ExprVoid
 parseExpr s = fmap void (Parser.parseExpr s)
 
-parseTypeExpr :: Text -> Either String TypeExpr0
+parseTypeExpr :: Text -> Either String TypeExprVoid
 parseTypeExpr s = fmap void (Parser.parseTypeExpr s)
 
 exprLoc :: Int -> Int -> ExprMainF Span -> Expr
@@ -81,7 +22,7 @@ typLoc start end = TypeExpr (Span start end)
 
 spec :: Spec
 spec = do
-  describe "Parser.parseExpr (without code locations)" $ do
+  describe "parseExpr (without code locations)" $ do
     it "parses integer literals (1)" $
       parseExpr "42"
         `shouldBe` pure (litInt 42)
@@ -114,15 +55,21 @@ spec = do
         `shouldBe` pure (app (app (var "x") (litInt 42)) (var "z"))
     it "parses lambda abstractions (1)" $
       parseExpr "fun (x : Int) -> x"
-        `shouldBe` pure (lam ("x", tyInt) (var "x"))
+        `shouldBe` pure (nonrecLam ("x", tyInt) (var "x"))
     it "parses lambda abstractions (2)" $
       let ty = tyDepFun "n" tyInt tyBool
        in parseExpr "fun (x : (n : Int) -> Bool) -> x y"
-            `shouldBe` pure (lam ("x", ty) (app (var "x") (var "y")))
-    it "parses let expressions" $
+            `shouldBe` pure (nonrecLam ("x", ty) (app (var "x") (var "y")))
+    it "parses recursive lambda abstractions" $
+      parseExpr "rec (self : Int -> Int) -> fun (x : Int) -> x"
+        `shouldBe` pure (recLam ("self", tyNondepFun tyInt tyInt) ("x", tyInt) (var "x"))
+    it "parses let-expressions" $
       let ty = tyDepFun "n" tyInt tyBool
        in parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
-            `shouldBe` pure (expr (LetIn "f" (lam ("x", ty) (app (var "x") (var "y"))) (var "f")))
+            `shouldBe` pure (expr (LetIn "f" (nonrecLam ("x", ty) (app (var "x") (var "y"))) (var "f")))
+    it "parses if-expressions" $
+      parseExpr "if b then x + 1 else x"
+        `shouldBe` pure (expr (IfThenElse (var "b") (add (var "x") (litInt 1)) (var "x")))
     it "parses brackets (1)" $
       parseExpr "f &x y"
         `shouldBe` pure (app (app (var "f") (bracket (var "x"))) (var "y"))
@@ -150,6 +97,9 @@ spec = do
     it "parses binary operators (4)" $
       parseExpr "2 + f 3"
         `shouldBe` pure (add (litInt 2) (app (var "f") (litInt 3)))
+    it "parses upcasts" $
+      parseExpr "[| |] as Vec %n"
+        `shouldBe` pure (upcast (litVec []) (tyPersVec (var "n")))
   describe "Parser.parseTypeExpr" $ do
     it "parses dependent function types (1)" $
       parseTypeExpr "(n : Int) -> Bool"
@@ -256,6 +206,7 @@ spec = do
           e =
             exprLoc 0 34 $
               Lam
+                Nothing
                 ("x", ty)
                 (exprLoc 31 34 $ App (exprLoc 31 32 $ Var "x") (exprLoc 33 34 $ Var "y"))
        in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"

@@ -28,6 +28,7 @@ data Bug
   | NotAnInteger (Maybe Var) Ass0Val
   | NotAVector Var Ass0Val
   | NotAMatrix Var Ass0Val
+  | NotABoolean Ass0Val
   | FoundSymbol Var Symbol
   | FoundAss0Val Var Ass0Val
   | InconsistentAppBuiltIn BuiltIn
@@ -63,7 +64,7 @@ generateFreshSymbol = do
 generateIdentityFunction :: Env0 -> Ass0TypeVal -> M Ass0Val
 generateIdentityFunction env a0tyv = do
   x <- symbolToVar <$> generateFreshSymbol
-  pure $ A0ValLam (x, a0tyv) (A0Var x) env
+  pure $ A0ValLam Nothing (x, a0tyv) (A0Var x) env
 
 findEntry :: Env0 -> Var -> M EnvEntry
 findEntry env x =
@@ -124,6 +125,10 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValLiteral (ALitInt (n1 * n2))
+      BILeq x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValLiteral (ALitBool (n1 <= n2))
       BIGenVadd x1 -> do
         n1 <- findInt0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
@@ -176,17 +181,36 @@ evalExpr0 env = \case
           Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
     findVal0 env x
-  A0Lam (x, a0tye1) a0e2 -> do
+  A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
-    pure $ A0ValLam (x, a0tyv1) a0e2 env
+    pure $ A0ValLam Nothing (x, a0tyv1) a0e2 env
+  A0Lam (Just (f, a0tyeRec)) (x, a0tye1) a0e2 -> do
+    a0tyvRec <- evalTypeExpr0 env a0tyeRec
+    a0tyv1 <- evalTypeExpr0 env a0tye1
+    pure $ A0ValLam (Just (f, a0tyvRec)) (x, a0tyv1) a0e2 env
   A0App a0e1 a0e2 -> do
     a0v1 <- evalExpr0 env a0e1
     a0v2 <- evalExpr0 env a0e2
     case a0v1 of
-      A0ValLam (x, _a0tyv11) a0e12 env1 ->
-        evalExpr0 (Map.insert x (Ass0ValEntry a0v2) env1) a0e12
+      A0ValLam Nothing (x, _a0tyv11) a0e12 env1 ->
+        evalExpr0
+          (Map.insert x (Ass0ValEntry a0v2) env1)
+          a0e12
+      A0ValLam (Just (f, _a0tyvRec)) (x, _a0tyv11) a0e12 env1 ->
+        evalExpr0
+          (Map.insert x (Ass0ValEntry a0v2) (Map.insert f (Ass0ValEntry a0v1) env1))
+          a0e12
       _ ->
         bug $ NotAClosure a0v1
+  A0IfThenElse a0e0 a0e1 a0e2 -> do
+    a0v0 <- evalExpr0 env a0e0
+    case a0v0 of
+      A0ValLiteral (ALitBool b) ->
+        if b
+          then evalExpr0 env a0e1
+          else evalExpr0 env a0e2
+      _ ->
+        bug $ NotABoolean a0v0
   A0Bracket a1e1 -> do
     a1v1 <- evalExpr1 env a1e1
     pure $ A0ValBracket a1v1
@@ -208,15 +232,27 @@ evalExpr1 env = \case
   A1Var x -> do
     symb <- findSymbol env x
     pure $ A1ValVar symb
-  A1Lam (x, a1tye1) a1e2 -> do
+  A1Lam Nothing (x, a1tye1) a1e2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
-    symb <- generateFreshSymbol
-    a1v1 <- evalExpr1 (Map.insert x (SymbolEntry symb) env) a1e2
-    pure $ A1ValLam (symb, a1tyv1) a1v1
+    symbX <- generateFreshSymbol
+    a1v1 <- evalExpr1 (Map.insert x (SymbolEntry symbX) env) a1e2
+    pure $ A1ValLam Nothing (symbX, a1tyv1) a1v1
+  A1Lam (Just (f, a1tyeRec)) (x, a1tye1) a1e2 -> do
+    a1tyvRec <- evalTypeExpr1 env a1tyeRec
+    a1tyv1 <- evalTypeExpr1 env a1tye1
+    symbF <- generateFreshSymbol
+    symbX <- generateFreshSymbol
+    a1v1 <- evalExpr1 (Map.insert x (SymbolEntry symbX) (Map.insert f (SymbolEntry symbF) env)) a1e2
+    pure $ A1ValLam (Just (symbF, a1tyvRec)) (symbX, a1tyv1) a1v1
   A1App a1e1 a1e2 -> do
     a1v1 <- evalExpr1 env a1e1
     a1v2 <- evalExpr1 env a1e2
     pure $ A1ValApp a1v1 a1v2
+  A1IfThenElse a1e0 a1e1 a1e2 -> do
+    a1v0 <- evalExpr1 env a1e0
+    a1v1 <- evalExpr1 env a1e1
+    a1v2 <- evalExpr1 env a1e2
+    pure $ A1ValIfThenElse a1v0 a1v1 a1v2
   A1Escape a0e1 -> do
     a0v1 <- evalExpr0 env a0e1
     case a0v1 of
@@ -265,7 +301,8 @@ evalTypeExpr1 env = \case
 
 unliftVal :: Ass1Val -> Ass0Expr
 unliftVal = \case
-  A1ValLiteral lit -> A0Literal lit
+  A1ValLiteral lit ->
+    A0Literal lit
   A1ValConst c ->
     case c of
       A1ValConstVadd n -> BuiltIn.ass0exprVadd n
@@ -273,9 +310,16 @@ unliftVal = \case
       A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
-  A1ValVar symb -> A0Var (symbolToVar symb)
-  A1ValLam (symb, a1tyv1) a1v2 -> A0Lam (symbolToVar symb, unliftTypeVal a1tyv1) (unliftVal a1v2)
-  A1ValApp a1v1 a1v2 -> A0App (unliftVal a1v1) (unliftVal a1v2)
+  A1ValVar symbX ->
+    A0Var (symbolToVar symbX)
+  A1ValLam Nothing (symbX, a1tyv1) a1v2 ->
+    A0Lam Nothing (symbolToVar symbX, unliftTypeVal a1tyv1) (unliftVal a1v2)
+  A1ValLam (Just (symbF, a1tyvRec)) (symbX, a1tyv1) a1v2 ->
+    A0Lam (Just (symbolToVar symbF, unliftTypeVal a1tyvRec)) (symbolToVar symbX, unliftTypeVal a1tyv1) (unliftVal a1v2)
+  A1ValApp a1v1 a1v2 ->
+    A0App (unliftVal a1v1) (unliftVal a1v2)
+  A1ValIfThenElse a1v0 a1v1 a1v2 ->
+    A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
 
 unliftTypeVal :: Ass1TypeVal -> Ass0TypeExpr
 unliftTypeVal = \case

@@ -67,6 +67,7 @@ data BuiltIn
   = BIAdd Var Var
   | BISub Var Var
   | BIMult Var Var
+  | BILeq Var Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
   | BIGenMtranspose Var Var
@@ -86,9 +87,11 @@ data ExprF ann = Expr ann (ExprMainF ann)
 data ExprMainF ann
   = Literal Literal
   | Var Var
-  | Lam (Var, TypeExprF ann) (ExprF ann)
+  | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)
   | LetIn Var (ExprF ann) (ExprF ann)
+  | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)
+  | As (ExprF ann) (TypeExprF ann)
   | Bracket (ExprF ann)
   | Escape (ExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
@@ -127,6 +130,7 @@ type ArgForType = ArgForTypeF Span
 
 data AssLiteral
   = ALitInt Int
+  | ALitBool Bool
   | ALitVec Vector
   | ALitMat Matrix
   deriving stock (Eq, Show)
@@ -135,8 +139,9 @@ data Ass0Expr
   = A0Literal AssLiteral
   | A0AppBuiltIn BuiltIn
   | A0Var Var
-  | A0Lam (Var, Ass0TypeExpr) Ass0Expr
+  | A0Lam (Maybe (Var, Ass0TypeExpr)) (Var, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
+  | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
   | A0TyEqAssert Span Type1Equation
   deriving stock (Eq, Show)
@@ -144,8 +149,9 @@ data Ass0Expr
 data Ass1Expr
   = A1Literal AssLiteral
   | A1Var Var
-  | A1Lam (Var, Ass1TypeExpr) Ass1Expr
+  | A1Lam (Maybe (Var, Ass1TypeExpr)) (Var, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
+  | A1IfThenElse Ass1Expr Ass1Expr Ass1Expr
   | A1Escape Ass0Expr
   deriving stock (Eq, Show)
 
@@ -176,7 +182,7 @@ data Ass1PrimType
 
 data Ass0Val
   = A0ValLiteral AssLiteral
-  | A0ValLam (Var, Ass0TypeVal) Ass0Expr Env0
+  | A0ValLam (Maybe (Var, Ass0TypeVal)) (Var, Ass0TypeVal) Ass0Expr Env0
   | A0ValBracket Ass1Val
   deriving stock (Eq, Show)
 
@@ -184,8 +190,9 @@ data Ass1Val
   = A1ValLiteral AssLiteral
   | A1ValConst Ass1ValConst
   | A1ValVar Symbol
-  | A1ValLam (Symbol, Ass1TypeVal) Ass1Val
+  | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) Ass1Val
   | A1ValApp Ass1Val Ass1Val
+  | A1ValIfThenElse Ass1Val Ass1Val Ass1Val
   deriving stock (Eq, Show)
 
 data Ass1ValConst
