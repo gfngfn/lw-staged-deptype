@@ -30,3 +30,14 @@ spec = do
     it "ignores stage-1 bound variables (non-rec)" $
       frees (a1nonrecLam "x" a1tyInt (a1app (a1app (a1var "f") (a1var "x")) (a1escape (a0var "y"))))
         `shouldBe` (Set.fromList ["y"], Set.fromList ["f"])
+  describe "alphaEquivalent" $ do
+    it "judges alpha-equivalence of functions (1)" $
+      alphaEquivalent
+        (a0nonrecLam "foo" a0tyInt (a0var "foo"))
+        (a0nonrecLam "bar" a0tyInt (a0var "bar"))
+        `shouldBe` True
+    it "judges alpha-equivalence of functions (2)" $
+      alphaEquivalent
+        (a0nonrecLam "foo" a0tyInt (a0var "bar"))
+        (a0nonrecLam "bar" a0tyInt (a0var "bar"))
+        `shouldBe` False
