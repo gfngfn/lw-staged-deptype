@@ -33,6 +33,9 @@ data Token
   | TokFun
   | TokLet
   | TokIn
+  | TokIf
+  | TokThen
+  | TokElse
   | TokOpAdd
   | TokOpSub
   | TokOpMult
@@ -49,7 +52,10 @@ keywordMap =
   Map.fromList
     [ ("fun", TokFun),
       ("let", TokLet),
-      ("in", TokIn)
+      ("in", TokIn),
+      ("if", TokIf),
+      ("then", TokThen),
+      ("else", TokElse)
     ]
 
 lowerIdentOrKeyword :: Tokenizer Token

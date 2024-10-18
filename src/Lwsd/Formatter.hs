@@ -249,6 +249,7 @@ instance Disp Surface.ExprMain where
     Surface.Lam (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
+    Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
 
 instance Disp Surface.TypeExpr where
   dispGen req (Surface.TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -507,8 +508,12 @@ instance Disp Bta.AnalysisError where
       "Unbound variable" <+> disp x <+> disp spanInFile
     Bta.NotAFunction spanInFile bity ->
       "Not a function type;" <+> disp (show bity) <+> disp spanInFile
+    Bta.NotABase spanInFile bity ->
+      "Not a base type;" <+> disp (show bity) <+> disp spanInFile
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
+    Bta.BITypeContradiction spanInFile bity1 bity2 ->
+      "Basic type contradiction;" <+> disp (show bity1) <> "," <+> disp (show bity2) <+> disp spanInFile
 
 dispWithBindingTime :: (Disp exprMain) => Bta.BindingTimeConst -> exprMain -> Doc Ann
 dispWithBindingTime btc eMain =
@@ -530,6 +535,7 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.Lam (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
+    Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
 
 instance Disp (Bta.BCTypeExprF ann) where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =
