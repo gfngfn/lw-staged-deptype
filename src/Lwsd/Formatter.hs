@@ -113,16 +113,16 @@ dispApp req e1 e2 =
 dispLetIn :: (Disp var, Disp expr) => Associativity -> var -> expr -> expr -> Doc Ann
 dispLetIn req x e1 e2 =
   deepenParenWhen (req <= FunDomain) $
-    group ("let" <+> disp x <+> "=" <+> nest 2 (line <> disp e1) <+> "in" <+> disp e2)
+    group ("let" <+> disp x <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
 
 dispIfThenElse :: (Disp expr) => Associativity -> expr -> expr -> expr -> Doc Ann
 dispIfThenElse req e0 e1 e2 =
   deepenParenWhen (req <= FunDomain) $
     group (docIf <+> docThen <+> docElse)
   where
-    docIf = "if" <+> nest 2 (line <> disp e0)
-    docThen = "then" <+> nest 2 (line <> disp e1)
-    docElse = "else" <+> nest 2 (line <> disp e2)
+    docIf = "if" <> nest 2 (line <> disp e0)
+    docThen = "then" <> nest 2 (line <> disp e1)
+    docElse = "else" <> nest 2 (line <> disp e2)
 
 dispPersistent :: (Disp expr) => expr -> Doc Ann
 dispPersistent e =
@@ -138,7 +138,8 @@ dispEscape e =
 
 dispArrowType :: (Disp var, Disp ty1, Disp ty2) => Associativity -> Maybe var -> ty1 -> ty2 -> Doc Ann
 dispArrowType req xOpt tye1 tye2 =
-  deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp tye2)
+  deepenParenWhen (req <= FunDomain) $
+    group (docDom <> " ->" <> line <> disp tye2)
   where
     docDom =
       case xOpt of
