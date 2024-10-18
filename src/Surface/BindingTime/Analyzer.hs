@@ -219,7 +219,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       -- Not confident. TODO: check the validity of the following
       (e1', (BIType bt1 _), constraints1) <- extractConstraintsFromExpr btenv e1
       (btye2', bity2@(BIType bt2 _), constraints2) <- extractConstraintsFromTypeExpr btenv btye2
-      pure (Expr (bt, ann) (As e1' btye2'), bity2, constraints1 ++ constraints2 ++ [CLeq ann bt1 bt2])
+      pure (Expr (bt, ann) (As e1' btye2'), bity2, constraints1 ++ constraints2 ++ [CEqual ann bt1 bt2])
 
 makeConstraintsFromBITypeEquation :: Span -> BIType -> BIType -> M [Constraint Span]
 makeConstraintsFromBITypeEquation ann = go
