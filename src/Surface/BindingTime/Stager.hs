@@ -28,11 +28,22 @@ stageExpr0 (Expr (btc, ann) exprMain) =
 
 stageExpr0Main :: BCExprMainF ann -> Lwsd.ExprMainF ann
 stageExpr0Main = \case
-  Literal lit -> Lwsd.Literal (convertLiteral lit)
-  Var x -> Lwsd.Var x
-  Lam (x, tye1) e2 -> Lwsd.Lam Nothing (x, stageTypeExpr0 tye1) (stageExpr0 e2)
-  App e1 e2 -> Lwsd.App (stageExpr0 e1) (stageExpr0 e2)
-  LetIn x e1 e2 -> Lwsd.LetIn x (stageExpr0 e1) (stageExpr0 e2)
+  Literal lit ->
+    Lwsd.Literal (convertLiteral lit)
+  Var x ->
+    Lwsd.Var x
+  Lam Nothing (x, tye1) e2 ->
+    Lwsd.Lam Nothing (x, stageTypeExpr0 tye1) (stageExpr0 e2)
+  Lam (Just (f, tyeRec)) (x, tye1) e2 ->
+    Lwsd.Lam (Just (f, stageTypeExpr0 tyeRec)) (x, stageTypeExpr0 tye1) (stageExpr0 e2)
+  App e1 e2 ->
+    Lwsd.App (stageExpr0 e1) (stageExpr0 e2)
+  LetIn x e1 e2 ->
+    Lwsd.LetIn x (stageExpr0 e1) (stageExpr0 e2)
+  IfThenElse e0 e1 e2 ->
+    Lwsd.IfThenElse (stageExpr0 e0) (stageExpr0 e1) (stageExpr0 e2)
+  As e1 tye2 ->
+    Lwsd.As (stageExpr0 e1) (stageTypeExpr0 tye2)
 
 stageExpr1 :: BCExprF ann -> Lwsd.ExprF ann
 stageExpr1 (Expr (btc, ann) exprMain) =
@@ -42,11 +53,22 @@ stageExpr1 (Expr (btc, ann) exprMain) =
 
 stageExpr1Main :: BCExprMainF ann -> Lwsd.ExprMainF ann
 stageExpr1Main = \case
-  Literal lit -> Lwsd.Literal (convertLiteral lit)
-  Var x -> Lwsd.Var x
-  Lam (x, tye1) e2 -> Lwsd.Lam Nothing (x, stageTypeExpr1 tye1) (stageExpr1 e2)
-  App e1 e2 -> Lwsd.App (stageExpr1 e1) (stageExpr1 e2)
-  LetIn x e1 e2 -> Lwsd.LetIn x (stageExpr1 e1) (stageExpr1 e2)
+  Literal lit ->
+    Lwsd.Literal (convertLiteral lit)
+  Var x ->
+    Lwsd.Var x
+  Lam Nothing (x, tye1) e2 ->
+    Lwsd.Lam Nothing (x, stageTypeExpr1 tye1) (stageExpr1 e2)
+  Lam (Just (f, tyeRec)) (x, tye1) e2 ->
+    Lwsd.Lam (Just (f, stageTypeExpr1 tyeRec)) (x, stageTypeExpr1 tye1) (stageExpr1 e2)
+  App e1 e2 ->
+    Lwsd.App (stageExpr1 e1) (stageExpr1 e2)
+  LetIn x e1 e2 ->
+    Lwsd.LetIn x (stageExpr1 e1) (stageExpr1 e2)
+  IfThenElse e0 e1 e2 ->
+    Lwsd.IfThenElse (stageExpr1 e0) (stageExpr1 e1) (stageExpr1 e2)
+  As e1 tye2 ->
+    Lwsd.As (stageExpr1 e1) (stageTypeExpr1 tye2)
 
 stageTypeExpr0 :: BCTypeExprF ann -> Lwsd.TypeExprF ann
 stageTypeExpr0 (TypeExpr (btc, ann) typeExprMain) =

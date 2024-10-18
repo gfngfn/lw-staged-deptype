@@ -43,9 +43,10 @@ initialBindingTimeEnv =
   List.foldl'
     (\btenv (x, entry) -> Map.insert x entry btenv)
     Map.empty
-    [ ("+", persistent bityArith),
-      ("-", persistent bityArith),
-      ("*", persistent bityArith),
+    [ ("+", persistent bityBinary),
+      ("-", persistent bityBinary),
+      ("*", persistent bityBinary),
+      ("<=", persistent bityBinary),
       ("vadd", fixed0 "gen_vadd" bityVadd),
       ("vconcat", fixed0 "gen_vconcat" bityVconcat),
       ("mtranspose", fixed0 "gen_mtranspose" bityMtranspose),
@@ -56,12 +57,12 @@ initialBindingTimeEnv =
     persistent = EntryBuiltInPersistent
     fixed0 x' = EntryBuiltInFixed x' BT0
 
-    bityArith :: BITypeF () ()
-    bityArith =
-      int `arrow` (int `arrow` int)
+    bityBinary :: BITypeF () ()
+    bityBinary =
+      base `arrow` (base `arrow` base)
       where
         wrap = BIType ()
-        int = wrap (BITyBase [])
+        base = wrap (BITyBase [])
         arrow bity1 bity2 = wrap $ BITyArrow (Nothing, bity1) bity2
 
     bityVadd :: BITypeVoid

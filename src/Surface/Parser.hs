@@ -68,9 +68,18 @@ exprAtom, expr :: P Expr
         makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (App e1 e2)
 
+    as :: P Expr
+    as =
+      (makeAs <$> (app <* token TokAs) <*> typeExpr)
+        `or` app
+      where
+        makeAs :: Expr -> TypeExpr -> Expr
+        makeAs e1@(Expr loc1 _) tye2@(TypeExpr loc2 _) =
+          Expr (mergeSpan loc1 loc2) (As e1 tye2)
+
     mult :: P Expr
     mult =
-      binSep makeBinOpApp multOp app
+      binSep makeBinOpApp multOp as
       where
         multOp :: P (Located Var)
         multOp =
@@ -93,16 +102,38 @@ exprAtom, expr :: P Expr
                 _ -> Nothing
             )
 
+    comp :: P Expr
+    comp =
+      binSep makeBinOpApp compOp add
+      where
+        compOp :: P (Located Var)
+        compOp =
+          expectToken
+            ( \case
+                TokOpLeq -> Just "<="
+                _ -> Nothing
+            )
+
     lam :: P Expr
     lam =
-      (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
-        `or` add
+      tries
+        [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
+          makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr,
+          makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
+        ]
+        comp
       where
         binder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
 
-        makeLam locFirst (x, tye) e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (Lam (x, tye) e)
+        makeNonrecLam locFirst xBinder e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (Lam Nothing xBinder e)
+
+        makeRecLam locFirst fBinder xBinder e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (Lam (Just fBinder) xBinder e)
+
+        makeIf locFirst e0 e1 e2@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
 
     letin :: P Expr
     letin =
