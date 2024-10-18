@@ -89,11 +89,8 @@ disps :: (Disp a) => [a] -> Doc Ann
 disps [] = mempty
 disps (first : rest) = List.foldl' (\doc x -> doc <> "," <+> disp x) (disp first) rest
 
-deepenParen :: Doc Ann -> Doc Ann
-deepenParen doc = "(" <> nest 2 doc <> ")"
-
 deepenParenWhen :: Bool -> Doc Ann -> Doc Ann
-deepenParenWhen b = if b then deepenParen else id
+deepenParenWhen b doc = if b then "(" <> nest 2 doc <> ")" else doc
 
 dispNonrecLam :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> Doc Ann
 dispNonrecLam req x tye1 e2 =
@@ -158,10 +155,11 @@ dispVectorLiteral ns =
 
 dispMatrixLiteral :: [[Int]] -> Doc Ann
 dispMatrixLiteral nss =
-  encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRow <$> nss)
-  where
-    dispRow :: [Int] -> Doc Ann
-    dispRow row = commaSep (disp <$> row)
+  encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRowContents <$> nss)
+
+dispRowContents :: [Int] -> Doc Ann
+dispRowContents row =
+  commaSep (disp <$> row)
 
 instance Disp Text where
   dispGen _ = pretty
@@ -262,9 +260,6 @@ instance Disp Surface.TypeExprMain where
     Surface.TyArrow (xOpt, tye1) tye2 ->
       dispArrowType req xOpt tye1 tye2
 
-dispRowContents :: [Int] -> Doc Ann
-dispRowContents row = commaSep (disp <$> row)
-
 instance Disp AssLiteral where
   dispGen _ = \case
     ALitInt n -> pretty n
@@ -278,16 +273,11 @@ instance Disp Ass0Expr where
     A0Literal lit -> disp lit
     A0AppBuiltIn bi -> disp bi
     A0Var y -> disp y
-    A0Lam Nothing (y, a0tye1) a0e2 ->
-      dispNonrecLam req y a0tye1 a0e2
-    A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 ->
-      dispRecLam req f a0tyeRec y a0tye1 a0e2
-    A0App a0e1 a0e2 ->
-      dispApp req a0e1 a0e2
-    A0Bracket a1e1 ->
-      dispBracket a1e1
-    A0IfThenElse a0e0 a0e1 a0e2 ->
-      dispIfThenElse req a0e0 a0e1 a0e2
+    A0Lam Nothing (y, a0tye1) a0e2 -> dispNonrecLam req y a0tye1 a0e2
+    A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 -> dispRecLam req f a0tyeRec y a0tye1 a0e2
+    A0App a0e1 a0e2 -> dispApp req a0e1 a0e2
+    A0Bracket a1e1 -> dispBracket a1e1
+    A0IfThenElse a0e0 a0e1 a0e2 -> dispIfThenElse req a0e0 a0e1 a0e2
     A0TyEqAssert _loc ty1eq ->
       let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
        in group (assertionStyle ("{" <> dispBracket a1tye1 <+> "=>" <+> dispBracket a1tye2 <> "}"))
@@ -451,14 +441,10 @@ instance Disp Ass1TypeVal where
 
 instance Disp Ass1PrimTypeVal where
   dispGen req = \case
-    A1TyValInt ->
-      "Int"
-    A1TyValBool ->
-      "Bool"
-    A1TyValVec a0v ->
-      deepenParenWhen (req <= Atomic) ("Vec" <+> dispPersistent a0v)
-    A1TyValMat a0v1 a0v2 ->
-      deepenParenWhen (req <= Atomic) ("Mat" <+> dispPersistent a0v1 <+> dispPersistent a0v2)
+    A1TyValInt -> "Int"
+    A1TyValBool -> "Bool"
+    A1TyValVec a0v -> deepenParenWhen (req <= Atomic) ("Vec" <+> dispPersistent a0v)
+    A1TyValMat a0v1 a0v2 -> deepenParenWhen (req <= Atomic) ("Mat" <+> dispPersistent a0v1 <+> dispPersistent a0v2)
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
@@ -466,12 +452,7 @@ instance Disp LocationInFile where
 
 instance Disp SpanInFile where
   dispGen _ (SpanInFile {startLocation, endLocation, contents}) =
-    "(from"
-      <+> disp startLocation
-      <+> "to"
-      <+> disp endLocation
-      <> ")"
-      <> maybe mempty makeLineText contents
+    "(from" <+> disp startLocation <+> "to" <+> disp endLocation <> ")" <> maybe mempty makeLineText contents
     where
       makeLineText s =
         if startLine == endLine
@@ -531,13 +512,18 @@ instance Disp Bta.AnalysisError where
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
 
+dispWithBindingTime :: (Disp exprMain) => Bta.BindingTimeConst -> exprMain -> Doc Ann
+dispWithBindingTime btc eMain =
+  group (f (prefix <> "(") <> disp eMain <> f ")")
+  where
+    (f, prefix) =
+      case btc of
+        Bta.BT0 -> (bindingTime0Style, "$0")
+        Bta.BT1 -> (bindingTime1Style, "$1")
+
 instance Disp (Bta.BCExprF ann) where
   dispGen _ (Surface.Expr (btc, _ann) exprMain) =
-    let (f, prefix) =
-          case btc of
-            Bta.BT0 -> (bindingTime0Style, "$0")
-            Bta.BT1 -> (bindingTime1Style, "$1")
-     in group (f (prefix <> "(") <> disp exprMain <> f ")")
+    dispWithBindingTime btc exprMain
 
 instance Disp (Bta.BCExprMainF ann) where
   dispGen req = \case
@@ -549,11 +535,7 @@ instance Disp (Bta.BCExprMainF ann) where
 
 instance Disp (Bta.BCTypeExprF ann) where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =
-    let (f, prefix) =
-          case btc of
-            Bta.BT0 -> (bindingTime0Style, "$0")
-            Bta.BT1 -> (bindingTime1Style, "$1")
-     in group (f (prefix <> "(") <> disp typeExprMain <> f ")")
+    dispWithBindingTime btc typeExprMain
 
 instance Disp (Bta.BCTypeExprMainF ann) where
   dispGen req = \case
