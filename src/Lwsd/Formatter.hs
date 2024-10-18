@@ -95,12 +95,12 @@ deepenParen doc = "(" <> nest 2 doc <> ")"
 deepenParenWhen :: Bool -> Doc Ann -> Doc Ann
 deepenParenWhen b = if b then deepenParen else id
 
-dispNonrecLam :: (Disp var, Disp typeExpr, Disp expr) => Associativity -> var -> typeExpr -> expr -> Doc Ann
+dispNonrecLam :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> Doc Ann
 dispNonrecLam req x tye1 e2 =
   deepenParenWhen (req <= FunDomain) $
     group ("λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
 
-dispRecLam :: (Disp var, Disp typeExpr, Disp expr) => Associativity -> var -> typeExpr -> var -> typeExpr -> expr -> Doc Ann
+dispRecLam :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> var -> ty -> expr -> Doc Ann
 dispRecLam req f tyeRec x tye1 e2 =
   deepenParenWhen (req <= FunDomain) $
     group (docBinderF <+> docBinderX <> nest 2 (line <> disp e2))
@@ -139,6 +139,30 @@ dispEscape :: (Disp expr) => expr -> Doc Ann
 dispEscape e =
   stagingOperatorStyle "~" <> stage0Style (dispGen Atomic e)
 
+dispArrowType :: (Disp var, Disp ty1, Disp ty2) => Associativity -> Maybe var -> ty1 -> ty2 -> Doc Ann
+dispArrowType req xOpt tye1 tye2 =
+  deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp tye2)
+  where
+    docDom =
+      case xOpt of
+        Just x -> "(" <> disp x <+> ":" <+> disp tye1 <> ")"
+        Nothing -> dispGen FunDomain tye1
+
+dispNondepArrowType :: (Disp ty) => Associativity -> ty -> ty -> Doc Ann
+dispNondepArrowType req =
+  dispArrowType req (Nothing :: Maybe Var)
+
+dispVectorLiteral :: [Int] -> Doc Ann
+dispVectorLiteral ns =
+  encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> ns)
+
+dispMatrixLiteral :: [[Int]] -> Doc Ann
+dispMatrixLiteral nss =
+  encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRow <$> nss)
+  where
+    dispRow :: [Int] -> Doc Ann
+    dispRow row = commaSep (disp <$> row)
+
 instance Disp Text where
   dispGen _ = pretty
 
@@ -154,11 +178,8 @@ instance Disp Symbol where
 instance Disp Literal where
   dispGen _ = \case
     LitInt n -> pretty n
-    LitVec ns -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> ns)
-    LitMat nss -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRow <$> nss)
-    where
-      dispRow :: [Int] -> Doc Ann
-      dispRow row = commaSep (disp <$> row)
+    LitVec ns -> dispVectorLiteral ns
+    LitMat nss -> dispMatrixLiteral nss
 
 instance Disp (ExprF ann) where
   dispGen req (Expr _ann exprMain) = dispGen req exprMain
@@ -186,11 +207,7 @@ instance Disp (TypeExprMainF ann) where
         [] -> disp tyName
         _ : _ -> deepenParenWhen (req <= Atomic) $ List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
     TyArrow (xOpt, tye1) tye2 ->
-      let docDom =
-            case xOpt of
-              Just x -> "(" <> disp x <+> ":" <+> disp tye1 <> ")"
-              Nothing -> dispGen FunDomain tye1
-       in deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp tye2)
+      dispArrowType req xOpt tye1 tye2
     TyCode tye1 ->
       dispBracket tye1
 
@@ -219,11 +236,8 @@ instance Disp BuiltIn where
 instance Disp Surface.Literal where
   dispGen _ = \case
     Surface.LitInt n -> pretty n
-    Surface.LitVec ns -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> ns)
-    Surface.LitMat nss -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRow <$> nss)
-    where
-      dispRow :: [Int] -> Doc Ann
-      dispRow row = commaSep (disp <$> row)
+    Surface.LitVec ns -> dispVectorLiteral ns
+    Surface.LitMat nss -> dispMatrixLiteral nss
 
 instance Disp Surface.Expr where
   dispGen req (Surface.Expr _ann exprMain) = dispGen req exprMain
@@ -246,11 +260,7 @@ instance Disp Surface.TypeExprMain where
         [] -> disp tyName
         _ : _ -> deepenParenWhen (req <= Atomic) $ List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
     Surface.TyArrow (xOpt, tye1) tye2 ->
-      let docDom =
-            case xOpt of
-              Just x -> "(" <> disp x <+> ":" <+> disp tye1 <> ")"
-              Nothing -> dispGen FunDomain tye1
-       in deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp tye2)
+      dispArrowType req xOpt tye1 tye2
 
 dispRowContents :: [Int] -> Doc Ann
 dispRowContents row = commaSep (disp <$> row)
@@ -260,8 +270,8 @@ instance Disp AssLiteral where
     ALitInt n -> pretty n
     ALitBool True -> "true"
     ALitBool False -> "false"
-    ALitVec v -> encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> Vector.toList v)
-    ALitMat m -> encloseSep ("[#" <> space) (space <> "#]") (";" <> softline) (dispRowContents <$> Matrix.toRows m)
+    ALitVec v -> dispVectorLiteral (Vector.toList v)
+    ALitMat m -> dispMatrixLiteral (Matrix.toRows m)
 
 instance Disp Ass0Expr where
   dispGen req = \case
@@ -301,16 +311,9 @@ instance Disp Ass0PrimType where
 
 instance Disp Ass0TypeExpr where
   dispGen req = \case
-    A0TyPrim a0tyPrim ->
-      disp a0tyPrim
-    A0TyArrow (xOpt, a0tye1) a0tye2 ->
-      let docDom =
-            case xOpt of
-              Just x -> "(" <> disp x <+> ":" <+> disp a0tye1 <> ")"
-              Nothing -> dispGen FunDomain a0tye1
-       in deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp a0tye2)
-    A0TyCode a1tye1 ->
-      dispBracket a1tye1
+    A0TyPrim a0tyPrim -> disp a0tyPrim
+    A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
+    A0TyCode a1tye1 -> dispBracket a1tye1
 
 instance Disp Ass1PrimType where
   dispGen req = \case
@@ -321,11 +324,8 @@ instance Disp Ass1PrimType where
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case
-    A1TyPrim a1tyPrim ->
-      dispGen req a1tyPrim
-    A1TyArrow a1tye1 a1tye2 ->
-      deepenParenWhen (req <= FunDomain) $
-        group (dispGen FunDomain a1tye1 <+> "->" <> line <> disp a1tye2)
+    A1TyPrim a1tyPrim -> dispGen req a1tyPrim
+    A1TyArrow a1tye1 a1tye2 -> dispNondepArrowType req a1tye1 a1tye2
 
 instance Disp Matrix.ConstructionError where
   dispGen _ = \case
@@ -404,14 +404,10 @@ instance Disp TypeError where
 
 instance Disp Ass0Val where
   dispGen req = \case
-    A0ValLiteral lit ->
-      disp lit
-    A0ValLam Nothing (x, a0tyv1) a0v2 _env ->
-      dispNonrecLam req x a0tyv1 a0v2
-    A0ValLam (Just (f, a0tyvRec)) (x, a0tyv1) a0v2 _env ->
-      dispRecLam req f a0tyvRec x a0tyv1 a0v2
-    A0ValBracket a1v1 ->
-      stagingOperatorStyle "&" <> stage1Style (dispGen Atomic a1v1)
+    A0ValLiteral lit -> disp lit
+    A0ValLam Nothing (x, a0tyv1) a0v2 _env -> dispNonrecLam req x a0tyv1 a0v2
+    A0ValLam (Just (f, a0tyvRec)) (x, a0tyv1) a0v2 _env -> dispRecLam req f a0tyvRec x a0tyv1 a0v2
+    A0ValBracket a1v1 -> dispBracket a1v1
 
 instance Disp Ass1ValConst where
   dispGen _ = \case
@@ -437,40 +433,32 @@ instance Disp Ass1Val where
 
 instance Disp Ass0TypeVal where
   dispGen req = \case
-    A0TyValPrim a0tyvPrim ->
-      case a0tyvPrim of
-        A0TyValInt ->
-          "Int"
-        A0TyValBool ->
-          "Bool"
-        A0TyValVec n ->
-          deepenParenWhen (req <= Atomic) ("Vec" <+> disp n)
-        A0TyValMat m n ->
-          deepenParenWhen (req <= Atomic) ("Mat" <+> disp m <+> disp n)
-    A0TyValArrow (xOpt, a0tyv1) a0tye2 ->
-      let docDom =
-            case xOpt of
-              Just x -> "(" <> disp x <+> ":" <+> disp a0tyv1 <> ")"
-              Nothing -> dispGen FunDomain a0tyv1
-       in deepenParenWhen (req <= FunDomain) $ group (docDom <> " ->" <> line <> disp a0tye2)
-    A0TyValCode a1tyv1 ->
-      stagingOperatorStyle "&" <> stage1Style (dispGen Atomic a1tyv1)
+    A0TyValPrim a0tyvPrim -> dispGen req a0tyvPrim
+    A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
+    A0TyValCode a1tyv1 -> dispBracket a1tyv1
+
+instance Disp Ass0PrimTypeVal where
+  dispGen req = \case
+    A0TyValInt -> "Int"
+    A0TyValBool -> "Bool"
+    A0TyValVec n -> deepenParenWhen (req <= Atomic) ("Vec" <+> disp n)
+    A0TyValMat m n -> deepenParenWhen (req <= Atomic) ("Mat" <+> disp m <+> disp n)
 
 instance Disp Ass1TypeVal where
   dispGen req = \case
-    A1TyValPrim a1tyvPrim ->
-      case a1tyvPrim of
-        A1TyValInt ->
-          "Int"
-        A1TyValBool ->
-          "Bool"
-        A1TyValVec a0v ->
-          deepenParenWhen (req <= Atomic) ("Vec" <+> dispPersistent a0v)
-        A1TyValMat a0v1 a0v2 ->
-          deepenParenWhen (req <= Atomic) ("Mat" <+> dispPersistent a0v1 <+> dispPersistent a0v2)
-    A1TyValArrow a1tyv1 a1tyv2 ->
-      deepenParenWhen (req <= FunDomain) $
-        group (dispGen FunDomain a1tyv1 <> " ->" <> line <> disp a1tyv2)
+    A1TyValPrim a1tyvPrim -> dispGen req a1tyvPrim
+    A1TyValArrow a1tyv1 a1tyv2 -> dispNondepArrowType req a1tyv1 a1tyv2
+
+instance Disp Ass1PrimTypeVal where
+  dispGen req = \case
+    A1TyValInt ->
+      "Int"
+    A1TyValBool ->
+      "Bool"
+    A1TyValVec a0v ->
+      deepenParenWhen (req <= Atomic) ("Vec" <+> dispPersistent a0v)
+    A1TyValMat a0v1 a0v2 ->
+      deepenParenWhen (req <= Atomic) ("Mat" <+> dispPersistent a0v1 <+> dispPersistent a0v2)
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
@@ -552,12 +540,12 @@ instance Disp (Bta.BCExprF ann) where
      in group (f (prefix <> "(") <> disp exprMain <> f ")")
 
 instance Disp (Bta.BCExprMainF ann) where
-  dispGen _ = \case
+  dispGen req = \case
     Surface.Literal lit -> disp lit
     Surface.Var x -> disp x
-    Surface.Lam (x, tye1) e2 -> group ("λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
-    Surface.App e1 e2 -> group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
-    Surface.LetIn x e1 e2 -> group ("let" <+> disp x <+> "=" <+> disp e1 <+> "in" <+> disp e2)
+    Surface.Lam (x, tye1) e2 -> dispNonrecLam req x tye1 e2
+    Surface.App e1 e2 -> dispApp req e1 e2
+    Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
 
 instance Disp (Bta.BCTypeExprF ann) where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =
@@ -568,14 +556,10 @@ instance Disp (Bta.BCTypeExprF ann) where
      in group (f (prefix <> "(") <> disp typeExprMain <> f ")")
 
 instance Disp (Bta.BCTypeExprMainF ann) where
-  dispGen _ = \case
+  dispGen req = \case
     Surface.TyName tyName args ->
       case args of
         [] -> disp tyName
         _ : _ -> List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
     Surface.TyArrow (xOpt, tye1) tye2 ->
-      let docDom =
-            case xOpt of
-              Just x -> "(" <> disp x <+> ":" <+> disp tye1 <> ")"
-              Nothing -> dispGen FunDomain tye1
-       in group (docDom <> " ->" <> line <> disp tye2)
+      dispArrowType req xOpt tye1 tye2
