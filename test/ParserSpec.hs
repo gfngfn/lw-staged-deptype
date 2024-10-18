@@ -4,79 +4,14 @@ import Data.Functor
 import Data.Text (Text)
 import Lwsd.Parser qualified as Parser
 import Lwsd.Syntax
+import SyntaxUtil
 import Test.Hspec
 import Util.TokenUtil (Span (..))
 
-type TypeExpr0 = TypeExprF ()
-
-type Expr0 = ExprF ()
-
-typ :: TypeExprMainF () -> TypeExpr0
-typ = TypeExpr ()
-
-tyInt :: TypeExpr0
-tyInt = typ (TyName "Int" [])
-
-tyBool :: TypeExpr0
-tyBool = typ (TyName "Bool" [])
-
-tyNormalVec :: Expr0 -> TypeExpr0
-tyNormalVec e = typ (TyName "Vec" [NormalArg e])
-
-tyPersVec :: Expr0 -> TypeExpr0
-tyPersVec e = typ (TyName "Vec" [PersistentArg e])
-
-tyCode :: TypeExpr0 -> TypeExpr0
-tyCode = typ . TyCode
-
-tyDepFun :: Var -> TypeExpr0 -> TypeExpr0 -> TypeExpr0
-tyDepFun x tye1 tye2 = typ (TyArrow (Just x, tye1) tye2)
-
-tyNondepFun :: TypeExpr0 -> TypeExpr0 -> TypeExpr0
-tyNondepFun tye1 tye2 = typ (TyArrow (Nothing, tye1) tye2)
-
-expr :: ExprMainF () -> Expr0
-expr = Expr ()
-
-litInt :: Int -> Expr0
-litInt = expr . Literal . LitInt
-
-litVec :: [Int] -> Expr0
-litVec = expr . Literal . LitVec
-
-var :: Text -> Expr0
-var = expr . Var
-
-nonrecLam :: (Var, TypeExpr0) -> Expr0 -> Expr0
-nonrecLam binder e = expr (Lam Nothing binder e)
-
-recLam :: (Var, TypeExpr0) -> (Var, TypeExpr0) -> Expr0 -> Expr0
-recLam binderF binderX e = expr (Lam (Just binderF) binderX e)
-
-app :: Expr0 -> Expr0 -> Expr0
-app e1 e2 = expr (App e1 e2)
-
-binOp :: Var -> Expr0 -> Expr0 -> Expr0
-binOp op e1 e2 = app (app (var op) e1) e2
-
-add, sub, mult :: Expr0 -> Expr0 -> Expr0
-add = binOp "+"
-sub = binOp "-"
-mult = binOp "*"
-
-upcast :: Expr0 -> TypeExpr0 -> Expr0
-upcast e1 tye2 = expr (As e1 tye2)
-
-bracket :: Expr0 -> Expr0
-bracket = expr . Bracket
-
-escape :: Expr0 -> Expr0
-escape = expr . Escape
-
-parseExpr :: Text -> Either String Expr0
+parseExpr :: Text -> Either String ExprVoid
 parseExpr s = fmap void (Parser.parseExpr s)
 
-parseTypeExpr :: Text -> Either String TypeExpr0
+parseTypeExpr :: Text -> Either String TypeExprVoid
 parseTypeExpr s = fmap void (Parser.parseTypeExpr s)
 
 exprLoc :: Int -> Int -> ExprMainF Span -> Expr
@@ -87,7 +22,7 @@ typLoc start end = TypeExpr (Span start end)
 
 spec :: Spec
 spec = do
-  describe "Parser.parseExpr (without code locations)" $ do
+  describe "parseExpr (without code locations)" $ do
     it "parses integer literals (1)" $
       parseExpr "42"
         `shouldBe` pure (litInt 42)

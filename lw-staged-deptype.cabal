@@ -164,9 +164,11 @@ test-suite lw-staged-deptype-test
 
     -- Modules included in this executable, other than Spec.
     other-modules:
+        SyntaxUtil,
         MatrixSpec,
         ParserSpec,
-        ConstraintSpec
+        ConstraintSpec,
+        SubstSpec
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
