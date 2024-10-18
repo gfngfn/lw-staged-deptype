@@ -161,6 +161,12 @@ dispRowContents :: [Int] -> Doc Ann
 dispRowContents row =
   commaSep (disp <$> row)
 
+dispNameWithArgs :: (Disp arg) => Associativity -> Doc Ann -> (arg -> Doc Ann) -> [arg] -> Doc Ann
+dispNameWithArgs req name dispArg args =
+  case args of
+    [] -> name
+    _ : _ -> deepenParenWhen (req <= Atomic) (List.foldl' (<+>) mempty (name : map dispArg args))
+
 instance Disp Text where
   dispGen _ = pretty
 
@@ -200,14 +206,9 @@ instance Disp (TypeExprF ann) where
 
 instance Disp (TypeExprMainF ann) where
   dispGen req = \case
-    TyName tyName args ->
-      case args of
-        [] -> disp tyName
-        _ : _ -> deepenParenWhen (req <= Atomic) $ List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
-    TyArrow (xOpt, tye1) tye2 ->
-      dispArrowType req xOpt tye1 tye2
-    TyCode tye1 ->
-      dispBracket tye1
+    TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
+    TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
+    TyCode tye1 -> dispBracket tye1
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
@@ -253,12 +254,8 @@ instance Disp Surface.TypeExpr where
 
 instance Disp Surface.TypeExprMain where
   dispGen req = \case
-    Surface.TyName tyName args ->
-      case args of
-        [] -> disp tyName
-        _ : _ -> deepenParenWhen (req <= Atomic) $ List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
-    Surface.TyArrow (xOpt, tye1) tye2 ->
-      dispArrowType req xOpt tye1 tye2
+    Surface.TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
+    Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
 
 instance Disp AssLiteral where
   dispGen _ = \case
@@ -309,8 +306,8 @@ instance Disp Ass1PrimType where
   dispGen req = \case
     A1TyInt -> "Int"
     A1TyBool -> "Bool"
-    A1TyVec a0e -> deepenParenWhen (req <= Atomic) $ "Vec" <+> dispPersistent a0e
-    A1TyMat a0e1 a0e2 -> deepenParenWhen (req <= Atomic) $ "Mat" <+> dispPersistent a0e1 <+> dispPersistent a0e2
+    A1TyVec a0e -> dispNameWithArgs req "Vec" dispPersistent [a0e]
+    A1TyMat a0e1 a0e2 -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case
@@ -431,8 +428,8 @@ instance Disp Ass0PrimTypeVal where
   dispGen req = \case
     A0TyValInt -> "Int"
     A0TyValBool -> "Bool"
-    A0TyValVec n -> deepenParenWhen (req <= Atomic) ("Vec" <+> disp n)
-    A0TyValMat m n -> deepenParenWhen (req <= Atomic) ("Mat" <+> disp m <+> disp n)
+    A0TyValVec n -> dispNameWithArgs req "Vec" disp [n]
+    A0TyValMat m n -> dispNameWithArgs req "Mat" disp [m, n]
 
 instance Disp Ass1TypeVal where
   dispGen req = \case
@@ -443,8 +440,8 @@ instance Disp Ass1PrimTypeVal where
   dispGen req = \case
     A1TyValInt -> "Int"
     A1TyValBool -> "Bool"
-    A1TyValVec a0v -> deepenParenWhen (req <= Atomic) ("Vec" <+> dispPersistent a0v)
-    A1TyValMat a0v1 a0v2 -> deepenParenWhen (req <= Atomic) ("Mat" <+> dispPersistent a0v1 <+> dispPersistent a0v2)
+    A1TyValVec n -> dispNameWithArgs req "Vec" dispPersistent [n]
+    A1TyValMat m n -> dispNameWithArgs req "Mat" dispPersistent [m, n]
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
@@ -539,9 +536,5 @@ instance Disp (Bta.BCTypeExprF ann) where
 
 instance Disp (Bta.BCTypeExprMainF ann) where
   dispGen req = \case
-    Surface.TyName tyName args ->
-      case args of
-        [] -> disp tyName
-        _ : _ -> List.foldl' (<+>) (disp tyName) (map (dispGen Atomic) args)
-    Surface.TyArrow (xOpt, tye1) tye2 ->
-      dispArrowType req xOpt tye1 tye2
+    Surface.TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
+    Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
