@@ -1,6 +1,5 @@
 module SyntaxUtil where
 
-import Data.Text (Text)
 import Lwsd.Syntax
 
 type TypeExprVoid = TypeExprF ()
@@ -40,7 +39,7 @@ litInt = expr . Literal . LitInt
 litVec :: [Int] -> ExprVoid
 litVec = expr . Literal . LitVec
 
-var :: Text -> ExprVoid
+var :: Var -> ExprVoid
 var = expr . Var
 
 nonrecLam :: (Var, TypeExprVoid) -> ExprVoid -> ExprVoid
@@ -72,11 +71,41 @@ escape = expr . Escape
 a0litInt :: Int -> Ass0Expr
 a0litInt n = A0Literal (ALitInt n)
 
-a0var :: Text -> Ass0Expr
+a0var :: Var -> Ass0Expr
 a0var = A0Var
+
+a0app :: Ass0Expr -> Ass0Expr -> Ass0Expr
+a0app = A0App
+
+a0nonrecLam :: Var -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
+a0nonrecLam x a0tye1 = A0Lam Nothing (x, a0tye1)
+
+a0recLam :: Var -> Ass0TypeExpr -> Var -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
+a0recLam f a0tyeRec x a0tye1 = A0Lam (Just (f, a0tyeRec)) (x, a0tye1)
 
 a0bracket :: Ass1Expr -> Ass0Expr
 a0bracket = A0Bracket
 
-a1var :: Text -> Ass1Expr
+a0tyInt :: Ass0TypeExpr
+a0tyInt = A0TyPrim A0TyInt
+
+a0nondepTyArrow :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
+a0nondepTyArrow a0tye1 = A0TyArrow (Nothing, a0tye1)
+
+a1var :: Var -> Ass1Expr
 a1var = A1Var
+
+a1app :: Ass1Expr -> Ass1Expr -> Ass1Expr
+a1app = A1App
+
+a1nonrecLam :: Var -> Ass1TypeExpr -> Ass1Expr -> Ass1Expr
+a1nonrecLam x a1tye1 = A1Lam Nothing (x, a1tye1)
+
+a1escape :: Ass0Expr -> Ass1Expr
+a1escape = A1Escape
+
+a1tyInt :: Ass1TypeExpr
+a1tyInt = A1TyPrim A1TyInt
+
+a1tyVec :: Ass0Expr -> Ass1TypeExpr
+a1tyVec a0e = A1TyPrim (A1TyVec a0e)
