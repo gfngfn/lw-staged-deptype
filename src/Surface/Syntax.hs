@@ -31,7 +31,7 @@ data ExprF ann = Expr ann (ExprMainF ann)
 data ExprMainF ann
   = Literal Literal
   | Var Var
-  | Lam (Var, TypeExprF ann) (ExprF ann)
+  | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)
   | LetIn Var (ExprF ann) (ExprF ann)
   | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)

@@ -107,14 +107,20 @@ exprAtom, expr :: P Expr
 
     lam :: P Expr
     lam =
-      (makeLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr)
-        `or` comp
+      tries
+        [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
+          makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) *> expr
+        ]
+        comp
       where
         binder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
 
-        makeLam locFirst (x, tye) e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (Lam (x, tye) e)
+        makeNonrecLam locFirst binderX e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (Lam Nothing binderX e)
+
+        makeRecLam locFirst binderF binderX e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (Lam (Just binderF) binderX e)
 
     letin :: P Expr
     letin =

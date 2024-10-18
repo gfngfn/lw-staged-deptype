@@ -39,10 +39,15 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         pure $ Literal lit
       Var x ->
         pure $ Var x
-      Lam (x, ty) e -> do
+      Lam Nothing (x, ty) e -> do
         bty <- assignBindingTimeVarToTypeExpr ty
         be <- assignBindingTimeVarToExpr e
-        pure $ Lam (x, bty) be
+        pure $ Lam Nothing (x, bty) be
+      Lam (Just (f, tyRec)) (x, ty) e -> do
+        btyRec <- assignBindingTimeVarToTypeExpr tyRec
+        bty <- assignBindingTimeVarToTypeExpr ty
+        be <- assignBindingTimeVarToExpr e
+        pure $ Lam (Just (f, btyRec)) (x, bty) be
       App e1 e2 -> do
         be1 <- assignBindingTimeVarToExpr e1
         be2 <- assignBindingTimeVarToExpr e2
@@ -100,7 +105,8 @@ enhanceExpr enh (Expr meta exprMain) =
     case exprMain of
       Literal lit -> Literal lit
       Var x -> Var x
-      Lam (x, tye1) e2 -> Lam (x, fTypeExpr tye1) (fExpr e2)
+      Lam Nothing (x, tye1) e2 -> Lam Nothing (x, fTypeExpr tye1) (fExpr e2)
+      Lam (Just (f, tyeRec)) (x, tye1) e2 -> Lam (Just (f, fTypeExpr tyeRec)) (x, fTypeExpr tye1) (fExpr e2)
       App e1 e2 -> App (fExpr e1) (fExpr e2)
       LetIn x e1 e2 -> LetIn x (fExpr e1) (fExpr e2)
       IfThenElse e0 e1 e2 -> IfThenElse (fExpr e0) (fExpr e1) (fExpr e2)
@@ -138,7 +144,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
           Just (EntryLocallyBound bt' bity) ->
             pure (x, bity, [CEqual ann bt bt'])
       pure (Expr (bt, ann) (Var x'), bity, constraints)
-    Lam (x1, btye1) e2 -> do
+    Lam Nothing (x1, btye1) e2 -> do
       (btye1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
       (e2', bity2@(BIType bt2 _), constraints2) <-
         extractConstraintsFromExpr (Map.insert x1 (EntryLocallyBound bt bity1) btenv) e2
@@ -146,8 +152,24 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
             if occurs x1 bity2
               then [CEqual ann bt (BTConst BT0)]
               else [CLeq ann bt bt1, CLeq ann bt bt2]
-      let e' = Expr (bt, ann) (Lam (x1, btye1') e2')
+      let e' = Expr (bt, ann) (Lam Nothing (x1, btye1') e2')
       pure (e', BIType bt (BITyArrow (Just x1, bity1) bity2), constraints1 ++ constraints2 ++ constraints)
+    Lam (Just (f, btyeRec)) (x1, btye1) e2 -> do
+      -- Not confident. TODO: check the validity of the following
+      (btyeRec', bityRec, constraintsRec) <- extractConstraintsFromTypeExpr btenv btyeRec
+      (btye1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
+      (e2', bity2@(BIType bt2 _), constraints2) <-
+        extractConstraintsFromExpr
+          (Map.insert x1 (EntryLocallyBound bt bity1) (Map.insert f (EntryLocallyBound bt bityRec) btenv))
+          e2
+      let bity' = BIType bt (BITyArrow (Just x1, bity1) bity2)
+      constraintsEq <- makeConstraintsFromBITypeEquation ann bity' bityRec
+      let constraints =
+            if occurs x1 bity2
+              then [CEqual ann bt (BTConst BT0)]
+              else [CLeq ann bt bt1, CLeq ann bt bt2]
+      let e' = Expr (bt, ann) (Lam (Just (f, btyeRec')) (x1, btye1') e2')
+      pure (e', bity', constraintsRec ++ constraints1 ++ constraints2 ++ constraintsEq ++ constraints)
     App e1 e2 -> do
       (e1', bity1@(BIType bt1 bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
       (e2', _bity2@(BIType bt2 _bityMain2), constraints2) <- extractConstraintsFromExpr btenv e2
