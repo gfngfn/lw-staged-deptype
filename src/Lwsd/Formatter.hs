@@ -510,9 +510,8 @@ instance Disp Evaluator.EvalError where
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case
-    Bta.UnboundVar spanInFile x btenv ->
+    Bta.UnboundVar spanInFile x ->
       "Unbound variable" <+> disp x <+> disp spanInFile
-        <+> disp (show (map fst btenv)) -- temporary. TODO: remove this
     Bta.NotAFunction spanInFile bity ->
       "Not a function type;" <+> disp (show bity) <+> disp spanInFile
     Bta.NotABase spanInFile bity ->

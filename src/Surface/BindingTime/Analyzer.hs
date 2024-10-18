@@ -139,7 +139,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       (x', bity, constraints) <-
         case Map.lookup x btenv of
           Nothing ->
-            analysisError $ UnboundVar spanInFile x (Map.toList btenv)
+            analysisError $ UnboundVar spanInFile x
           Just (EntryBuiltInPersistent bityVoid) ->
             -- TODO: refine `ann`
             pure (x, enhanceBIType (\() -> bt) (\() -> (bt, ann)) bityVoid, [])
