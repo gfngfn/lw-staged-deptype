@@ -68,6 +68,7 @@ data BuiltIn
   | BISub Var Var
   | BIMult Var Var
   | BILeq Var Var
+  | BIAssertNat Span Var
   | BIGenVadd Var
   | BIGenVconcat Var Var
   | BIGenMtranspose Var Var
@@ -163,6 +164,7 @@ data Ass0TypeExpr
 
 data Ass0PrimType
   = A0TyInt
+  | A0TyNat
   | A0TyBool
   | A0TyVec Int
   | A0TyMat Int Int
@@ -211,6 +213,7 @@ data Ass0TypeVal
 
 data Ass0PrimTypeVal
   = A0TyValInt
+  | A0TyValNat
   | A0TyValBool
   | A0TyValVec Int
   | A0TyValMat Int Int

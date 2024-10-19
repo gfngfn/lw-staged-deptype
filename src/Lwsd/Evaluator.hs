@@ -37,6 +37,7 @@ data Bug
 data EvalError
   = Bug Bug
   | AssertionFailure SpanInFile Ass1TypeVal Ass1TypeVal
+  | NatAssertionFailure SpanInFile Int
 
 data EvalState = EvalState
   { nextSymbolIndex :: Int,
@@ -129,6 +130,15 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValLiteral (ALitBool (n1 <= n2))
+      BIAssertNat loc x1 -> do
+        n1 <- findInt0 env x1
+        if n1 >= 0
+          then
+            pure $ A0ValLiteral (ALitInt n1)
+          else do
+            EvalState {sourceSpec} <- get
+            let spanInFile = getSpanInFile sourceSpec loc
+            evalError $ NatAssertionFailure spanInFile n1
       BIGenVadd x1 -> do
         n1 <- findInt0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
@@ -222,8 +232,8 @@ evalExpr0 env = \case
       then generateIdentityFunction env (A0TyValCode a1tyv1)
       else do
         EvalState {sourceSpec} <- get
-        let locInFilePair = getSpanInFile sourceSpec loc
-        evalError $ AssertionFailure locInFilePair a1tyv1 a1tyv2
+        let spanInFile = getSpanInFile sourceSpec loc
+        evalError $ AssertionFailure spanInFile a1tyv1 a1tyv2
 
 evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
@@ -265,6 +275,7 @@ evalTypeExpr0 env = \case
     pure . A0TyValPrim $
       case a0tyPrim of
         A0TyInt -> A0TyValInt
+        A0TyNat -> A0TyValNat
         A0TyBool -> A0TyValBool
         A0TyVec n -> A0TyValVec n
         A0TyMat m n -> A0TyValMat m n

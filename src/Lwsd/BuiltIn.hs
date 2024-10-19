@@ -1,5 +1,6 @@
 module Lwsd.BuiltIn
-  ( ass0exprVadd,
+  ( ass0exprAssertNat,
+    ass0exprVadd,
     ass0exprVconcat,
     ass0exprMtranspose,
     ass0exprMmult,
@@ -14,10 +15,14 @@ import Data.Map qualified as Map
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
+import Util.TokenUtil (Span)
 import Prelude
 
 tyInt :: Ass0TypeExpr
 tyInt = A0TyPrim A0TyInt
+
+tyNat :: Ass0TypeExpr
+tyNat = A0TyPrim A0TyNat
 
 tyBool :: Ass0TypeExpr
 tyBool = A0TyPrim A0TyBool
@@ -58,6 +63,7 @@ initialTypeEnv =
       ("-", tyInt --> tyInt --> tyInt),
       ("*", tyInt --> tyInt --> tyInt),
       ("<=", tyInt --> tyInt --> tyBool),
+      ("assert_nat", tyInt --> tyNat),
       ("gen_vadd", tyGenVadd),
       ("gen_vconcat", tyGenVconcat),
       ("gen_mtranspose", tyGenMtranspose),
@@ -117,12 +123,20 @@ initialTypeEnv =
 tyValInt :: Ass0TypeVal
 tyValInt = A0TyValPrim A0TyValInt
 
+tyValNat :: Ass0TypeVal
+tyValNat = A0TyValPrim A0TyValNat
+
 -- Makes a closure equipped with `initialEnv`.
 clo :: Var -> Ass0TypeVal -> Ass0Expr -> Ass0Val
 clo x a0tyv1 a0tye2 = A0ValLam Nothing (x, a0tyv1) a0tye2 initialEnv
 
 lam :: Var -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
 lam x a0tye1 = A0Lam Nothing (x, a0tye1)
+
+ass0exprAssertNat :: Span -> Ass0Expr
+ass0exprAssertNat loc =
+  lam "n1" tyInt $
+    A0AppBuiltIn (BIAssertNat loc "n1")
 
 ass0exprVadd :: Int -> Ass0Expr
 ass0exprVadd n =
@@ -177,28 +191,28 @@ ass0valGenVadd =
 
 ass0valGenVconcat :: Ass0Val
 ass0valGenVconcat =
-  clo "x1" tyValInt $
-    lam "x2" tyInt $
+  clo "x1" tyValNat $
+    lam "x2" tyNat $
       A0AppBuiltIn (BIGenVconcat "x1" "x2")
 
 ass0valGenMtranspose :: Ass0Val
 ass0valGenMtranspose =
-  clo "x1" tyValInt $
-    lam "x2" tyInt $
+  clo "x1" tyValNat $
+    lam "x2" tyNat $
       A0AppBuiltIn (BIGenMtranspose "x1" "x2")
 
 ass0valGenMmult :: Ass0Val
 ass0valGenMmult =
-  clo "x1" tyValInt $
-    lam "x2" tyInt $
-      lam "x3" tyInt $
+  clo "x1" tyValNat $
+    lam "x2" tyNat $
+      lam "x3" tyNat $
         A0AppBuiltIn (BIGenMmult "x1" "x2" "x3")
 
 ass0valGenMconcatVert :: Ass0Val
 ass0valGenMconcatVert =
-  clo "x1" tyValInt $
-    lam "x2" tyInt $
-      lam "x3" tyInt $
+  clo "x1" tyValNat $
+    lam "x2" tyNat $
+      lam "x3" tyNat $
         A0AppBuiltIn (BIGenMconcatVert "x1" "x2" "x3")
 
 initialEnv :: Env0

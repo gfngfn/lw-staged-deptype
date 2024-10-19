@@ -226,6 +226,7 @@ instance Disp BuiltIn where
     BISub x1 x2 -> "SUB(" <> disps [x1, x2] <> ")"
     BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
     BILeq x1 x2 -> "LEQ(" <> disps [x1, x2] <> ")"
+    BIAssertNat _loc x1 -> "ASSERT_NAT(" <> disp x1 <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
@@ -300,6 +301,7 @@ instance Disp Ass1Expr where
 instance Disp Ass0PrimType where
   dispGen req = \case
     A0TyInt -> "Int"
+    A0TyNat -> "Nat"
     A0TyBool -> "Bool"
     A0TyVec n -> deepenParenWhen (req <= Atomic) ("Vec" <+> disp n)
     A0TyMat m n -> deepenParenWhen (req <= Atomic) ("Mat" <+> disp m <+> disp n)
@@ -435,6 +437,7 @@ instance Disp Ass0TypeVal where
 instance Disp Ass0PrimTypeVal where
   dispGen req = \case
     A0TyValInt -> "Int"
+    A0TyValNat -> "Nat"
     A0TyValBool -> "Bool"
     A0TyValVec n -> dispNameWithArgs req "Vec" disp [n]
     A0TyValMat m n -> dispNameWithArgs req "Mat" disp [m, n]
@@ -502,11 +505,17 @@ instance Disp Evaluator.EvalError where
       "Assertion failure"
         <+> disp spanInFile
         <> hardline
-        <> "left:"
+        <> "got:"
         <> nest 2 (hardline <> disp a1tyv1)
         <> hardline
-        <> "right:"
+        <> "expected:"
         <> nest 2 (hardline <> disp a1tyv2)
+    Evaluator.NatAssertionFailure spanInFile n ->
+      "Assertion failure of downcasting Int to Nat"
+        <+> disp spanInFile
+        <> hardline
+        <> "got:"
+        <+> disp n
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case
