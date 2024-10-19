@@ -1,5 +1,6 @@
 module Lwsd.BuiltIn
-  ( ass0exprVadd,
+  ( ass0exprAssertNat,
+    ass0exprVadd,
     ass0exprVconcat,
     ass0exprMtranspose,
     ass0exprMmult,
@@ -14,10 +15,14 @@ import Data.Map qualified as Map
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
+import Util.TokenUtil (Span)
 import Prelude
 
 tyInt :: Ass0TypeExpr
 tyInt = A0TyPrim A0TyInt
+
+tyNat :: Ass0TypeExpr
+tyNat = A0TyPrim A0TyNat
 
 tyBool :: Ass0TypeExpr
 tyBool = A0TyPrim A0TyBool
@@ -58,6 +63,7 @@ initialTypeEnv =
       ("-", tyInt --> tyInt --> tyInt),
       ("*", tyInt --> tyInt --> tyInt),
       ("<=", tyInt --> tyInt --> tyBool),
+      ("assert_nat", tyInt --> tyNat),
       ("gen_vadd", tyGenVadd),
       ("gen_vconcat", tyGenVconcat),
       ("gen_mtranspose", tyGenMtranspose),
@@ -123,6 +129,11 @@ clo x a0tyv1 a0tye2 = A0ValLam Nothing (x, a0tyv1) a0tye2 initialEnv
 
 lam :: Var -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
 lam x a0tye1 = A0Lam Nothing (x, a0tye1)
+
+ass0exprAssertNat :: Span -> Ass0Expr
+ass0exprAssertNat loc =
+  lam "n1" tyInt $
+    A0AppBuiltIn (BIAssertNat loc "n1")
 
 ass0exprVadd :: Int -> Ass0Expr
 ass0exprVadd n =

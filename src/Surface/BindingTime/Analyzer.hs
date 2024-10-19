@@ -30,6 +30,7 @@ fresh = do
   put (succ btv)
   pure btv
 
+-- TODO: merge this function into `extractConstraintsFromExpr`
 assignBindingTimeVarToExpr :: Expr -> Assigner BExpr
 assignBindingTimeVarToExpr (Expr ann exprMain) = do
   btv <- fresh
