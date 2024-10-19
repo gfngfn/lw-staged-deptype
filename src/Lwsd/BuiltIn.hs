@@ -123,6 +123,9 @@ initialTypeEnv =
 tyValInt :: Ass0TypeVal
 tyValInt = A0TyValPrim A0TyValInt
 
+tyValNat :: Ass0TypeVal
+tyValNat = A0TyValPrim A0TyValNat
+
 -- Makes a closure equipped with `initialEnv`.
 clo :: Var -> Ass0TypeVal -> Ass0Expr -> Ass0Val
 clo x a0tyv1 a0tye2 = A0ValLam Nothing (x, a0tyv1) a0tye2 initialEnv
@@ -188,28 +191,28 @@ ass0valGenVadd =
 
 ass0valGenVconcat :: Ass0Val
 ass0valGenVconcat =
-  clo "x1" tyValInt $
-    lam "x2" tyInt $
+  clo "x1" tyValNat $
+    lam "x2" tyNat $
       A0AppBuiltIn (BIGenVconcat "x1" "x2")
 
 ass0valGenMtranspose :: Ass0Val
 ass0valGenMtranspose =
-  clo "x1" tyValInt $
-    lam "x2" tyInt $
+  clo "x1" tyValNat $
+    lam "x2" tyNat $
       A0AppBuiltIn (BIGenMtranspose "x1" "x2")
 
 ass0valGenMmult :: Ass0Val
 ass0valGenMmult =
-  clo "x1" tyValInt $
-    lam "x2" tyInt $
-      lam "x3" tyInt $
+  clo "x1" tyValNat $
+    lam "x2" tyNat $
+      lam "x3" tyNat $
         A0AppBuiltIn (BIGenMmult "x1" "x2" "x3")
 
 ass0valGenMconcatVert :: Ass0Val
 ass0valGenMconcatVert =
-  clo "x1" tyValInt $
-    lam "x2" tyInt $
-      lam "x3" tyInt $
+  clo "x1" tyValNat $
+    lam "x2" tyNat $
+      lam "x3" tyNat $
         A0AppBuiltIn (BIGenMconcatVert "x1" "x2" "x3")
 
 initialEnv :: Env0
