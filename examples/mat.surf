@@ -1,5 +1,5 @@
 let square =
-  fun (n : Int) ->
+  fun (n : Nat) ->
     fun (mat : Mat n n) ->
       mmult n n n mat mat
 in
