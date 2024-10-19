@@ -103,7 +103,9 @@ instance HasVar Ass0Expr where
       (A0Literal lit1, A0Literal lit2) ->
         lit1 == lit2
       (A0AppBuiltIn builtIn1, A0AppBuiltIn builtIn2) ->
-        builtIn1 == builtIn2
+        case (builtIn1, builtIn2) of
+          (BIAssertNat _loc1 x1, BIAssertNat _loc2 x2) -> x1 == x2 -- Ignores the difference of `Span`
+          (_, _) -> builtIn1 == builtIn2
       (A0Var x1, A0Var x2) ->
         x1 == x2
       (A0Lam Nothing (x1, a0tye11) a0e12, A0Lam Nothing (x2, a0tye21) a0e22) ->

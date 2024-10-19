@@ -130,57 +130,41 @@ makeAssertiveCast trav loc =
         then pure Nothing
         else Just <$> makeIdentityLam a0tye
 
--- Used only in `makeEquation1`.
-data Type1EquationConstructionResult
-  = EqResContradiction
-  | EqResTrivial Type1Equation
-  | EqResConstructed Type1Equation
-
 makeEquation1 :: forall trav. trav -> Span -> Ass1TypeExpr -> Ass1TypeExpr -> M trav (Maybe Type1Equation)
 makeEquation1 trav loc a1tye1' a1tye2' = do
   TypecheckState {optimizeTrivialAssertion} <- get
   spanInFile <- askSpanInFile loc
-  let res = makeEquation1' optimizeTrivialAssertion a1tye1' a1tye2'
-  case res of
-    EqResContradiction -> typeError trav $ TypeContradictionAtStage1 spanInFile a1tye1' a1tye2'
-    EqResTrivial _ -> pure Nothing
-    EqResConstructed ty1eq -> pure $ Just ty1eq
+  case go a1tye1' a1tye2' of
+    Right (trivial, ty1eq) ->
+      if trivial && optimizeTrivialAssertion
+        then pure Nothing
+        else pure $ Just ty1eq
+    Left () ->
+      typeError trav $ TypeContradictionAtStage1 spanInFile a1tye1' a1tye2'
   where
-    makeEquation1' optimizeTrivialAssertion =
-      go
-      where
-        go :: Ass1TypeExpr -> Ass1TypeExpr -> Type1EquationConstructionResult
-        go a1tye1 a1tye2 =
-          case (a1tye1, a1tye2) of
-            (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
-              case (a1tyPrim1, a1tyPrim2) of
-                (A1TyInt, A1TyInt) -> trivialOrPrim TyEq1Int
-                (A1TyBool, A1TyBool) -> trivialOrPrim TyEq1Bool
-                (A1TyVec a0e1, A1TyVec a0e2) -> trivialOrPrim (TyEq1Vec a0e1 a0e2)
-                (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) -> trivialOrPrim (TyEq1Mat a0e11 a0e12 a0e21 a0e22)
-                (_, _) -> EqResContradiction
-            (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
-              let ty1eqDomRes = go a1tye11 a1tye21
-               in let ty1eqCodRes = go a1tye12 a1tye22
-                   in case (ty1eqDomRes, ty1eqCodRes) of
-                        (EqResContradiction, _) -> EqResContradiction
-                        (_, EqResContradiction) -> EqResContradiction
-                        (EqResTrivial ty1eqDom, EqResTrivial ty1eqCod) ->
-                          EqResTrivial (TyEq1Arrow ty1eqDom ty1eqCod)
-                        (EqResTrivial ty1eqDom, EqResConstructed ty1eqCod) ->
-                          EqResConstructed (TyEq1Arrow ty1eqDom ty1eqCod)
-                        (EqResConstructed ty1eqDom, EqResTrivial ty1eqCod) ->
-                          EqResConstructed (TyEq1Arrow ty1eqDom ty1eqCod)
-                        (EqResConstructed ty1eqDom, EqResConstructed ty1eqCod) ->
-                          EqResConstructed (TyEq1Arrow ty1eqDom ty1eqCod)
-            (_, _) ->
-              EqResContradiction
-
-        trivialOrPrim :: Type1PrimEquation -> Type1EquationConstructionResult
-        trivialOrPrim ty1eqPrim =
-          if optimizeTrivialAssertion
-            then EqResTrivial (TyEq1Prim ty1eqPrim)
-            else EqResConstructed (TyEq1Prim ty1eqPrim)
+    go :: Ass1TypeExpr -> Ass1TypeExpr -> Either () (Bool, Type1Equation)
+    go a1tye1 a1tye2 =
+      case (a1tye1, a1tye2) of
+        (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
+          case (a1tyPrim1, a1tyPrim2) of
+            (A1TyInt, A1TyInt) ->
+              pure (True, TyEq1Prim TyEq1Int)
+            (A1TyBool, A1TyBool) ->
+              pure (True, TyEq1Prim TyEq1Bool)
+            (A1TyVec a0e1, A1TyVec a0e2) -> do
+              let trivial = alphaEquivalent a0e1 a0e2
+              pure (trivial, TyEq1Prim (TyEq1Vec a0e1 a0e2))
+            (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) -> do
+              let trivial1 = alphaEquivalent a0e11 a0e21
+              let trivial2 = alphaEquivalent a0e11 a0e21
+              pure (trivial1 && trivial2, TyEq1Prim (TyEq1Mat a0e11 a0e12 a0e21 a0e22))
+            (_, _) -> Left ()
+        (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
+          (trivial1, ty1eqDom) <- go a1tye11 a1tye21
+          (trivial2, ty1eqCod) <- go a1tye12 a1tye22
+          pure (trivial1 && trivial2, TyEq1Arrow ty1eqDom ty1eqCod)
+        (_, _) ->
+          Left ()
 
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv (Expr loc eMain) = do
