@@ -246,7 +246,9 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
       (args', constraints) <-
         case args of
           [] ->
-            pure ([], [])
+            case tyName of
+              "Nat" -> pure ([], [CEqual ann bt (BTConst BT0)])
+              _ -> pure ([], [])
           _ : _ -> do
             triples <- mapM (extractConstraintsFromExpr btenv) args
             let args' = map (\(e', _, _) -> e') triples
