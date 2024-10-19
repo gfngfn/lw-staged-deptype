@@ -1,5 +1,5 @@
 let f =
-  fun (k : Int) -> fun(l : Int) -> fun(m : Int) -> fun(n : Int) ->
+  fun(k : Nat) -> fun(l : Nat) -> fun(m : Nat) -> fun(n : Nat) ->
     &(fun (matA : Mat %k %l) ->
       fun (matB : Mat %m %n) ->
       fun (matC : Mat %(l - 2 * m) %n) ->
