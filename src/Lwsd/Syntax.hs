@@ -1,5 +1,5 @@
 module Lwsd.Syntax
-  ( AssVar,
+  ( AssVar (..),
     Symbol (..),
     symbolToVar,
     BuiltIn (..),
@@ -33,14 +33,18 @@ import Util.TokenUtil (Span)
 import Util.Vector (Vector)
 import Prelude
 
-type AssVar = Text
+newtype AssVar = AssVar Text
+  deriving newtype (Eq, Ord)
+
+instance Show AssVar where
+  show (AssVar x) = show x
 
 -- The type for symbols generated dynamically for hygienicity.
 newtype Symbol = Symbol Int
   deriving newtype (Eq, Show)
 
 symbolToVar :: Symbol -> AssVar
-symbolToVar (Symbol n) = Text.pack $ "#S" ++ show n
+symbolToVar (Symbol n) = AssVar $ Text.pack $ "#S" ++ show n
 
 data BuiltIn
   = BIAdd AssVar AssVar

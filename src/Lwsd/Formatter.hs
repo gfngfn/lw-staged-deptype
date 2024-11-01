@@ -182,6 +182,9 @@ instance Disp String where
 instance Disp Int where
   dispGen _ = pretty
 
+instance Disp AssVar where
+  dispGen _ (AssVar x) = disp x
+
 instance Disp Symbol where
   dispGen _ symb = disp (symbolToVar symb)
 
