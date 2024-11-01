@@ -10,7 +10,7 @@ import Data.Functor
 import Data.Generics.Labels ()
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
-import Lwsd.Syntax
+import Lwsd.SrcSyntax
 import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
 import Util.ParserUtil

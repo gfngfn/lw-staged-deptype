@@ -12,6 +12,7 @@ import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Lwsd.Evaluator qualified as Evaluator
+import Lwsd.SrcSyntax
 import Lwsd.Syntax
 import Lwsd.TypeError
 import Prettyprinter
@@ -152,7 +153,7 @@ dispArrowType req xOpt tye1 tye2 =
 
 dispNondepArrowType :: (Disp ty) => Associativity -> ty -> ty -> Doc Ann
 dispNondepArrowType req =
-  dispArrowType req (Nothing :: Maybe Var)
+  dispArrowType req (Nothing :: Maybe Text)
 
 dispVectorLiteral :: [Int] -> Doc Ann
 dispVectorLiteral ns =

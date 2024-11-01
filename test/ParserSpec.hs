@@ -3,7 +3,7 @@ module ParserSpec (spec) where
 import Data.Functor
 import Data.Text (Text)
 import Lwsd.Parser qualified as Parser
-import Lwsd.Syntax
+import Lwsd.SrcSyntax
 import SyntaxUtil
 import Test.Hspec
 import Util.TokenUtil (Span (..))

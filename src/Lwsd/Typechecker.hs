@@ -16,6 +16,7 @@ import Data.List qualified as List
 import Data.Text qualified as Text
 import Data.Tuple.Extra
 import Lwsd.BuiltIn (ass0exprAssertNat)
+import Lwsd.SrcSyntax
 import Lwsd.Subst
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)

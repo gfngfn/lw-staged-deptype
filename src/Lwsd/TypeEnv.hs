@@ -8,6 +8,7 @@ module Lwsd.TypeEnv
 where
 
 import Data.List.Extra qualified as List
+import Lwsd.SrcSyntax (Var)
 import Lwsd.Syntax
 import Prelude
 

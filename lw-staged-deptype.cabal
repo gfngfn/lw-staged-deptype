@@ -64,6 +64,7 @@ library
       Lwsd.Formatter,
       Lwsd.LibMain,
       Lwsd.Parser,
+      Lwsd.SrcSyntax,
       Lwsd.Subst,
       Lwsd.Syntax,
       Lwsd.Token,

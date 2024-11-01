@@ -7,7 +7,7 @@ module Surface.BindingTime.Stager
   )
 where
 
-import Lwsd.Syntax qualified as Lwsd
+import Lwsd.SrcSyntax qualified as Lwsd
 import Surface.BindingTime.Core
 import Surface.Syntax
 import Prelude

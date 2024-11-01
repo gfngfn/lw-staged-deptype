@@ -44,7 +44,7 @@ ty0Mat m n = A0TyPrim (A0TyMat m n)
 
 infixr 0 -->
 
-(-:>) :: (Var, Ass0TypeExpr) -> Ass0TypeExpr -> Ass0TypeExpr
+(-:>) :: (AssVar, Ass0TypeExpr) -> Ass0TypeExpr -> Ass0TypeExpr
 (-:>) (x, a0tye1) = A0TyArrow (Just x, a0tye1)
 
 infixr 0 -:>
@@ -127,10 +127,10 @@ tyValNat :: Ass0TypeVal
 tyValNat = A0TyValPrim A0TyValNat
 
 -- Makes a closure equipped with `initialEnv`.
-clo :: Var -> Ass0TypeVal -> Ass0Expr -> Ass0Val
+clo :: AssVar -> Ass0TypeVal -> Ass0Expr -> Ass0Val
 clo x a0tyv1 a0tye2 = A0ValLam Nothing (x, a0tyv1) a0tye2 initialEnv
 
-lam :: Var -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
+lam :: AssVar -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
 lam x a0tye1 = A0Lam Nothing (x, a0tye1)
 
 ass0exprAssertNat :: Span -> Ass0Expr
@@ -166,7 +166,7 @@ ass0exprMmult k m n =
     lam "mat2" (ty0Mat m n) $
       A0AppBuiltIn (BIMmult k m n "mat1" "mat2")
 
-ass0valBinaryInt :: (Var -> Var -> BuiltIn) -> Ass0Val
+ass0valBinaryInt :: (AssVar -> AssVar -> BuiltIn) -> Ass0Val
 ass0valBinaryInt f =
   clo "x1" tyValInt $
     lam "x2" tyInt $

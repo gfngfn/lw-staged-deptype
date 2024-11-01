@@ -3,6 +3,7 @@ module Lwsd.TypeError
   )
 where
 
+import Lwsd.SrcSyntax
 import Lwsd.Syntax
 import Util.LocationInFile (SpanInFile)
 import Util.Matrix qualified as Matrix
