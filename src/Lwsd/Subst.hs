@@ -15,27 +15,27 @@ import Prelude
 -- TODO (refactor): use `Traversal` to implement `occurs0` and `subst0`
 
 data Subst
-  = Subst0 Var Ass0Expr
-  | Subst1 Var Ass1Expr
+  = Subst0 AssVar Ass0Expr
+  | Subst1 AssVar Ass1Expr
 
 class HasVar a where
-  frees :: a -> (Set Var, Set Var)
+  frees :: a -> (Set AssVar, Set AssVar)
   subst :: Subst -> a -> a
   alphaEquivalent :: a -> a -> Bool
 
-frees0 :: (HasVar a) => a -> Set Var
+frees0 :: (HasVar a) => a -> Set AssVar
 frees0 = fst . frees
 
-subst0 :: (HasVar a) => Ass0Expr -> Var -> a -> a
+subst0 :: (HasVar a) => Ass0Expr -> AssVar -> a -> a
 subst0 a0e x = subst (Subst0 x a0e)
 
-subst1 :: (HasVar a) => Ass1Expr -> Var -> a -> a
+subst1 :: (HasVar a) => Ass1Expr -> AssVar -> a -> a
 subst1 a1e x = subst (Subst1 x a1e)
 
-occurs0 :: (HasVar a) => Var -> a -> Bool
+occurs0 :: (HasVar a) => AssVar -> a -> Bool
 occurs0 x e = x `elem` frees0 e
 
-unionPairs :: [(Set Var, Set Var)] -> (Set Var, Set Var)
+unionPairs :: [(Set AssVar, Set AssVar)] -> (Set AssVar, Set AssVar)
 unionPairs pairs =
   (Set.unions (map fst pairs), Set.unions (map snd pairs))
 

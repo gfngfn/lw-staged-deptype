@@ -1,20 +1,8 @@
 module Lwsd.Syntax
-  ( Var,
+  ( AssVar (..),
     Symbol (..),
     symbolToVar,
-    Literal (..),
     BuiltIn (..),
-    ExprF (..),
-    ExprMainF (..),
-    Expr,
-    ExprMain,
-    TypeName,
-    TypeExprF (..),
-    TypeExprMainF (..),
-    TypeExpr,
-    TypeExprMain,
-    ArgForTypeF (..),
-    ArgForType,
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
@@ -37,97 +25,44 @@ module Lwsd.Syntax
   )
 where
 
-import Data.Functor.Classes
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Generic.Data
-import Generic.Data.Orphans ()
 import Util.Matrix (Matrix)
 import Util.TokenUtil (Span)
 import Util.Vector (Vector)
 import Prelude
 
-type Var = Text
+newtype AssVar = AssVar Text
+  deriving newtype (Eq, Ord)
+
+instance Show AssVar where
+  show (AssVar x) = show x
 
 -- The type for symbols generated dynamically for hygienicity.
 newtype Symbol = Symbol Int
   deriving newtype (Eq, Show)
 
-symbolToVar :: Symbol -> Var
-symbolToVar (Symbol n) = Text.pack $ "#S" ++ show n
-
-data Literal
-  = LitInt Int
-  | LitVec [Int]
-  | LitMat [[Int]]
-  deriving stock (Eq, Show)
+symbolToVar :: Symbol -> AssVar
+symbolToVar (Symbol n) = AssVar $ Text.pack $ "#S" ++ show n
 
 data BuiltIn
-  = BIAdd Var Var
-  | BISub Var Var
-  | BIMult Var Var
-  | BILeq Var Var
-  | BIAssertNat Span Var
-  | BIGenVadd Var
-  | BIGenVconcat Var Var
-  | BIGenMtranspose Var Var
-  | BIGenMmult Var Var Var
-  | BIGenMconcatVert Var Var Var
-  | BIVadd Int Var Var
-  | BIVconcat Int Int Var Var
-  | BIMtranspose Int Int Var
-  | BIMmult Int Int Int Var Var
-  | BIMconcatVert Int Int Int Var Var
+  = BIAdd AssVar AssVar
+  | BISub AssVar AssVar
+  | BIMult AssVar AssVar
+  | BILeq AssVar AssVar
+  | BIAssertNat Span AssVar
+  | BIGenVadd AssVar
+  | BIGenVconcat AssVar AssVar
+  | BIGenMtranspose AssVar AssVar
+  | BIGenMmult AssVar AssVar AssVar
+  | BIGenMconcatVert AssVar AssVar AssVar
+  | BIVadd Int AssVar AssVar
+  | BIVconcat Int Int AssVar AssVar
+  | BIMtranspose Int Int AssVar
+  | BIMmult Int Int Int AssVar AssVar
+  | BIMconcatVert Int Int Int AssVar AssVar
   deriving stock (Eq, Show)
-
-data ExprF ann = Expr ann (ExprMainF ann)
-  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 ExprF)
-
-data ExprMainF ann
-  = Literal Literal
-  | Var Var
-  | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
-  | App (ExprF ann) (ExprF ann)
-  | LetIn Var (ExprF ann) (ExprF ann)
-  | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)
-  | As (ExprF ann) (TypeExprF ann)
-  | Bracket (ExprF ann)
-  | Escape (ExprF ann)
-  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 ExprMainF)
-
--- The type for ASTs for expressions obtained by parsing source programs.
-type Expr = ExprF Span
-
-type ExprMain = ExprMainF Span
-
-type TypeName = Text
-
-data TypeExprF ann = TypeExpr ann (TypeExprMainF ann)
-  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 TypeExprF)
-
-data TypeExprMainF ann
-  = TyName TypeName [ArgForTypeF ann]
-  | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
-  | TyCode (TypeExprF ann)
-  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 TypeExprMainF)
-
--- The type for ASTs for type expressions obtained by parsing source programs.
-type TypeExpr = TypeExprF Span
-
-type TypeExprMain = TypeExprMainF Span
-
-data ArgForTypeF ann
-  = PersistentArg (ExprF ann)
-  | NormalArg (ExprF ann)
-  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
-  deriving (Eq1, Show1) via (Generically1 ArgForTypeF)
-
-type ArgForType = ArgForTypeF Span
 
 data AssLiteral
   = ALitInt Int
@@ -139,8 +74,8 @@ data AssLiteral
 data Ass0Expr
   = A0Literal AssLiteral
   | A0AppBuiltIn BuiltIn
-  | A0Var Var
-  | A0Lam (Maybe (Var, Ass0TypeExpr)) (Var, Ass0TypeExpr) Ass0Expr
+  | A0Var AssVar
+  | A0Lam (Maybe (AssVar, Ass0TypeExpr)) (AssVar, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
@@ -149,8 +84,8 @@ data Ass0Expr
 
 data Ass1Expr
   = A1Literal AssLiteral
-  | A1Var Var
-  | A1Lam (Maybe (Var, Ass1TypeExpr)) (Var, Ass1TypeExpr) Ass1Expr
+  | A1Var AssVar
+  | A1Lam (Maybe (AssVar, Ass1TypeExpr)) (AssVar, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
   | A1IfThenElse Ass1Expr Ass1Expr Ass1Expr
   | A1Escape Ass0Expr
@@ -158,7 +93,7 @@ data Ass1Expr
 
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType
-  | A0TyArrow (Maybe Var, Ass0TypeExpr) Ass0TypeExpr
+  | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyCode Ass1TypeExpr
   deriving stock (Eq, Show)
 
@@ -184,7 +119,7 @@ data Ass1PrimType
 
 data Ass0Val
   = A0ValLiteral AssLiteral
-  | A0ValLam (Maybe (Var, Ass0TypeVal)) (Var, Ass0TypeVal) Ass0Expr Env0
+  | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr Env0
   | A0ValBracket Ass1Val
   deriving stock (Eq, Show)
 
@@ -207,7 +142,7 @@ data Ass1ValConst
 
 data Ass0TypeVal
   = A0TyValPrim Ass0PrimTypeVal
-  | A0TyValArrow (Maybe Var, Ass0TypeVal) Ass0TypeExpr
+  | A0TyValArrow (Maybe AssVar, Ass0TypeVal) Ass0TypeExpr
   | A0TyValCode Ass1TypeVal
   deriving stock (Eq, Show)
 
@@ -243,7 +178,7 @@ data Type1PrimEquation
   | TyEq1Mat Ass0Expr Ass0Expr Ass0Expr Ass0Expr
   deriving stock (Eq, Show)
 
-type Env0 = Map Var EnvEntry
+type Env0 = Map AssVar EnvEntry
 
 data EnvEntry
   = Ass0ValEntry Ass0Val

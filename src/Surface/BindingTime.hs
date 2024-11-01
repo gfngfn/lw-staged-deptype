@@ -7,7 +7,7 @@ where
 import Control.Lens
 import Data.Generics.Labels ()
 import Data.Map qualified as Map
-import Lwsd.Syntax qualified as Lwsd
+import Lwsd.SrcSyntax qualified as Lwsd
 import Surface.BindingTime.AnalysisError
 import Surface.BindingTime.Analyzer qualified as Analyzer
 import Surface.BindingTime.Constraint

@@ -16,6 +16,7 @@ import Data.List qualified as List
 import Data.Text qualified as Text
 import Data.Tuple.Extra
 import Lwsd.BuiltIn (ass0exprAssertNat)
+import Lwsd.SrcSyntax
 import Lwsd.Subst
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
@@ -48,11 +49,11 @@ findVar trav loc x tyEnv = do
   spanInFile <- askSpanInFile loc
   lift $ maybeToEither (UnboundVar spanInFile x, trav) $ TypeEnv.findVar x tyEnv
 
-generateFreshVar :: M trav Var
+generateFreshVar :: M trav AssVar
 generateFreshVar = do
   currentState@TypecheckState {nextVarIndex} <- get
   put $ currentState {nextVarIndex = nextVarIndex + 1}
-  pure $ Text.pack ("#X" ++ show nextVarIndex)
+  pure $ AssVar $ Text.pack $ "#X" ++ show nextVarIndex
 
 makeIdentityLam :: Ass0TypeExpr -> M trav Ass0Expr
 makeIdentityLam a0tye = do
@@ -184,13 +185,15 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
       pure (a0tye, A0Literal alit)
     Var x -> do
       entry <- findVar trav loc x tyEnv
+      let ax = AssVar x
       case entry of
-        TypeEnv.Ass0Entry a0tye -> pure (a0tye, A0Var x)
+        TypeEnv.Ass0Entry a0tye -> pure (a0tye, A0Var ax)
         TypeEnv.Ass1Entry _ -> typeError trav $ NotAStage0Var spanInFile x
     Lam Nothing (x1, tye1) e2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
       (a0tye2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) e2
-      pure (A0TyArrow (Just x1, a0tye1) a0tye2, A0Lam Nothing (x1, a0tye1) a0e2)
+      let ax1 = AssVar x1
+      pure (A0TyArrow (Just ax1, a0tye1) a0tye2, A0Lam Nothing (ax1, a0tye1) a0e2)
     Lam (Just (f, tyeRec)) (x1, tye1) e2 -> do
       a0tyeRec <- typecheckTypeExpr0 trav tyEnv tyeRec
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
@@ -199,9 +202,11 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
           trav
           (TypeEnv.addVar f (TypeEnv.Ass0Entry a0tyeRec) (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv))
           e2
-      let a0tyeSynth = A0TyArrow (Just x1, a0tye1) a0tye2
+      let ax1 = AssVar x1
+      let af = AssVar f
+      let a0tyeSynth = A0TyArrow (Just ax1, a0tye1) a0tye2
       a0eCastOpt <- makeAssertiveCast trav loc a0tyeSynth a0tyeRec
-      pure (a0tyeRec, applyCast a0eCastOpt (A0Lam (Just (f, a0tyeRec)) (x1, a0tye1) a0e2))
+      pure (a0tyeRec, applyCast a0eCastOpt (A0Lam (Just (af, a0tyeRec)) (ax1, a0tye1) a0e2))
     App e1 e2 -> do
       (a0tye1, a0e1) <- typecheckExpr0 trav tyEnv e1
       (a0tye2, a0e2) <- typecheckExpr0 trav tyEnv e2
@@ -220,9 +225,10 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
     LetIn x e1 e2 -> do
       (a0tye1, a0e1) <- typecheckExpr0 trav tyEnv e1
       (a0tye2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) e2
-      if x `occurs0` a0tye2
+      let ax = AssVar x
+      if ax `occurs0` a0tye2
         then typeError trav $ VarOccursFreelyInAss0Type spanInFile x a0tye2
-        else pure (a0tye2, A0App (A0Lam Nothing (x, a0tye1) a0e2) a0e1)
+        else pure (a0tye2, A0App (A0Lam Nothing (ax, a0tye1) a0e2) a0e1)
     IfThenElse e0 e1 e2 -> do
       (a0tye0, a0e0) <- typecheckExpr0 trav tyEnv e0
       case a0tye0 of
@@ -264,13 +270,15 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
       pure (a1tye, A1Literal alit)
     Var x -> do
       entry <- findVar trav loc x tyEnv
+      let ax = AssVar x
       case entry of
         TypeEnv.Ass0Entry _ -> typeError trav $ NotAStage1Var spanInFile x
-        TypeEnv.Ass1Entry a1tye -> pure (a1tye, A1Var x)
+        TypeEnv.Ass1Entry a1tye -> pure (a1tye, A1Var ax)
     Lam Nothing (x1, tye1) e2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       (a1tye2, a1e2) <- typecheckExpr1 trav (TypeEnv.addVar x1 (TypeEnv.Ass1Entry a1tye1) tyEnv) e2
-      pure (A1TyArrow a1tye1 a1tye2, A1Lam Nothing (x1, a1tye1) a1e2)
+      let ax1 = AssVar x1
+      pure (A1TyArrow a1tye1 a1tye2, A1Lam Nothing (ax1, a1tye1) a1e2)
     Lam (Just (f, tyeRec)) (x1, tye1) e2 -> do
       a1tyeRec <- typecheckTypeExpr1 trav tyEnv tyeRec
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
@@ -279,9 +287,11 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
           trav
           (TypeEnv.addVar f (TypeEnv.Ass1Entry a1tyeRec) (TypeEnv.addVar x1 (TypeEnv.Ass1Entry a1tye1) tyEnv))
           e2
+      let ax1 = AssVar x1
+      let af = AssVar f
       let a1tyeSynth = A1TyArrow a1tye1 a1tye2
       ty1eqOpt <- makeEquation1 trav loc a1tyeSynth a1tyeRec
-      pure (a1tyeRec, applyEquationCast loc ty1eqOpt (A1Lam (Just (f, a1tyeRec)) (x1, a1tye1) a1e2))
+      pure (a1tyeRec, applyEquationCast loc ty1eqOpt (A1Lam (Just (af, a1tyeRec)) (ax1, a1tye1) a1e2))
     App e1 e2 -> do
       (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
       (a1tye2, a1e2) <- typecheckExpr1 trav tyEnv e2
@@ -297,9 +307,10 @@ typecheckExpr1 trav tyEnv (Expr loc eMain) = do
     LetIn x e1 e2 -> do
       (a1tye1, a1e1) <- typecheckExpr1 trav tyEnv e1
       (a1tye2, a1e2) <- typecheckExpr1 trav (TypeEnv.addVar x (TypeEnv.Ass1Entry a1tye1) tyEnv) e2
-      if x `occurs0` a1tye2
+      let ax = AssVar x
+      if ax `occurs0` a1tye2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x a1tye2
-        else pure (a1tye2, A1App (A1Lam Nothing (x, a1tye1) a1e2) a1e1)
+        else pure (a1tye2, A1App (A1Lam Nothing (ax, a1tye1) a1e2) a1e1)
     IfThenElse e0 e1 e2 -> do
       (a1tye0, a1e0) <- typecheckExpr1 trav tyEnv e0
       case a1tye0 of
@@ -380,7 +391,8 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
         case xOpt of
           Just x -> typecheckTypeExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) tye2
           Nothing -> typecheckTypeExpr0 trav tyEnv tye2
-      pure $ A0TyArrow (xOpt, a0tye1) a0tye2
+      let axOpt = fmap AssVar xOpt
+      pure $ A0TyArrow (axOpt, a0tye1) a0tye2
     TyCode tye1 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       pure $ A0TyCode a1tye1

@@ -12,6 +12,7 @@ import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.Parser qualified as Parser
+import Lwsd.SrcSyntax
 import Lwsd.Syntax
 import Lwsd.Typechecker (TypecheckState (..))
 import Lwsd.Typechecker qualified as Typechecker

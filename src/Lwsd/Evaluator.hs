@@ -22,15 +22,15 @@ import Util.Vector qualified as Vector
 import Prelude
 
 data Bug
-  = UnboundVar Var
+  = UnboundVar AssVar
   | NotAClosure Ass0Val
   | NotACodeValue Ass0Val
-  | NotAnInteger (Maybe Var) Ass0Val
-  | NotAVector Var Ass0Val
-  | NotAMatrix Var Ass0Val
+  | NotAnInteger (Maybe AssVar) Ass0Val
+  | NotAVector AssVar Ass0Val
+  | NotAMatrix AssVar Ass0Val
   | NotABoolean Ass0Val
-  | FoundSymbol Var Symbol
-  | FoundAss0Val Var Ass0Val
+  | FoundSymbol AssVar Symbol
+  | FoundAss0Val AssVar Ass0Val
   | InconsistentAppBuiltIn BuiltIn
   deriving stock (Eq, Show)
 
@@ -67,41 +67,41 @@ generateIdentityFunction env a0tyv = do
   x <- symbolToVar <$> generateFreshSymbol
   pure $ A0ValLam Nothing (x, a0tyv) (A0Var x) env
 
-findEntry :: Env0 -> Var -> M EnvEntry
+findEntry :: Env0 -> AssVar -> M EnvEntry
 findEntry env x =
   case Map.lookup x env of
     Nothing -> bug $ UnboundVar x
     Just envEntry -> pure envEntry
 
-findVal0 :: Env0 -> Var -> M Ass0Val
+findVal0 :: Env0 -> AssVar -> M Ass0Val
 findVal0 env x = do
   entry <- findEntry env x
   case entry of
     Ass0ValEntry a0v -> pure a0v
     SymbolEntry symb -> bug $ FoundSymbol x symb
 
-findSymbol :: Env0 -> Var -> M Symbol
+findSymbol :: Env0 -> AssVar -> M Symbol
 findSymbol env x = do
   entry <- findEntry env x
   case entry of
     Ass0ValEntry a0v -> bug $ FoundAss0Val x a0v
     SymbolEntry symb -> pure symb
 
-findInt0 :: Env0 -> Var -> M Int
+findInt0 :: Env0 -> AssVar -> M Int
 findInt0 env x = do
   a0v <- findVal0 env x
   case a0v of
     A0ValLiteral (ALitInt n) -> pure n
     _ -> bug $ NotAnInteger (Just x) a0v
 
-findVec0 :: Env0 -> Var -> M Vector
+findVec0 :: Env0 -> AssVar -> M Vector
 findVec0 env x = do
   a0v <- findVal0 env x
   case a0v of
     A0ValLiteral (ALitVec v) -> pure v
     _ -> bug $ NotAVector x a0v
 
-findMat0 :: Env0 -> Var -> M Matrix
+findMat0 :: Env0 -> AssVar -> M Matrix
 findMat0 env x = do
   a0v <- findVal0 env x
   case a0v of
