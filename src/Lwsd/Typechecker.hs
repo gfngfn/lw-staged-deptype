@@ -44,7 +44,7 @@ type M trav a = StateT TypecheckState (Either (TypeError, trav)) a
 type AppContext = [AppContextEntry]
 
 data AppContextEntry
-  = AppArg0 Ass0TypeExpr
+  = AppArg0 Ass0Expr Ass0TypeExpr
   | AppArg1 Ass1TypeExpr
 
 type RetAppContext = [RetAppContextEntry]
@@ -240,13 +240,45 @@ unifyRetAppContextsByConditional :: trav -> Span -> Ass0Expr -> RetAppContext ->
 unifyRetAppContextsByConditional =
   error "TODO: unifyRetAppContextsByConditional"
 
-instantiateGuidedByAppContext0 :: trav -> AppContext -> Ass0TypeExpr -> M trav (Ass0TypeExpr, RetAppContext)
-instantiateGuidedByAppContext0 =
-  error "TODO: instantiateGuidedByAppContext0"
+instantiateGuidedByAppContext0 :: forall trav. trav -> Span -> AppContext -> Ass0TypeExpr -> M trav (Ass0TypeExpr, RetAppContext)
+instantiateGuidedByAppContext0 trav loc = go
+  where
+    go :: AppContext -> Ass0TypeExpr -> M trav (Ass0TypeExpr, RetAppContext)
+    go appCtx a0tye =
+      case (appCtx, a0tye) of
+        ([], _) ->
+          pure (a0tye, [])
+        (AppArg0 a0e1' a0tye1' : appCtx', A0TyArrow (xOpt, a0tye1) a0tye2) -> do
+          a0eCastOpt <- makeAssertiveCast trav loc a0tye1' a0tye1
+          (a0tye2', retAppCtx') <-
+            case xOpt of
+              Nothing -> go appCtx' a0tye2
+              Just x -> go appCtx' (subst0 a0e1' x a0tye2)
+          pure (A0TyArrow (xOpt, a0tye1) a0tye2', RetCast0 a0eCastOpt : retAppCtx')
+        (AppArg0 _a0e1' _a0tye1' : _appCtx', A0TyOptArrow (x, a0tye1) a0tye2) -> do
+          (a0tye2', retAppCtx') <- go appCtx a0tye2
+          let a0eInferred = error "TODO: find a term that can substitute `x` through the traversal of `a0tye2`"
+          pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInferred0 a0eInferred : retAppCtx')
+        (_, A0TyCode a1tye) -> do
+          (a1tye', retAppCtx) <- instantiateGuidedByAppContext1 trav loc appCtx a1tye
+          pure (A0TyCode a1tye', retAppCtx)
+        _ ->
+          error "TODO: instantiateGuidedByAppContext0, error"
 
-instantiateGuidedByAppContext1 :: trav -> AppContext -> Ass1TypeExpr -> M trav (Ass1TypeExpr, RetAppContext)
-instantiateGuidedByAppContext1 =
-  error "TODO: instantiateGuidedByAppContext1"
+instantiateGuidedByAppContext1 :: forall trav. trav -> Span -> AppContext -> Ass1TypeExpr -> M trav (Ass1TypeExpr, RetAppContext)
+instantiateGuidedByAppContext1 trav loc = go
+  where
+    go :: AppContext -> Ass1TypeExpr -> M trav (Ass1TypeExpr, RetAppContext)
+    go appCtx a1tye =
+      case (appCtx, a1tye) of
+        ([], _) ->
+          pure (a1tye, [])
+        (AppArg1 a1tye1' : appCtx', A1TyArrow a1tye1 a1tye2) -> do
+          ty1eq <- makeEquation1 trav loc a1tye1' a1tye1
+          (a1tye2', retAppCtx') <- go appCtx' a1tye2
+          pure (A1TyArrow a1tye1 a1tye2', RetCast1 ty1eq : retAppCtx')
+        _ ->
+          error "TODO: instantiateGuidedByAppContext1, error"
 
 validateEmptyRetAppContext :: String -> RetAppContext -> M trav ()
 validateEmptyRetAppContext _ [] = pure ()
@@ -278,7 +310,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         let ax = AssVar x
         case entry of
           TypeEnv.Ass0Entry a0tye -> do
-            (a0tyeInst, retCtx) <- instantiateGuidedByAppContext0 trav appCtx a0tye
+            (a0tyeInst, retCtx) <- instantiateGuidedByAppContext0 trav loc appCtx a0tye
             pure (a0tyeInst, A0Var ax, retCtx)
           TypeEnv.Ass1Entry _ ->
             typeError trav $ NotAStage0Var spanInFile x
@@ -313,7 +345,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
       App e1 e2 -> do
         (a0tye2, a0e2, retAppCtx2) <- typecheckExpr0 trav tyEnv [] e2
         validateEmptyRetAppContext "stage-0, App, arg" retAppCtx2
-        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArg0 a0tye2 : appCtx) e1
+        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArg0 a0e2 a0tye2 : appCtx) e1
         case retAppCtx1 of
           RetCast0 a0eCastOpt : retAppCtx -> do
             case a0tye1 of
@@ -405,7 +437,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
         TypeEnv.Ass0Entry _ ->
           typeError trav $ NotAStage1Var spanInFile x
         TypeEnv.Ass1Entry a1tye -> do
-          (a1tyeInst, retAppCtx) <- instantiateGuidedByAppContext1 trav appCtx a1tye
+          (a1tyeInst, retAppCtx) <- instantiateGuidedByAppContext1 trav loc appCtx a1tye
           pure (a1tyeInst, A1Var ax, retAppCtx)
     Lam recOpt (x1, tye1) e2 ->
       case appCtx of
