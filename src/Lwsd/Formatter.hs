@@ -402,6 +402,24 @@ instance Disp TypeError where
       "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1tye) <+> disp spanInFile
     InvalidMatrixLiteral spanInFile e ->
       "Invalid matrix literal;" <+> disp e <+> disp spanInFile
+    CannotUnifyTypesByConditional spanInFile a0tye1 a0tye2 condErr ->
+      "Cannot unify types by conditionals"
+        <+> disp spanInFile
+        <> hardline
+        <+> "left:"
+        <> nest 2 (hardline <> stage0Style (disp a0tye1))
+        <> hardline
+        <+> "right:"
+        <> nest 2 (hardline <> stage0Style (disp a0tye2))
+        <> hardline
+        <> disp condErr
+
+instance Disp ConditionalUnificationError where
+  dispGen _ = \case
+    CannotUnify0 a0tye1 a0tye2 ->
+      "types" <+> stage0Style (disp a0tye1) <+> "and" <+> stage0Style (disp a0tye2) <+> "are incompatible"
+    CannotUnify1 a1tye1 a1tye2 ->
+      "types" <+> stage1Style (disp a1tye1) <+> "and" <+> stage1Style (disp a1tye2) <+> "are incompatible"
 
 instance Disp Ass0Val where
   dispGen req = \case

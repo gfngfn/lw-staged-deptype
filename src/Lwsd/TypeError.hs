@@ -1,5 +1,6 @@
 module Lwsd.TypeError
   ( TypeError (..),
+    ConditionalUnificationError (..),
   )
 where
 
@@ -33,4 +34,10 @@ data TypeError
   | VarOccursFreelyInAss0Type SpanInFile Var Ass0TypeExpr
   | VarOccursFreelyInAss1Type SpanInFile Var Ass1TypeExpr
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
+  | CannotUnifyTypesByConditional SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalUnificationError
+  deriving stock (Eq, Show)
+
+data ConditionalUnificationError
+  = CannotUnify0 Ass0TypeExpr Ass0TypeExpr
+  | CannotUnify1 Ass1TypeExpr Ass1TypeExpr
   deriving stock (Eq, Show)
