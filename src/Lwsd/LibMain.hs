@@ -41,12 +41,12 @@ typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e
             sourceSpec,
             nextVarIndex = 0
           }
-  case evalStateT (Typechecker.typecheckExpr0 id BuiltIn.initialTypeEnv e) typecheckerConfig of
+  case evalStateT (Typechecker.typecheckExpr0 id BuiltIn.initialTypeEnv [] e) typecheckerConfig of
     Left (tyErr, _travMod) -> do
       putStrLn "-------- type error: --------"
       putRenderedLines tyErr
       failure
-    Right (a0tye, a0e) -> do
+    Right (a0tye, a0e, _retAppCtx) -> do
       putStrLn "-------- type: --------"
       putRenderedLinesAtStage0 a0tye
       putStrLn "-------- elaborated expression: --------"

@@ -94,6 +94,7 @@ data Ass1Expr
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType
   | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
+  | A0TyOptArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyCode Ass1TypeExpr
   deriving stock (Eq, Show)
 

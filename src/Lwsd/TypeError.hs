@@ -35,6 +35,7 @@ data TypeError
   | VarOccursFreelyInAss1Type SpanInFile Var Ass1TypeExpr
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
   | CannotUnifyTypesByConditional SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalUnificationError
+  | CannotApplyLiteral SpanInFile
   deriving stock (Eq, Show)
 
 data ConditionalUnificationError
