@@ -167,6 +167,57 @@ makeEquation1 trav loc a1tye1' a1tye2' = do
         (_, _) ->
           Left ()
 
+unifyTypesByConditional :: trav -> Span -> Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0TypeExpr
+unifyTypesByConditional trav loc a0e0 a0tye1' a0tye2' =
+  case go0 a0tye1' a0tye2' of
+    Left condErr -> do
+      spanInFile <- askSpanInFile loc
+      typeError trav $ CannotUnifyTypesByConditional spanInFile a0tye1' a0tye2' condErr
+    Right a0tye ->
+      pure a0tye
+  where
+    go0 :: Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalUnificationError Ass0TypeExpr
+    go0 a0tye1 a0tye2 =
+      case (a0tye1, a0tye2) of
+        (A0TyPrim a0tyePrim1, A0TyPrim a0tyePrim2) ->
+          if a0tyePrim1 == a0tyePrim2
+            then pure a0tye1
+            else Left $ CannotUnify0 a0tye1 a0tye2
+        (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
+          a0tye1u <- go0 a0tye11 a0tye21
+          (xu, a0tye2u) <-
+            case (x1opt, x2opt) of
+              (Nothing, Nothing) -> (Nothing,) <$> go0 a0tye12 a0tye22
+              (Just x1, Nothing) -> (Just x1,) <$> go0 a0tye12 a0tye22
+              (Nothing, Just x2) -> (Just x2,) <$> go0 a0tye12 a0tye22
+              (Just x1, Just x2) -> (Just x1,) <$> go0 a0tye12 (subst0 (A0Var x1) x2 a0tye22)
+          pure $ A0TyArrow (xu, a0tye1u) a0tye2u
+        (A0TyCode a1tye1, A0TyCode a1tye2) ->
+          A0TyCode <$> go1 a1tye1 a1tye2
+        _ ->
+          Left $ CannotUnify0 a0tye1 a0tye2
+
+    go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalUnificationError Ass1TypeExpr
+    go1 a1tye1 a1tye2 =
+      case (a1tye1, a1tye2) of
+        (A1TyPrim a1tyePrim1, A1TyPrim a1tyePrim2) ->
+          A1TyPrim
+            <$> case (a1tyePrim1, a1tyePrim2) of
+              (A1TyInt, A1TyInt) ->
+                pure A1TyInt
+              (A1TyBool, A1TyBool) ->
+                pure A1TyBool
+              (A1TyVec a0e1, A1TyVec a0e2) ->
+                pure $ A1TyVec (A0IfThenElse a0e0 a0e1 a0e2)
+              (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) ->
+                pure $ A1TyMat (A0IfThenElse a0e0 a0e11 a0e21) (A0IfThenElse a0e0 a0e12 a0e22)
+              _ ->
+                Left $ CannotUnify1 a1tye1 a1tye2
+        (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
+          A1TyArrow <$> go1 a1tye11 a1tye21 <*> go1 a1tye12 a1tye22
+        _ ->
+          Left $ CannotUnify1 a1tye1 a1tye2
+
 typecheckExpr0 :: trav -> TypeEnv -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv (Expr loc eMain) = do
   spanInFile <- askSpanInFile loc
@@ -235,8 +286,8 @@ typecheckExpr0 trav tyEnv (Expr loc eMain) = do
         A0TyPrim A0TyBool -> do
           (a0tye1, a0e1) <- typecheckExpr0 trav tyEnv e1
           (a0tye2, a0e2) <- typecheckExpr0 trav tyEnv e2
-          a0eCastOpt <- makeAssertiveCast trav loc a0tye2 a0tye1
-          pure (a0tye1, A0IfThenElse a0e0 a0e1 (applyCast a0eCastOpt a0e2))
+          a0tye <- unifyTypesByConditional trav loc a0e0 a0tye1 a0tye2
+          pure (a0tye, A0IfThenElse a0e0 a0e1 a0e2)
         _ -> do
           let Expr loc0 _ = e0
           spanInFile0 <- askSpanInFile loc0
