@@ -1,8 +1,9 @@
-let aux = rec(self : (p : Nat) -> (q : Nat) -> Vec p -> Vec (p * q)) -> fun(n : Nat) -> fun(m : Nat) -> fun(e : Vec n) ->
-  if m <= 0 then
-    [| |] as Vec (n * m)
-  else
-    vconcat n (n * (m - 1)) e (self n (m - 1) e)
+let aux = rec(self : (p : Nat) -> (q : Nat) -> Vec p -> Vec (p * q)) ->
+  fun(n : Nat) -> fun(m : Nat) -> fun(e : Vec n) ->
+    if m <= 0 then
+      [| |]
+    else
+      vconcat n (n * (m - 1)) e (self n (m - 1) e)
 in
 let vrepeat = fun(n : Nat) -> fun(m : Nat) -> fun(v : Vec n) -> aux n m v in
 vrepeat 3 5 [| 4; 6; 9 |]
