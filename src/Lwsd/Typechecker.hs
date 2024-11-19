@@ -5,10 +5,6 @@ module Lwsd.Typechecker
     typecheckTypeExpr1,
     TypecheckState (..),
     M,
-    AppContext,
-    AppContextEntry (..),
-    RetAppContext,
-    RetAppContextEntry (..),
   )
 where
 
@@ -40,19 +36,6 @@ data TypecheckState = TypecheckState
   }
 
 type M trav a = StateT TypecheckState (Either (TypeError, trav)) a
-
-type AppContext = [AppContextEntry]
-
-data AppContextEntry
-  = AppArg0 Ass0Expr Ass0TypeExpr
-  | AppArg1 Ass1TypeExpr
-
-type RetAppContext = [RetAppContextEntry]
-
-data RetAppContextEntry
-  = RetCast0 (Maybe Ass0Expr)
-  | RetCast1 (Maybe Type1Equation)
-  | RetInferred0 Ass0Expr
 
 typeError :: trav -> TypeError -> M trav b
 typeError trav e = lift $ Left (e, trav)
@@ -237,8 +220,15 @@ unifyTypesByConditional trav loc a0e0 a0tye1' a0tye2' =
           Left $ CannotUnify1 a1tye1 a1tye2
 
 unifyRetAppContextsByConditional :: trav -> Span -> Ass0Expr -> RetAppContext -> RetAppContext -> M trav RetAppContext
-unifyRetAppContextsByConditional =
-  error "TODO: unifyRetAppContextsByConditional"
+unifyRetAppContextsByConditional _trav _loc _a0e0 retAppCtx1 _retAppCtx2 =
+  pure retAppCtx1 -- TODO: fix this
+  --  go
+  --  where
+  --    go retAppCtx1 retAppCtx2 =
+  --      case (retAppCtx1, retAppCtx2) of
+  --        ([], []) -> []
+  --        (RetCast0 (Just a0e1) : retAppCtx1', RetCast0 (Just a0e2) : retAppCtx2') ->
+  --          RetCast0 (IfThenElse a0e0 a0e1 a0e2) : go retAppCtx1' retAppCtx2'
 
 instantiateGuidedByAppContext0 :: forall trav. trav -> Span -> AppContext -> Ass0TypeExpr -> M trav (Ass0TypeExpr, RetAppContext)
 instantiateGuidedByAppContext0 trav loc = go
@@ -262,8 +252,9 @@ instantiateGuidedByAppContext0 trav loc = go
         (_, A0TyCode a1tye) -> do
           (a1tye', retAppCtx) <- instantiateGuidedByAppContext1 trav loc appCtx a1tye
           pure (A0TyCode a1tye', retAppCtx)
-        _ ->
-          error "TODO: instantiateGuidedByAppContext0, error"
+        _ -> do
+          spanInFile <- askSpanInFile loc
+          typeError trav $ CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye
 
 instantiateGuidedByAppContext1 :: forall trav. trav -> Span -> AppContext -> Ass1TypeExpr -> M trav (Ass1TypeExpr, RetAppContext)
 instantiateGuidedByAppContext1 trav loc = go
@@ -594,6 +585,12 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
     TyCode tye1 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       pure $ A0TyCode a1tye1
+    TyOptArrow (x, tye1) tye2 -> do
+      a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
+      a0tye2 <-
+        typecheckTypeExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) tye2
+      let ax = AssVar x
+      pure $ A0TyOptArrow (ax, a0tye1) a0tye2
 
 typecheckTypeExpr1 :: trav -> TypeEnv -> TypeExpr -> M trav Ass1TypeExpr
 typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
@@ -635,5 +632,7 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
           Nothing -> pure ()
       a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
       pure $ A1TyArrow a1tye1 a1tye2
+    TyOptArrow _ _ ->
+      error "TODO: stage-1, TyOptArrow, error"
     TyCode _ -> do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile

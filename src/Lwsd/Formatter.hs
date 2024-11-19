@@ -109,7 +109,7 @@ dispRecLam req f tyeRec x tye1 e2 =
 dispLamOpt :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> Doc Ann
 dispLamOpt req x tye1 e2 =
   deepenParenWhen (req <= FunDomain) $
-    group ("?λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+    group ("λ?" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
 
 dispApp :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispApp req e1 e2 =
@@ -231,6 +231,7 @@ instance Disp (TypeExprMainF ann) where
     TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
     TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     TyCode tye1 -> dispBracket tye1
+    TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
@@ -429,6 +430,15 @@ instance Disp TypeError where
         <> disp condErr
     CannotApplyLiteral spanInFile ->
       "Cannot apply a literal" <> disp spanInFile
+    CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye ->
+      "Cannot instantiate a type guided by the application context"
+        <+> disp spanInFile
+        <> hardline
+        <+> "application context:"
+        <> nest 2 (hardline <> disps appCtx)
+        <> hardline
+        <+> "type:"
+        <> nest 2 (hardline <> stage0Style (disp a0tye))
 
 instance Disp ConditionalUnificationError where
   dispGen _ = \case
@@ -436,6 +446,11 @@ instance Disp ConditionalUnificationError where
       "types" <+> stage0Style (disp a0tye1) <+> "and" <+> stage0Style (disp a0tye2) <+> "are incompatible"
     CannotUnify1 a1tye1 a1tye2 ->
       "types" <+> stage1Style (disp a1tye1) <+> "and" <+> stage1Style (disp a1tye2) <+> "are incompatible"
+
+instance Disp AppContextEntry where
+  dispGen _ = \case
+    AppArg0 a0e a0tye -> disp a0e <+> ":" <+> disp a0tye
+    AppArg1 a1tye -> disp a1tye
 
 instance Disp Ass0Val where
   dispGen req = \case

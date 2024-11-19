@@ -26,6 +26,7 @@ data Token
   | TokEscape
   | TokPersistent
   | TokSemicolon
+  | TokQuestion
   | TokVecLeft
   | TokVecRight
   | TokMatLeft
@@ -86,6 +87,7 @@ token =
       TokEscape <$ Mp.single '~',
       TokPersistent <$ Mp.single '%',
       TokSemicolon <$ Mp.single ';',
+      TokQuestion <$ Mp.single '?',
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",
       TokMatLeft <$ Mp.chunk "[#",

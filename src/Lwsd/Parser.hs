@@ -129,6 +129,7 @@ exprAtom, expr :: P Expr
       tries
         [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
           makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr,
+          makeLamOpt <$> token TokFun <*> (token TokQuestion *> binder <* token TokArrow) <*> expr,
           makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
         ]
         comp
@@ -141,6 +142,9 @@ exprAtom, expr :: P Expr
 
         makeRecLam locFirst fBinder xBinder e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (Lam (Just fBinder) xBinder e)
+
+        makeLamOpt locFirst xBinder e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LamOpt xBinder e)
 
         makeIf locFirst e0 e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
@@ -186,8 +190,11 @@ typeExpr = fun
 
     fun :: P TypeExpr
     fun =
-      (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
-        `or` app
+      tries
+        [ makeTyArrow <$> funDom <*> (token TokArrow *> fun),
+          makeTyOptArrow <$> token TokQuestion <*> (token TokLeftParen *> noLoc lower <* token TokColon) <*> (fun <* token TokRightParen) <*> (token TokArrow *> fun)
+        ]
+        app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
           let (loc, tyDom) =
@@ -195,6 +202,9 @@ typeExpr = fun
                   (Nothing, tye1@(TypeExpr loc1 _)) -> (mergeSpan loc1 loc2, (Nothing, tye1))
                   (Just (loc1, x), tye1) -> (mergeSpan loc1 loc2, (Just x, tye1))
            in TypeExpr loc (TyArrow tyDom tye2)
+
+        makeTyOptArrow locFirst x tye1 tye2@(TypeExpr locLast _) =
+          TypeExpr (mergeSpan locFirst locLast) (TyOptArrow (x, tye1) tye2)
 
     funDom :: P (Maybe (Span, Var), TypeExpr)
     funDom =

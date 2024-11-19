@@ -36,6 +36,7 @@ data TypeError
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
   | CannotUnifyTypesByConditional SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalUnificationError
   | CannotApplyLiteral SpanInFile
+  | CannotInstantiateGuidedByAppContext0 SpanInFile AppContext Ass0TypeExpr
   deriving stock (Eq, Show)
 
 data ConditionalUnificationError
