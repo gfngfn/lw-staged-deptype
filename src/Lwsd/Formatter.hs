@@ -449,8 +449,8 @@ instance Disp ConditionalUnificationError where
 
 instance Disp AppContextEntry where
   dispGen _ = \case
-    AppArg0 a0e a0tye -> disp a0e <+> ":" <+> disp a0tye
-    AppArg1 a1tye -> disp a1tye
+    AppArg0 a0e a0tye -> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
+    AppArg1 a1tye -> stage1Style (disp a1tye)
 
 instance Disp Ass0Val where
   dispGen req = \case
