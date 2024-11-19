@@ -106,6 +106,11 @@ dispRecLam req f tyeRec x tye1 e2 =
     docBinderF = "rec" <+> disp f <+> ":" <+> disp tyeRec <> "."
     docBinderX = "λ" <> disp x <+> ":" <+> disp tye1 <> "."
 
+dispLamOpt :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> Doc Ann
+dispLamOpt req x tye1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group ("?λ" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+
 dispApp :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispApp req e1 e2 =
   deepenParenWhen (req <= Atomic) $
@@ -154,6 +159,13 @@ dispArrowType req xOpt tye1 tye2 =
 dispNondepArrowType :: (Disp ty) => Associativity -> ty -> ty -> Doc Ann
 dispNondepArrowType req =
   dispArrowType req (Nothing :: Maybe Text)
+
+dispOptArrowType :: (Disp var, Disp ty1, Disp ty2) => Associativity -> var -> ty1 -> ty2 -> Doc Ann
+dispOptArrowType req x tye1 tye2 =
+  deepenParenWhen (req <= FunDomain) $
+    group (docDom <> " ->" <> line <> disp tye2)
+  where
+    docDom = "?(" <> disp x <+> ":" <+> disp tye1 <> ")"
 
 dispVectorLiteral :: [Int] -> Doc Ann
 dispVectorLiteral ns =
@@ -204,6 +216,7 @@ instance Disp (ExprMainF ann) where
     Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     App e1 e2 -> dispApp req e1 e2
+    LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
     LetIn x e1 e2 -> dispLetIn req x e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2
@@ -315,6 +328,7 @@ instance Disp Ass0TypeExpr where
     A0TyPrim a0tyPrim -> disp a0tyPrim
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
+    A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
 
 instance Disp Ass1PrimType where
   dispGen req = \case
@@ -413,6 +427,8 @@ instance Disp TypeError where
         <> nest 2 (hardline <> stage0Style (disp a0tye2))
         <> hardline
         <> disp condErr
+    CannotApplyLiteral spanInFile ->
+      "Cannot apply a literal" <> disp spanInFile
 
 instance Disp ConditionalUnificationError where
   dispGen _ = \case

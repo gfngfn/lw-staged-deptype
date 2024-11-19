@@ -362,6 +362,17 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 typeError trav $ NotAFunctionTypeForStage0 spanInFile1 a0tye1
           _ ->
             error "bug: App, fun, not a RetCast0"
+      LamOpt (x1, tye1) e2 -> do
+        case appCtx of
+          [] -> do
+            a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
+            (a0tye2, a0e2, retAppCtx1) <-
+              typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) [] e2
+            validateEmptyRetAppContext "stage-1, Lam, non-rec" retAppCtx1
+            let ax1 = AssVar x1
+            pure (A0TyOptArrow (ax1, a0tye1) a0tye2, A0Lam Nothing (ax1, a0tye1) a0e2, [])
+          _ : _ ->
+            error "TODO: stage-1, LamOpt, non-empty AppContext"
       LetIn x e1 e2 -> do
         (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv [] e1
         case retAppCtx1 of
@@ -484,6 +495,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
               typeError trav $ NotAFunctionTypeForStage1 spanInFile1 a1tye1
         _ ->
           error "bug: stage-1, App, fun, not a RetCast1"
+    LamOpt _ _ ->
+      error "TODO: stage-1, LamOpt, error"
     LetIn x e1 e2 -> do
       (a1tye1, a1e1, retAppCtx1) <- typecheckExpr1 trav tyEnv [] e1
       validateEmptyRetAppContext "stage-1, LetIn" retAppCtx1
