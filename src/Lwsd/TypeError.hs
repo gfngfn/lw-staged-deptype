@@ -37,6 +37,7 @@ data TypeError
   | CannotUnifyTypesByConditional SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalUnificationError
   | CannotApplyLiteral SpanInFile
   | CannotInstantiateGuidedByAppContext0 SpanInFile AppContext Ass0TypeExpr
+  | CannotInferOptional SpanInFile AssVar
   deriving stock (Eq, Show)
 
 data ConditionalUnificationError

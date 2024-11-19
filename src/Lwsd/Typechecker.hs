@@ -316,15 +316,21 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
               Nothing -> go isubst1 appCtx' (applyInferenceSubst isubst1 a0tye2)
               Just x -> go isubst1 appCtx' (subst0 a0e1' x (applyInferenceSubst isubst1 a0tye2))
           pure (A0TyArrow (xOpt, a0tye1) a0tye2', RetCast0 a0eCastOpt : retAppCtx', isubstRet)
-        (_, A0TyOptArrow (x, a0tye1) a0tye2) ->
-          case appCtx of
-            AppArg0 _a0e1' _a0tye1' : _appCtx' -> do
+        (appCtxEntry : _appCtx', A0TyOptArrow (x, a0tye1) a0tye2) ->
+          case appCtxEntry of
+            AppArgOpt0 _a0e1' _a0tye1' ->
+              error "TODO: instantiateGuidedByAppContext0, AppArgOpt0. use appCtx'"
+            _ -> do
               (a0tye2', retAppCtx', isubstRet) <- go (Map.insert x Nothing isubst) appCtx a0tye2
-              let a0eInferred = error "TODO: find a term that can substitute `x` through the traversal of `a0tye2` (1)"
-              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInferred0 a0eInferred : retAppCtx', isubstRet)
-            AppArg1 _a1tye1' : _appCtx' -> do
-              (a0tye2', retAppCtx', isubstRet) <- go (Map.insert x Nothing isubst) appCtx a0tye2
-              let a0eInferred = error "TODO: find a term that can substitute `x` through the traversal of `a0tye2` (2)"
+              a0eInferred <-
+                case Map.lookup x isubstRet of
+                  Just (Just a0eInferred') ->
+                    pure a0eInferred'
+                  Just Nothing -> do
+                    spanInFile <- askSpanInFile loc
+                    typeError trav $ CannotInferOptional spanInFile x
+                  Nothing ->
+                    error "bug: not registered"
               pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInferred0 a0eInferred : retAppCtx', isubstRet)
         (_, A0TyCode a1tye) -> do
           (a1tye', retAppCtx, isubstRet) <- instantiateGuidedByAppContext1 trav loc isubst appCtx a1tye

@@ -285,6 +285,9 @@ evalTypeExpr0 env = \case
   A0TyCode a1tye1 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1
+  A0TyOptArrow (x, a0tye1) a0tye2 -> do
+    a0tyv1 <- evalTypeExpr0 env a0tye1
+    pure $ A0TyValArrow (Just x, a0tyv1) a0tye2 -- TODO: reconsider this
 
 validateIntLiteral :: Ass0Val -> M Int
 validateIntLiteral = \case

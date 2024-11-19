@@ -210,6 +210,7 @@ type AppContext = [AppContextEntry]
 data AppContextEntry
   = AppArg0 Ass0Expr Ass0TypeExpr
   | AppArg1 Ass1TypeExpr
+  | AppArgOpt0 Ass0Expr Ass0TypeExpr
   deriving (Eq, Show)
 
 type RetAppContext = [RetAppContextEntry]

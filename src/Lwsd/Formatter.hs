@@ -439,6 +439,8 @@ instance Disp TypeError where
         <> hardline
         <+> "type:"
         <> nest 2 (hardline <> stage0Style (disp a0tye))
+    CannotInferOptional spanInFile x ->
+      "Cannot infer an optional argument for" <+> disp x <+> disp spanInFile
 
 instance Disp ConditionalUnificationError where
   dispGen _ = \case
@@ -451,6 +453,7 @@ instance Disp AppContextEntry where
   dispGen _ = \case
     AppArg0 a0e a0tye -> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
     AppArg1 a1tye -> stage1Style (disp a1tye)
+    AppArgOpt0 a0e a0tye -> "?" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
 
 instance Disp Ass0Val where
   dispGen req = \case
