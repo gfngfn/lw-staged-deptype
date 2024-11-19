@@ -45,7 +45,7 @@ ty0Mat m n = A0TyPrim (A0TyMat m n)
 infixr 0 -->
 
 (-:>) :: (AssVar, Ass0TypeExpr) -> Ass0TypeExpr -> Ass0TypeExpr
-(-:>) (x, a0tye1) = A0TyArrow (Just x, a0tye1)
+(-:>) (x, a0tye1) = A0TyOptArrow (x, a0tye1)
 
 infixr 0 -:>
 

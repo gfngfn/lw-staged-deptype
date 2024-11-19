@@ -3,7 +3,7 @@ let aux = rec(self : (q : Nat) -> ?(p : Nat) -> &(Vec %p) -> &(Vec %(p * q))) ->
     if m <= 0 then
       &[| |]
     else
-      &(~(gen_vconcat n (n * (m - 1))) ~e ~(self (m - 1) e))
+      &(~gen_vconcat ~e ~(self (m - 1) e))
 in
 let gen_vrepeat =
   fun(m : Nat) -> fun?(n : Nat) -> &(fun(v : Vec %n) -> ~(aux m &v))
