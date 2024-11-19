@@ -443,7 +443,7 @@ instance Disp TypeError where
     CannotApplyLiteral spanInFile ->
       "Cannot apply a literal" <> disp spanInFile
     CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye ->
-      "Cannot instantiate a type guided by the application context"
+      "Cannot instantiate a stage-0 type guided by the application context"
         <+> disp spanInFile
         <> hardline
         <+> "application context:"
@@ -451,6 +451,15 @@ instance Disp TypeError where
         <> hardline
         <+> "type:"
         <> nest 2 (hardline <> stage0Style (disp a0tye))
+    CannotInstantiateGuidedByAppContext1 spanInFile appCtx a1tye ->
+      "Cannot instantiate a stage-1 type guided by the application context"
+        <+> disp spanInFile
+        <> hardline
+        <+> "application context:"
+        <> nest 2 (hardline <> disps appCtx)
+        <> hardline
+        <+> "type:"
+        <> nest 2 (hardline <> stage1Style (disp a1tye))
     CannotInferOptional spanInFile x ->
       "Cannot infer an optional argument for" <+> disp x <+> disp spanInFile
 

@@ -325,11 +325,19 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
             case xOpt of
               Nothing -> go varsToInfer' appCtx' a0tye2s
               Just x -> go varsToInfer' appCtx' (subst0 a0e1' x a0tye2s)
-          pure (A0TyArrow (xOpt, a0tye1) a0tye2', RetCast0 a0eCastOpt : retAppCtx', Map.union solution1 solution')
-        (appCtxEntry : _appCtx', A0TyOptArrow (x, a0tye1) a0tye2) ->
+          let solution = Map.union solution1 solution'
+          let a0tye1s = applySolution solution a0tye1
+          pure (A0TyArrow (xOpt, a0tye1s) a0tye2', RetCast0 a0eCastOpt : retAppCtx', solution)
+        (appCtxEntry : appCtx', A0TyOptArrow (x, a0tye1) a0tye2) ->
           case appCtxEntry of
-            AppArgOpt0 _a0e1' _a0tye1' ->
-              error "TODO: instantiateGuidedByAppContext0, AppArgOpt0. use appCtx'"
+            AppArgOpt0 a0e1' a0tye1' -> do
+              (a0eCastOpt, solution1) <- makeAssertiveCast trav loc varsToInfer a0tye1' a0tye1
+              let varsToInfer' = varsToInfer \\ Map.keysSet solution1
+              let a0tye2s = applySolution solution1 a0tye2
+              (a0tye2', retAppCtx', solution') <- go varsToInfer' appCtx' (subst0 a0e1' x a0tye2s)
+              let solution = Map.union solution1 solution'
+              let a0tye1s = applySolution solution a0tye1
+              pure (A0TyOptArrow (x, a0tye1s) a0tye2', RetCast0 a0eCastOpt : retAppCtx', solution)
             _ -> do
               (a0tye2', retAppCtx', solution') <- go (Set.insert x varsToInfer) appCtx a0tye2
               a0eInferred <-
@@ -359,9 +367,12 @@ instantiateGuidedByAppContext1 trav loc = go
           (ty1eq, solution1) <- makeEquation1 trav loc varsToInfer a1tye1' a1tye1
           (a1tye2', retAppCtx', solution') <-
             go (varsToInfer \\ Map.keysSet solution1) appCtx' (applySolution solution1 a1tye2)
-          pure (A1TyArrow a1tye1 a1tye2', RetCast1 ty1eq : retAppCtx', Map.union solution1 solution')
-        _ ->
-          error "TODO: instantiateGuidedByAppContext1, error"
+          let solution = Map.union solution1 solution'
+          let a1tye1s = applySolution solution a1tye1
+          pure (A1TyArrow a1tye1s a1tye2', RetCast1 ty1eq : retAppCtx', solution)
+        _ -> do
+          spanInFile <- askSpanInFile loc
+          typeError trav $ CannotInstantiateGuidedByAppContext1 spanInFile appCtx a1tye
 
 validateEmptyRetAppContext :: String -> RetAppContext -> M trav ()
 validateEmptyRetAppContext _ [] = pure ()
@@ -458,7 +469,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
       AppOpt e1 e2 -> do
         (a0tye2, a0e2, retAppCtx2) <- typecheckExpr0 trav tyEnv [] e2
         validateEmptyRetAppContext "stage-0, AppOpt, arg" retAppCtx2
-        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArg0 a0e2 a0tye2 : appCtx) e1
+        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArgOpt0 a0e2 a0tye2 : appCtx) e1
         case retAppCtx1 of
           RetCast0 a0eCastOpt : retAppCtx -> do
             case a0tye1 of
