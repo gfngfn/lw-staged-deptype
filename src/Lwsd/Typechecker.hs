@@ -16,7 +16,7 @@ import Data.Function
 import Data.List qualified as List
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Set (Set)
+import Data.Set (Set, (\\))
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Data.Tuple.Extra
@@ -75,15 +75,15 @@ applyEquationCast loc ty1eqOpt a1e =
     Just ty1eq -> A1Escape (A0App (A0TyEqAssert loc ty1eq) (A0Bracket a1e))
 
 -- Returning `Nothing` means there's no need to insert a cast.
-makeAssertiveCast :: forall trav. trav -> Span -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr)
+makeAssertiveCast :: forall trav. trav -> Span -> Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
 makeAssertiveCast trav loc =
   go
   where
-    go :: Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr)
-    go a0tye1 a0tye2
+    go :: Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
+    go _varsToInfer a0tye1 a0tye2
       | alphaEquivalent a0tye1 a0tye2 =
-          pure Nothing
-    go a0tye1 a0tye2 = do
+          pure (Nothing, Map.empty)
+    go varsToInfer a0tye1 a0tye2 = do
       spanInFile <- askSpanInFile loc
       case (a0tye1, a0tye2) of
         (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) -> do
@@ -91,13 +91,13 @@ makeAssertiveCast trav loc =
             (A0TyInt, A0TyInt) -> nothingOrIdentityLam (A0TyPrim A0TyInt)
             (A0TyNat, A0TyNat) -> nothingOrIdentityLam (A0TyPrim A0TyNat)
             (A0TyNat, A0TyInt) -> nothingOrIdentityLam (A0TyPrim A0TyInt) -- Implicit upcast
-            (A0TyInt, A0TyNat) -> pure $ Just $ ass0exprAssertNat loc -- Assertive downcast
+            (A0TyInt, A0TyNat) -> pure (Just (ass0exprAssertNat loc), Map.empty) -- Assertive downcast
             (A0TyBool, A0TyBool) -> nothingOrIdentityLam (A0TyPrim A0TyBool)
             (A0TyVec n1, A0TyVec n2) | n1 == n2 -> nothingOrIdentityLam (A0TyPrim (A0TyVec n1))
             (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> nothingOrIdentityLam (A0TyPrim (A0TyMat m1 n1))
             _ -> typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
-          a0eDomCastOpt <- go a0tye11 a0tye21
+          (a0eDomCastOpt, solutionDom) <- go varsToInfer a0tye11 a0tye21
           (x, a0tye22') <-
             case (x1opt, x2opt) of
               (Nothing, Nothing) -> do
@@ -109,83 +109,129 @@ makeAssertiveCast trav loc =
                 pure (x2, a0tye22)
               (Just x1, Just x2) ->
                 pure (x1, subst0 (A0Var x1) x2 a0tye22)
-          a0eCodCastOpt <- makeAssertiveCast trav loc a0tye12 a0tye22'
+          (a0eCodCastOpt, solutionCod) <-
+            go (varsToInfer \\ Map.keysSet solutionDom) a0tye12 (applySolution solutionDom a0tye22')
           f <- generateFreshVar
           x' <- generateFreshVar
-          case (a0eDomCastOpt, a0eCodCastOpt) of
-            (Nothing, Nothing) ->
-              pure Nothing
-            _ -> do
-              let fDom = applyCast a0eDomCastOpt
-              let fCod = applyCast a0eCodCastOpt
-              pure $
-                Just $
-                  A0Lam Nothing (f, a0tye1) $
-                    A0Lam Nothing (x, a0tye21) $
-                      A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
+          a0eCastOpt <-
+            case (a0eDomCastOpt, a0eCodCastOpt) of
+              (Nothing, Nothing) ->
+                pure Nothing
+              _ -> do
+                let fDom = applyCast a0eDomCastOpt
+                let fCod = applyCast a0eCodCastOpt
+                pure $
+                  Just $
+                    A0Lam Nothing (f, a0tye1) $
+                      A0Lam Nothing (x, a0tye21) $
+                        A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
+          pure (a0eCastOpt, Map.union solutionDom solutionCod)
         (A0TyOptArrow (x1, a0tye11) a0tye12, A0TyOptArrow (x2, a0tye21) a0tye22) -> do
-          a0eDomCastOpt <- go a0tye11 a0tye21
+          (a0eDomCastOpt, solutionDom) <- go varsToInfer a0tye11 a0tye21
           let (x, a0tye22') = (x1, subst0 (A0Var x1) x2 a0tye22)
-          a0eCodCastOpt <- makeAssertiveCast trav loc a0tye12 a0tye22'
+          (a0eCodCastOpt, solutionCod) <-
+            go (varsToInfer \\ Map.keysSet solutionDom) a0tye12 (applySolution solutionDom a0tye22')
           f <- generateFreshVar
           x' <- generateFreshVar
-          case (a0eDomCastOpt, a0eCodCastOpt) of
-            (Nothing, Nothing) ->
-              pure Nothing
-            _ -> do
-              let fDom = applyCast a0eDomCastOpt
-              let fCod = applyCast a0eCodCastOpt
-              pure $
-                Just $
-                  A0Lam Nothing (f, a0tye1) $
-                    A0Lam Nothing (x, a0tye21) $
-                      A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
+          a0eCastOpt <-
+            case (a0eDomCastOpt, a0eCodCastOpt) of
+              (Nothing, Nothing) ->
+                pure Nothing
+              _ -> do
+                let fDom = applyCast a0eDomCastOpt
+                let fCod = applyCast a0eCodCastOpt
+                pure $
+                  Just $
+                    A0Lam Nothing (f, a0tye1) $
+                      A0Lam Nothing (x, a0tye21) $
+                        A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
+          pure (a0eCastOpt, Map.union solutionDom solutionCod)
         (A0TyCode a1tye1, A0TyCode a1tye2) -> do
-          ty1eqOpt <- makeEquation1 trav loc a1tye1 a1tye2
-          pure $ fmap (A0TyEqAssert loc) ty1eqOpt
+          (ty1eqOpt, solution) <- makeEquation1 trav loc varsToInfer a1tye1 a1tye2
+          pure (A0TyEqAssert loc <$> ty1eqOpt, solution)
         _ ->
           typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
 
-    nothingOrIdentityLam :: Ass0TypeExpr -> M trav (Maybe Ass0Expr)
+    nothingOrIdentityLam :: Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
     nothingOrIdentityLam a0tye = do
       TypecheckState {optimizeTrivialAssertion} <- get
       if optimizeTrivialAssertion
-        then pure Nothing
-        else Just <$> makeIdentityLam a0tye
+        then pure (Nothing, Map.empty)
+        else (\a0e -> (Just a0e, Map.empty)) <$> makeIdentityLam a0tye
 
-makeEquation1 :: forall trav. trav -> Span -> Ass1TypeExpr -> Ass1TypeExpr -> M trav (Maybe Type1Equation)
-makeEquation1 trav loc a1tye1' a1tye2' = do
+makeEquation1 :: forall trav. trav -> Span -> Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> M trav (Maybe Type1Equation, InferenceSolution)
+makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
   TypecheckState {optimizeTrivialAssertion} <- get
   spanInFile <- askSpanInFile loc
-  case go a1tye1' a1tye2' of
-    Right (trivial, ty1eq) ->
+  case go varsToInfer' a1tye1' a1tye2' of
+    Right (trivial, ty1eq, solution) ->
       if trivial && optimizeTrivialAssertion
-        then pure Nothing
-        else pure $ Just ty1eq
+        then pure (Nothing, solution)
+        else pure (Just ty1eq, solution)
     Left () ->
       typeError trav $ TypeContradictionAtStage1 spanInFile a1tye1' a1tye2'
   where
-    go :: Ass1TypeExpr -> Ass1TypeExpr -> Either () (Bool, Type1Equation)
-    go a1tye1 a1tye2 =
+    go :: Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> Either () (Bool, Type1Equation, InferenceSolution)
+    go varsToInfer a1tye1 a1tye2 =
       case (a1tye1, a1tye2) of
         (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
           case (a1tyPrim1, a1tyPrim2) of
             (A1TyInt, A1TyInt) ->
-              pure (True, TyEq1Prim TyEq1Int)
+              pure (True, TyEq1Prim TyEq1Int, Map.empty)
             (A1TyBool, A1TyBool) ->
-              pure (True, TyEq1Prim TyEq1Bool)
+              pure (True, TyEq1Prim TyEq1Bool, Map.empty)
             (A1TyVec a0e1, A1TyVec a0e2) -> do
-              let trivial = alphaEquivalent a0e1 a0e2
-              pure (trivial, TyEq1Prim (TyEq1Vec a0e1 a0e2))
+              let (trivial, a0e2', solution) =
+                    case a0e2 of
+                      A0Var x
+                        | x `elem` varsToInfer ->
+                            ( True,
+                              a0e1,
+                              Map.singleton x a0e1
+                            )
+                      _ ->
+                        ( alphaEquivalent a0e1 a0e2,
+                          a0e2,
+                          Map.empty
+                        )
+              pure (trivial, TyEq1Prim (TyEq1Vec a0e1 a0e2'), solution)
             (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) -> do
-              let trivial1 = alphaEquivalent a0e11 a0e21
-              let trivial2 = alphaEquivalent a0e11 a0e21
-              pure (trivial1 && trivial2, TyEq1Prim (TyEq1Mat a0e11 a0e12 a0e21 a0e22))
-            (_, _) -> Left ()
+              let (trivial, a0e21', a0e22', solution) =
+                    case (a0e21, a0e22) of
+                      (A0Var x1, A0Var x2)
+                        | x1 `elem` varsToInfer && x2 `elem` varsToInfer ->
+                            ( True,
+                              a0e11,
+                              a0e12,
+                              Map.empty & Map.insert x1 a0e11 & Map.insert x2 a0e12
+                            )
+                      (A0Var x1, _)
+                        | x1 `elem` varsToInfer ->
+                            ( alphaEquivalent a0e12 a0e22,
+                              a0e11,
+                              a0e22,
+                              Map.singleton x1 a0e11
+                            )
+                      (_, A0Var x2)
+                        | x2 `elem` varsToInfer ->
+                            ( alphaEquivalent a0e11 a0e21,
+                              a0e21,
+                              a0e12,
+                              Map.singleton x2 a0e12
+                            )
+                      (_, _) ->
+                        ( alphaEquivalent a0e11 a0e21 && alphaEquivalent a0e12 a0e22,
+                          a0e21,
+                          a0e22,
+                          Map.empty
+                        )
+              pure (trivial, TyEq1Prim (TyEq1Mat a0e11 a0e12 a0e21' a0e22'), solution)
+            (_, _) ->
+              Left ()
         (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
-          (trivial1, ty1eqDom) <- go a1tye11 a1tye21
-          (trivial2, ty1eqCod) <- go a1tye12 a1tye22
-          pure (trivial1 && trivial2, TyEq1Arrow ty1eqDom ty1eqCod)
+          (trivial1, ty1eqDom, solution1) <- go varsToInfer a1tye11 a1tye21
+          (trivial2, ty1eqCod, solution2) <- go (varsToInfer \\ Map.keysSet solution1) a1tye12 (applySolution solution1 a1tye22)
+          pure (trivial1 && trivial2, TyEq1Arrow ty1eqDom ty1eqCod, Map.union solution1 solution2)
         (_, _) ->
           Left ()
 
@@ -255,126 +301,65 @@ unifyRetAppContextsByConditional _trav _loc _a0e0 retAppCtx1 _retAppCtx2 =
   --        (RetCast0 (Just a0e1) : retAppCtx1', RetCast0 (Just a0e2) : retAppCtx2') ->
   --          RetCast0 (IfThenElse a0e0 a0e1 a0e2) : go retAppCtx1' retAppCtx2'
 
-type InferenceSubst = Map AssVar (Maybe Ass0Expr)
-
 type InferenceSolution = Map AssVar Ass0Expr
 
-doBestEffortInference0 :: Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> InferenceSolution
-doBestEffortInference0 varsToInfer a0tye' a0tye =
-  case (a0tye', a0tye) of
-    (A0TyCode a1tye', A0TyCode a1tye) ->
-      doBestEffortInference1 varsToInfer a1tye' a1tye
-    _ ->
-      Map.empty -- TODO: support more cases
-
-doBestEffortInference1 :: Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> InferenceSolution
-doBestEffortInference1 varsToInfer = go
-  where
-    go :: Ass1TypeExpr -> Ass1TypeExpr -> InferenceSolution
-    go a1tye' a1tye =
-      case (a1tye', a1tye) of
-        (A1TyPrim (A1TyVec a0tye'), A1TyPrim (A1TyVec a0tye)) ->
-          case a0tye of
-            A0Var x -> if x `elem` varsToInfer then Map.singleton x a0tye' else Map.empty
-            _ -> Map.empty
-        (A1TyPrim (A1TyMat a0tye1' a0tye2'), A1TyPrim (A1TyMat a0tye1 a0tye2)) ->
-          let solution1 =
-                case a0tye1 of
-                  A0Var x -> if x `elem` varsToInfer then Map.singleton x a0tye1' else Map.empty
-                  _ -> Map.empty
-              solution2 =
-                case a0tye2 of
-                  A0Var x -> if x `elem` varsToInfer then Map.singleton x a0tye2' else Map.empty
-                  _ -> Map.empty
-           in Map.union solution1 solution2
-        (A1TyArrow a1tye1' a1tye2', A1TyArrow a1tye1 a1tye2) ->
-          Map.union (go a1tye1' a1tye1) (go a1tye2' a1tye2)
-        _ ->
-          Map.empty
-
-getUnsolvedVars :: InferenceSubst -> Set AssVar
-getUnsolvedVars =
-  Map.foldrWithKey
-    ( \x a0eOpt entity' ->
-        case a0eOpt of
-          Nothing -> Set.insert x entity'
-          Just _ -> entity'
-    )
-    Set.empty
-
-getVarsToInfer :: (HasVar a) => InferenceSubst -> a -> Set AssVar
-getVarsToInfer isubst entity =
-  Set.intersection (getUnsolvedVars isubst) (frees0 entity)
-
-applyInferenceSubst :: forall a. (HasVar a) => InferenceSubst -> a -> a
-applyInferenceSubst isubst entity =
-  Map.foldrWithKey
-    ( \x a0eOpt entity' ->
-        case a0eOpt of
-          Nothing -> entity'
-          Just a0e -> subst0 a0e x entity'
-    )
-    entity
-    isubst
+applySolution :: forall a. (HasVar a) => InferenceSolution -> a -> a
+applySolution solution entity =
+  Map.foldrWithKey (flip subst0) entity solution
 
 instantiateGuidedByAppContext0 :: forall trav. trav -> Span -> AppContext -> Ass0TypeExpr -> M trav (Ass0TypeExpr, RetAppContext)
 instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
-  (a0e, retAppCtx, _isubstRet) <- go Map.empty appCtx0 a0tye0
+  (a0e, retAppCtx, _isubstRet) <- go Set.empty appCtx0 a0tye0
   pure (a0e, retAppCtx)
   where
-    go :: InferenceSubst -> AppContext -> Ass0TypeExpr -> M trav (Ass0TypeExpr, RetAppContext, InferenceSubst)
-    go isubst appCtx a0tye =
+    go :: Set AssVar -> AppContext -> Ass0TypeExpr -> M trav (Ass0TypeExpr, RetAppContext, InferenceSolution)
+    go varsToInfer appCtx a0tye =
       case (appCtx, a0tye) of
         ([], _) ->
-          pure (a0tye, [], isubst)
+          pure (a0tye, [], Map.empty)
         (AppArg0 a0e1' a0tye1' : appCtx', A0TyArrow (xOpt, a0tye1) a0tye2) -> do
-          let varsToInfer = getVarsToInfer isubst a0tye1
-          let solution = doBestEffortInference0 varsToInfer a0tye1' a0tye1
-          let isubst1 = Map.union (Map.map Just solution) isubst -- `isubstNew` has precedence
-          a0eCastOpt <- makeAssertiveCast trav loc a0tye1' a0tye1
-          (a0tye2', retAppCtx', isubstRet) <-
+          (a0eCastOpt, solution1) <- makeAssertiveCast trav loc varsToInfer a0tye1' a0tye1
+          let varsToInfer' = varsToInfer \\ Map.keysSet solution1
+          let a0tye2s = applySolution solution1 a0tye2
+          (a0tye2', retAppCtx', solution') <-
             case xOpt of
-              Nothing -> go isubst1 appCtx' (applyInferenceSubst isubst1 a0tye2)
-              Just x -> go isubst1 appCtx' (subst0 a0e1' x (applyInferenceSubst isubst1 a0tye2))
-          pure (A0TyArrow (xOpt, a0tye1) a0tye2', RetCast0 a0eCastOpt : retAppCtx', isubstRet)
+              Nothing -> go varsToInfer' appCtx' a0tye2s
+              Just x -> go varsToInfer' appCtx' (subst0 a0e1' x a0tye2s)
+          pure (A0TyArrow (xOpt, a0tye1) a0tye2', RetCast0 a0eCastOpt : retAppCtx', Map.union solution1 solution')
         (appCtxEntry : _appCtx', A0TyOptArrow (x, a0tye1) a0tye2) ->
           case appCtxEntry of
             AppArgOpt0 _a0e1' _a0tye1' ->
               error "TODO: instantiateGuidedByAppContext0, AppArgOpt0. use appCtx'"
             _ -> do
-              (a0tye2', retAppCtx', isubstRet) <- go (Map.insert x Nothing isubst) appCtx a0tye2
+              (a0tye2', retAppCtx', solution') <- go (Set.insert x varsToInfer) appCtx a0tye2
               a0eInferred <-
-                case Map.lookup x isubstRet of
-                  Just (Just a0eInferred') ->
+                case Map.lookup x solution' of
+                  Just a0eInferred' ->
                     pure a0eInferred'
-                  Just Nothing -> do
+                  Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x
-                  Nothing ->
-                    error "bug: not registered"
-              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInferred0 a0eInferred : retAppCtx', isubstRet)
+              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInferred0 a0eInferred : retAppCtx', solution')
         (_, A0TyCode a1tye) -> do
-          (a1tye', retAppCtx, isubstRet) <- instantiateGuidedByAppContext1 trav loc isubst appCtx a1tye
-          pure (A0TyCode a1tye', retAppCtx, isubstRet)
+          (a1tye', retAppCtx, solution) <- instantiateGuidedByAppContext1 trav loc varsToInfer appCtx a1tye
+          pure (A0TyCode a1tye', retAppCtx, solution)
         _ -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye
 
-instantiateGuidedByAppContext1 :: forall trav. trav -> Span -> InferenceSubst -> AppContext -> Ass1TypeExpr -> M trav (Ass1TypeExpr, RetAppContext, InferenceSubst)
+instantiateGuidedByAppContext1 :: forall trav. trav -> Span -> Set AssVar -> AppContext -> Ass1TypeExpr -> M trav (Ass1TypeExpr, RetAppContext, InferenceSolution)
 instantiateGuidedByAppContext1 trav loc = go
   where
-    go :: InferenceSubst -> AppContext -> Ass1TypeExpr -> M trav (Ass1TypeExpr, RetAppContext, InferenceSubst)
-    go isubst appCtx a1tye =
+    go :: Set AssVar -> AppContext -> Ass1TypeExpr -> M trav (Ass1TypeExpr, RetAppContext, InferenceSolution)
+    go varsToInfer appCtx a1tye =
       case (appCtx, a1tye) of
         ([], _) ->
-          pure (a1tye, [], isubst)
+          pure (a1tye, [], Map.empty)
         (AppArg1 a1tye1' : appCtx', A1TyArrow a1tye1 a1tye2) -> do
-          let varsToInfer = getVarsToInfer isubst a1tye1
-          let solution = doBestEffortInference1 varsToInfer a1tye1' a1tye1
-          let isubst1 = Map.union (Map.map Just solution) isubst
-          ty1eq <- makeEquation1 trav loc a1tye1' (applyInferenceSubst isubst1 a1tye1)
-          (a1tye2', retAppCtx', isubstRet) <- go isubst1 appCtx' a1tye2
-          pure (A1TyArrow a1tye1 a1tye2', RetCast1 ty1eq : retAppCtx', isubstRet)
+          (ty1eq, solution1) <- makeEquation1 trav loc varsToInfer a1tye1' a1tye1
+          (a1tye2', retAppCtx', solution') <-
+            go (varsToInfer \\ Map.keysSet solution1) appCtx' (applySolution solution1 a1tye2)
+          pure (A1TyArrow a1tye1 a1tye2', RetCast1 ty1eq : retAppCtx', Map.union solution1 solution')
         _ ->
           error "TODO: instantiateGuidedByAppContext1, error"
 
@@ -436,7 +421,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 let ax1 = AssVar x1
                 let af = AssVar f
                 let a0tyeSynth = A0TyArrow (Just ax1, a0tye1) a0tye2
-                a0eCastOpt <- makeAssertiveCast trav loc a0tyeSynth a0tyeRec
+                (a0eCastOpt, _) <- makeAssertiveCast trav loc Set.empty a0tyeSynth a0tyeRec
                 pure (a0tyeRec, applyCast a0eCastOpt (A0Lam (Just (af, a0tyeRec)) (ax1, a0tye1) a0e2), [])
           _ : _ ->
             error "TODO: stage-0, Lam, non-empty AppContext"
@@ -500,7 +485,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
       As e1 tye2 -> do
         (a0tye1, a0e1, retAppCtx) <- typecheckExpr0 trav tyEnv appCtx e1
         a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
-        a0eCastOpt <- makeAssertiveCast trav loc a0tye1 a0tye2
+        (a0eCastOpt, _) <- makeAssertiveCast trav loc Set.empty a0tye1 a0tye2
         pure (a0tye2, applyCast a0eCastOpt a0e1, retAppCtx)
       Bracket e1 -> do
         (a1tye1, a1e1, retAppCtx) <- typecheckExpr1 trav tyEnv appCtx e1
@@ -546,7 +531,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
         TypeEnv.Ass0Entry _ ->
           typeError trav $ NotAStage1Var spanInFile x
         TypeEnv.Ass1Entry a1tye -> do
-          (a1tyeInst, retAppCtx, _isubstRet) <- instantiateGuidedByAppContext1 trav loc Map.empty appCtx a1tye
+          (a1tyeInst, retAppCtx, _) <- instantiateGuidedByAppContext1 trav loc Set.empty appCtx a1tye
           pure (a1tyeInst, A1Var ax, retAppCtx)
     Lam recOpt (x1, tye1) e2 ->
       case appCtx of
@@ -572,7 +557,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
               let ax1 = AssVar x1
               let af = AssVar f
               let a1tyeSynth = A1TyArrow a1tye1 a1tye2
-              ty1eqOpt <- makeEquation1 trav loc a1tyeSynth a1tyeRec
+              (ty1eqOpt, _) <- makeEquation1 trav loc Set.empty a1tyeSynth a1tyeRec
               pure (a1tyeRec, applyEquationCast loc ty1eqOpt (A1Lam (Just (af, a1tyeRec)) (ax1, a1tye1) a1e2), [])
         _ : _ ->
           error "TODO: stage-1, Lam, non-empty AppContext"
@@ -611,7 +596,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
         A1TyPrim A1TyBool -> do
           (a1tye1, a1e1, _retAppCtx1) <- typecheckExpr1 trav tyEnv appCtx e1
           (a1tye2, a1e2, _retAppCtx2) <- typecheckExpr1 trav tyEnv appCtx e2
-          ty1eqOpt <- makeEquation1 trav loc a1tye2 a1tye1
+          (ty1eqOpt, _) <- makeEquation1 trav loc Set.empty a1tye2 a1tye1
           let retAppCtx = error "TODO: stage-1, IfThenElse, retAppCtx"
           pure (a1tye1, A1IfThenElse a1e0 a1e1 (applyEquationCast loc ty1eqOpt a1e2), retAppCtx)
         _ -> do
@@ -621,7 +606,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
     As e1 tye2 -> do
       (a1tye1, a1e1, retAppCtx) <- typecheckExpr1 trav tyEnv appCtx e1
       a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
-      ty1eqOpt <- makeEquation1 trav loc a1tye1 a1tye2
+      (ty1eqOpt, _) <- makeEquation1 trav loc Set.empty a1tye1 a1tye2
       pure (a1tye2, applyEquationCast loc ty1eqOpt a1e1, retAppCtx)
     Bracket _ ->
       typeError trav $ CannotUseBracketAtStage1 spanInFile
@@ -637,7 +622,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
 
 insertCastForNatArg :: trav -> (Ass0TypeExpr, Ass0Expr, Span) -> M trav Ass0Expr
 insertCastForNatArg trav (a0tye, a0e, loc) = do
-  a0eCastOpt <- makeAssertiveCast trav loc a0tye (A0TyPrim A0TyNat)
+  (a0eCastOpt, _) <- makeAssertiveCast trav loc Set.empty a0tye (A0TyPrim A0TyNat)
   pure $ applyCast a0eCastOpt a0e
 
 validateIntLiteral :: trav -> (Ass0Expr, Span) -> M trav Int
