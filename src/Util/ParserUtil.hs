@@ -1,6 +1,7 @@
 module Util.ParserUtil
   ( GenP,
     runParser,
+    failure,
     some,
     many,
     tries,
@@ -30,11 +31,15 @@ runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [
 runParser p locatedTokens =
   Either.mapLeft Mp.errorBundlePretty $ Mp.parse p "input" locatedTokens
 
+failure :: (Ord token) => Located token -> GenP token a
+failure unexpectedToken =
+  Mp.failure (Just (Mp.Tokens (unexpectedToken :| []))) Set.empty
+
 some :: (Ord token) => GenP token a -> GenP token (NonEmpty a)
 some p = do
   xs <- Mp.some (Mp.try p)
   case xs of
-    [] -> error "Text.Megaparsec.some returned the empty list"
+    [] -> error "bug: Text.Megaparsec.some returned the empty list"
     x : xs' -> pure (x :| xs')
 
 many :: (Ord token) => GenP token a -> GenP token [a]

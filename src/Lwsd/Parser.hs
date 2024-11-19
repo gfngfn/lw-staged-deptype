@@ -8,6 +8,8 @@ import Control.Lens
 import Data.Either.Extra
 import Data.Functor
 import Data.Generics.Labels ()
+import Data.List.Extra qualified as List
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Lwsd.SrcSyntax
@@ -44,6 +46,10 @@ makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
     locLeft = mergeSpan loc1 locBinOp
     eOp = Expr locBinOp (Var binOp)
 
+data FunArg
+  = FunArgNormal Expr
+  | FunArgOptional Span Expr
+
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
   where
@@ -71,13 +77,23 @@ exprAtom, expr :: P Expr
         makeStaged constructor loc1 e@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (constructor e)
 
+    arg :: P FunArg
+    arg =
+      (FunArgNormal <$> staged)
+        `or` (FunArgOptional <$> token TokQuestion <*> staged)
+
     app :: P Expr
     app =
-      foldl1 makeApp <$> some staged
+      some arg >>= makeApp
       where
-        makeApp :: Expr -> Expr -> Expr
-        makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
-          Expr (mergeSpan loc1 loc2) (App e1 e2)
+        makeApp :: NonEmpty FunArg -> P Expr
+        makeApp (FunArgNormal eFun :| args) = pure $ List.foldl' makeAppSingle eFun args
+        makeApp (FunArgOptional locQuestion _ :| _) = failure (Located locQuestion TokQuestion)
+
+        makeAppSingle :: Expr -> FunArg -> Expr
+        makeAppSingle e1@(Expr loc1 _) = \case
+          FunArgNormal e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (App e1 e2)
+          FunArgOptional _ e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (AppOpt e1 e2)
 
     as :: P Expr
     as =

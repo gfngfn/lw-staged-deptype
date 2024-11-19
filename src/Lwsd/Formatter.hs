@@ -116,6 +116,11 @@ dispApp req e1 e2 =
   deepenParenWhen (req <= Atomic) $
     group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
 
+dispAppOpt :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
+dispAppOpt req e1 e2 =
+  deepenParenWhen (req <= Atomic) $
+    group (dispGen FunDomain e1 <> nest 2 (line <> "?" <> dispGen Atomic e2))
+
 dispLetIn :: (Disp var, Disp expr) => Associativity -> var -> expr -> expr -> Doc Ann
 dispLetIn req x e1 e2 =
   deepenParenWhen (req <= FunDomain) $
@@ -222,6 +227,7 @@ instance Disp (ExprMainF ann) where
     Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     App e1 e2 -> dispApp req e1 e2
     LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
+    AppOpt e1 e2 -> dispAppOpt req e1 e2
     LetIn x e1 e2 -> dispLetIn req x e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2

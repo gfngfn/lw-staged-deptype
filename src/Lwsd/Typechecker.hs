@@ -433,7 +433,6 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
           RetCast0 a0eCastOpt : retAppCtx -> do
             case a0tye1 of
               A0TyArrow (x11opt, _a0tye11) a0tye12 -> do
-                -- a0eCastOpt <- makeAssertiveCast trav loc a0tye2 a0tye11
                 let a0tye12' =
                       case x11opt of
                         Just x11 -> subst0 a0e2 x11 a0tye12
@@ -456,6 +455,21 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             pure (A0TyOptArrow (ax1, a0tye1) a0tye2, A0Lam Nothing (ax1, a0tye1) a0e2, [])
           _ : _ ->
             error "TODO: stage-1, LamOpt, non-empty AppContext"
+      AppOpt e1 e2 -> do
+        (a0tye2, a0e2, retAppCtx2) <- typecheckExpr0 trav tyEnv [] e2
+        validateEmptyRetAppContext "stage-0, AppOpt, arg" retAppCtx2
+        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArg0 a0e2 a0tye2 : appCtx) e1
+        case retAppCtx1 of
+          RetCast0 a0eCastOpt : retAppCtx -> do
+            case a0tye1 of
+              A0TyOptArrow (x11, _a0tye11) a0tye12 -> do
+                pure (subst0 a0e2 x11 a0tye12, A0App a0e1 (applyCast a0eCastOpt a0e2), retAppCtx)
+              _ -> do
+                let Expr loc1 _ = e1
+                spanInFile1 <- askSpanInFile loc1
+                typeError trav $ NotAFunctionTypeForStage0 spanInFile1 a0tye1
+          _ ->
+            error "bug: AppOpt, fun, not a RetCast0"
       LetIn x e1 e2 -> do
         (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv [] e1
         case retAppCtx1 of
@@ -580,6 +594,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           error "bug: stage-1, App, fun, not a RetCast1"
     LamOpt _ _ ->
       error "TODO: stage-1, LamOpt, error"
+    AppOpt _ _ ->
+      error "TODO: stage-1, AppOpt, error"
     LetIn x e1 e2 -> do
       (a1tye1, a1e1, retAppCtx1) <- typecheckExpr1 trav tyEnv [] e1
       validateEmptyRetAppContext "stage-1, LetIn" retAppCtx1
