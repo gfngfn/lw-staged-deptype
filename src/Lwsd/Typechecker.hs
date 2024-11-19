@@ -123,6 +123,23 @@ makeAssertiveCast trav loc =
                   A0Lam Nothing (f, a0tye1) $
                     A0Lam Nothing (x, a0tye21) $
                       A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
+        (A0TyOptArrow (x1, a0tye11) a0tye12, A0TyOptArrow (x2, a0tye21) a0tye22) -> do
+          a0eDomCastOpt <- go a0tye11 a0tye21
+          let (x, a0tye22') = (x1, subst0 (A0Var x1) x2 a0tye22)
+          a0eCodCastOpt <- makeAssertiveCast trav loc a0tye12 a0tye22'
+          f <- generateFreshVar
+          x' <- generateFreshVar
+          case (a0eDomCastOpt, a0eCodCastOpt) of
+            (Nothing, Nothing) ->
+              pure Nothing
+            _ -> do
+              let fDom = applyCast a0eDomCastOpt
+              let fCod = applyCast a0eCodCastOpt
+              pure $
+                Just $
+                  A0Lam Nothing (f, a0tye1) $
+                    A0Lam Nothing (x, a0tye21) $
+                      A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
         (A0TyCode a1tye1, A0TyCode a1tye2) -> do
           ty1eqOpt <- makeEquation1 trav loc a1tye1 a1tye2
           pure $ fmap (A0TyEqAssert loc) ty1eqOpt
@@ -199,6 +216,10 @@ unifyTypesByConditional trav loc a0e0 a0tye1' a0tye2' =
           pure $ A0TyArrow (xu, a0tye1u) a0tye2u
         (A0TyCode a1tye1, A0TyCode a1tye2) ->
           A0TyCode <$> go1 a1tye1 a1tye2
+        (A0TyOptArrow (x1, a0tye11) a0tye12, A0TyOptArrow (x2, a0tye21) a0tye22) -> do
+          a0tye1u <- go0 a0tye11 a0tye21
+          a0tye2u <- go0 a0tye12 (subst0 (A0Var x1) x2 a0tye22)
+          pure $ A0TyOptArrow (x1, a0tye1u) a0tye2u
         _ ->
           Left $ CannotUnify0 a0tye1 a0tye2
 
