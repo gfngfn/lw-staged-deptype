@@ -212,6 +212,8 @@ evalExpr0 env = \case
           a0e12
       _ ->
         bug $ NotAClosure a0v1
+  A0LetIn (x, a0tye1) a0e1 a0e2 ->
+    evalExpr0 env (A0App (A0Lam Nothing (x, a0tye1) a0e2) a0e1)
   A0IfThenElse a0e0 a0e1 a0e2 -> do
     a0v0 <- evalExpr0 env a0e0
     case a0v0 of

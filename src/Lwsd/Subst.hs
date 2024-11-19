@@ -60,6 +60,8 @@ instance HasVar Ass0Expr where
        in (var0set, var1set)
     A0App a0e1 a0e2 ->
       unionPairs [frees a0e1, frees a0e2]
+    A0LetIn (y, a0tye1) a0e1 a0e2 ->
+      frees (A0App (A0Lam Nothing (y, a0tye1) a0e2) a0e1)
     A0IfThenElse a0e0 a0e1 a0e2 ->
       unionPairs [frees a0e0, frees a0e1, frees a0e2]
     A0Bracket a1e1 ->
@@ -88,6 +90,11 @@ instance HasVar Ass0Expr where
           Subst1 _ _ -> go a0e2
     A0App a0e1 a0e2 ->
       A0App (go a0e1) (go a0e2)
+    A0LetIn (y, a0tye1) a0e1 a0e2 ->
+      A0LetIn (y, go a0tye1) (go a0e1) $
+        case s of
+          Subst0 x _ -> if y == x then a0e2 else go a0e2
+          Subst1 _ _ -> go a0e2
     A0IfThenElse a0e0 a0e1 a0e2 ->
       A0IfThenElse (go a0e0) (go a0e1) (go a0e2)
     A0Bracket a1e1 ->

@@ -480,7 +480,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             let ax = AssVar x
             if ax `occurs0` a0tye2
               then typeError trav $ VarOccursFreelyInAss0Type spanInFile x a0tye2
-              else pure (a0tye2, A0App (A0Lam Nothing (ax, a0tye1) a0e2) a0e1, retAppCtx)
+              else pure (a0tye2, A0LetIn (ax, a0tye1) a0e1 a0e2, retAppCtx)
           _ : _ ->
             error "bug: LetIn, non-empty RetAppContext"
       IfThenElse e0 e1 e2 -> do

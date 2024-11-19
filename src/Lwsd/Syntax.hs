@@ -81,6 +81,7 @@ data Ass0Expr
   | A0Var AssVar
   | A0Lam (Maybe (AssVar, Ass0TypeExpr)) (AssVar, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
+  | A0LetIn (AssVar, Ass0TypeExpr) Ass0Expr Ass0Expr
   | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
   | A0TyEqAssert Span Type1Equation

@@ -121,6 +121,11 @@ dispLetIn req x e1 e2 =
   deepenParenWhen (req <= FunDomain) $
     group ("let" <+> disp x <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
 
+dispLetInWithAnnot :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> expr -> Doc Ann
+dispLetInWithAnnot req x tye e1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group ("let" <+> disp x <+> ":" <+> disp tye <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
+
 dispIfThenElse :: (Disp expr) => Associativity -> expr -> expr -> expr -> Doc Ann
 dispIfThenElse req e0 e1 e2 =
   deepenParenWhen (req <= FunDomain) $
@@ -300,6 +305,7 @@ instance Disp Ass0Expr where
     A0Lam Nothing (y, a0tye1) a0e2 -> dispNonrecLam req y a0tye1 a0e2
     A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 -> dispRecLam req f a0tyeRec y a0tye1 a0e2
     A0App a0e1 a0e2 -> dispApp req a0e1 a0e2
+    A0LetIn (y, a0tye1) a0e1 a0e2 -> dispLetInWithAnnot req y a0tye1 a0e1 a0e2
     A0Bracket a1e1 -> dispBracket a1e1
     A0IfThenElse a0e0 a0e1 a0e2 -> dispIfThenElse req a0e0 a0e1 a0e2
     A0TyEqAssert _loc ty1eq ->
