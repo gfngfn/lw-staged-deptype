@@ -8,6 +8,8 @@ import Control.Lens
 import Data.Either.Extra
 import Data.Functor
 import Data.Generics.Labels ()
+import Data.List.Extra qualified as List
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Lwsd.SrcSyntax
@@ -44,6 +46,10 @@ makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
     locLeft = mergeSpan loc1 locBinOp
     eOp = Expr locBinOp (Var binOp)
 
+data FunArg
+  = FunArgNormal Expr
+  | FunArgOptional Span Expr
+
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
   where
@@ -71,13 +77,23 @@ exprAtom, expr :: P Expr
         makeStaged constructor loc1 e@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (constructor e)
 
+    arg :: P FunArg
+    arg =
+      (FunArgNormal <$> staged)
+        `or` (FunArgOptional <$> token TokQuestion <*> staged)
+
     app :: P Expr
     app =
-      foldl1 makeApp <$> some staged
+      some arg >>= makeApp
       where
-        makeApp :: Expr -> Expr -> Expr
-        makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
-          Expr (mergeSpan loc1 loc2) (App e1 e2)
+        makeApp :: NonEmpty FunArg -> P Expr
+        makeApp (FunArgNormal eFun :| args) = pure $ List.foldl' makeAppSingle eFun args
+        makeApp (FunArgOptional locQuestion _ :| _) = failure (Located locQuestion TokQuestion)
+
+        makeAppSingle :: Expr -> FunArg -> Expr
+        makeAppSingle e1@(Expr loc1 _) = \case
+          FunArgNormal e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (App e1 e2)
+          FunArgOptional _ e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (AppOpt e1 e2)
 
     as :: P Expr
     as =
@@ -129,6 +145,7 @@ exprAtom, expr :: P Expr
       tries
         [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
           makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr,
+          makeLamOpt <$> token TokFun <*> (token TokQuestion *> binder <* token TokArrow) <*> expr,
           makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
         ]
         comp
@@ -141,6 +158,9 @@ exprAtom, expr :: P Expr
 
         makeRecLam locFirst fBinder xBinder e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (Lam (Just fBinder) xBinder e)
+
+        makeLamOpt locFirst xBinder e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LamOpt xBinder e)
 
         makeIf locFirst e0 e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
@@ -186,8 +206,11 @@ typeExpr = fun
 
     fun :: P TypeExpr
     fun =
-      (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
-        `or` app
+      tries
+        [ makeTyArrow <$> funDom <*> (token TokArrow *> fun),
+          makeTyOptArrow <$> token TokQuestion <*> (token TokLeftParen *> noLoc lower <* token TokColon) <*> (fun <* token TokRightParen) <*> (token TokArrow *> fun)
+        ]
+        app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
           let (loc, tyDom) =
@@ -195,6 +218,9 @@ typeExpr = fun
                   (Nothing, tye1@(TypeExpr loc1 _)) -> (mergeSpan loc1 loc2, (Nothing, tye1))
                   (Just (loc1, x), tye1) -> (mergeSpan loc1 loc2, (Just x, tye1))
            in TypeExpr loc (TyArrow tyDom tye2)
+
+        makeTyOptArrow locFirst x tye1 tye2@(TypeExpr locLast _) =
+          TypeExpr (mergeSpan locFirst locLast) (TyOptArrow (x, tye1) tye2)
 
     funDom :: P (Maybe (Span, Var), TypeExpr)
     funDom =

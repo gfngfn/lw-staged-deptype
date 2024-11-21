@@ -106,15 +106,30 @@ dispRecLam req f tyeRec x tye1 e2 =
     docBinderF = "rec" <+> disp f <+> ":" <+> disp tyeRec <> "."
     docBinderX = "λ" <> disp x <+> ":" <+> disp tye1 <> "."
 
+dispLamOpt :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> Doc Ann
+dispLamOpt req x tye1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group ("λ?" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+
 dispApp :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispApp req e1 e2 =
   deepenParenWhen (req <= Atomic) $
     group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
 
+dispAppOpt :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
+dispAppOpt req e1 e2 =
+  deepenParenWhen (req <= Atomic) $
+    group (dispGen FunDomain e1 <> nest 2 (line <> "?" <> dispGen Atomic e2))
+
 dispLetIn :: (Disp var, Disp expr) => Associativity -> var -> expr -> expr -> Doc Ann
 dispLetIn req x e1 e2 =
   deepenParenWhen (req <= FunDomain) $
     group ("let" <+> disp x <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
+
+dispLetInWithAnnot :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> expr -> Doc Ann
+dispLetInWithAnnot req x tye e1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group ("let" <+> disp x <+> ":" <+> disp tye <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
 
 dispIfThenElse :: (Disp expr) => Associativity -> expr -> expr -> expr -> Doc Ann
 dispIfThenElse req e0 e1 e2 =
@@ -154,6 +169,13 @@ dispArrowType req xOpt tye1 tye2 =
 dispNondepArrowType :: (Disp ty) => Associativity -> ty -> ty -> Doc Ann
 dispNondepArrowType req =
   dispArrowType req (Nothing :: Maybe Text)
+
+dispOptArrowType :: (Disp var, Disp ty1, Disp ty2) => Associativity -> var -> ty1 -> ty2 -> Doc Ann
+dispOptArrowType req x tye1 tye2 =
+  deepenParenWhen (req <= FunDomain) $
+    group (docDom <> " ->" <> line <> disp tye2)
+  where
+    docDom = "?(" <> disp x <+> ":" <+> disp tye1 <> ")"
 
 dispVectorLiteral :: [Int] -> Doc Ann
 dispVectorLiteral ns =
@@ -204,6 +226,8 @@ instance Disp (ExprMainF ann) where
     Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     App e1 e2 -> dispApp req e1 e2
+    LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
+    AppOpt e1 e2 -> dispAppOpt req e1 e2
     LetIn x e1 e2 -> dispLetIn req x e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2
@@ -218,6 +242,7 @@ instance Disp (TypeExprMainF ann) where
     TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
     TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     TyCode tye1 -> dispBracket tye1
+    TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
@@ -286,6 +311,7 @@ instance Disp Ass0Expr where
     A0Lam Nothing (y, a0tye1) a0e2 -> dispNonrecLam req y a0tye1 a0e2
     A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 -> dispRecLam req f a0tyeRec y a0tye1 a0e2
     A0App a0e1 a0e2 -> dispApp req a0e1 a0e2
+    A0LetIn (y, a0tye1) a0e1 a0e2 -> dispLetInWithAnnot req y a0tye1 a0e1 a0e2
     A0Bracket a1e1 -> dispBracket a1e1
     A0IfThenElse a0e0 a0e1 a0e2 -> dispIfThenElse req a0e0 a0e1 a0e2
     A0TyEqAssert _loc ty1eq ->
@@ -315,6 +341,7 @@ instance Disp Ass0TypeExpr where
     A0TyPrim a0tyPrim -> disp a0tyPrim
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
+    A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
 
 instance Disp Ass1PrimType where
   dispGen req = \case
@@ -413,6 +440,28 @@ instance Disp TypeError where
         <> nest 2 (hardline <> stage0Style (disp a0tye2))
         <> hardline
         <> disp condErr
+    CannotApplyLiteral spanInFile ->
+      "Cannot apply a literal" <> disp spanInFile
+    CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye ->
+      "Cannot instantiate a stage-0 type guided by the application context"
+        <+> disp spanInFile
+        <> hardline
+        <+> "application context:"
+        <> nest 2 (hardline <> disps appCtx)
+        <> hardline
+        <+> "type:"
+        <> nest 2 (hardline <> stage0Style (disp a0tye))
+    CannotInstantiateGuidedByAppContext1 spanInFile appCtx a1tye ->
+      "Cannot instantiate a stage-1 type guided by the application context"
+        <+> disp spanInFile
+        <> hardline
+        <+> "application context:"
+        <> nest 2 (hardline <> disps appCtx)
+        <> hardline
+        <+> "type:"
+        <> nest 2 (hardline <> stage1Style (disp a1tye))
+    CannotInferOptional spanInFile x ->
+      "Cannot infer an optional argument for" <+> disp x <+> disp spanInFile
 
 instance Disp ConditionalUnificationError where
   dispGen _ = \case
@@ -420,6 +469,12 @@ instance Disp ConditionalUnificationError where
       "types" <+> stage0Style (disp a0tye1) <+> "and" <+> stage0Style (disp a0tye2) <+> "are incompatible"
     CannotUnify1 a1tye1 a1tye2 ->
       "types" <+> stage1Style (disp a1tye1) <+> "and" <+> stage1Style (disp a1tye2) <+> "are incompatible"
+
+instance Disp AppContextEntry where
+  dispGen _ = \case
+    AppArg0 a0e a0tye -> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
+    AppArg1 a1tye -> stage1Style (disp a1tye)
+    AppArgOpt0 a0e a0tye -> "?" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
 
 instance Disp Ass0Val where
   dispGen req = \case

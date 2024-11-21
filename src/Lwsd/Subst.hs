@@ -60,6 +60,8 @@ instance HasVar Ass0Expr where
        in (var0set, var1set)
     A0App a0e1 a0e2 ->
       unionPairs [frees a0e1, frees a0e2]
+    A0LetIn (y, a0tye1) a0e1 a0e2 ->
+      frees (A0App (A0Lam Nothing (y, a0tye1) a0e2) a0e1)
     A0IfThenElse a0e0 a0e1 a0e2 ->
       unionPairs [frees a0e0, frees a0e1, frees a0e2]
     A0Bracket a1e1 ->
@@ -88,6 +90,11 @@ instance HasVar Ass0Expr where
           Subst1 _ _ -> go a0e2
     A0App a0e1 a0e2 ->
       A0App (go a0e1) (go a0e2)
+    A0LetIn (y, a0tye1) a0e1 a0e2 ->
+      A0LetIn (y, go a0tye1) (go a0e1) $
+        case s of
+          Subst0 x _ -> if y == x then a0e2 else go a0e2
+          Subst1 _ _ -> go a0e2
     A0IfThenElse a0e0 a0e1 a0e2 ->
       A0IfThenElse (go a0e0) (go a0e1) (go a0e2)
     A0Bracket a1e1 ->
@@ -221,6 +228,12 @@ instance HasVar Ass0TypeExpr where
        in (var0set, var1set)
     A0TyCode a1tye1 ->
       frees a1tye1
+    A0TyOptArrow (y, a0tye1) a0tye2 ->
+      let (var0set1, var1set1) = frees a0tye1
+          (var0set2, var1set2) = frees a0tye2
+          var0set = Set.union var0set1 (Set.delete y var0set2)
+          var1set = Set.union var1set1 var1set2
+       in (var0set, var1set)
 
   subst s = \case
     A0TyPrim a0tyPrim ->
@@ -233,6 +246,10 @@ instance HasVar Ass0TypeExpr where
           (_, Subst1 _ _) -> go a0tye2
     A0TyCode a1tye1 ->
       A0TyCode (go a1tye1)
+    A0TyOptArrow (y, a0tye1) a0tye2 ->
+      case s of
+        Subst0 x _ -> A0TyOptArrow (y, go a0tye1) (if y == x then a0tye2 else go a0tye2)
+        Subst1 _ _ -> A0TyOptArrow (y, go a0tye1) (go a0tye2)
     where
       go :: forall a. (HasVar a) => a -> a
       go = subst s

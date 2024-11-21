@@ -44,6 +44,8 @@ data ExprMainF ann
   | As (ExprF ann) (TypeExprF ann)
   | Bracket (ExprF ann)
   | Escape (ExprF ann)
+  | LamOpt (Var, TypeExprF ann) (ExprF ann)
+  | AppOpt (ExprF ann) (ExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ExprMainF)
 
@@ -62,6 +64,7 @@ data TypeExprMainF ann
   = TyName TypeName [ArgForTypeF ann]
   | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
   | TyCode (TypeExprF ann)
+  | TyOptArrow (Var, TypeExprF ann) (TypeExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 TypeExprMainF)
 

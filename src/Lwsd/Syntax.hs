@@ -22,6 +22,10 @@ module Lwsd.Syntax
     Env0,
     EnvEntry (..),
     decomposeType1Equation,
+    AppContext,
+    AppContextEntry (..),
+    RetAppContext,
+    RetAppContextEntry (..),
   )
 where
 
@@ -77,6 +81,7 @@ data Ass0Expr
   | A0Var AssVar
   | A0Lam (Maybe (AssVar, Ass0TypeExpr)) (AssVar, Ass0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
+  | A0LetIn (AssVar, Ass0TypeExpr) Ass0Expr Ass0Expr
   | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
   | A0TyEqAssert Span Type1Equation
@@ -94,6 +99,7 @@ data Ass1Expr
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType
   | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
+  | A0TyOptArrow (AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyCode Ass1TypeExpr
   deriving stock (Eq, Show)
 
@@ -199,3 +205,19 @@ decomposeType1Equation = \case
      in (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22)
   where
     prims p = (A1TyPrim p, A1TyPrim p)
+
+type AppContext = [AppContextEntry]
+
+data AppContextEntry
+  = AppArg0 Ass0Expr Ass0TypeExpr
+  | AppArg1 Ass1TypeExpr
+  | AppArgOpt0 Ass0Expr Ass0TypeExpr
+  deriving (Eq, Show)
+
+type RetAppContext = [RetAppContextEntry]
+
+data RetAppContextEntry
+  = RetCast0 (Maybe Ass0Expr)
+  | RetCast1 (Maybe Type1Equation)
+  | RetInferred0 Ass0Expr
+  deriving (Eq, Show)
