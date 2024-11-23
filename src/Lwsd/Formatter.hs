@@ -109,17 +109,17 @@ dispRecLam req f tyeRec x tye1 e2 =
 dispLamOpt :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> Doc Ann
 dispLamOpt req x tye1 e2 =
   deepenParenWhen (req <= FunDomain) $
-    group ("λ?" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+    group ("λ{" <> disp x <+> ":" <+> disp tye1 <> "}." <> nest 2 (line <> disp e2))
 
 dispApp :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispApp req e1 e2 =
   deepenParenWhen (req <= Atomic) $
     group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
 
-dispAppOpt :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
-dispAppOpt req e1 e2 =
+dispAppOptGiven :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
+dispAppOptGiven req e1 e2 =
   deepenParenWhen (req <= Atomic) $
-    group (dispGen FunDomain e1 <> nest 2 (line <> "?" <> dispGen Atomic e2))
+    group (dispGen FunDomain e1 <> nest 2 (line <> "{" <> dispGen Atomic e2 <> "}"))
 
 dispAppOptOmitted :: (Disp expr) => Associativity -> expr -> Doc Ann
 dispAppOptOmitted req e1 =
@@ -180,7 +180,7 @@ dispOptArrowType req x tye1 tye2 =
   deepenParenWhen (req <= FunDomain) $
     group (docDom <> " ->" <> line <> disp tye2)
   where
-    docDom = "?(" <> disp x <+> ":" <+> disp tye1 <> ")"
+    docDom = "{" <> disp x <+> ":" <+> disp tye1 <> "}"
 
 dispVectorLiteral :: [Int] -> Doc Ann
 dispVectorLiteral ns =
@@ -232,7 +232,8 @@ instance Disp (ExprMainF ann) where
     Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     App e1 e2 -> dispApp req e1 e2
     LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
-    AppOpt e1 e2 -> dispAppOpt req e1 e2
+    AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
+    AppOptOmitted e1 -> dispAppOptOmitted req e1
     LetIn x e1 e2 -> dispLetIn req x e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2

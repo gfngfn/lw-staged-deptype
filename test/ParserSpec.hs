@@ -212,5 +212,5 @@ spec = do
        in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
             `shouldBe` pure e
     it "parses optional applications" $
-      Parser.parseExpr "x ?y"
-        `shouldBe` pure (exprLoc 0 4 $ AppOpt (exprLoc 0 1 $ Var "x") (exprLoc 3 4 $ Var "y"))
+      Parser.parseExpr "x {y}"
+        `shouldBe` pure (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ Var "x") (exprLoc 3 4 $ Var "y"))

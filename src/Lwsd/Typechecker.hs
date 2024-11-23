@@ -465,8 +465,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             let ax1 = AssVar x1
             pure (A0TyOptArrow (ax1, a0tye1) a0tye2, A0Lam Nothing (ax1, a0tye1) a0e2, [])
           _ : _ ->
-            error "TODO: stage-1, LamOpt, non-empty AppContext"
-      AppOpt e1 e2 -> do
+            error "TODO: stage-0, LamOpt, non-empty AppContext"
+      AppOptGiven e1 e2 -> do
         (a0tye2, a0e2, retAppCtx2) <- typecheckExpr0 trav tyEnv [] e2
         validateEmptyRetAppContext "stage-0, AppOpt, arg" retAppCtx2
         (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArgOpt0 a0e2 a0tye2 : appCtx) e1
@@ -481,6 +481,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 typeError trav $ NotAFunctionTypeForStage0 spanInFile1 a0tye1
           _ ->
             error "bug: AppOpt, fun, not a RetCast0"
+      AppOptOmitted _e1 -> do
+        error "TODO: stage-0, AppOptOmitted"
       LetIn x e1 e2 -> do
         (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv [] e1
         case retAppCtx1 of
@@ -605,8 +607,10 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           error "bug: stage-1, App, fun, not a RetCast1"
     LamOpt _ _ ->
       error "TODO: stage-1, LamOpt, error"
-    AppOpt _ _ ->
+    AppOptGiven _ _ ->
       error "TODO: stage-1, AppOpt, error"
+    AppOptOmitted _ ->
+      error "TODO: stage-1, AppOptOmitted, error"
     LetIn x e1 e2 -> do
       (a1tye1, a1e1, retAppCtx1) <- typecheckExpr1 trav tyEnv [] e1
       validateEmptyRetAppContext "stage-1, LetIn" retAppCtx1
