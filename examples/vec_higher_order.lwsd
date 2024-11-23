@@ -1,5 +1,5 @@
 let concat_and_add =
-  fun?(m : Nat) -> fun?(n : Nat) -> fun(f : ?(p : Nat) -> &(Vec %p -> Vec %p -> Vec %p)) ->
+  fun{m : Nat} -> fun{n : Nat} -> fun(f : {p : Nat} -> &(Vec %p -> Vec %p -> Vec %p)) ->
     &(fun (u1 : Vec %m) -> fun (u2 : Vec %n) -> fun (v : Vec %(m + n)) ->
       ~f (~gen_vconcat u1 u2) v
     )

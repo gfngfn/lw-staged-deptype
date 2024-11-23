@@ -1,7 +1,7 @@
 let concat_and_add =
-  fun?(m : Nat) -> fun?(n : Nat) ->
+  fun{m : Nat} -> fun{n : Nat} ->
     &(fun(u1 : Vec %m) -> fun(u2 : Vec %n) -> fun(v : Vec %(m + n)) ->
-      ~(gen_vadd ?(n + m)) (~(gen_vconcat ?m ?n) u1 u2) v
+      ~(gen_vadd {n + m}) (~(gen_vconcat {m} {n}) u1 u2) v
     )
 in
-&(~(concat_and_add ?1 ?2) [| 3 |] [| 1; 4 |] [| 1; 5; 9 |])
+&(~(concat_and_add {1} {2}) [| 3 |] [| 1; 4 |] [| 1; 5; 9 |])
