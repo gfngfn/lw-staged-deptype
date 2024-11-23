@@ -44,6 +44,10 @@ stageExpr0Main = \case
     Lwsd.IfThenElse (stageExpr0 e0) (stageExpr0 e1) (stageExpr0 e2)
   As e1 tye2 ->
     Lwsd.As (stageExpr0 e1) (stageTypeExpr0 tye2)
+  LamOpt (_x, _tye1) _e2 ->
+    error "TODO: Surface.BindingTime.Stager, LamOpt"
+  AppOptOmitted _e1 ->
+    error "TODO: Surface.BindingTime.Stager, AppOptOmitted"
 
 stageExpr1 :: BCExprF ann -> Lwsd.ExprF ann
 stageExpr1 (Expr (btc, ann) exprMain) =
@@ -69,6 +73,10 @@ stageExpr1Main = \case
     Lwsd.IfThenElse (stageExpr1 e0) (stageExpr1 e1) (stageExpr1 e2)
   As e1 tye2 ->
     Lwsd.As (stageExpr1 e1) (stageTypeExpr1 tye2)
+  LamOpt (_x, _tye1) _e2 ->
+    error "bug: stageExpr1Main, LamOpt"
+  AppOptOmitted _e1 ->
+    error "bug: stageExpr1Main, AppOptOmitted"
 
 stageTypeExpr0 :: BCTypeExprF ann -> Lwsd.TypeExprF ann
 stageTypeExpr0 (TypeExpr (btc, ann) typeExprMain) =
@@ -81,14 +89,14 @@ stageTypeExpr0Main = \case
   TyName tyName args ->
     case args of
       [] -> Lwsd.TyName tyName []
-      _ : _ -> error "stageTypeExpr0Main, non-empty `args`"
+      _ : _ -> error "bug: stageTypeExpr0Main, non-empty `args`"
   TyArrow (xOpt, tye1) tye2 ->
     Lwsd.TyArrow (xOpt, stageTypeExpr0 tye1) (stageTypeExpr0 tye2)
 
 stageTypeExpr1 :: BCTypeExprF ann -> Lwsd.TypeExprF ann
 stageTypeExpr1 (TypeExpr (btc, ann) typeExprMain) =
   case btc of
-    BT0 -> error "stageTypeExpr1, BT0"
+    BT0 -> error "bug: stageTypeExpr1, BT0"
     BT1 -> Lwsd.TypeExpr ann (stageTypeExpr1Main typeExprMain)
 
 stageTypeExpr1Main :: BCTypeExprMainF ann -> Lwsd.TypeExprMainF ann

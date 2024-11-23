@@ -19,8 +19,15 @@ import Prelude hiding (or)
 
 type P a = GenP Token a
 
+data ParameterKind a
+  = Mandatory a
+  | Optional a
+
 paren :: P a -> P a
 paren p = token TokLeftParen *> p <* token TokRightParen
+
+brace :: P a -> P a
+brace p = token TokLeftBrace *> p <* token TokRightBrace
 
 lower :: P (Located Text)
 lower = expectToken (^? #_TokLower)
@@ -118,19 +125,31 @@ exprAtom, expr :: P Expr
     lam =
       tries
         [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
-          makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr,
+          makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr,
           makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
         ]
         comp
       where
         binder =
+          (Mandatory <$> mandatoryBinder) `or` (Optional <$> optionalBinder)
+
+        mandatoryBinder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
 
-        makeNonrecLam locFirst xBinder e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (Lam Nothing xBinder e)
+        optionalBinder =
+          brace ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
 
-        makeRecLam locFirst fBinder xBinder e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (Lam (Just fBinder) xBinder e)
+        makeNonrecLam locFirst xBinder' e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) $
+            case xBinder' of
+              Mandatory xBinder -> Lam Nothing xBinder e
+              Optional xBinder -> LamOpt xBinder e
+
+        makeRecLam locFirst fBinder xBinder' e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) $
+            case xBinder' of
+              Mandatory xBinder -> Lam (Just fBinder) xBinder e
+              Optional xBinder -> LamOpt xBinder e
 
         makeIf locFirst e0 e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)

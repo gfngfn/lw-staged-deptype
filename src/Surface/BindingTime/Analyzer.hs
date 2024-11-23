@@ -66,6 +66,10 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         be1 <- assignBindingTimeVarToExpr e1
         btye2 <- assignBindingTimeVarToTypeExpr tye2
         pure $ As be1 btye2
+      LamOpt (x, ty) e -> do
+        bty <- assignBindingTimeVarToTypeExpr ty
+        be <- assignBindingTimeVarToExpr e
+        pure $ LamOpt (x, bty) be
       AppOptOmitted e1 -> do
         be1 <- assignBindingTimeVarToExpr e1
         pure $ AppOptOmitted be1
@@ -187,7 +191,14 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       (e1', BIType bt1 _, constraints1) <- extractConstraintsFromExpr btenv e1
       (btye2', bity2@(BIType bt2 _), constraints2) <- extractConstraintsFromTypeExpr btenv btye2
       pure (Expr (bt, ann) (As e1' btye2'), bity2, constraints1 ++ constraints2 ++ [CEqual ann bt1 bt2])
-    AppOptOmitted _e ->
+    LamOpt (x1, btye1) e2 -> do
+      (btye1', bity1, constraints1) <- extractConstraintsFromTypeExpr btenv btye1
+      (e2', bity2, constraints2) <-
+        extractConstraintsFromExpr (Map.insert x1 (EntryLocallyBound bt bity1) btenv) e2
+      let constraints = [CEqual ann bt (BTConst BT0)]
+      let e' = Expr (bt, ann) (LamOpt (x1, btye1') e2')
+      pure (e', BIType bt (BITyOptArrow bity1 bity2), constraints1 ++ constraints2 ++ constraints)
+    AppOptOmitted _e1 ->
       error "TODO: Surface.BindingTime.Analyzer, AppOptOmitted"
 
 appendOmittedOptionalArguments :: BExpr -> BIType -> (BExpr, BIType)

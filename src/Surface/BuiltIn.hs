@@ -27,10 +27,10 @@ base1 = wrap1 BITyBase
 
 infixr 0 -->
 
-(-:>) :: BITypeVoid -> BITypeVoid -> BITypeVoid
-(-:>) bity1 bity2 = wrap0 $ BITyArrow bity1 bity2
+(-?>) :: BITypeVoid -> BITypeVoid -> BITypeVoid
+(-?>) bity1 bity2 = wrap0 $ BITyOptArrow bity1 bity2
 
-infixr 0 -:>
+infixr 0 -?>
 
 initialBindingTimeEnv :: BindingTimeEnv
 initialBindingTimeEnv =
@@ -60,16 +60,16 @@ initialBindingTimeEnv =
         arrow bity1 bity2 = wrap $ BITyArrow bity1 bity2
 
     bityVadd :: BITypeVoid
-    bityVadd = base0 -:> base1 --> base1 --> base1
+    bityVadd = base0 -?> base1 --> base1 --> base1
 
     bityVconcat :: BITypeVoid
-    bityVconcat = base0 -:> base0 -:> base1 --> base1 --> base1
+    bityVconcat = base0 -?> base0 -?> base1 --> base1 --> base1
 
     bityMtranspose :: BITypeVoid
-    bityMtranspose = base0 -:> base0 -:> base1 --> base1
+    bityMtranspose = base0 -?> base0 -?> base1 --> base1
 
     bityMmult :: BITypeVoid
-    bityMmult = base0 -:> base0 -:> base0 -:> base1 --> base1 --> base1
+    bityMmult = base0 -?> base0 -?> base0 -?> base1 --> base1 --> base1
 
     bityMconcatVert :: BITypeVoid
-    bityMconcatVert = base0 -:> base0 -:> base0 -:> base1 --> base1 --> base1
+    bityMconcatVert = base0 -?> base0 -?> base0 -?> base1 --> base1 --> base1

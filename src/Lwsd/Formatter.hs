@@ -291,6 +291,7 @@ instance Disp Surface.ExprMain where
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
+    Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
     Surface.AppOptOmitted e1 -> dispAppOptOmitted req e1
 
 instance Disp Surface.TypeExpr where
@@ -636,6 +637,7 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
+    Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
     Surface.AppOptOmitted e1 -> dispAppOptOmitted req e1
 
 instance Disp (Bta.BCTypeExprF ann) where
