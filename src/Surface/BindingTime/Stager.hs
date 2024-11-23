@@ -96,6 +96,8 @@ stageTypeExpr0Main = \case
       _ : _ -> error "bug: stageTypeExpr0Main, non-empty `args`"
   TyArrow (xOpt, tye1) tye2 ->
     Lwsd.TyArrow (xOpt, stageTypeExpr0 tye1) (stageTypeExpr0 tye2)
+  TyOptArrow (x, tye1) tye2 ->
+    Lwsd.TyOptArrow (x, stageTypeExpr0 tye1) (stageTypeExpr0 tye2)
 
 stageTypeExpr1 :: BCTypeExprF ann -> Lwsd.TypeExprF ann
 stageTypeExpr1 (TypeExpr (btc, ann) typeExprMain) =
@@ -107,6 +109,7 @@ stageTypeExpr1Main :: BCTypeExprMainF ann -> Lwsd.TypeExprMainF ann
 stageTypeExpr1Main = \case
   TyName tyName args -> Lwsd.TyName tyName (map (Lwsd.PersistentArg . stageExpr0) args)
   TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
+  TyOptArrow (x, tye1) tye2 -> Lwsd.TyOptArrow (x, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
 
 convertLiteral :: Literal -> Lwsd.Literal
 convertLiteral = \case

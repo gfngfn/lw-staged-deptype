@@ -90,6 +90,10 @@ assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
         bty1 <- assignBindingTimeVarToTypeExpr ty1
         bty2 <- assignBindingTimeVarToTypeExpr ty2
         pure $ TyArrow (xOpt, bty1) bty2
+      TyOptArrow (x, ty1) ty2 -> do
+        bty1 <- assignBindingTimeVarToTypeExpr ty1
+        bty2 <- assignBindingTimeVarToTypeExpr ty2
+        pure $ TyOptArrow (x, bty1) bty2
 
 newtype AnalysisConfig = AnalysisConfig
   { sourceSpec :: SourceSpec
@@ -251,6 +255,10 @@ makeConstraintsFromBITypeEquation ann = go
             constraints1 <- go bity11 bity21
             constraints2 <- go bity12 bity22
             pure $ constraints1 ++ constraints2
+          (BITyOptArrow bity11 bity12, BITyOptArrow bity21 bity22) -> do
+            constraints1 <- go bity11 bity21
+            constraints2 <- go bity12 bity22
+            pure $ constraints1 ++ constraints2
           (_, _) -> do
             spanInFile <- askSpanInFile ann
             analysisError $ BITypeContradiction spanInFile bity1 bity2
@@ -289,6 +297,13 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
           let constraints = [CLeq ann bt bt1, CLeq ann bt bt2]
           let tye' = TypeExpr (bt, ann) (TyArrow (Just x1, tye1') tye2')
           pure (tye', BIType bt (BITyArrow bity1 bity2), constraints1 ++ constraints2 ++ constraints)
+    TyOptArrow (x1, tye1) tye2 -> do
+      (tye1', bity1, constraints1) <- extractConstraintsFromTypeExpr btenv tye1
+      (tye2', bity2, constraints2) <-
+        extractConstraintsFromTypeExpr (Map.insert x1 (EntryLocallyBound bt bity1) btenv) tye2
+      let constraints = [CEqual ann bt (BTConst BT0)]
+      let tye' = TypeExpr (bt, ann) (TyOptArrow (x1, tye1') tye2')
+      pure (tye', BIType bt (BITyOptArrow bity1 bity2), constraints1 ++ constraints2 ++ constraints)
 
 run :: SourceSpec -> BindingTimeEnv -> Expr -> Either AnalysisError (BExpr, [Constraint Span])
 run sourceSpec btenv e = do

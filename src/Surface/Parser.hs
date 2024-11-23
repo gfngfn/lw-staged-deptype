@@ -208,19 +208,25 @@ typeExpr = fun
         `or` app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
-          let (loc, tyDom) =
-                case funDomSpec of
-                  (Nothing, tye1@(TypeExpr loc1 _)) -> (mergeSpan loc1 loc2, (Nothing, tye1))
-                  (Just (loc1, x), tye1) -> (mergeSpan loc1 loc2, (Just x, tye1))
-           in TypeExpr loc (TyArrow tyDom tye2)
+          case funDomSpec of
+            (Nothing, tye1@(TypeExpr loc1 _)) ->
+              TypeExpr (mergeSpan loc1 loc2) (TyArrow (Nothing, tye1) tye2)
+            (Just (isMandatory, loc1, x), tye1) ->
+              TypeExpr (mergeSpan loc1 loc2) $
+                if isMandatory
+                  then TyArrow (Just x, tye1) tye2
+                  else TyOptArrow (x, tye1) tye2
 
-    funDom :: P (Maybe (Span, Var), TypeExpr)
+    funDom :: P (Maybe (Bool, Span, Var), TypeExpr)
     funDom =
-      (makeFunDom <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen))
-        `or` ((Nothing,) <$> app)
+      tries
+        [ makeFunDom True <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen),
+          makeFunDom False <$> token TokLeftBrace <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightBrace)
+        ]
+        ((Nothing,) <$> app)
       where
-        makeFunDom locFirst x tyeDom =
-          (Just (locFirst, x), tyeDom)
+        makeFunDom isMandatory locFirst x tyeDom =
+          (Just (isMandatory, locFirst, x), tyeDom)
 
 parse :: P a -> Text -> Either String a
 parse p source = do
