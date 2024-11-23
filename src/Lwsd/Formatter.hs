@@ -121,6 +121,11 @@ dispAppOpt req e1 e2 =
   deepenParenWhen (req <= Atomic) $
     group (dispGen FunDomain e1 <> nest 2 (line <> "?" <> dispGen Atomic e2))
 
+dispAppOptOmitted :: (Disp expr) => Associativity -> expr -> Doc Ann
+dispAppOptOmitted req e1 =
+  deepenParenWhen (req <= Atomic) $
+    group (dispGen FunDomain e1 <> nest 2 (line <> "_"))
+
 dispLetIn :: (Disp var, Disp expr) => Associativity -> var -> expr -> expr -> Doc Ann
 dispLetIn req x e1 e2 =
   deepenParenWhen (req <= FunDomain) $
@@ -286,6 +291,7 @@ instance Disp Surface.ExprMain where
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
+    Surface.AppOptOmitted e1 -> dispAppOptOmitted req e1
 
 instance Disp Surface.TypeExpr where
   dispGen req (Surface.TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -630,6 +636,7 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
+    Surface.AppOptOmitted e1 -> dispAppOptOmitted req e1
 
 instance Disp (Bta.BCTypeExprF ann) where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =

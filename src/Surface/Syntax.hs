@@ -36,6 +36,7 @@ data ExprMainF ann
   | LetIn Var (ExprF ann) (ExprF ann)
   | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)
   | As (ExprF ann) (TypeExprF ann)
+  | AppOptOmitted (ExprF ann)
   deriving stock (Show, Functor)
 
 type Expr = ExprF Span
