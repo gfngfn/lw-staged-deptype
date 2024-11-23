@@ -89,7 +89,7 @@ exprAtom, expr :: P Expr
     arg =
       tries
         [ FunArgMandatory <$> staged,
-          FunArgOptGiven <$> token TokLeftBrace <*> staged <*> token TokRightBrace
+          FunArgOptGiven <$> token TokLeftBrace <*> letin <*> token TokRightBrace
         ]
         (FunArgOptOmitted <$> token TokUnderscore)
 
