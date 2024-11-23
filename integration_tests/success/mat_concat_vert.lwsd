@@ -1,8 +1,8 @@
 let f =
   fun{k : Nat} -> fun{l : Nat} -> fun{m : Nat} -> fun{n : Nat} ->
-    &(fun (matA : Mat %k %l) ->
-      fun (matB : Mat %m %n) ->
-      fun (matC : Mat %(l - 2 * m) %n) ->
+    &(fun(matA : Mat %k %l) ->
+      fun(matB : Mat %m %n) ->
+      fun(matC : Mat %(l - 2 * m) %n) ->
         ~gen_mmult matA (~gen_mconcat_vert (~gen_mconcat_vert matB matC) matB)
     )
 in
