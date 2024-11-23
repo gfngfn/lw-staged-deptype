@@ -107,33 +107,6 @@ enhanceBIType enhBt enh (BIType bt bityMain) =
   where
     fBIType = enhanceBIType enhBt enh
 
---enhanceExpr :: (a -> (BindingTime, Span)) -> ExprF a -> BExpr
---enhanceExpr enh (Expr meta exprMain) =
---  Expr (enh meta) $
---    case exprMain of
---      Literal lit -> Literal lit
---      Var x -> Var x
---      Lam Nothing (x, tye1) e2 -> Lam Nothing (x, fTypeExpr tye1) (fExpr e2)
---      Lam (Just (f, tyeRec)) (x, tye1) e2 -> Lam (Just (f, fTypeExpr tyeRec)) (x, fTypeExpr tye1) (fExpr e2)
---      App e1 e2 -> App (fExpr e1) (fExpr e2)
---      LetIn x e1 e2 -> LetIn x (fExpr e1) (fExpr e2)
---      IfThenElse e0 e1 e2 -> IfThenElse (fExpr e0) (fExpr e1) (fExpr e2)
---      As e1 tye2 -> As (fExpr e1) (fTypeExpr tye2)
---      AppOptOmitted e1 -> AppOptOmitted (fExpr e1)
---  where
---    fExpr = enhanceExpr enh
---    fTypeExpr = enhanceTypeExpr enh
---
---enhanceTypeExpr :: (a -> (BindingTime, Span)) -> TypeExprF a -> BTypeExpr
---enhanceTypeExpr enh (TypeExpr meta typeExprMain) =
---  TypeExpr (enh meta) $
---    case typeExprMain of
---      TyName tyName args -> TyName tyName (map fExpr args)
---      TyArrow (xOpt, tye1) tye2 -> TyArrow (xOpt, fTypeExpr tye1) (fTypeExpr tye2)
---  where
---    fExpr = enhanceExpr enh
---    fTypeExpr = enhanceTypeExpr enh
-
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BExpr, BIType, [Constraint Span])
 extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
   spanInFile <- askSpanInFile ann
@@ -221,8 +194,8 @@ appendOmittedOptionalArguments :: BExpr -> BIType -> (BExpr, BIType)
 appendOmittedOptionalArguments e@(Expr (_, ann) _) bity@(BIType _bt bityMain) =
   case bityMain of
     BITyOptArrow _bity1 bity2 ->
+      -- TODO: give better location than `ann`
       appendOmittedOptionalArguments (Expr (BTConst BT0, ann) (AppOptOmitted e)) bity2
-        -- TODO: give better location than `ann`
     _ ->
       (e, bity)
 
