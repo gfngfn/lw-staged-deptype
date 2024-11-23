@@ -85,18 +85,18 @@ exprAtom, expr :: P Expr
         makeStaged constructor loc1 e@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (constructor e)
 
-    arg :: P FunArg
-    arg =
-      tries
-        [ FunArgMandatory <$> staged,
-          FunArgOptGiven <$> token TokLeftBrace <*> letin <*> token TokRightBrace
-        ]
-        (FunArgOptOmitted <$> token TokUnderscore)
-
     app :: P Expr
     app =
       some arg >>= makeApp
       where
+        arg :: P FunArg
+        arg =
+          tries
+            [ FunArgMandatory <$> staged,
+              FunArgOptGiven <$> token TokLeftBrace <*> letin <*> token TokRightBrace
+            ]
+            (FunArgOptOmitted <$> token TokUnderscore)
+
         makeApp :: NonEmpty FunArg -> P Expr
         makeApp (FunArgMandatory eFun :| args) = pure $ List.foldl' makeAppSingle eFun args
         makeApp (FunArgOptGiven loc _ _ :| _) = failure (Located loc TokLeftBrace)

@@ -25,6 +25,7 @@ data Token
   | TokColon
   | TokComma
   | TokSemicolon
+  | TokUnderscore
   | TokVecLeft
   | TokVecRight
   | TokMatLeft
@@ -84,6 +85,7 @@ token =
       TokComma <$ Mp.single ',',
       TokEqual <$ Mp.single '=',
       TokSemicolon <$ Mp.single ';',
+      TokUnderscore <$ Mp.single '_',
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",
       TokMatLeft <$ Mp.chunk "[#",

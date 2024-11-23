@@ -8,6 +8,8 @@ import Control.Lens
 import Data.Either.Extra
 import Data.Functor
 import Data.Generics.Labels ()
+import Data.List.Extra qualified as List
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Text (Text)
 import Surface.Syntax
@@ -51,6 +53,11 @@ makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
     locLeft = mergeSpan loc1 locBinOp
     eOp = Expr locBinOp (Var binOp)
 
+data FunArg
+  = FunArgMandatory Expr
+  | FunArgOptGiven Span Expr Span
+  | FunArgOptOmitted Span
+
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
   where
@@ -69,11 +76,26 @@ exprAtom, expr :: P Expr
 
     app :: P Expr
     app =
-      foldl1 makeApp <$> some atom
+      some arg >>= makeApp
       where
-        makeApp :: Expr -> Expr -> Expr
-        makeApp e1@(Expr loc1 _) e2@(Expr loc2 _) =
-          Expr (mergeSpan loc1 loc2) (App e1 e2)
+        arg :: P FunArg
+        arg =
+          tries
+            [ FunArgMandatory <$> atom,
+              FunArgOptGiven <$> token TokLeftBrace <*> letin <*> token TokRightBrace
+            ]
+            (FunArgOptOmitted <$> token TokUnderscore)
+
+        makeApp :: NonEmpty FunArg -> P Expr
+        makeApp (FunArgMandatory eFun :| args) = pure $ List.foldl' makeAppSingle eFun args
+        makeApp (FunArgOptGiven loc _ _ :| _) = failure (Located loc TokLeftBrace)
+        makeApp (FunArgOptOmitted loc :| _) = failure (Located loc TokUnderscore)
+
+        makeAppSingle :: Expr -> FunArg -> Expr
+        makeAppSingle e1@(Expr loc1 _) = \case
+          FunArgMandatory e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (App e1 e2)
+          FunArgOptGiven _ e2 loc2 -> Expr (mergeSpan loc1 loc2) (AppOptGiven e1 e2)
+          FunArgOptOmitted loc2 -> Expr (mergeSpan loc1 loc2) (AppOptOmitted e1)
 
     as :: P Expr
     as =
