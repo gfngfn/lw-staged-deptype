@@ -11,6 +11,7 @@ import Prelude
 data AnalysisError
   = UnboundVar SpanInFile Var
   | NotAFunction SpanInFile BIType
+  | NotAnOptFunction SpanInFile BIType
   | NotABase SpanInFile BIType
   | BindingTimeContradiction SpanInFile
   | BITypeContradiction SpanInFile BIType BIType

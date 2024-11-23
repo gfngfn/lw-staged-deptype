@@ -158,11 +158,11 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
     App e1 e2 -> do
       (e1WithoutOpts, bity1WithoutOpts, constraints1) <- extractConstraintsFromExpr btenv e1
       let (e1', bity1@(BIType bt1 bityMain1)) = appendOmittedOptionalArguments e1WithoutOpts bity1WithoutOpts
-      (e2', bity2@(BIType bt2 _), constraints2) <- extractConstraintsFromExpr btenv e2
+      (e2', bity2, constraints2) <- extractConstraintsFromExpr btenv e2
       (bity, constraints) <-
         case bityMain1 of
-          BITyArrow bity11@(BIType bt11 _) bity12 -> do
-            let constraints = [CEqual ann bt bt1, CEqual ann bt2 bt11]
+          BITyArrow bity11 bity12 -> do
+            let constraints = [CEqual ann bt bt1]
             constraintsEq <- makeConstraintsFromBITypeEquation ann bity2 bity11
             pure (bity12, constraints1 ++ constraints2 ++ constraintsEq ++ constraints)
           _ -> do
@@ -202,10 +202,32 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       let constraints = [CEqual ann bt (BTConst BT0)]
       let e' = Expr (bt, ann) (LamOpt (x1, btye1') e2')
       pure (e', BIType bt (BITyOptArrow bity1 bity2), constraints1 ++ constraints2 ++ constraints)
-    AppOptGiven _e1 _e2 -> do
-      error "TODO: Surface.BindingTime.Analyzer, AppOptGiven"
-    AppOptOmitted _e1 -> do
-      error "TODO: Surface.BindingTime.Analyzer, AppOptOmitted"
+    AppOptGiven e1 e2 -> do
+      (e1', bity1@(BIType bt1 bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
+      (e2', bity2, constraints2) <- extractConstraintsFromExpr btenv e2
+      (bity, constraints) <-
+        case bityMain1 of
+          BITyOptArrow bity11 bity12 -> do
+            let constraints = [CEqual ann bt bt1]
+            constraintsEq <- makeConstraintsFromBITypeEquation ann bity2 bity11
+            pure (bity12, constraints1 ++ constraints2 ++ constraintsEq ++ constraints)
+          _ -> do
+            let Expr (_, ann1) _ = e1
+            spanInFile1 <- askSpanInFile ann1
+            analysisError $ NotAnOptFunction spanInFile1 bity1
+      pure (Expr (bt, ann) (AppOptGiven e1' e2'), bity, constraints)
+    AppOptOmitted e1 -> do
+      (e1', bity1@(BIType bt1 bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
+      (bity, constraints) <-
+        case bityMain1 of
+          BITyOptArrow _bity11 bity12 -> do
+            let constraints = [CEqual ann bt bt1]
+            pure (bity12, constraints1 ++ constraints)
+          _ -> do
+            let Expr (_, ann1) _ = e1
+            spanInFile1 <- askSpanInFile ann1
+            analysisError $ NotAnOptFunction spanInFile1 bity1
+      pure (Expr (bt, ann) (AppOptOmitted e1'), bity, constraints)
 
 appendOmittedOptionalArguments :: BExpr -> BIType -> (BExpr, BIType)
 appendOmittedOptionalArguments e@(Expr (_, ann) _) bity@(BIType _bt bityMain) =

@@ -119,7 +119,7 @@ dispApp req e1 e2 =
 dispAppOptGiven :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispAppOptGiven req e1 e2 =
   deepenParenWhen (req <= Atomic) $
-    group (dispGen FunDomain e1 <> nest 2 (line <> "{" <> dispGen Atomic e2 <> "}"))
+    group (dispGen FunDomain e1 <> nest 2 (line <> "{" <> disp e2 <> "}"))
 
 dispAppOptOmitted :: (Disp expr) => Associativity -> expr -> Doc Ann
 dispAppOptOmitted req e1 =
@@ -609,6 +609,8 @@ instance Disp Bta.AnalysisError where
       "Unbound variable" <+> disp x <+> disp spanInFile
     Bta.NotAFunction spanInFile bity ->
       "Not a function type;" <+> disp (show bity) <+> disp spanInFile
+    Bta.NotAnOptFunction spanInFile bity ->
+      "Not an optional function type;" <+> disp (show bity) <+> disp spanInFile
     Bta.NotABase spanInFile bity ->
       "Not a base type;" <+> disp (show bity) <+> disp spanInFile
     Bta.BindingTimeContradiction spanInFile ->
