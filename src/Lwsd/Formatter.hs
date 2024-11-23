@@ -414,6 +414,8 @@ instance Disp TypeError where
       "Not a function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
     NotAFunctionTypeForStage1 spanInFile a1tye ->
       "Not a function type (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    NotAnOptFunctionTypeForStage0 spanInFile a0tye ->
+      "Not an optional function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage0 spanInFile a0tye ->
       "Not bool (at stage 0):" <+> stage1Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage1 spanInFile a1tye ->
@@ -484,6 +486,7 @@ instance Disp AppContextEntry where
     AppArg0 a0e a0tye -> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
     AppArg1 a1tye -> stage1Style (disp a1tye)
     AppArgOptGiven0 a0e a0tye -> "{" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye) <> "}"
+    AppArgOptOmitted0 -> "_"
 
 instance Disp Ass0Val where
   dispGen req = \case

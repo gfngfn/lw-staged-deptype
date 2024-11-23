@@ -338,6 +338,16 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
               let solution = Map.union solution1 solution'
               let a0tye1s = applySolution solution a0tye1
               pure (A0TyOptArrow (x, a0tye1s) a0tye2', RetCast0 a0eCastOpt : retAppCtx', solution)
+            AppArgOptOmitted0 -> do
+              (a0tye2', retAppCtx', solution') <- go (Set.insert x varsToInfer) appCtx' a0tye2
+              a0eInferred <-
+                case Map.lookup x solution' of
+                  Just a0eInferred' ->
+                    pure a0eInferred'
+                  Nothing -> do
+                    spanInFile <- askSpanInFile loc
+                    typeError trav $ CannotInferOptional spanInFile x
+              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetFillInferred0 a0eInferred : retAppCtx', solution')
             _ -> do
               (a0tye2', retAppCtx', solution') <- go (Set.insert x varsToInfer) appCtx a0tye2
               a0eInferred <-
@@ -347,6 +357,7 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x
+              -- TODO: fix `x` below. `x` never occurs in `a0tye2'`.
               pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInsertInferred0 a0eInferred : retAppCtx', solution')
         (_, A0TyCode a1tye) -> do
           (a1tye', retAppCtx, solution) <- instantiateGuidedByAppContext1 trav loc varsToInfer appCtx a1tye
@@ -478,11 +489,23 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               _ -> do
                 let Expr loc1 _ = e1
                 spanInFile1 <- askSpanInFile loc1
-                typeError trav $ NotAFunctionTypeForStage0 spanInFile1 a0tye1
+                typeError trav $ NotAnOptFunctionTypeForStage0 spanInFile1 a0tye1
           _ ->
             error "bug: AppOpt, fun, not a RetCast0"
-      AppOptOmitted _e1 -> do
-        error "TODO: stage-0, AppOptOmitted"
+      AppOptOmitted e1 -> do
+        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArgOptOmitted0 : appCtx) e1
+        case retAppCtx1 of
+          RetFillInferred0 a0eInferred : retAppCtx -> do
+            case a0tye1 of
+              -- TODO: refine the following. `x11` never occurs in `a0tye12`
+              A0TyOptArrow (x11, _a0tye11) a0tye12 -> do
+                pure (subst0 a0eInferred x11 a0tye12, A0App a0e1 a0eInferred, retAppCtx)
+              _ -> do
+                let Expr loc1 _ = e1
+                spanInFile1 <- askSpanInFile loc1
+                typeError trav $ NotAnOptFunctionTypeForStage0 spanInFile1 a0tye1
+          _ ->
+            error "bug: App, fun, not a RetCast0"
       LetIn x e1 e2 -> do
         (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv [] e1
         case retAppCtx1 of
