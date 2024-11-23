@@ -330,7 +330,7 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
           pure (A0TyArrow (xOpt, a0tye1s) a0tye2', RetCast0 a0eCastOpt : retAppCtx', solution)
         (appCtxEntry : appCtx', A0TyOptArrow (x, a0tye1) a0tye2) ->
           case appCtxEntry of
-            AppArgOpt0 a0e1' a0tye1' -> do
+            AppArgOptGiven0 a0e1' a0tye1' -> do
               (a0eCastOpt, solution1) <- makeAssertiveCast trav loc varsToInfer a0tye1' a0tye1
               let varsToInfer' = varsToInfer \\ Map.keysSet solution1
               let a0tye2s = applySolution solution1 a0tye2
@@ -347,7 +347,7 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x
-              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInferred0 a0eInferred : retAppCtx', solution')
+              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInsertInferred0 a0eInferred : retAppCtx', solution')
         (_, A0TyCode a1tye) -> do
           (a1tye', retAppCtx, solution) <- instantiateGuidedByAppContext1 trav loc varsToInfer appCtx a1tye
           pure (A0TyCode a1tye', retAppCtx, solution)
@@ -469,7 +469,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
       AppOptGiven e1 e2 -> do
         (a0tye2, a0e2, retAppCtx2) <- typecheckExpr0 trav tyEnv [] e2
         validateEmptyRetAppContext "stage-0, AppOpt, arg" retAppCtx2
-        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArgOpt0 a0e2 a0tye2 : appCtx) e1
+        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArgOptGiven0 a0e2 a0tye2 : appCtx) e1
         case retAppCtx1 of
           RetCast0 a0eCastOpt : retAppCtx -> do
             case a0tye1 of
@@ -522,7 +522,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
   where
     completeInferredOptional triple@(a0tye, a0e, retAppCtx) =
       case retAppCtx of
-        RetInferred0 a0eInferred : retAppCtxRest ->
+        RetInsertInferred0 a0eInferred : retAppCtxRest ->
           case a0tye of
             A0TyOptArrow _ a0tye2 ->
               completeInferredOptional (a0tye2, A0App a0e a0eInferred, retAppCtxRest)
