@@ -211,7 +211,8 @@ type AppContext = [AppContextEntry]
 data AppContextEntry
   = AppArg0 Ass0Expr Ass0TypeExpr
   | AppArg1 Ass1TypeExpr
-  | AppArgOpt0 Ass0Expr Ass0TypeExpr
+  | AppArgOptGiven0 Ass0Expr Ass0TypeExpr
+  | AppArgOptOmitted0
   deriving (Eq, Show)
 
 type RetAppContext = [RetAppContextEntry]
@@ -219,5 +220,6 @@ type RetAppContext = [RetAppContextEntry]
 data RetAppContextEntry
   = RetCast0 (Maybe Ass0Expr)
   | RetCast1 (Maybe Type1Equation)
-  | RetInferred0 Ass0Expr
+  | RetFillInferred0 Ass0Expr
+  | RetInsertInferred0 Ass0Expr
   deriving (Eq, Show)

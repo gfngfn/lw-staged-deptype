@@ -22,6 +22,7 @@ data TypeError
   | TypeContradictionAtStage1 SpanInFile Ass1TypeExpr Ass1TypeExpr
   | NotAFunctionTypeForStage0 SpanInFile Ass0TypeExpr
   | NotAFunctionTypeForStage1 SpanInFile Ass1TypeExpr
+  | NotAnOptFunctionTypeForStage0 SpanInFile Ass0TypeExpr
   | NotABoolTypeForStage0 SpanInFile Ass0TypeExpr
   | NotABoolTypeForStage1 SpanInFile Ass1TypeExpr
   | NotACodeType SpanInFile Ass0TypeExpr

@@ -330,7 +330,7 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
           pure (A0TyArrow (xOpt, a0tye1s) a0tye2', RetCast0 a0eCastOpt : retAppCtx', solution)
         (appCtxEntry : appCtx', A0TyOptArrow (x, a0tye1) a0tye2) ->
           case appCtxEntry of
-            AppArgOpt0 a0e1' a0tye1' -> do
+            AppArgOptGiven0 a0e1' a0tye1' -> do
               (a0eCastOpt, solution1) <- makeAssertiveCast trav loc varsToInfer a0tye1' a0tye1
               let varsToInfer' = varsToInfer \\ Map.keysSet solution1
               let a0tye2s = applySolution solution1 a0tye2
@@ -338,6 +338,16 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
               let solution = Map.union solution1 solution'
               let a0tye1s = applySolution solution a0tye1
               pure (A0TyOptArrow (x, a0tye1s) a0tye2', RetCast0 a0eCastOpt : retAppCtx', solution)
+            AppArgOptOmitted0 -> do
+              (a0tye2', retAppCtx', solution') <- go (Set.insert x varsToInfer) appCtx' a0tye2
+              a0eInferred <-
+                case Map.lookup x solution' of
+                  Just a0eInferred' ->
+                    pure a0eInferred'
+                  Nothing -> do
+                    spanInFile <- askSpanInFile loc
+                    typeError trav $ CannotInferOptional spanInFile x
+              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetFillInferred0 a0eInferred : retAppCtx', solution')
             _ -> do
               (a0tye2', retAppCtx', solution') <- go (Set.insert x varsToInfer) appCtx a0tye2
               a0eInferred <-
@@ -347,7 +357,8 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x
-              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInferred0 a0eInferred : retAppCtx', solution')
+              -- TODO: fix `x` below. `x` never occurs in `a0tye2'`.
+              pure (A0TyOptArrow (x, a0tye1) a0tye2', RetInsertInferred0 a0eInferred : retAppCtx', solution')
         (_, A0TyCode a1tye) -> do
           (a1tye', retAppCtx, solution) <- instantiateGuidedByAppContext1 trav loc varsToInfer appCtx a1tye
           pure (A0TyCode a1tye', retAppCtx, solution)
@@ -465,11 +476,11 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             let ax1 = AssVar x1
             pure (A0TyOptArrow (ax1, a0tye1) a0tye2, A0Lam Nothing (ax1, a0tye1) a0e2, [])
           _ : _ ->
-            error "TODO: stage-1, LamOpt, non-empty AppContext"
-      AppOpt e1 e2 -> do
+            error "TODO: stage-0, LamOpt, non-empty AppContext"
+      AppOptGiven e1 e2 -> do
         (a0tye2, a0e2, retAppCtx2) <- typecheckExpr0 trav tyEnv [] e2
         validateEmptyRetAppContext "stage-0, AppOpt, arg" retAppCtx2
-        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArgOpt0 a0e2 a0tye2 : appCtx) e1
+        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArgOptGiven0 a0e2 a0tye2 : appCtx) e1
         case retAppCtx1 of
           RetCast0 a0eCastOpt : retAppCtx -> do
             case a0tye1 of
@@ -478,9 +489,23 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               _ -> do
                 let Expr loc1 _ = e1
                 spanInFile1 <- askSpanInFile loc1
-                typeError trav $ NotAFunctionTypeForStage0 spanInFile1 a0tye1
+                typeError trav $ NotAnOptFunctionTypeForStage0 spanInFile1 a0tye1
           _ ->
             error "bug: AppOpt, fun, not a RetCast0"
+      AppOptOmitted e1 -> do
+        (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv (AppArgOptOmitted0 : appCtx) e1
+        case retAppCtx1 of
+          RetFillInferred0 a0eInferred : retAppCtx -> do
+            case a0tye1 of
+              -- TODO: refine the following. `x11` never occurs in `a0tye12`
+              A0TyOptArrow (x11, _a0tye11) a0tye12 -> do
+                pure (subst0 a0eInferred x11 a0tye12, A0App a0e1 a0eInferred, retAppCtx)
+              _ -> do
+                let Expr loc1 _ = e1
+                spanInFile1 <- askSpanInFile loc1
+                typeError trav $ NotAnOptFunctionTypeForStage0 spanInFile1 a0tye1
+          _ ->
+            error "bug: App, fun, not a RetCast0"
       LetIn x e1 e2 -> do
         (a0tye1, a0e1, retAppCtx1) <- typecheckExpr0 trav tyEnv [] e1
         case retAppCtx1 of
@@ -520,7 +545,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
   where
     completeInferredOptional triple@(a0tye, a0e, retAppCtx) =
       case retAppCtx of
-        RetInferred0 a0eInferred : retAppCtxRest ->
+        RetInsertInferred0 a0eInferred : retAppCtxRest ->
           case a0tye of
             A0TyOptArrow _ a0tye2 ->
               completeInferredOptional (a0tye2, A0App a0e a0eInferred, retAppCtxRest)
@@ -605,8 +630,10 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           error "bug: stage-1, App, fun, not a RetCast1"
     LamOpt _ _ ->
       error "TODO: stage-1, LamOpt, error"
-    AppOpt _ _ ->
+    AppOptGiven _ _ ->
       error "TODO: stage-1, AppOpt, error"
+    AppOptOmitted _ ->
+      error "TODO: stage-1, AppOptOmitted, error"
     LetIn x e1 e2 -> do
       (a1tye1, a1e1, retAppCtx1) <- typecheckExpr1 trav tyEnv [] e1
       validateEmptyRetAppContext "stage-1, LetIn" retAppCtx1

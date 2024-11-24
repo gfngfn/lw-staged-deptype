@@ -53,6 +53,9 @@ recLam binderF binderX e = expr (Lam (Just binderF) binderX e)
 app :: ExprVoid -> ExprVoid -> ExprVoid
 app e1 e2 = expr (App e1 e2)
 
+appOptGiven :: ExprVoid -> ExprVoid -> ExprVoid
+appOptGiven e1 e2 = expr (AppOptGiven e1 e2)
+
 binOp :: Var -> ExprVoid -> ExprVoid -> ExprVoid
 binOp op e1 e2 = app (app (var op) e1) e2
 

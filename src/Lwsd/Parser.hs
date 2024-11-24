@@ -21,8 +21,15 @@ import Prelude hiding (or)
 
 type P a = GenP Token a
 
+data BinderKind
+  = MandatoryBinder (Var, TypeExpr)
+  | OptionalBinder (Var, TypeExpr)
+
 paren :: P a -> P a
 paren p = token TokLeftParen *> p <* token TokRightParen
+
+brace :: P a -> P a
+brace p = token TokLeftBrace *> p <* token TokRightBrace
 
 lower :: P (Located Text)
 lower = expectToken (^? #_TokLower)
@@ -47,8 +54,9 @@ makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
     eOp = Expr locBinOp (Var binOp)
 
 data FunArg
-  = FunArgNormal Expr
-  | FunArgOptional Span Expr
+  = FunArgMandatory Expr
+  | FunArgOptGiven Span Expr Span
+  | FunArgOptOmitted Span
 
 exprAtom, expr :: P Expr
 (exprAtom, expr) = (atom, letin)
@@ -77,23 +85,28 @@ exprAtom, expr :: P Expr
         makeStaged constructor loc1 e@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (constructor e)
 
-    arg :: P FunArg
-    arg =
-      (FunArgNormal <$> staged)
-        `or` (FunArgOptional <$> token TokQuestion <*> staged)
-
     app :: P Expr
     app =
       some arg >>= makeApp
       where
+        arg :: P FunArg
+        arg =
+          tries
+            [ FunArgMandatory <$> staged,
+              FunArgOptGiven <$> token TokLeftBrace <*> letin <*> token TokRightBrace
+            ]
+            (FunArgOptOmitted <$> token TokUnderscore)
+
         makeApp :: NonEmpty FunArg -> P Expr
-        makeApp (FunArgNormal eFun :| args) = pure $ List.foldl' makeAppSingle eFun args
-        makeApp (FunArgOptional locQuestion _ :| _) = failure (Located locQuestion TokQuestion)
+        makeApp (FunArgMandatory eFun :| args) = pure $ List.foldl' makeAppSingle eFun args
+        makeApp (FunArgOptGiven loc _ _ :| _) = failure (Located loc TokLeftBrace)
+        makeApp (FunArgOptOmitted loc :| _) = failure (Located loc TokUnderscore)
 
         makeAppSingle :: Expr -> FunArg -> Expr
         makeAppSingle e1@(Expr loc1 _) = \case
-          FunArgNormal e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (App e1 e2)
-          FunArgOptional _ e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (AppOpt e1 e2)
+          FunArgMandatory e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (App e1 e2)
+          FunArgOptGiven _ e2 loc2 -> Expr (mergeSpan loc1 loc2) (AppOptGiven e1 e2)
+          FunArgOptOmitted loc2 -> Expr (mergeSpan loc1 loc2) (AppOptOmitted e1)
 
     as :: P Expr
     as =
@@ -144,23 +157,28 @@ exprAtom, expr :: P Expr
     lam =
       tries
         [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
-          makeRecLam <$> token TokRec <*> (binder <* token TokArrow <* token TokFun) <*> (binder <* token TokArrow) <*> expr,
-          makeLamOpt <$> token TokFun <*> (token TokQuestion *> binder <* token TokArrow) <*> expr,
+          makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr,
           makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
         ]
         comp
       where
         binder =
+          (MandatoryBinder <$> mandatoryBinder) `or` (OptionalBinder <$> optionalBinder)
+
+        mandatoryBinder =
           paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
 
-        makeNonrecLam locFirst xBinder e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (Lam Nothing xBinder e)
+        optionalBinder =
+          brace ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
+
+        makeNonrecLam locFirst xBinder' e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) $
+            case xBinder' of
+              MandatoryBinder xBinder -> Lam Nothing xBinder e
+              OptionalBinder xBinder -> LamOpt xBinder e
 
         makeRecLam locFirst fBinder xBinder e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (Lam (Just fBinder) xBinder e)
-
-        makeLamOpt locFirst xBinder e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (LamOpt xBinder e)
 
         makeIf locFirst e0 e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
@@ -197,6 +215,11 @@ typeExpr = fun
       (makeTyName <$> upper <*> some arg)
         `or` staged
       where
+        arg :: P ArgForType
+        arg =
+          (PersistentArg <$> (token TokPersistent *> exprAtom))
+            `or` (NormalArg <$> exprAtom)
+
         makeTyName (Located locFirst t) tyeArgs =
           let loc =
                 case NonEmpty.last tyeArgs of
@@ -206,34 +229,29 @@ typeExpr = fun
 
     fun :: P TypeExpr
     fun =
-      tries
-        [ makeTyArrow <$> funDom <*> (token TokArrow *> fun),
-          makeTyOptArrow <$> token TokQuestion <*> (token TokLeftParen *> noLoc lower <* token TokColon) <*> (fun <* token TokRightParen) <*> (token TokArrow *> fun)
-        ]
-        app
+      (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
+        `or` app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
-          let (loc, tyDom) =
-                case funDomSpec of
-                  (Nothing, tye1@(TypeExpr loc1 _)) -> (mergeSpan loc1 loc2, (Nothing, tye1))
-                  (Just (loc1, x), tye1) -> (mergeSpan loc1 loc2, (Just x, tye1))
-           in TypeExpr loc (TyArrow tyDom tye2)
+          case funDomSpec of
+            (Nothing, tye1@(TypeExpr loc1 _)) ->
+              TypeExpr (mergeSpan loc1 loc2) (TyArrow (Nothing, tye1) tye2)
+            (Just (isMandatory, loc1, x), tye1) ->
+              TypeExpr (mergeSpan loc1 loc2) $
+                if isMandatory
+                  then TyArrow (Just x, tye1) tye2
+                  else TyOptArrow (x, tye1) tye2
 
-        makeTyOptArrow locFirst x tye1 tye2@(TypeExpr locLast _) =
-          TypeExpr (mergeSpan locFirst locLast) (TyOptArrow (x, tye1) tye2)
-
-    funDom :: P (Maybe (Span, Var), TypeExpr)
+    funDom :: P (Maybe (Bool, Span, Var), TypeExpr)
     funDom =
-      (makeFunDom <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen))
-        `or` ((Nothing,) <$> app)
+      tries
+        [ makeFunDom True <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen),
+          makeFunDom False <$> token TokLeftBrace <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightBrace)
+        ]
+        ((Nothing,) <$> app)
       where
-        makeFunDom locFirst x tyeDom =
-          (Just (locFirst, x), tyeDom)
-
-    arg :: P ArgForType
-    arg =
-      (PersistentArg <$> (token TokPersistent *> exprAtom))
-        `or` (NormalArg <$> exprAtom)
+        makeFunDom isMandatory locFirst x tyeDom =
+          (Just (isMandatory, locFirst, x), tyeDom)
 
 parse :: P a -> Text -> Either String a
 parse p source = do

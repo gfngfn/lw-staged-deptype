@@ -18,6 +18,8 @@ import Prelude hiding (lex)
 data Token
   = TokLeftParen
   | TokRightParen
+  | TokLeftBrace
+  | TokRightBrace
   | TokArrow
   | TokEqual
   | TokColon
@@ -26,7 +28,7 @@ data Token
   | TokEscape
   | TokPersistent
   | TokSemicolon
-  | TokQuestion
+  | TokUnderscore
   | TokVecLeft
   | TokVecRight
   | TokMatLeft
@@ -79,6 +81,8 @@ token =
   choice
     [ TokLeftParen <$ Mp.single '(',
       TokRightParen <$ Mp.single ')',
+      TokLeftBrace <$ Mp.single '{',
+      TokRightBrace <$ Mp.single '}',
       TokArrow <$ Mp.chunk "->",
       TokColon <$ Mp.single ':',
       TokComma <$ Mp.single ',',
@@ -87,7 +91,7 @@ token =
       TokEscape <$ Mp.single '~',
       TokPersistent <$ Mp.single '%',
       TokSemicolon <$ Mp.single ';',
-      TokQuestion <$ Mp.single '?',
+      TokUnderscore <$ Mp.single '_',
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",
       TokMatLeft <$ Mp.chunk "[#",

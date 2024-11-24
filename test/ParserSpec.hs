@@ -100,6 +100,15 @@ spec = do
     it "parses upcasts" $
       parseExpr "[| |] as Vec %n"
         `shouldBe` pure (upcast (litVec []) (tyPersVec (var "n")))
+    it "parses optional applications (1)" $
+      parseExpr "x {y}"
+        `shouldBe` pure (appOptGiven (var "x") (var "y"))
+    it "parses optional applications (2)" $
+      parseExpr "x {y} {z}"
+        `shouldBe` pure (appOptGiven (appOptGiven (var "x") (var "y")) (var "z"))
+    it "parses optional applications (3)" $
+      parseExpr "x {y + 1} {z}"
+        `shouldBe` pure (appOptGiven (appOptGiven (var "x") (add (var "y") (litInt 1))) (var "z"))
   describe "Parser.parseTypeExpr" $ do
     it "parses dependent function types (1)" $
       parseTypeExpr "(n : Int) -> Bool"
@@ -211,6 +220,13 @@ spec = do
                 (exprLoc 31 34 $ App (exprLoc 31 32 $ Var "x") (exprLoc 33 34 $ Var "y"))
        in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
             `shouldBe` pure e
-    it "parses optional applications" $
-      Parser.parseExpr "x ?y"
-        `shouldBe` pure (exprLoc 0 4 $ AppOpt (exprLoc 0 1 $ Var "x") (exprLoc 3 4 $ Var "y"))
+    it "parses optional applications (1)" $
+      Parser.parseExpr "x {y}"
+        `shouldBe` pure (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ Var "x") (exprLoc 3 4 $ Var "y"))
+    it "parses optional applications (2)" $
+      let e =
+            exprLoc 0 9 $
+              AppOptGiven
+                (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ Var "x") (exprLoc 3 4 $ Var "y"))
+                (exprLoc 7 8 $ Var "z")
+       in Parser.parseExpr "x {y} {z}" `shouldBe` pure e

@@ -109,17 +109,22 @@ dispRecLam req f tyeRec x tye1 e2 =
 dispLamOpt :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> Doc Ann
 dispLamOpt req x tye1 e2 =
   deepenParenWhen (req <= FunDomain) $
-    group ("λ?" <> disp x <+> ":" <+> disp tye1 <> "." <> nest 2 (line <> disp e2))
+    group ("λ{" <> disp x <+> ":" <+> disp tye1 <> "}." <> nest 2 (line <> disp e2))
 
 dispApp :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispApp req e1 e2 =
   deepenParenWhen (req <= Atomic) $
     group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic e2))
 
-dispAppOpt :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
-dispAppOpt req e1 e2 =
+dispAppOptGiven :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
+dispAppOptGiven req e1 e2 =
   deepenParenWhen (req <= Atomic) $
-    group (dispGen FunDomain e1 <> nest 2 (line <> "?" <> dispGen Atomic e2))
+    group (dispGen FunDomain e1 <> nest 2 (line <> "{" <> disp e2 <> "}"))
+
+dispAppOptOmitted :: (Disp expr) => Associativity -> expr -> Doc Ann
+dispAppOptOmitted req e1 =
+  deepenParenWhen (req <= Atomic) $
+    group (dispGen FunDomain e1 <> nest 2 (line <> "_"))
 
 dispLetIn :: (Disp var, Disp expr) => Associativity -> var -> expr -> expr -> Doc Ann
 dispLetIn req x e1 e2 =
@@ -175,7 +180,7 @@ dispOptArrowType req x tye1 tye2 =
   deepenParenWhen (req <= FunDomain) $
     group (docDom <> " ->" <> line <> disp tye2)
   where
-    docDom = "?(" <> disp x <+> ":" <+> disp tye1 <> ")"
+    docDom = "{" <> disp x <+> ":" <+> disp tye1 <> "}"
 
 dispVectorLiteral :: [Int] -> Doc Ann
 dispVectorLiteral ns =
@@ -227,7 +232,8 @@ instance Disp (ExprMainF ann) where
     Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     App e1 e2 -> dispApp req e1 e2
     LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
-    AppOpt e1 e2 -> dispAppOpt req e1 e2
+    AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
+    AppOptOmitted e1 -> dispAppOptOmitted req e1
     LetIn x e1 e2 -> dispLetIn req x e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2
@@ -286,6 +292,9 @@ instance Disp Surface.ExprMain where
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
+    Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
+    Surface.AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
+    Surface.AppOptOmitted e1 -> dispAppOptOmitted req e1
 
 instance Disp Surface.TypeExpr where
   dispGen req (Surface.TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -294,6 +303,7 @@ instance Disp Surface.TypeExprMain where
   dispGen req = \case
     Surface.TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
     Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
+    Surface.TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
 
 instance Disp AssLiteral where
   dispGen _ = \case
@@ -405,6 +415,8 @@ instance Disp TypeError where
       "Not a function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
     NotAFunctionTypeForStage1 spanInFile a1tye ->
       "Not a function type (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    NotAnOptFunctionTypeForStage0 spanInFile a0tye ->
+      "Not an optional function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage0 spanInFile a0tye ->
       "Not bool (at stage 0):" <+> stage1Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage1 spanInFile a1tye ->
@@ -474,7 +486,8 @@ instance Disp AppContextEntry where
   dispGen _ = \case
     AppArg0 a0e a0tye -> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
     AppArg1 a1tye -> stage1Style (disp a1tye)
-    AppArgOpt0 a0e a0tye -> "?" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
+    AppArgOptGiven0 a0e a0tye -> "{" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye) <> "}"
+    AppArgOptOmitted0 -> "_"
 
 instance Disp Ass0Val where
   dispGen req = \case
@@ -600,6 +613,8 @@ instance Disp Bta.AnalysisError where
       "Unbound variable" <+> disp x <+> disp spanInFile
     Bta.NotAFunction spanInFile bity ->
       "Not a function type;" <+> disp (show bity) <+> disp spanInFile
+    Bta.NotAnOptFunction spanInFile bity ->
+      "Not an optional function type;" <+> disp (show bity) <+> disp spanInFile
     Bta.NotABase spanInFile bity ->
       "Not a base type;" <+> disp (show bity) <+> disp spanInFile
     Bta.BindingTimeContradiction spanInFile ->
@@ -630,6 +645,9 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
+    Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
+    Surface.AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
+    Surface.AppOptOmitted e1 -> dispAppOptOmitted req e1
 
 instance Disp (Bta.BCTypeExprF ann) where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =
@@ -639,3 +657,4 @@ instance Disp (Bta.BCTypeExprMainF ann) where
   dispGen req = \case
     Surface.TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
     Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
+    Surface.TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2

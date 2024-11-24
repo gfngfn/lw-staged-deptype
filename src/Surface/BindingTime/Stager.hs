@@ -44,6 +44,12 @@ stageExpr0Main = \case
     Lwsd.IfThenElse (stageExpr0 e0) (stageExpr0 e1) (stageExpr0 e2)
   As e1 tye2 ->
     Lwsd.As (stageExpr0 e1) (stageTypeExpr0 tye2)
+  LamOpt (x, tye1) e2 ->
+    Lwsd.LamOpt (x, stageTypeExpr0 tye1) (stageExpr0 e2)
+  AppOptGiven e1 e2 ->
+    Lwsd.AppOptGiven (stageExpr0 e1) (stageExpr0 e2)
+  AppOptOmitted e1 ->
+    Lwsd.AppOptOmitted (stageExpr0 e1)
 
 stageExpr1 :: BCExprF ann -> Lwsd.ExprF ann
 stageExpr1 (Expr (btc, ann) exprMain) =
@@ -69,6 +75,12 @@ stageExpr1Main = \case
     Lwsd.IfThenElse (stageExpr1 e0) (stageExpr1 e1) (stageExpr1 e2)
   As e1 tye2 ->
     Lwsd.As (stageExpr1 e1) (stageTypeExpr1 tye2)
+  LamOpt (_x, _tye1) _e2 ->
+    error "bug: stageExpr1Main, LamOpt"
+  AppOptGiven _e1 _e2 ->
+    error "bug: stageExpr1Main, AppOptGiven"
+  AppOptOmitted _e1 ->
+    error "bug: stageExpr1Main, AppOptOmitted"
 
 stageTypeExpr0 :: BCTypeExprF ann -> Lwsd.TypeExprF ann
 stageTypeExpr0 (TypeExpr (btc, ann) typeExprMain) =
@@ -81,20 +93,23 @@ stageTypeExpr0Main = \case
   TyName tyName args ->
     case args of
       [] -> Lwsd.TyName tyName []
-      _ : _ -> error "stageTypeExpr0Main, non-empty `args`"
+      _ : _ -> error "bug: stageTypeExpr0Main, non-empty `args`"
   TyArrow (xOpt, tye1) tye2 ->
     Lwsd.TyArrow (xOpt, stageTypeExpr0 tye1) (stageTypeExpr0 tye2)
+  TyOptArrow (x, tye1) tye2 ->
+    Lwsd.TyOptArrow (x, stageTypeExpr0 tye1) (stageTypeExpr0 tye2)
 
 stageTypeExpr1 :: BCTypeExprF ann -> Lwsd.TypeExprF ann
 stageTypeExpr1 (TypeExpr (btc, ann) typeExprMain) =
   case btc of
-    BT0 -> error "stageTypeExpr1, BT0"
+    BT0 -> error "bug: stageTypeExpr1, BT0"
     BT1 -> Lwsd.TypeExpr ann (stageTypeExpr1Main typeExprMain)
 
 stageTypeExpr1Main :: BCTypeExprMainF ann -> Lwsd.TypeExprMainF ann
 stageTypeExpr1Main = \case
   TyName tyName args -> Lwsd.TyName tyName (map (Lwsd.PersistentArg . stageExpr0) args)
   TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
+  TyOptArrow (x, tye1) tye2 -> Lwsd.TyOptArrow (x, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
 
 convertLiteral :: Literal -> Lwsd.Literal
 convertLiteral = \case
