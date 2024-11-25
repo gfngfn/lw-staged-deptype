@@ -96,61 +96,70 @@ makeAssertiveCast trav loc =
             (A0TyVec n1, A0TyVec n2) | n1 == n2 -> nothingOrIdentityLam (A0TyPrim (A0TyVec n1))
             (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> nothingOrIdentityLam (A0TyPrim (A0TyMat m1 n1))
             _ -> typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
-        (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
-          (a0eDomCastOpt, solutionDom) <- go varsToInfer a0tye11 a0tye21
-          (x, a0tye22') <-
+        (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22withX2opt) -> do
+          (castDom, solutionDom) <- go varsToInfer a0tye11 a0tye21
+          (x, a0tye22) <-
             case (x1opt, x2opt) of
               (Nothing, Nothing) -> do
                 x0 <- generateFreshVar
-                pure (x0, a0tye22)
+                pure (x0, a0tye22withX2opt)
               (Just x1, Nothing) ->
-                pure (x1, a0tye22)
+                pure (x1, a0tye22withX2opt)
               (Nothing, Just x2) ->
-                pure (x2, a0tye22)
+                pure (x2, a0tye22withX2opt)
               (Just x1, Just x2) ->
-                pure (x1, subst0 (A0Var x1) x2 a0tye22)
-          (a0eCodCastOpt, solutionCod) <-
-            go (varsToInfer \\ Map.keysSet solutionDom) a0tye12 (applySolution solutionDom a0tye22')
-          f <- generateFreshVar
-          x' <- generateFreshVar
-          a0eCastOpt <-
-            case (a0eDomCastOpt, a0eCodCastOpt) of
-              (Nothing, Nothing) ->
-                pure Nothing
-              _ -> do
-                let fDom = applyCast a0eDomCastOpt
-                let fCod = applyCast a0eCodCastOpt
-                pure $
-                  Just $
-                    A0Lam Nothing (f, a0tye1) $
-                      A0Lam Nothing (x, a0tye21) $
-                        A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
-          pure (a0eCastOpt, Map.union solutionDom solutionCod)
-        (A0TyOptArrow (x1, a0tye11) a0tye12, A0TyOptArrow (x2, a0tye21) a0tye22) -> do
-          (a0eDomCastOpt, solutionDom) <- go varsToInfer a0tye11 a0tye21
-          let (x, a0tye22') = (x1, subst0 (A0Var x1) x2 a0tye22)
-          (a0eCodCastOpt, solutionCod) <-
-            go (varsToInfer \\ Map.keysSet solutionDom) a0tye12 (applySolution solutionDom a0tye22')
-          f <- generateFreshVar
-          x' <- generateFreshVar
-          a0eCastOpt <-
-            case (a0eDomCastOpt, a0eCodCastOpt) of
-              (Nothing, Nothing) ->
-                pure Nothing
-              _ -> do
-                let fDom = applyCast a0eDomCastOpt
-                let fCod = applyCast a0eCodCastOpt
-                pure $
-                  Just $
-                    A0Lam Nothing (f, a0tye1) $
-                      A0Lam Nothing (x, a0tye21) $
-                        A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
-          pure (a0eCastOpt, Map.union solutionDom solutionCod)
+                pure (x1, subst0 (A0Var x1) x2 a0tye22withX2opt)
+          (castCod, solutionCod) <-
+            go (varsToInfer \\ Map.keysSet solutionDom) (applySolution solutionDom a0tye12) (applySolution solutionDom a0tye22)
+          let solution = Map.union solutionDom solutionCod
+          cast <-
+            makeFunctionTypeCast
+              trav
+              x
+              (applySolution solution a0tye11)
+              (applySolution solution a0tye12)
+              (applySolution solution a0tye21)
+              (applySolution solutionCod <$> castDom)
+              castCod
+          pure (cast, solution)
+        (A0TyOptArrow (x1, a0tye11) a0tye12, A0TyOptArrow (x2, a0tye21) a0tye22withX2) -> do
+          (castDom, solutionDom) <- go varsToInfer a0tye11 a0tye21
+          let (x, a0tye22) = (x1, subst0 (A0Var x1) x2 a0tye22withX2)
+          (castCod, solutionCod) <-
+            go (varsToInfer \\ Map.keysSet solutionDom) (applySolution solutionDom a0tye12) (applySolution solutionDom a0tye22)
+          let solution = Map.union solutionDom solutionCod
+          cast <-
+            makeFunctionTypeCast
+              trav
+              x
+              (applySolution solution a0tye11)
+              (applySolution solution a0tye12)
+              (applySolution solution a0tye21)
+              (applySolution solutionCod <$> castDom)
+              castCod
+          pure (cast, solution)
         (A0TyCode a1tye1, A0TyCode a1tye2) -> do
-          (ty1eqOpt, solution) <- makeEquation1 trav loc varsToInfer a1tye1 a1tye2
-          pure (A0TyEqAssert loc <$> ty1eqOpt, solution)
+          (eq, solution) <- makeEquation1 trav loc varsToInfer a1tye1 a1tye2
+          pure (A0TyEqAssert loc <$> eq, solution)
         _ ->
           typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
+
+    makeFunctionTypeCast :: trav -> AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr -> Maybe Ass0Expr -> Maybe Ass0Expr -> M trav (Maybe Ass0Expr)
+    makeFunctionTypeCast _trav x a0tye11 a0tye12 a0tye21 castDom castCod = do
+      let a0tye1 = A0TyArrow (Just x, a0tye11) a0tye12 -- TODO: remove all the `A0TyOptArrow`s in `a0tye11` etc.
+      f <- generateFreshVar
+      x' <- generateFreshVar
+      pure $
+        case (castDom, castCod) of
+          (Nothing, Nothing) ->
+            Nothing
+          _ -> do
+            let fDom = applyCast castDom
+            let fCod = applyCast castCod
+            Just $
+              A0Lam Nothing (f, a0tye1) $
+                A0Lam Nothing (x, a0tye21) $
+                  A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
 
     nothingOrIdentityLam :: Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
     nothingOrIdentityLam a0tye = do
