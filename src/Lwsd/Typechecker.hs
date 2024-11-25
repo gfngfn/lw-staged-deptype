@@ -297,7 +297,7 @@ unifyResultsByConditional0 trav loc a0e0 = go
       case (result1, result2) of
         (Pure a0tye1, Pure a0tye2) ->
           Pure <$> unifyTypesByConditional trav loc a0e0 a0tye1 a0tye2
-        (Cast0 _cast1 _r1, Cast0 _cast2 _r2) ->
+        (Cast0 _cast1 _a0tye1 _r1, Cast0 _cast2 _a0tye2 _r2) ->
           error "TODO: unifyResultsByConditional0"
         _ ->
           error "TODO: unifyResultsByConditional0"
@@ -319,7 +319,7 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
         ([], _) ->
           pure (Pure a0tye, Map.empty)
         (AppArg0 a0e1' a0tye1' : appCtx', A0TyArrow (xOpt, a0tye1) a0tye2) -> do
-          (a0eCastOpt, solution1) <- makeAssertiveCast trav loc varsToInfer a0tye1' a0tye1
+          (cast, solution1) <- makeAssertiveCast trav loc varsToInfer a0tye1' a0tye1
           let varsToInfer' = varsToInfer \\ Map.keysSet solution1
           let a0tye2s = applySolution solution1 a0tye2
           (result', solution') <-
@@ -327,16 +327,18 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
               Nothing -> go varsToInfer' appCtx' a0tye2s
               Just x -> go varsToInfer' appCtx' (subst0 a0e1' x a0tye2s)
           let solution = Map.union solution1 solution'
-          pure (Cast0 (fmap (applySolution solution') a0eCastOpt) result', solution)
+          let a0tye1s = applySolution solution a0tye1
+          pure (Cast0 (fmap (applySolution solution') cast) a0tye1s result', solution)
         (appCtxEntry : appCtx', A0TyOptArrow (x, a0tye1) a0tye2) ->
           case appCtxEntry of
             AppArgOptGiven0 a0e1' a0tye1' -> do
-              (a0eCastOpt, solution1) <- makeAssertiveCast trav loc varsToInfer a0tye1' a0tye1
+              (cast, solution1) <- makeAssertiveCast trav loc varsToInfer a0tye1' a0tye1
               let varsToInfer' = varsToInfer \\ Map.keysSet solution1
               let a0tye2s = applySolution solution1 a0tye2
               (result', solution') <- go varsToInfer' appCtx' (subst0 a0e1' x a0tye2s)
               let solution = Map.union solution1 solution'
-              pure (CastGiven0 (fmap (applySolution solution') a0eCastOpt) result', solution)
+              let a0tye1s = applySolution solution a0tye1
+              pure (CastGiven0 (fmap (applySolution solution') cast) a0tye1s result', solution)
             AppArgOptOmitted0 -> do
               (result', solution') <- go (Set.insert x varsToInfer) appCtx' a0tye2
               a0eInferred <-
@@ -374,11 +376,11 @@ instantiateGuidedByAppContext1 trav loc = go
         ([], _) ->
           pure (Pure a1tye, Map.empty)
         (AppArg1 a1tye1' : appCtx', A1TyArrow a1tye1 a1tye2) -> do
-          (ty1eq, solution1) <- makeEquation1 trav loc varsToInfer a1tye1' a1tye1
+          (eq, solution1) <- makeEquation1 trav loc varsToInfer a1tye1' a1tye1
           (result', solution') <-
             go (varsToInfer \\ Map.keysSet solution1) appCtx' (applySolution solution1 a1tye2)
           let solution = Map.union solution1 solution'
-          pure (Cast1 ty1eq result', solution)
+          pure (Cast1 (fmap (applySolution solution') eq) a1tye1 result', solution)
         _ -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext1 spanInFile appCtx a1tye
@@ -441,8 +443,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 let ax1 = AssVar x1
                 let af = AssVar f
                 let a0tyeSynth = A0TyArrow (Just ax1, a0tye1) a0tye2
-                (a0eCastOpt, _) <- makeAssertiveCast trav loc Set.empty a0tyeSynth a0tyeRec
-                pure (Pure a0tyeRec, applyCast a0eCastOpt (A0Lam (Just (af, a0tyeRec)) (ax1, a0tye1) a0e2))
+                (cast, _) <- makeAssertiveCast trav loc Set.empty a0tyeSynth a0tyeRec
+                pure (Pure a0tyeRec, applyCast cast (A0Lam (Just (af, a0tyeRec)) (ax1, a0tye1) a0e2))
           _ : _ ->
             error "TODO: stage-0, Lam, non-empty AppContext"
       App e1 e2 -> do
@@ -450,8 +452,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         a0tye2 <- validateEmptyRetAppContext "stage-0, App, arg" result2
         (result1, a0e1) <- typecheckExpr0 trav tyEnv (AppArg0 a0e2 a0tye2 : appCtx) e1
         case result1 of
-          Cast0 a0eCastOpt result -> do
-            pure (result, A0App a0e1 (applyCast a0eCastOpt a0e2))
+          Cast0 cast _a0tye11 result -> do
+            pure (result, A0App a0e1 (applyCast cast a0e2))
           _ -> do
             error "TODO: stage-0, App, fun"
 --            let Expr loc1 _ = e1
@@ -473,8 +475,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         a0tye2 <- validateEmptyRetAppContext "stage-0, AppOpt, arg" result2
         (result1, a0e1) <- typecheckExpr0 trav tyEnv (AppArgOptGiven0 a0e2 a0tye2 : appCtx) e1
         case result1 of
-          CastGiven0 a0eCastOpt result -> do
-            pure (result, A0App a0e1 (applyCast a0eCastOpt a0e2))
+          CastGiven0 cast _a0tye11 result -> do
+            pure (result, A0App a0e1 (applyCast cast a0e2))
           _ -> do
             error "bug: stage-0, AppOptGiven, not a CastGiven0"
 --            let Expr loc1 _ = e1
@@ -585,8 +587,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
               let ax1 = AssVar x1
               let af = AssVar f
               let a1tyeSynth = A1TyArrow a1tye1 a1tye2
-              (ty1eqOpt, _) <- makeEquation1 trav loc Set.empty a1tyeSynth a1tyeRec
-              pure (Pure a1tyeRec, applyEquationCast loc ty1eqOpt (A1Lam (Just (af, a1tyeRec)) (ax1, a1tye1) a1e2))
+              (eq, _) <- makeEquation1 trav loc Set.empty a1tyeSynth a1tyeRec
+              pure (Pure a1tyeRec, applyEquationCast loc eq (A1Lam (Just (af, a1tyeRec)) (ax1, a1tye1) a1e2))
         _ : _ ->
           error "TODO: stage-1, Lam, non-empty AppContext"
     App e1 e2 -> do
@@ -594,9 +596,9 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       a1tye2 <- validateEmptyRetAppContext "stage-1, App, arg" result2
       (result1, a1e1) <- typecheckExpr1 trav tyEnv (AppArg1 a1tye2 : appCtx) e1
       case result1 of
-        Cast1 ty1eq result ->
+        Cast1 cast _a1tye11 result ->
           -- Embeds type equality assertion at stage 0 here!
-          pure (result, A1App a1e1 (applyEquationCast loc ty1eq a1e2))
+          pure (result, A1App a1e1 (applyEquationCast loc cast a1e2))
 --        _ -> do
 --          let Expr loc1 _ = e1
 --          spanInFile1 <- askSpanInFile loc1
@@ -660,16 +662,16 @@ mapMPure :: (a -> M trav b) -> Result a -> M trav (Result b)
 mapMPure f = go
   where
     go (Pure v) = Pure <$> f v
-    go (Cast0 cast r) = Cast0 cast <$> go r
-    go (Cast1 eq r) = Cast1 eq <$> go r
-    go (CastGiven0 a0e r) = CastGiven0 a0e <$> go r
+    go (Cast0 cast a0tye r) = Cast0 cast a0tye <$> go r
+    go (Cast1 eq a1tye r) = Cast1 eq a1tye <$> go r
+    go (CastGiven0 a0e a0tye r) = CastGiven0 a0e a0tye <$> go r
     go (FillInferred0 a0e r) = FillInferred0 a0e <$> go r
     go (InsertInferred0 a0e r) = InsertInferred0 a0e <$> go r
 
 insertCastForNatArg :: trav -> (Ass0TypeExpr, Ass0Expr, Span) -> M trav Ass0Expr
 insertCastForNatArg trav (a0tye, a0e, loc) = do
-  (a0eCastOpt, _) <- makeAssertiveCast trav loc Set.empty a0tye (A0TyPrim A0TyNat)
-  pure $ applyCast a0eCastOpt a0e
+  (cast, _) <- makeAssertiveCast trav loc Set.empty a0tye (A0TyPrim A0TyNat)
+  pure $ applyCast cast a0e
 
 validateIntLiteral :: trav -> (Ass0Expr, Span) -> M trav Int
 validateIntLiteral trav = \case

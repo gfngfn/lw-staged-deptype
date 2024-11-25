@@ -492,9 +492,9 @@ instance Disp AppContextEntry where
 instance (Disp a) => Disp (Result a) where
   dispGen _ = \case
     Pure v -> disp v -- TODO: add `stage0Style` etc.
-    Cast0 _ r -> "cast0;" <+> disp r
-    Cast1 _ r -> "cast1;" <+> disp r
-    CastGiven0 _ r -> "cast-given0;" <+> disp r
+    Cast0 _ a0tye r -> "cast0 :" <+> stage0Style (disp a0tye) <> ";" <+> disp r
+    Cast1 _ a1tye r -> "cast1 :" <+> stage1Style (disp a1tye) <> ";" <+> disp r
+    CastGiven0 _ a0tye r -> "cast-given0 :" <+> stage0Style (disp a0tye) <> ";" <+> disp r
     FillInferred0 a0e r -> "fill0" <+> disp a0e <> ";" <+> disp r
     InsertInferred0 a0e r -> "insert0" <+> disp a0e <> ";" <+> disp r
 

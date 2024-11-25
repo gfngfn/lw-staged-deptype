@@ -216,9 +216,9 @@ data AppContextEntry
 
 data Result a
   = Pure a
-  | Cast0 (Maybe Ass0Expr) (Result a)
-  | Cast1 (Maybe Type1Equation) (Result a)
-  | CastGiven0 (Maybe Ass0Expr) (Result a)
+  | Cast0 (Maybe Ass0Expr) Ass0TypeExpr (Result a)
+  | Cast1 (Maybe Type1Equation) Ass1TypeExpr (Result a)
+  | CastGiven0 (Maybe Ass0Expr) Ass0TypeExpr (Result a)
   | FillInferred0 Ass0Expr (Result a)
   | InsertInferred0 Ass0Expr (Result a)
   deriving (Eq, Show)
