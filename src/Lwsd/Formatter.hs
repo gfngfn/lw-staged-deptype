@@ -441,8 +441,8 @@ instance Disp TypeError where
       "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1result) <+> disp spanInFile
     InvalidMatrixLiteral spanInFile e ->
       "Invalid matrix literal;" <+> disp e <+> disp spanInFile
-    CannotMergeTypesByConditional spanInFile a0tye1 a0tye2 condErr ->
-      "Cannot unify types by conditionals"
+    CannotMergeTypesByConditional0 spanInFile a0tye1 a0tye2 condErr ->
+      "Cannot merge stage-0 types by conditionals"
         <+> disp spanInFile
         <> hardline
         <+> "left:"
@@ -450,6 +450,17 @@ instance Disp TypeError where
         <> hardline
         <+> "right:"
         <> nest 2 (hardline <> stage0Style (disp a0tye2))
+        <> hardline
+        <> disp condErr
+    CannotMergeTypesByConditional1 spanInFile a1tye1 a1tye2 condErr ->
+      "Cannot merge stage-1 types by conditionals"
+        <+> disp spanInFile
+        <> hardline
+        <+> "left:"
+        <> nest 2 (hardline <> stage1Style (disp a1tye1))
+        <> hardline
+        <+> "right:"
+        <> nest 2 (hardline <> stage1Style (disp a1tye2))
         <> hardline
         <> disp condErr
     CannotApplyLiteral spanInFile ->

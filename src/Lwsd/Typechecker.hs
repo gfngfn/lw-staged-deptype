@@ -68,11 +68,15 @@ makeIdentityLam a0tye = do
 applyCast :: Maybe Ass0Expr -> Ass0Expr -> Ass0Expr
 applyCast = maybe id A0App
 
-applyEquationCast :: Span -> Maybe Type1Equation -> Ass1Expr -> Ass1Expr
-applyEquationCast loc ty1eqOpt a1e =
-  case ty1eqOpt of
+applyCast1 :: Maybe Ass0Expr -> Ass1Expr -> Ass1Expr
+applyCast1 cast a1e =
+  case cast of
     Nothing -> a1e
-    Just ty1eq -> A1Escape (A0App (A0TyEqAssert loc ty1eq) (A0Bracket a1e))
+    Just a0eCast -> A1Escape (A0App a0eCast (A0Bracket a1e))
+
+applyEquationCast :: Span -> Maybe Type1Equation -> Ass1Expr -> Ass1Expr
+applyEquationCast loc eq =
+  applyCast1 (A0TyEqAssert loc <$> eq)
 
 -- Returning `Nothing` means there's no need to insert a cast.
 makeAssertiveCast :: forall trav. trav -> Span -> Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
@@ -301,7 +305,7 @@ mergeTypesByConditional1 a0e0 = go1
 
     a0branch = A0IfThenElse a0e0
 
-mergeResultsByConditional0 :: trav -> Span -> Ass0Expr -> Result Ass0TypeExpr -> Result Ass0TypeExpr -> M trav (Result Ass0TypeExpr)
+mergeResultsByConditional0 :: forall trav. trav -> Span -> Ass0Expr -> Result Ass0TypeExpr -> Result Ass0TypeExpr -> M trav (Result Ass0TypeExpr)
 mergeResultsByConditional0 trav loc a0e0 = go
   where
     go result1 result2 =
@@ -312,8 +316,10 @@ mergeResultsByConditional0 trav loc a0e0 = go
           a0tye <- mergeTypes0 a0tye1 a0tye2
           cast <- mergeCasts cast1 a0tye1 cast2 a0tye2
           Cast0 cast a0tye <$> go r1 r2
-        (Cast1 _eq1 _a1tye1 _r1, Cast1 _eq2 _a1tye2 _r2) -> do
-          error "TODO: mergeResultsByConditional0, Cast1"
+        (Cast1 cast1 a1tye1 r1, Cast1 cast2 a1tye2 r2) -> do
+          a1tye <- mergeTypes1 a1tye1 a1tye2
+          cast <- mergeCasts cast1 (A0TyCode a1tye1) cast2 (A0TyCode a1tye2)
+          Cast1 cast a1tye <$> go r1 r2
         (CastGiven0 cast1 a0tye1 r1, CastGiven0 cast2 a0tye2 r2) -> do
           a0tye <- mergeTypes0 a0tye1 a0tye2
           cast <- mergeCasts cast1 a0tye1 cast2 a0tye2
@@ -328,11 +334,21 @@ mergeResultsByConditional0 trav loc a0e0 = go
 
     a0branch = A0IfThenElse a0e0
 
+    mergeTypes0 :: Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0TypeExpr
     mergeTypes0 a0tye1 a0tye2 =
       case mergeTypesByConditional0 a0e0 a0tye1 a0tye2 of
         Left condErr -> do
           spanInFile <- askSpanInFile loc
-          typeError trav $ CannotMergeTypesByConditional spanInFile a0tye1 a0tye2 condErr
+          typeError trav $ CannotMergeTypesByConditional0 spanInFile a0tye1 a0tye2 condErr
+        Right a0tye ->
+          pure a0tye
+
+    mergeTypes1 :: Ass1TypeExpr -> Ass1TypeExpr -> M trav Ass1TypeExpr
+    mergeTypes1 a1tye1 a1tye2 =
+      case mergeTypesByConditional1 a0e0 a1tye1 a1tye2 of
+        Left condErr -> do
+          spanInFile <- askSpanInFile loc
+          typeError trav $ CannotMergeTypesByConditional1 spanInFile a1tye1 a1tye2 condErr
         Right a0tye ->
           pure a0tye
 
@@ -427,7 +443,7 @@ instantiateGuidedByAppContext1 trav loc = go
           (result', solution') <-
             go (varsToInfer \\ Map.keysSet solution1) appCtx' (applySolution solution1 a1tye2)
           let solution = Map.union solution1 solution'
-          pure (Cast1 (fmap (applySolution solution') eq) a1tye1 result', solution)
+          pure (Cast1 (fmap (applySolution solution' . A0TyEqAssert loc) eq) a1tye1 result', solution)
         _ -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext1 spanInFile appCtx a1tye
@@ -642,7 +658,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       case result1 of
         Cast1 cast _a1tye11 result ->
           -- Embeds type equality assertion at stage 0 here!
-          pure (result, A1App a1e1 (applyEquationCast loc cast a1e2))
+          pure (result, A1App a1e1 (applyCast1 cast a1e2))
         _ ->
           error "bug: stage-1, App, fun, not a Cast1"
     LamOpt _ _ ->

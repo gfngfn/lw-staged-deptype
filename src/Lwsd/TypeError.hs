@@ -35,7 +35,8 @@ data TypeError
   | VarOccursFreelyInAss0Type SpanInFile Var (Result Ass0TypeExpr)
   | VarOccursFreelyInAss1Type SpanInFile Var (Result Ass1TypeExpr)
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
-  | CannotMergeTypesByConditional SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalMergeError
+  | CannotMergeTypesByConditional0 SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalMergeError
+  | CannotMergeTypesByConditional1 SpanInFile Ass1TypeExpr Ass1TypeExpr ConditionalMergeError
   | CannotApplyLiteral SpanInFile
   | CannotInstantiateGuidedByAppContext0 SpanInFile AppContext Ass0TypeExpr
   | CannotInstantiateGuidedByAppContext1 SpanInFile AppContext Ass1TypeExpr
