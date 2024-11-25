@@ -46,9 +46,9 @@ typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e
       putStrLn "-------- type error: --------"
       putRenderedLines tyErr
       failure
-    Right (a0tye, a0e, _retAppCtx) -> do
+    Right (result, a0e) -> do
       putStrLn "-------- type: --------"
-      putRenderedLinesAtStage0 a0tye
+      putRenderedLinesAtStage0 result
       putStrLn "-------- elaborated expression: --------"
       putRenderedLinesAtStage0 a0e
       case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) initialEvalState of

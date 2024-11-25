@@ -32,8 +32,8 @@ data TypeError
   | CannotUseCodeTypeAtStage1 SpanInFile
   | CannotUsePersistentArgAtStage0 SpanInFile
   | CannotUseNormalArgAtStage1 SpanInFile
-  | VarOccursFreelyInAss0Type SpanInFile Var Ass0TypeExpr
-  | VarOccursFreelyInAss1Type SpanInFile Var Ass1TypeExpr
+  | VarOccursFreelyInAss0Type SpanInFile Var (Result Ass0TypeExpr)
+  | VarOccursFreelyInAss1Type SpanInFile Var (Result Ass1TypeExpr)
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
   | CannotUnifyTypesByConditional SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalUnificationError
   | CannotApplyLiteral SpanInFile

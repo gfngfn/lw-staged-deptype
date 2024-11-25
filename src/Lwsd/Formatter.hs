@@ -435,10 +435,10 @@ instance Disp TypeError where
       "Cannot use persistent arguments at stage 0" <+> disp spanInFile
     CannotUseNormalArgAtStage1 spanInFile ->
       "Cannot use normal arguments at stage 1" <+> disp spanInFile
-    VarOccursFreelyInAss0Type spanInFile x a0tye ->
-      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> stage0Style (disp a0tye) <+> disp spanInFile
-    VarOccursFreelyInAss1Type spanInFile x a1tye ->
-      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    VarOccursFreelyInAss0Type spanInFile x a0result ->
+      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> stage0Style (disp a0result) <+> disp spanInFile
+    VarOccursFreelyInAss1Type spanInFile x a1result ->
+      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1result) <+> disp spanInFile
     InvalidMatrixLiteral spanInFile e ->
       "Invalid matrix literal;" <+> disp e <+> disp spanInFile
     CannotUnifyTypesByConditional spanInFile a0tye1 a0tye2 condErr ->
@@ -488,6 +488,15 @@ instance Disp AppContextEntry where
     AppArg1 a1tye -> stage1Style (disp a1tye)
     AppArgOptGiven0 a0e a0tye -> "{" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye) <> "}"
     AppArgOptOmitted0 -> "_"
+
+instance (Disp a) => Disp (Result a) where
+  dispGen _ = \case
+    Pure v -> disp v -- TODO: add `stage0Style` etc.
+    Cast0 _ r -> "cast0;" <+> disp r
+    Cast1 _ r -> "cast1;" <+> disp r
+    CastGiven0 _ r -> "cast-given0;" <+> disp r
+    FillInferred0 a0e r -> "fill0" <+> disp a0e <> ";" <+> disp r
+    InsertInferred0 a0e r -> "insert0" <+> disp a0e <> ";" <+> disp r
 
 instance Disp Ass0Val where
   dispGen req = \case

@@ -365,3 +365,29 @@ instance HasVar Type1Equation where
           && alphaEquivalent ty1eqCod1 ty1eqCod2
       (_, _) ->
         False
+
+instance (HasVar a) => HasVar (Result a) where
+  frees = \case
+    Pure v -> frees v
+    Cast0 Nothing r -> frees r
+    Cast0 (Just a0e) r -> unionPairs [frees a0e, frees r]
+    Cast1 Nothing r -> frees r
+    Cast1 (Just ty1eq) r -> unionPairs [frees ty1eq, frees r]
+    CastGiven0 Nothing r -> frees r
+    CastGiven0 (Just a0e) r -> unionPairs [frees a0e, frees r]
+    FillInferred0 a0e r -> unionPairs [frees a0e, frees r]
+    InsertInferred0 a0e r -> unionPairs [frees a0e, frees r]
+
+  subst s = \case
+    Pure v -> Pure (go v)
+    Cast0 cast r -> Cast0 (go <$> cast) (go r)
+    Cast1 eq r -> Cast1 (go <$> eq) (go r)
+    CastGiven0 cast r -> CastGiven0 (go <$> cast) (go r)
+    FillInferred0 a0e r -> FillInferred0 (go a0e) (go r)
+    InsertInferred0 a0e r -> InsertInferred0 (go a0e) (go r)
+    where
+      go :: forall b. (HasVar b) => b -> b
+      go = subst s
+
+  alphaEquivalent =
+    error "TODO: Result a, alphaEquivalent"
