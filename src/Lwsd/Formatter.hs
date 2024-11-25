@@ -441,7 +441,7 @@ instance Disp TypeError where
       "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1result) <+> disp spanInFile
     InvalidMatrixLiteral spanInFile e ->
       "Invalid matrix literal;" <+> disp e <+> disp spanInFile
-    CannotUnifyTypesByConditional spanInFile a0tye1 a0tye2 condErr ->
+    CannotMergeTypesByConditional spanInFile a0tye1 a0tye2 condErr ->
       "Cannot unify types by conditionals"
         <+> disp spanInFile
         <> hardline
@@ -475,11 +475,11 @@ instance Disp TypeError where
     CannotInferOptional spanInFile x ->
       "Cannot infer an optional argument for" <+> disp x <+> disp spanInFile
 
-instance Disp ConditionalUnificationError where
+instance Disp ConditionalMergeError where
   dispGen _ = \case
-    CannotUnify0 a0tye1 a0tye2 ->
+    CannotMerge0 a0tye1 a0tye2 ->
       "types" <+> stage0Style (disp a0tye1) <+> "and" <+> stage0Style (disp a0tye2) <+> "are incompatible"
-    CannotUnify1 a1tye1 a1tye2 ->
+    CannotMerge1 a1tye1 a1tye2 ->
       "types" <+> stage1Style (disp a1tye1) <+> "and" <+> stage1Style (disp a1tye2) <+> "are incompatible"
 
 instance Disp AppContextEntry where

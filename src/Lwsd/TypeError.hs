@@ -1,6 +1,6 @@
 module Lwsd.TypeError
   ( TypeError (..),
-    ConditionalUnificationError (..),
+    ConditionalMergeError (..),
   )
 where
 
@@ -35,14 +35,14 @@ data TypeError
   | VarOccursFreelyInAss0Type SpanInFile Var (Result Ass0TypeExpr)
   | VarOccursFreelyInAss1Type SpanInFile Var (Result Ass1TypeExpr)
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
-  | CannotUnifyTypesByConditional SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalUnificationError
+  | CannotMergeTypesByConditional SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalMergeError
   | CannotApplyLiteral SpanInFile
   | CannotInstantiateGuidedByAppContext0 SpanInFile AppContext Ass0TypeExpr
   | CannotInstantiateGuidedByAppContext1 SpanInFile AppContext Ass1TypeExpr
   | CannotInferOptional SpanInFile AssVar
   deriving stock (Eq, Show)
 
-data ConditionalUnificationError
-  = CannotUnify0 Ass0TypeExpr Ass0TypeExpr
-  | CannotUnify1 Ass1TypeExpr Ass1TypeExpr
+data ConditionalMergeError
+  = CannotMerge0 Ass0TypeExpr Ass0TypeExpr
+  | CannotMerge1 Ass1TypeExpr Ass1TypeExpr
   deriving stock (Eq, Show)

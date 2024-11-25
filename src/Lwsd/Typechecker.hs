@@ -244,22 +244,16 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
         (_, _) ->
           Left ()
 
-unifyTypesByConditional :: trav -> Span -> Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0TypeExpr
-unifyTypesByConditional trav loc a0e0 a0tye1' a0tye2' =
-  case go0 a0tye1' a0tye2' of
-    Left condErr -> do
-      spanInFile <- askSpanInFile loc
-      typeError trav $ CannotUnifyTypesByConditional spanInFile a0tye1' a0tye2' condErr
-    Right a0tye ->
-      pure a0tye
+mergeTypesByConditional0 :: Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
+mergeTypesByConditional0 a0e0 = go0
   where
-    go0 :: Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalUnificationError Ass0TypeExpr
+    go0 :: Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
     go0 a0tye1 a0tye2 =
       case (a0tye1, a0tye2) of
         (A0TyPrim a0tyePrim1, A0TyPrim a0tyePrim2) ->
           if a0tyePrim1 == a0tyePrim2
             then pure a0tye1
-            else Left $ CannotUnify0 a0tye1 a0tye2
+            else Left $ CannotMerge0 a0tye1 a0tye2
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
           a0tye1u <- go0 a0tye11 a0tye21
           (xu, a0tye2u) <-
@@ -276,9 +270,15 @@ unifyTypesByConditional trav loc a0e0 a0tye1' a0tye2' =
           a0tye2u <- go0 a0tye12 (subst0 (A0Var x1) x2 a0tye22)
           pure $ A0TyOptArrow (x1, a0tye1u) a0tye2u
         _ ->
-          Left $ CannotUnify0 a0tye1 a0tye2
+          Left $ CannotMerge0 a0tye1 a0tye2
 
-    go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalUnificationError Ass1TypeExpr
+    go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
+    go1 = mergeTypesByConditional1 a0e0
+
+mergeTypesByConditional1 :: Ass0Expr -> Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
+mergeTypesByConditional1 a0e0 = go1
+  where
+    go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
     go1 a1tye1 a1tye2 =
       case (a1tye1, a1tye2) of
         (A1TyPrim a1tyePrim1, A1TyPrim a1tyePrim2) ->
@@ -289,27 +289,65 @@ unifyTypesByConditional trav loc a0e0 a0tye1' a0tye2' =
               (A1TyBool, A1TyBool) ->
                 pure A1TyBool
               (A1TyVec a0e1, A1TyVec a0e2) ->
-                pure $ A1TyVec (A0IfThenElse a0e0 a0e1 a0e2)
+                pure $ A1TyVec (a0branch a0e1 a0e2)
               (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) ->
-                pure $ A1TyMat (A0IfThenElse a0e0 a0e11 a0e21) (A0IfThenElse a0e0 a0e12 a0e22)
+                pure $ A1TyMat (a0branch a0e11 a0e21) (a0branch a0e12 a0e22)
               _ ->
-                Left $ CannotUnify1 a1tye1 a1tye2
+                Left $ CannotMerge1 a1tye1 a1tye2
         (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
           A1TyArrow <$> go1 a1tye11 a1tye21 <*> go1 a1tye12 a1tye22
         _ ->
-          Left $ CannotUnify1 a1tye1 a1tye2
+          Left $ CannotMerge1 a1tye1 a1tye2
 
-unifyResultsByConditional0 :: trav -> Span -> Ass0Expr -> Result Ass0TypeExpr -> Result Ass0TypeExpr -> M trav (Result Ass0TypeExpr)
-unifyResultsByConditional0 trav loc a0e0 = go
+    a0branch = A0IfThenElse a0e0
+
+mergeResultsByConditional0 :: trav -> Span -> Ass0Expr -> Result Ass0TypeExpr -> Result Ass0TypeExpr -> M trav (Result Ass0TypeExpr)
+mergeResultsByConditional0 trav loc a0e0 = go
   where
     go result1 result2 =
       case (result1, result2) of
         (Pure a0tye1, Pure a0tye2) ->
-          Pure <$> unifyTypesByConditional trav loc a0e0 a0tye1 a0tye2
-        (Cast0 _cast1 _a0tye1 _r1, Cast0 _cast2 _a0tye2 _r2) ->
-          error "TODO: unifyResultsByConditional0"
+          Pure <$> mergeTypes0 a0tye1 a0tye2
+        (Cast0 cast1 a0tye1 r1, Cast0 cast2 a0tye2 r2) -> do
+          a0tye <- mergeTypes0 a0tye1 a0tye2
+          cast <- mergeCasts cast1 a0tye1 cast2 a0tye2
+          Cast0 cast a0tye <$> go r1 r2
+        (Cast1 _eq1 _a1tye1 _r1, Cast1 _eq2 _a1tye2 _r2) -> do
+          error "TODO: mergeResultsByConditional0, Cast1"
+        (CastGiven0 cast1 a0tye1 r1, CastGiven0 cast2 a0tye2 r2) -> do
+          a0tye <- mergeTypes0 a0tye1 a0tye2
+          cast <- mergeCasts cast1 a0tye1 cast2 a0tye2
+          CastGiven0 cast a0tye <$> go r1 r2
+        (FillInferred0 a0e1 r1, FillInferred0 a0e2 r2) -> do
+          FillInferred0 (a0branch a0e1 a0e2) <$> go r1 r2
+        (InsertInferred0 a0e1 r1, InsertInferred0 a0e2 r2) -> do
+          InsertInferred0 (a0branch a0e1 a0e2) <$> go r1 r2
         _ ->
-          error "TODO: unifyResultsByConditional0"
+          -- Reachable if two branches of an if-expression are inconsistent as to `InsertInferred0`.
+          error "TODO (error): mergeResultsByConditional0"
+
+    a0branch = A0IfThenElse a0e0
+
+    mergeTypes0 a0tye1 a0tye2 =
+      case mergeTypesByConditional0 a0e0 a0tye1 a0tye2 of
+        Left condErr -> do
+          spanInFile <- askSpanInFile loc
+          typeError trav $ CannotMergeTypesByConditional spanInFile a0tye1 a0tye2 condErr
+        Right a0tye ->
+          pure a0tye
+
+    mergeCasts cast1 a0tye1 cast2 a0tye2 =
+      case (cast1, cast2) of
+        (Nothing, Nothing) ->
+          pure Nothing
+        (Just a0e1, Nothing) -> do
+          a0e2 <- makeIdentityLam a0tye2
+          pure $ Just (a0branch a0e1 a0e2)
+        (Nothing, Just a0e2) -> do
+          a0e1 <- makeIdentityLam a0tye1
+          pure $ Just (a0branch a0e1 a0e2)
+        (Just a0e1, Just a0e2) -> do
+          pure $ Just (a0branch a0e1 a0e2)
 
 type InferenceSolution = Map AssVar Ass0Expr
 
@@ -464,10 +502,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
           Cast0 cast _a0tye11 result -> do
             pure (result, A0App a0e1 (applyCast cast a0e2))
           _ -> do
-            error "TODO: stage-0, App, fun"
---            let Expr loc1 _ = e1
---            spanInFile1 <- askSpanInFile loc1
---            typeError trav $ NotAFunctionTypeForStage0 spanInFile1 a0tye1
+            error "bug: stage-0, App, fun"
       LamOpt (x1, tye1) e2 -> do
         case appCtx of
           [] -> do
@@ -517,7 +552,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
           A0TyPrim A0TyBool -> do
             (result1, a0e1) <- typecheckExpr0 trav tyEnv appCtx e1
             (result2, a0e2) <- typecheckExpr0 trav tyEnv appCtx e2
-            result <- unifyResultsByConditional0 trav loc a0e0 result1 result2
+            result <- mergeResultsByConditional0 trav loc a0e0 result1 result2
             pure (result, A0IfThenElse a0e0 a0e1 a0e2)
           _ -> do
             let Expr loc0 _ = e0
@@ -608,18 +643,14 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
         Cast1 cast _a1tye11 result ->
           -- Embeds type equality assertion at stage 0 here!
           pure (result, A1App a1e1 (applyEquationCast loc cast a1e2))
---        _ -> do
---          let Expr loc1 _ = e1
---          spanInFile1 <- askSpanInFile loc1
---          typeError trav $ NotAFunctionTypeForStage1 spanInFile1 a1tye1
         _ ->
           error "bug: stage-1, App, fun, not a Cast1"
     LamOpt _ _ ->
-      error "TODO: stage-1, LamOpt, error"
+      error "TODO (error): stage-1, LamOpt"
     AppOptGiven _ _ ->
-      error "TODO: stage-1, AppOpt, error"
+      error "TODO (error): stage-1, AppOpt"
     AppOptOmitted _ ->
-      error "TODO: stage-1, AppOptOmitted, error"
+      error "TODO (error): stage-1, AppOptOmitted"
     LetIn x e1 e2 -> do
       (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
       a1tye1 <- validateEmptyRetAppContext "stage-1, LetIn" result1
@@ -629,21 +660,20 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       if ax `occurs0` result2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x result2
         else pure (result2, A1App (A1Lam Nothing (ax, a1tye1) a1e2) a1e1)
-    IfThenElse _e0 _e1 _e2 -> do
-      error "TODO: stage-1, IfThenElse"
---      (result0, a1e0) <- typecheckExpr1 trav tyEnv [] e0
---      a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse" result0
---      case a1tye0 of
---        A1TyPrim A1TyBool -> do
---          error "TODO: stage-1, IfThenElse"
+    IfThenElse e0 _e1 _e2 -> do
+      (result0, _a1e0) <- typecheckExpr1 trav tyEnv [] e0
+      a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse" result0
+      case a1tye0 of
+        A1TyPrim A1TyBool -> do
+          error "TODO: stage-1, IfThenElse"
 --          (a1tye1, a1e1, _retAppCtx1) <- typecheckExpr1 trav tyEnv appCtx e1
 --          (a1tye2, a1e2, _retAppCtx2) <- typecheckExpr1 trav tyEnv appCtx e2
 --          (ty1eqOpt, _) <- makeEquation1 trav loc Set.empty a1tye2 a1tye1
 --          pure (a1tye1, A1IfThenElse a1e0 a1e1 (applyEquationCast loc ty1eqOpt a1e2), retAppCtx)
---        _ -> do
---          let Expr loc0 _ = e0
---          spanInFile0 <- askSpanInFile loc0
---          typeError trav $ NotABoolTypeForStage1 spanInFile0 a1tye0
+        _ -> do
+          let Expr loc0 _ = e0
+          spanInFile0 <- askSpanInFile loc0
+          typeError trav $ NotABoolTypeForStage1 spanInFile0 a1tye0
     As _e1 _tye2 -> do
       error "TODO: stage-1, As"
 --      (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
@@ -782,6 +812,6 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
       pure $ A1TyArrow a1tye1 a1tye2
     TyOptArrow _ _ ->
-      error "TODO: stage-1, TyOptArrow, error"
+      error "TODO (error): stage-1, TyOptArrow"
     TyCode _ -> do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile
