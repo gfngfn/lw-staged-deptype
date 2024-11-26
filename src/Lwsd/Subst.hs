@@ -365,3 +365,36 @@ instance HasVar Type1Equation where
           && alphaEquivalent ty1eqCod1 ty1eqCod2
       (_, _) ->
         False
+
+instance (HasVar a) => HasVar (Maybe a) where
+  frees Nothing = (Set.empty, Set.empty)
+  frees (Just v) = frees v
+
+  subst s = fmap (subst s)
+
+  alphaEquivalent Nothing Nothing = True
+  alphaEquivalent (Just v1) (Just v2) = alphaEquivalent v1 v2
+  alphaEquivalent _ _ = False
+
+instance (HasVar a) => HasVar (Result a) where
+  frees = \case
+    Pure v -> frees v
+    Cast0 cast a0tye r -> unionPairs [frees cast, frees a0tye, frees r]
+    Cast1 eq a1tye r -> unionPairs [frees eq, frees a1tye, frees r]
+    CastGiven0 cast a0tye r -> unionPairs [frees cast, frees a0tye, frees r]
+    FillInferred0 a0e r -> unionPairs [frees a0e, frees r]
+    InsertInferred0 a0e r -> unionPairs [frees a0e, frees r]
+
+  subst s = \case
+    Pure v -> Pure (go v)
+    Cast0 cast a0tye r -> Cast0 (go cast) (go a0tye) (go r)
+    Cast1 eq a1tye r -> Cast1 (go eq) (go a1tye) (go r)
+    CastGiven0 cast a0tye r -> CastGiven0 (go cast) (go a0tye) (go r)
+    FillInferred0 a0e r -> FillInferred0 (go a0e) (go r)
+    InsertInferred0 a0e r -> InsertInferred0 (go a0e) (go r)
+    where
+      go :: forall b. (HasVar b) => b -> b
+      go = subst s
+
+  alphaEquivalent =
+    error "TODO (enhance): Result a, alphaEquivalent"

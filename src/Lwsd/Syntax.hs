@@ -24,8 +24,7 @@ module Lwsd.Syntax
     decomposeType1Equation,
     AppContext,
     AppContextEntry (..),
-    RetAppContext,
-    RetAppContextEntry (..),
+    Result (..),
   )
 where
 
@@ -215,11 +214,11 @@ data AppContextEntry
   | AppArgOptOmitted0
   deriving (Eq, Show)
 
-type RetAppContext = [RetAppContextEntry]
-
-data RetAppContextEntry
-  = RetCast0 (Maybe Ass0Expr)
-  | RetCast1 (Maybe Type1Equation)
-  | RetFillInferred0 Ass0Expr
-  | RetInsertInferred0 Ass0Expr
+data Result a
+  = Pure a
+  | Cast0 (Maybe Ass0Expr) Ass0TypeExpr (Result a)
+  | Cast1 (Maybe Ass0Expr) Ass1TypeExpr (Result a)
+  | CastGiven0 (Maybe Ass0Expr) Ass0TypeExpr (Result a)
+  | FillInferred0 Ass0Expr (Result a)
+  | InsertInferred0 Ass0Expr (Result a)
   deriving (Eq, Show)

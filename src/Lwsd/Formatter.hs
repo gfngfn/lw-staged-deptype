@@ -391,8 +391,6 @@ instance Disp TypeError where
       "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n <+> disp spanInFile
     NotAnIntLitArgAtStage0 spanInFile a0e ->
       "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
-    NotAnIntTypedArgAtStage1 spanInFile a0tye ->
-      "An argument expression at stage 1 is not Int-typed:" <+> stage0Style (disp a0tye) <+> disp spanInFile
     TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
       "Type contradiction at stage 0"
         <+> disp spanInFile
@@ -411,12 +409,6 @@ instance Disp TypeError where
         <> hardline
         <> "right:"
         <> nest 2 (hardline <> stage1Style (disp a1tye2))
-    NotAFunctionTypeForStage0 spanInFile a0tye ->
-      "Not a function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
-    NotAFunctionTypeForStage1 spanInFile a1tye ->
-      "Not a function type (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
-    NotAnOptFunctionTypeForStage0 spanInFile a0tye ->
-      "Not an optional function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage0 spanInFile a0tye ->
       "Not bool (at stage 0):" <+> stage1Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage1 spanInFile a1tye ->
@@ -427,22 +419,30 @@ instance Disp TypeError where
       "Cannot use Escape (~) at stage 0" <+> disp spanInFile
     CannotUseBracketAtStage1 spanInFile ->
       "Cannot use Bracket (&) at stage 1" <+> disp spanInFile
+    CannotUseLamOptAtStage1 spanInFile ->
+      "Cannot use optional function (fun{...} ->) at stage 1" <+> disp spanInFile
+    CannotUseAppOptGivenAtStage1 spanInFile ->
+      "Cannot use optional application (... {...}) at stage 1" <+> disp spanInFile
+    CannotUseAppOptOmittedAtStage1 spanInFile ->
+      "Cannot use optional application (... _) at stage 1" <+> disp spanInFile
     FunctionTypeCannotBeDependentAtStage1 spanInFile x ->
       "Function types cannot be dependent at stage 1:" <+> disp x <+> disp spanInFile
     CannotUseCodeTypeAtStage1 spanInFile ->
       "Cannot use code types at stage 1" <+> disp spanInFile
+    CannotUseOptArrowTypeAtStage1 spanInFile ->
+      "Cannot use optional function types at stage 1" <+> disp spanInFile
     CannotUsePersistentArgAtStage0 spanInFile ->
       "Cannot use persistent arguments at stage 0" <+> disp spanInFile
     CannotUseNormalArgAtStage1 spanInFile ->
       "Cannot use normal arguments at stage 1" <+> disp spanInFile
-    VarOccursFreelyInAss0Type spanInFile x a0tye ->
-      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> stage0Style (disp a0tye) <+> disp spanInFile
-    VarOccursFreelyInAss1Type spanInFile x a1tye ->
-      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    VarOccursFreelyInAss0Type spanInFile x a0result ->
+      "Variable" <+> disp x <+> "occurs in stage-0 type" <+> stage0Style (disp a0result) <+> disp spanInFile
+    VarOccursFreelyInAss1Type spanInFile x a1result ->
+      "Variable" <+> disp x <+> "occurs in stage-1 type" <+> stage1Style (disp a1result) <+> disp spanInFile
     InvalidMatrixLiteral spanInFile e ->
       "Invalid matrix literal;" <+> disp e <+> disp spanInFile
-    CannotUnifyTypesByConditional spanInFile a0tye1 a0tye2 condErr ->
-      "Cannot unify types by conditionals"
+    CannotMergeTypesByConditional0 spanInFile a0tye1 a0tye2 condErr ->
+      "Cannot merge stage-0 types by conditionals"
         <+> disp spanInFile
         <> hardline
         <+> "left:"
@@ -452,6 +452,26 @@ instance Disp TypeError where
         <> nest 2 (hardline <> stage0Style (disp a0tye2))
         <> hardline
         <> disp condErr
+    CannotMergeTypesByConditional1 spanInFile a1tye1 a1tye2 condErr ->
+      "Cannot merge stage-1 types by conditionals"
+        <+> disp spanInFile
+        <> hardline
+        <+> "left:"
+        <> nest 2 (hardline <> stage1Style (disp a1tye1))
+        <> hardline
+        <+> "right:"
+        <> nest 2 (hardline <> stage1Style (disp a1tye2))
+        <> hardline
+        <> disp condErr
+    CannotMergeResultsByConditionals spanInFile result1 result2 ->
+      "Cannot merge results by conditionals"
+        <+> disp spanInFile
+        <> hardline
+        <+> "left:"
+        <> nest 2 (hardline <> disp result1)
+        <> hardline
+        <+> "right:"
+        <> nest 2 (hardline <> disp result2)
     CannotApplyLiteral spanInFile ->
       "Cannot apply a literal" <> disp spanInFile
     CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye ->
@@ -474,12 +494,18 @@ instance Disp TypeError where
         <> nest 2 (hardline <> stage1Style (disp a1tye))
     CannotInferOptional spanInFile x ->
       "Cannot infer an optional argument for" <+> disp x <+> disp spanInFile
+    Stage1IfThenElseRestrictedToEmptyContext spanInFile appCtx ->
+      "Stage-1 if-expressions are restricted to be used at empty application contexts"
+        <+> disp spanInFile
+        <> hardline
+        <+> "application context:"
+        <> nest 2 (hardline <> disps appCtx)
 
-instance Disp ConditionalUnificationError where
+instance Disp ConditionalMergeError where
   dispGen _ = \case
-    CannotUnify0 a0tye1 a0tye2 ->
+    CannotMerge0 a0tye1 a0tye2 ->
       "types" <+> stage0Style (disp a0tye1) <+> "and" <+> stage0Style (disp a0tye2) <+> "are incompatible"
-    CannotUnify1 a1tye1 a1tye2 ->
+    CannotMerge1 a1tye1 a1tye2 ->
       "types" <+> stage1Style (disp a1tye1) <+> "and" <+> stage1Style (disp a1tye2) <+> "are incompatible"
 
 instance Disp AppContextEntry where
@@ -488,6 +514,15 @@ instance Disp AppContextEntry where
     AppArg1 a1tye -> stage1Style (disp a1tye)
     AppArgOptGiven0 a0e a0tye -> "{" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye) <> "}"
     AppArgOptOmitted0 -> "_"
+
+instance (Disp a) => Disp (Result a) where
+  dispGen _ = \case
+    Pure v -> disp v -- TODO (enhance): add `stage0Style` etc.
+    Cast0 _ a0tye r -> "cast0 :" <+> stage0Style (disp a0tye) <> ";" <+> disp r
+    Cast1 _ a1tye r -> "cast1 :" <+> stage1Style (disp a1tye) <> ";" <+> disp r
+    CastGiven0 _ a0tye r -> "cast-given0 :" <+> stage0Style (disp a0tye) <> ";" <+> disp r
+    FillInferred0 a0e r -> "fill0" <+> disp a0e <> ";" <+> disp r
+    InsertInferred0 a0e r -> "insert0" <+> disp a0e <> ";" <+> disp r
 
 instance Disp Ass0Val where
   dispGen req = \case

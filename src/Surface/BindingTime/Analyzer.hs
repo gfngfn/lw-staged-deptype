@@ -30,7 +30,7 @@ fresh = do
   put (succ btv)
   pure btv
 
--- TODO: merge this function into `extractConstraintsFromExpr`
+-- TODO (enhance): merge this function into `extractConstraintsFromExpr`
 assignBindingTimeVarToExpr :: Expr -> Assigner BExpr
 assignBindingTimeVarToExpr (Expr ann exprMain) = do
   btv <- fresh
@@ -131,10 +131,10 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
           Nothing ->
             analysisError $ UnboundVar spanInFile x
           Just (EntryBuiltInPersistent bityVoid) ->
-            -- TODO: refine `ann`
+            -- TODO (enhance): refine `ann`
             pure (x, enhanceBIType (\() -> bt) (\() -> (bt, ann)) bityVoid, [])
           Just (EntryBuiltInFixed x' btc' bityConst) ->
-            -- TODO: refine `ann`
+            -- TODO (enhance): refine `ann`
             pure (x', enhanceBIType BTConst (\btc -> (BTConst btc, ann)) bityConst, [CEqual ann bt (BTConst btc')])
           Just (EntryLocallyBound bt' bity) ->
             pure (x, bity, [CEqual ann bt bt'])
@@ -195,10 +195,10 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
           spanInFile0 <- askSpanInFile ann0
           analysisError $ NotABase spanInFile0 bity0
     As e1 btye2 -> do
-      -- Not confident. TODO: check the validity of the following
-      (e1', BIType bt1 _, constraints1) <- extractConstraintsFromExpr btenv e1
-      (btye2', bity2@(BIType bt2 _), constraints2) <- extractConstraintsFromTypeExpr btenv btye2
-      pure (Expr (bt, ann) (As e1' btye2'), bity2, constraints1 ++ constraints2 ++ [CEqual ann bt1 bt2])
+      (e1', bity1, constraints1) <- extractConstraintsFromExpr btenv e1
+      (btye2', bity2, constraints2) <- extractConstraintsFromTypeExpr btenv btye2
+      constraintsEq <- makeConstraintsFromBITypeEquation ann bity1 bity2
+      pure (Expr (bt, ann) (As e1' btye2'), bity2, constraints1 ++ constraints2 ++ constraintsEq)
     LamOpt (x1, btye1) e2 -> do
       (btye1', bity1, constraints1) <- extractConstraintsFromTypeExpr btenv btye1
       (e2', bity2, constraints2) <-
@@ -237,7 +237,7 @@ appendOmittedOptionalArguments :: BExpr -> BIType -> (BExpr, BIType)
 appendOmittedOptionalArguments e@(Expr (_, ann) _) bity@(BIType _bt bityMain) =
   case bityMain of
     BITyOptArrow _bity1 bity2 ->
-      -- TODO: give better location than `ann`
+      -- TODO (enhance): give better location than `ann`
       appendOmittedOptionalArguments (Expr (BTConst BT0, ann) (AppOptOmitted e)) bity2
     _ ->
       (e, bity)
