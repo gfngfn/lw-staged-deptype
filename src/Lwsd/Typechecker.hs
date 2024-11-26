@@ -44,6 +44,9 @@ type M trav a = StateT TypecheckState (Either (TypeError, trav)) a
 typeError :: trav -> TypeError -> M trav b
 typeError trav e = lift $ Left (e, trav)
 
+bug :: String -> a
+bug msg = error $ "bug: " ++ msg
+
 askSpanInFile :: Span -> M trav SpanInFile
 askSpanInFile loc = do
   TypecheckState {sourceSpec} <- get
@@ -450,7 +453,7 @@ instantiateGuidedByAppContext1 trav loc = go
 
 validateEmptyRetAppContext :: String -> Result a -> M trav a
 validateEmptyRetAppContext _ (Pure v) = pure v
-validateEmptyRetAppContext msg _ = error $ "bug: non-empty RetAppContext; " ++ msg
+validateEmptyRetAppContext msg _ = bug $ "non-empty RetAppContext; " ++ msg
 
 typecheckExpr0 :: trav -> TypeEnv -> AppContext -> Expr -> M trav (Result Ass0TypeExpr, Ass0Expr)
 typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
@@ -518,7 +521,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
           Cast0 cast _a0tye11 result -> do
             pure (result, A0App a0e1 (applyCast cast a0e2))
           _ -> do
-            error "bug: stage-0, App, fun"
+            bug "stage-0, App, fun"
       LamOpt (x1, tye1) e2 -> do
         case appCtx of
           [] -> do
@@ -538,20 +541,14 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
           CastGiven0 cast _a0tye11 result -> do
             pure (result, A0App a0e1 (applyCast cast a0e2))
           _ -> do
-            error "bug: stage-0, AppOptGiven, not a CastGiven0"
-      --            let Expr loc1 _ = e1
-      --            spanInFile1 <- askSpanInFile loc1
-      --            typeError trav $ NotAnOptFunctionTypeForStage0 spanInFile1 a0tye1
+            bug "stage-0, AppOptGiven, not a CastGiven0"
       AppOptOmitted e1 -> do
         (result1, a0e1) <- typecheckExpr0 trav tyEnv (AppArgOptOmitted0 : appCtx) e1
         case result1 of
           FillInferred0 a0eInferred result -> do
             pure (result, A0App a0e1 a0eInferred)
           _ -> do
-            error "bug: stage-0, AppOptOmitted, not a FillInferred0"
-      --            let Expr loc1 _ = e1
-      --            spanInFile1 <- askSpanInFile loc1
-      --            typeError trav $ NotAnOptFunctionTypeForStage0 spanInFile1 a0tye1
+            bug "stage-0, AppOptOmitted, not a FillInferred0"
       LetIn x e1 e2 -> do
         (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
         a0tye1 <- validateEmptyRetAppContext "stage-0, LetIn" result1
@@ -574,12 +571,17 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             let Expr loc0 _ = e0
             spanInFile0 <- askSpanInFile loc0
             typeError trav $ NotABoolTypeForStage0 spanInFile0 a0tye0
-      As _e1 _tye2 -> do
-        error "TODO: stage-0, As"
-      --        (result1, a0e1) <- typecheckExpr0 trav tyEnv appCtx e1
-      --        a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
-      --        (a0eCastOpt, _) <- makeAssertiveCast trav loc Set.empty a0tye1 a0tye2
-      --        pure (a0tye2, applyCast a0eCastOpt a0e1, retAppCtx)
+      As e1 tye2 -> do
+        -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
+        (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
+        a0tye1 <- validateEmptyRetAppContext "stage-0, As, 1" result1
+        a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
+        result' <- instantiateGuidedByAppContext0 trav loc (AppArg0 a0e1 a0tye1 : appCtx) a0tye2
+        case result' of
+          Cast0 cast _a0tye' result ->
+            pure (result, applyCast cast a0e1)
+          _ ->
+            bug "stage-0, As"
       Bracket e1 -> do
         (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
         result <- mapMPure (pure . A0TyCode) result1
@@ -660,7 +662,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           -- Embeds type equality assertion at stage 0 here!
           pure (result, A1App a1e1 (applyCast1 cast a1e2))
         _ ->
-          error "bug: stage-1, App, fun, not a Cast1"
+          bug "stage-1, App, fun, not a Cast1"
     LamOpt _ _ ->
       error "TODO (error): stage-1, LamOpt"
     AppOptGiven _ _ ->
@@ -690,12 +692,17 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           let Expr loc0 _ = e0
           spanInFile0 <- askSpanInFile loc0
           typeError trav $ NotABoolTypeForStage1 spanInFile0 a1tye0
-    As _e1 _tye2 -> do
-      error "TODO: stage-1, As"
-    --      (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
-    --      a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
-    --      (ty1eqOpt, _) <- makeEquation1 trav loc Set.empty a1tye1 a1tye2
-    --      pure (a1tye2, applyEquationCast loc ty1eqOpt a1e1, retAppCtx)
+    As e1 tye2 -> do
+      -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
+      (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
+      a1tye1 <- validateEmptyRetAppContext "stage-1, As" result1
+      a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
+      (result', _) <- instantiateGuidedByAppContext1 trav loc Set.empty (AppArg1 a1tye1 : appCtx) a1tye2
+      case result' of
+        Cast1 cast _a1tye' result -> do
+          pure (result, applyCast1 cast a1e1)
+        _ ->
+          bug "stage-1, As"
     Bracket _ ->
       typeError trav $ CannotUseBracketAtStage1 spanInFile
     Escape e1 -> do
