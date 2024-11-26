@@ -195,7 +195,6 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
           spanInFile0 <- askSpanInFile ann0
           analysisError $ NotABase spanInFile0 bity0
     As e1 btye2 -> do
-      -- Not confident. TODO: check the validity of the following
       (e1', bity1, constraints1) <- extractConstraintsFromExpr btenv e1
       (btye2', bity2, constraints2) <- extractConstraintsFromTypeExpr btenv btye2
       constraintsEq <- makeConstraintsFromBITypeEquation ann bity1 bity2

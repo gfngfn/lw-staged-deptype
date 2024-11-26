@@ -678,16 +678,21 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       if ax `occurs0` result2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x result2
         else pure (result2, A1App (A1Lam Nothing (ax, a1tye1) a1e2) a1e1)
-    IfThenElse e0 _e1 _e2 -> do
-      (result0, _a1e0) <- typecheckExpr1 trav tyEnv [] e0
-      a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse" result0
+    IfThenElse e0 e1 e2 -> do
+      (result0, a1e0) <- typecheckExpr1 trav tyEnv [] e0
+      a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse, condition" result0
       case a1tye0 of
-        A1TyPrim A1TyBool -> do
-          error "TODO: stage-1, IfThenElse"
-        --          (a1tye1, a1e1, _retAppCtx1) <- typecheckExpr1 trav tyEnv appCtx e1
-        --          (a1tye2, a1e2, _retAppCtx2) <- typecheckExpr1 trav tyEnv appCtx e2
-        --          (ty1eqOpt, _) <- makeEquation1 trav loc Set.empty a1tye2 a1tye1
-        --          pure (a1tye1, A1IfThenElse a1e0 a1e1 (applyEquationCast loc ty1eqOpt a1e2), retAppCtx)
+        A1TyPrim A1TyBool ->
+          case appCtx of
+            [] -> do
+              (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
+              a1tye1 <- validateEmptyRetAppContext "stage-1, IfThenElse, then" result1
+              (result2, a1e2) <- typecheckExpr1 trav tyEnv appCtx e2
+              a1tye2 <- validateEmptyRetAppContext "stage-1, IfThenElse, else" result2
+              (eq, _) <- makeEquation1 trav loc Set.empty a1tye2 a1tye1
+              pure (Pure a1tye1, A1IfThenElse a1e0 a1e1 (applyEquationCast loc eq a1e2))
+            _ : _ -> do
+              typeError trav $ Stage1IfThenElseRestrictedToEmptyContext spanInFile appCtx
         _ -> do
           let Expr loc0 _ = e0
           spanInFile0 <- askSpanInFile loc0

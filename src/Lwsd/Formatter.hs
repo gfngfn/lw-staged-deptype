@@ -485,6 +485,12 @@ instance Disp TypeError where
         <> nest 2 (hardline <> stage1Style (disp a1tye))
     CannotInferOptional spanInFile x ->
       "Cannot infer an optional argument for" <+> disp x <+> disp spanInFile
+    Stage1IfThenElseRestrictedToEmptyContext spanInFile appCtx ->
+      "Stage-1 if-expressions are restricted to be used at empty application contexts"
+        <+> disp spanInFile
+        <> hardline
+        <+> "application context:"
+        <> nest 2 (hardline <> disps appCtx)
 
 instance Disp ConditionalMergeError where
   dispGen _ = \case
