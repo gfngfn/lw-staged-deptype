@@ -397,4 +397,4 @@ instance (HasVar a) => HasVar (Result a) where
       go = subst s
 
   alphaEquivalent =
-    error "TODO: Result a, alphaEquivalent"
+    error "TODO (enhance): Result a, alphaEquivalent"
