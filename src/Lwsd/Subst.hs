@@ -271,6 +271,8 @@ instance HasVar Ass0TypeExpr where
               alphaEquivalent a0tye12 (subst0 (A0Var y1) y2 a0tye22)
       (A0TyCode a1tye1, A0TyCode a1tye2) ->
         alphaEquivalent a1tye1 a1tye2
+      (A0TyOptArrow (y1, a0tye11) a0tye12, A0TyOptArrow (y2, a0tye21) a0tye22) ->
+        alphaEquivalent a0tye11 a0tye21 && alphaEquivalent a0tye12 (subst0 (A0Var y1) y2 a0tye22)
       (_, _) ->
         False
 
@@ -314,6 +316,58 @@ instance HasVar Ass1TypeExpr where
             False
       (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
         alphaEquivalent a1tye11 a1tye21 && alphaEquivalent a1tye12 a1tye22
+      (_, _) ->
+        False
+
+instance HasVar StrictAss0TypeExpr where
+  frees = \case
+    SA0TyPrim _ ->
+      (Set.empty, Set.empty)
+    SA0TyArrow (yOpt, a0tye1) a0tye2 ->
+      let (var0set1, var1set1) = frees a0tye1
+          (var0set2, var1set2) = frees a0tye2
+          var0set =
+            Set.union var0set1 $
+              case yOpt of
+                Nothing -> var0set2
+                Just y -> Set.delete y var0set2
+          var1set = Set.union var1set1 var1set2
+       in (var0set, var1set)
+    SA0TyCode a1tye1 ->
+      frees a1tye1
+
+  subst s = \case
+    SA0TyPrim a0tyPrim ->
+      SA0TyPrim a0tyPrim
+    SA0TyArrow (yOpt, sa0tye1) sa0tye2 ->
+      SA0TyArrow (yOpt, go sa0tye1) $
+        case (yOpt, s) of
+          (Just y, Subst0 x _) -> if y == x then sa0tye2 else go sa0tye2
+          (Nothing, _) -> go sa0tye2
+          (_, Subst1 _ _) -> go sa0tye2
+    SA0TyCode a1tye1 ->
+      SA0TyCode (go a1tye1)
+    where
+      go :: forall a. (HasVar a) => a -> a
+      go = subst s
+
+  alphaEquivalent sa0tye1 sa0tye2 =
+    case (sa0tye1, sa0tye2) of
+      (SA0TyPrim a0tyPrim1, SA0TyPrim a0tyPrim2) ->
+        a0tyPrim1 == a0tyPrim2 -- Exact match
+      (SA0TyArrow (y1opt, sa0tye11) sa0tye12, SA0TyArrow (y2opt, sa0tye21) sa0tye22) ->
+        (alphaEquivalent sa0tye11 sa0tye21 &&) $
+          case (y1opt, y2opt) of
+            (Nothing, Nothing) ->
+              alphaEquivalent sa0tye12 sa0tye22
+            (Just y1, Nothing) ->
+              not (occurs0 y1 sa0tye12) && alphaEquivalent sa0tye12 sa0tye22
+            (Nothing, Just y2) ->
+              not (occurs0 y2 sa0tye22) && alphaEquivalent sa0tye12 sa0tye22
+            (Just y1, Just y2) ->
+              alphaEquivalent sa0tye12 (subst0 (A0Var y1) y2 sa0tye22)
+      (SA0TyCode a1tye1, SA0TyCode a1tye2) ->
+        alphaEquivalent a1tye1 a1tye2
       (_, _) ->
         False
 

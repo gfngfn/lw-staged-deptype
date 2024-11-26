@@ -66,7 +66,7 @@ generateFreshVar = do
 makeIdentityLam :: Ass0TypeExpr -> M trav Ass0Expr
 makeIdentityLam a0tye = do
   x <- generateFreshVar
-  pure $ A0Lam Nothing (x, a0tye) (A0Var x)
+  pure $ A0Lam Nothing (x, strictify a0tye) (A0Var x)
 
 applyCast :: Maybe Ass0Expr -> Ass0Expr -> Ass0Expr
 applyCast = maybe id A0App
@@ -153,7 +153,7 @@ makeAssertiveCast trav loc =
 
     makeFunctionTypeCast :: trav -> AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr -> Maybe Ass0Expr -> Maybe Ass0Expr -> M trav (Maybe Ass0Expr)
     makeFunctionTypeCast _trav x a0tye11 a0tye12 a0tye21 castDom castCod = do
-      let a0tye1 = A0TyArrow (Just x, a0tye11) a0tye12 -- TODO: remove all the `A0TyOptArrow`s in `a0tye11` etc.
+      let a0tye1 = A0TyArrow (Just x, a0tye11) a0tye12
       f <- generateFreshVar
       x' <- generateFreshVar
       pure $
@@ -164,9 +164,9 @@ makeAssertiveCast trav loc =
             let fDom = applyCast castDom
             let fCod = applyCast castCod
             Just $
-              A0Lam Nothing (f, a0tye1) $
-                A0Lam Nothing (x, a0tye21) $
-                  A0App (A0Lam Nothing (x', a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
+              A0Lam Nothing (f, strictify a0tye1) $
+                A0Lam Nothing (x, strictify a0tye21) $
+                  A0App (A0Lam Nothing (x', strictify a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
 
     nothingOrIdentityLam :: Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
     nothingOrIdentityLam a0tye = do
@@ -496,7 +496,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                   typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) [] e2
                 a0tye2 <- validateEmptyRetAppContext "stage-0, Lam, non-rec" result2
                 let ax1 = AssVar x1
-                pure (Pure (A0TyArrow (Just ax1, a0tye1) a0tye2), A0Lam Nothing (ax1, a0tye1) a0e2)
+                let sa0tye1 = strictify a0tye1
+                pure (Pure (A0TyArrow (Just ax1, a0tye1) a0tye2), A0Lam Nothing (ax1, sa0tye1) a0e2)
               Just (f, tyeRec) -> do
                 a0tyeRec <- typecheckTypeExpr0 trav tyEnv tyeRec
                 a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
@@ -511,7 +512,9 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 let af = AssVar f
                 let a0tyeSynth = A0TyArrow (Just ax1, a0tye1) a0tye2
                 (cast, _) <- makeAssertiveCast trav loc Set.empty a0tyeSynth a0tyeRec
-                pure (Pure a0tyeRec, applyCast cast (A0Lam (Just (af, a0tyeRec)) (ax1, a0tye1) a0e2))
+                let sa0tyeRec = strictify a0tyeRec
+                let sa0tye1 = strictify a0tye1
+                pure (Pure a0tyeRec, applyCast cast (A0Lam (Just (af, sa0tyeRec)) (ax1, sa0tye1) a0e2))
           _ : _ ->
             error "TODO: stage-0, Lam, non-empty AppContext"
       App e1 e2 -> do
@@ -531,7 +534,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) [] e2
             a0tye2 <- validateEmptyRetAppContext "stage-1, Lam, non-rec" result2
             let ax1 = AssVar x1
-            pure (Pure (A0TyOptArrow (ax1, a0tye1) a0tye2), A0Lam Nothing (ax1, a0tye1) a0e2)
+            let sa0tye1 = strictify a0tye1
+            pure (Pure (A0TyOptArrow (ax1, a0tye1) a0tye2), A0Lam Nothing (ax1, sa0tye1) a0e2)
           _ : _ ->
             error "TODO: stage-0, LamOpt, non-empty AppContext"
       AppOptGiven e1 e2 -> do
@@ -556,9 +560,10 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         (result2, a0e2) <-
           typecheckExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) appCtx e2
         let ax = AssVar x
+        let sa0tye1 = strictify a0tye1
         if ax `occurs0` result2
           then typeError trav $ VarOccursFreelyInAss0Type spanInFile x result2
-          else pure (result2, A0LetIn (ax, a0tye1) a0e1 a0e2)
+          else pure (result2, A0LetIn (ax, sa0tye1) a0e1 a0e2)
       IfThenElse e0 e1 e2 -> do
         (result0, a0e0) <- typecheckExpr0 trav tyEnv [] e0
         a0tye0 <- validateEmptyRetAppContext "stage-0, IfThenElse, condition" result0

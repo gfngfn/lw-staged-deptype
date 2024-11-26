@@ -20,10 +20,10 @@ spec = do
         `shouldBe` a0bracket (a1var "foo")
   describe "frees" $ do
     it "ignores stage-0 bound variables (non-rec)" $
-      frees (a0nonrecLam "x" a0tyInt (a0app (a0app (a0var "f") (a0var "x")) (a0bracket (a1var "y"))))
+      frees (a0nonrecLam "x" sa0tyInt (a0app (a0app (a0var "f") (a0var "x")) (a0bracket (a1var "y"))))
         `shouldBe` (set ["f"], set ["y"])
     it "ignores stage-0 bound variables (rec)" $
-      frees (a0recLam "f" (a0nondepTyArrow a0tyInt a0tyInt) "x" a0tyInt (a0app (a0var "f") (a0var "x")))
+      frees (a0recLam "f" (sa0nondepTyArrow sa0tyInt sa0tyInt) "x" sa0tyInt (a0app (a0var "f") (a0var "x")))
         `shouldBe` (set [], set [])
     it "takes type annotations into account" $
       frees (a1nonrecLam "v" (a1tyVec (a0var "n")) (a1escape (a0app (a0var "f") (a0bracket (a1var "v")))))
@@ -34,13 +34,13 @@ spec = do
   describe "alphaEquivalent" $ do
     it "judges alpha-equivalence of functions (1)" $
       alphaEquivalent
-        (a0nonrecLam "foo" a0tyInt (a0var "foo"))
-        (a0nonrecLam "bar" a0tyInt (a0var "bar"))
+        (a0nonrecLam "foo" sa0tyInt (a0var "foo"))
+        (a0nonrecLam "bar" sa0tyInt (a0var "bar"))
         `shouldBe` True
     it "judges alpha-equivalence of functions (2)" $
       alphaEquivalent
-        (a0nonrecLam "foo" a0tyInt (a0var "bar"))
-        (a0nonrecLam "bar" a0tyInt (a0var "bar"))
+        (a0nonrecLam "foo" sa0tyInt (a0var "bar"))
+        (a0nonrecLam "bar" sa0tyInt (a0var "bar"))
         `shouldBe` False
   where
     v = AssVar
