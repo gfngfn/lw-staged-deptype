@@ -30,14 +30,8 @@ tyBool = A0TyPrim A0TyBool
 ty1Vec :: Ass0Expr -> Ass1TypeExpr
 ty1Vec = A1TyPrim . A1TyVec
 
-ty0Vec :: Int -> Ass0TypeExpr
-ty0Vec = A0TyPrim . A0TyVec
-
 ty1Mat :: Ass0Expr -> Ass0Expr -> Ass1TypeExpr
 ty1Mat a0e1 a0e2 = A1TyPrim (A1TyMat a0e1 a0e2)
-
-ty0Mat :: Int -> Int -> Ass0TypeExpr
-ty0Mat m n = A0TyPrim (A0TyMat m n)
 
 (-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
 (-->) a0tye1 = A0TyArrow (Nothing, a0tye1)
@@ -142,24 +136,36 @@ tyValInt = A0TyValPrim A0TyValInt
 tyValNat :: Ass0TypeVal
 tyValNat = A0TyValPrim A0TyValNat
 
+styInt :: StrictAss0TypeExpr
+styInt = SA0TyPrim A0TyInt
+
+styNat :: StrictAss0TypeExpr
+styNat = SA0TyPrim A0TyNat
+
+sty0Vec :: Int -> StrictAss0TypeExpr
+sty0Vec = SA0TyPrim . A0TyVec
+
+sty0Mat :: Int -> Int -> StrictAss0TypeExpr
+sty0Mat m n = SA0TyPrim (A0TyMat m n)
+
 -- Makes a closure equipped with `initialEnv`.
 clo :: AssVar -> Ass0TypeVal -> Ass0Expr -> Ass0Val
 clo x a0tyv1 a0tye2 = A0ValLam Nothing (x, a0tyv1) a0tye2 initialEnv
 
-lam :: AssVar -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
-lam x a0tye1 = A0Lam Nothing (x, a0tye1)
+lam :: AssVar -> StrictAss0TypeExpr -> Ass0Expr -> Ass0Expr
+lam x sa0tye1 = A0Lam Nothing (x, sa0tye1)
 
 ass0exprAssertNat :: Span -> Ass0Expr
 ass0exprAssertNat loc =
-  lam x1 tyInt $
+  lam x1 styInt $
     A0AppBuiltIn (BIAssertNat loc x1)
   where
     x1 = AssVar "n1"
 
 ass0exprVadd :: Int -> Ass0Expr
 ass0exprVadd n =
-  lam x1 (ty0Vec n) $
-    lam x2 (ty0Vec n) $
+  lam x1 (sty0Vec n) $
+    lam x2 (sty0Vec n) $
       A0AppBuiltIn (BIVadd n x1 x2)
   where
     x1 = AssVar "v1"
@@ -167,8 +173,8 @@ ass0exprVadd n =
 
 ass0exprVconcat :: Int -> Int -> Ass0Expr
 ass0exprVconcat m n =
-  lam x1 (ty0Vec m) $
-    lam x2 (ty0Vec n) $
+  lam x1 (sty0Vec m) $
+    lam x2 (sty0Vec n) $
       A0AppBuiltIn (BIVconcat m n x1 x2)
   where
     x1 = AssVar "v1"
@@ -176,14 +182,14 @@ ass0exprVconcat m n =
 
 ass0exprMtranspose :: Int -> Int -> Ass0Expr
 ass0exprMtranspose m n =
-  lam x1 (ty0Mat m n) (A0AppBuiltIn (BIMtranspose m n x1))
+  lam x1 (sty0Mat m n) (A0AppBuiltIn (BIMtranspose m n x1))
   where
     x1 = AssVar "mat1"
 
 ass0exprMconcatVert :: Int -> Int -> Int -> Ass0Expr
 ass0exprMconcatVert m1 m2 n =
-  lam x1 (ty0Mat m1 n) $
-    lam x2 (ty0Mat m2 n) $
+  lam x1 (sty0Mat m1 n) $
+    lam x2 (sty0Mat m2 n) $
       A0AppBuiltIn (BIMconcatVert m1 m2 n x1 x2)
   where
     x1 = AssVar "mat1"
@@ -191,8 +197,8 @@ ass0exprMconcatVert m1 m2 n =
 
 ass0exprMmult :: Int -> Int -> Int -> Ass0Expr
 ass0exprMmult k m n =
-  lam x1 (ty0Mat k m) $
-    lam x2 (ty0Mat m n) $
+  lam x1 (sty0Mat k m) $
+    lam x2 (sty0Mat m n) $
       A0AppBuiltIn (BIMmult k m n x1 x2)
   where
     x1 = AssVar "mat1"
@@ -201,7 +207,7 @@ ass0exprMmult k m n =
 ass0valBinaryInt :: (AssVar -> AssVar -> BuiltIn) -> Ass0Val
 ass0valBinaryInt f =
   clo x1 tyValInt $
-    lam x2 tyInt $
+    lam x2 styInt $
       A0AppBuiltIn (f x1 x2)
   where
     x1 = AssVar "x1"
@@ -229,7 +235,7 @@ ass0valGenVadd =
 ass0valGenVconcat :: Ass0Val
 ass0valGenVconcat =
   clo x1 tyValNat $
-    lam x2 tyNat $
+    lam x2 styNat $
       A0AppBuiltIn (BIGenVconcat x1 x2)
   where
     x1 = AssVar "x1"
@@ -238,7 +244,7 @@ ass0valGenVconcat =
 ass0valGenMtranspose :: Ass0Val
 ass0valGenMtranspose =
   clo x1 tyValNat $
-    lam x2 tyNat $
+    lam x2 styNat $
       A0AppBuiltIn (BIGenMtranspose x1 x2)
   where
     x1 = AssVar "x1"
@@ -247,8 +253,8 @@ ass0valGenMtranspose =
 ass0valGenMmult :: Ass0Val
 ass0valGenMmult =
   clo x1 tyValNat $
-    lam x2 tyNat $
-      lam x3 tyNat $
+    lam x2 styNat $
+      lam x3 styNat $
         A0AppBuiltIn (BIGenMmult x1 x2 x3)
   where
     x1 = AssVar "x1"
@@ -258,8 +264,8 @@ ass0valGenMmult =
 ass0valGenMconcatVert :: Ass0Val
 ass0valGenMconcatVert =
   clo x1 tyValNat $
-    lam x2 tyNat $
-      lam x3 tyNat $
+    lam x2 styNat $
+      lam x3 styNat $
         A0AppBuiltIn (BIGenMconcatVert x1 x2 x3)
   where
     x1 = AssVar "x1"

@@ -271,9 +271,9 @@ evalExpr1 env = \case
       A0ValBracket a1v1 -> pure a1v1
       _ -> bug $ NotACodeValue a0v1
 
-evalTypeExpr0 :: Env0 -> Ass0TypeExpr -> M Ass0TypeVal
+evalTypeExpr0 :: Env0 -> StrictAss0TypeExpr -> M Ass0TypeVal
 evalTypeExpr0 env = \case
-  A0TyPrim a0tyPrim ->
+  SA0TyPrim a0tyPrim ->
     pure . A0TyValPrim $
       case a0tyPrim of
         A0TyInt -> A0TyValInt
@@ -281,15 +281,12 @@ evalTypeExpr0 env = \case
         A0TyBool -> A0TyValBool
         A0TyVec n -> A0TyValVec n
         A0TyMat m n -> A0TyValMat m n
-  A0TyArrow (xOpt, a0tye1) a0tye2 -> do
+  SA0TyArrow (xOpt, a0tye1) a0tye2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0TyValArrow (xOpt, a0tyv1) a0tye2
-  A0TyCode a1tye1 -> do
+  SA0TyCode a1tye1 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1
-  A0TyOptArrow (x, a0tye1) a0tye2 -> do
-    a0tyv1 <- evalTypeExpr0 env a0tye1
-    pure $ A0TyValArrow (Just x, a0tyv1) a0tye2 -- TODO: reconsider this
 
 validateIntLiteral :: Ass0Val -> M Int
 validateIntLiteral = \case
@@ -337,14 +334,14 @@ unliftVal = \case
   A1ValIfThenElse a1v0 a1v1 a1v2 ->
     A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
 
-unliftTypeVal :: Ass1TypeVal -> Ass0TypeExpr
+unliftTypeVal :: Ass1TypeVal -> StrictAss0TypeExpr
 unliftTypeVal = \case
   A1TyValPrim a1tyvPrim ->
-    A0TyPrim $
+    SA0TyPrim $
       case a1tyvPrim of
         A1TyValInt -> A0TyInt
         A1TyValBool -> A0TyBool
         A1TyValVec n -> A0TyVec n
         A1TyValMat m n -> A0TyMat m n
   A1TyValArrow a1tyv1 a1tyv2 ->
-    A0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
+    SA0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)

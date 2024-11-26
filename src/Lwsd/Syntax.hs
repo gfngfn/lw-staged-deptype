@@ -9,6 +9,7 @@ module Lwsd.Syntax
     Type1Equation (..),
     Type1PrimEquation (..),
     Ass0TypeExpr (..),
+    StrictAss0TypeExpr (..),
     Ass0PrimType (..),
     Ass1TypeExpr (..),
     Ass1PrimType (..),
@@ -21,6 +22,7 @@ module Lwsd.Syntax
     Ass1PrimTypeVal (..),
     Env0,
     EnvEntry (..),
+    strictify,
     decomposeType1Equation,
     AppContext,
     AppContextEntry (..),
@@ -78,9 +80,9 @@ data Ass0Expr
   = A0Literal AssLiteral
   | A0AppBuiltIn BuiltIn
   | A0Var AssVar
-  | A0Lam (Maybe (AssVar, Ass0TypeExpr)) (AssVar, Ass0TypeExpr) Ass0Expr
+  | A0Lam (Maybe (AssVar, StrictAss0TypeExpr)) (AssVar, StrictAss0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
-  | A0LetIn (AssVar, Ass0TypeExpr) Ass0Expr Ass0Expr
+  | A0LetIn (AssVar, StrictAss0TypeExpr) Ass0Expr Ass0Expr
   | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
   | A0TyEqAssert Span Type1Equation
@@ -95,11 +97,19 @@ data Ass1Expr
   | A1Escape Ass0Expr
   deriving stock (Eq, Show)
 
+-- For type-checking.
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType
   | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyOptArrow (AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyCode Ass1TypeExpr
+  deriving stock (Eq, Show)
+
+-- For type annotations in target terms.
+data StrictAss0TypeExpr
+  = SA0TyPrim Ass0PrimType
+  | SA0TyArrow (Maybe AssVar, StrictAss0TypeExpr) StrictAss0TypeExpr
+  | SA0TyCode Ass1TypeExpr
   deriving stock (Eq, Show)
 
 data Ass0PrimType
@@ -147,7 +157,7 @@ data Ass1ValConst
 
 data Ass0TypeVal
   = A0TyValPrim Ass0PrimTypeVal
-  | A0TyValArrow (Maybe AssVar, Ass0TypeVal) Ass0TypeExpr
+  | A0TyValArrow (Maybe AssVar, Ass0TypeVal) StrictAss0TypeExpr
   | A0TyValCode Ass1TypeVal
   deriving stock (Eq, Show)
 
@@ -189,6 +199,13 @@ data EnvEntry
   = Ass0ValEntry Ass0Val
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
+
+strictify :: Ass0TypeExpr -> StrictAss0TypeExpr
+strictify = \case
+  A0TyPrim a0tyPrim -> SA0TyPrim a0tyPrim
+  A0TyArrow (x1opt, a0tye1) a0tye2 -> SA0TyArrow (x1opt, strictify a0tye1) (strictify a0tye2)
+  A0TyCode a1tye1 -> SA0TyCode a1tye1
+  A0TyOptArrow (x1, a0tye1) a0tye2 -> SA0TyArrow (Just x1, strictify a0tye1) (strictify a0tye2)
 
 decomposeType1Equation :: Type1Equation -> (Ass1TypeExpr, Ass1TypeExpr)
 decomposeType1Equation = \case

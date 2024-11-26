@@ -82,20 +82,20 @@ a0var = A0Var . AssVar
 a0app :: Ass0Expr -> Ass0Expr -> Ass0Expr
 a0app = A0App
 
-a0nonrecLam :: Text -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
-a0nonrecLam x a0tye1 = A0Lam Nothing (AssVar x, a0tye1)
+a0nonrecLam :: Text -> StrictAss0TypeExpr -> Ass0Expr -> Ass0Expr
+a0nonrecLam x sa0tye1 = A0Lam Nothing (AssVar x, sa0tye1)
 
-a0recLam :: Text -> Ass0TypeExpr -> Text -> Ass0TypeExpr -> Ass0Expr -> Ass0Expr
-a0recLam f a0tyeRec x a0tye1 = A0Lam (Just (AssVar f, a0tyeRec)) (AssVar x, a0tye1)
+a0recLam :: Text -> StrictAss0TypeExpr -> Text -> StrictAss0TypeExpr -> Ass0Expr -> Ass0Expr
+a0recLam f sa0tyeRec x sa0tye1 = A0Lam (Just (AssVar f, sa0tyeRec)) (AssVar x, sa0tye1)
 
 a0bracket :: Ass1Expr -> Ass0Expr
 a0bracket = A0Bracket
 
-a0tyInt :: Ass0TypeExpr
-a0tyInt = A0TyPrim A0TyInt
+sa0tyInt :: StrictAss0TypeExpr
+sa0tyInt = SA0TyPrim A0TyInt
 
-a0nondepTyArrow :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
-a0nondepTyArrow a0tye1 = A0TyArrow (Nothing, a0tye1)
+sa0nondepTyArrow :: StrictAss0TypeExpr -> StrictAss0TypeExpr -> StrictAss0TypeExpr
+sa0nondepTyArrow sa0tye1 = SA0TyArrow (Nothing, sa0tye1)
 
 a1var :: Text -> Ass1Expr
 a1var = A1Var . AssVar

@@ -353,6 +353,12 @@ instance Disp Ass0TypeExpr where
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
 
+instance Disp StrictAss0TypeExpr where
+  dispGen req = \case
+    SA0TyPrim a0tyPrim -> disp a0tyPrim
+    SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
+    SA0TyCode a1tye1 -> dispBracket a1tye1
+
 instance Disp Ass1PrimType where
   dispGen req = \case
     A1TyInt -> "Int"
