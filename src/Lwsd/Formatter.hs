@@ -419,10 +419,18 @@ instance Disp TypeError where
       "Cannot use Escape (~) at stage 0" <+> disp spanInFile
     CannotUseBracketAtStage1 spanInFile ->
       "Cannot use Bracket (&) at stage 1" <+> disp spanInFile
+    CannotUseLamOptAtStage1 spanInFile ->
+      "Cannot use optional function (fun{...} ->) at stage 1" <+> disp spanInFile
+    CannotUseAppOptGivenAtStage1 spanInFile ->
+      "Cannot use optional application (... {...}) at stage 1" <+> disp spanInFile
+    CannotUseAppOptOmittedAtStage1 spanInFile ->
+      "Cannot use optional application (... _) at stage 1" <+> disp spanInFile
     FunctionTypeCannotBeDependentAtStage1 spanInFile x ->
       "Function types cannot be dependent at stage 1:" <+> disp x <+> disp spanInFile
     CannotUseCodeTypeAtStage1 spanInFile ->
       "Cannot use code types at stage 1" <+> disp spanInFile
+    CannotUseOptArrowTypeAtStage1 spanInFile ->
+      "Cannot use optional function types at stage 1" <+> disp spanInFile
     CannotUsePersistentArgAtStage0 spanInFile ->
       "Cannot use persistent arguments at stage 0" <+> disp spanInFile
     CannotUseNormalArgAtStage1 spanInFile ->
@@ -455,6 +463,15 @@ instance Disp TypeError where
         <> nest 2 (hardline <> stage1Style (disp a1tye2))
         <> hardline
         <> disp condErr
+    CannotMergeResultsByConditionals spanInFile result1 result2 ->
+      "Cannot merge results by conditionals"
+        <+> disp spanInFile
+        <> hardline
+        <+> "left:"
+        <> nest 2 (hardline <> disp result1)
+        <> hardline
+        <+> "right:"
+        <> nest 2 (hardline <> disp result2)
     CannotApplyLiteral spanInFile ->
       "Cannot apply a literal" <> disp spanInFile
     CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye ->

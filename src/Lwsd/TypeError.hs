@@ -24,8 +24,12 @@ data TypeError
   | NotACodeType SpanInFile Ass0TypeExpr
   | CannotUseEscapeAtStage0 SpanInFile
   | CannotUseBracketAtStage1 SpanInFile
+  | CannotUseLamOptAtStage1 SpanInFile
+  | CannotUseAppOptGivenAtStage1 SpanInFile
+  | CannotUseAppOptOmittedAtStage1 SpanInFile
   | FunctionTypeCannotBeDependentAtStage1 SpanInFile Var
   | CannotUseCodeTypeAtStage1 SpanInFile
+  | CannotUseOptArrowTypeAtStage1 SpanInFile
   | CannotUsePersistentArgAtStage0 SpanInFile
   | CannotUseNormalArgAtStage1 SpanInFile
   | VarOccursFreelyInAss0Type SpanInFile Var (Result Ass0TypeExpr)
@@ -33,6 +37,7 @@ data TypeError
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
   | CannotMergeTypesByConditional0 SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalMergeError
   | CannotMergeTypesByConditional1 SpanInFile Ass1TypeExpr Ass1TypeExpr ConditionalMergeError
+  | CannotMergeResultsByConditionals SpanInFile (Result Ass0TypeExpr) (Result Ass0TypeExpr)
   | CannotApplyLiteral SpanInFile
   | CannotInstantiateGuidedByAppContext0 SpanInFile AppContext Ass0TypeExpr
   | CannotInstantiateGuidedByAppContext1 SpanInFile AppContext Ass1TypeExpr

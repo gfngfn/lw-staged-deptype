@@ -331,9 +331,10 @@ mergeResultsByConditional0 trav loc a0e0 = go
           FillInferred0 (a0branch a0e1 a0e2) <$> go r1 r2
         (InsertInferred0 a0e1 r1, InsertInferred0 a0e2 r2) -> do
           InsertInferred0 (a0branch a0e1 a0e2) <$> go r1 r2
-        _ ->
+        _ -> do
           -- Reachable if two branches of an if-expression are inconsistent as to `InsertInferred0`.
-          error "TODO (error): mergeResultsByConditional0"
+          spanInFile <- askSpanInFile loc
+          typeError trav $ CannotMergeResultsByConditionals spanInFile result1 result2
 
     a0branch = A0IfThenElse a0e0
 
@@ -664,11 +665,11 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
         _ ->
           bug "stage-1, App, fun, not a Cast1"
     LamOpt _ _ ->
-      error "TODO (error): stage-1, LamOpt"
+      typeError trav $ CannotUseLamOptAtStage1 spanInFile
     AppOptGiven _ _ ->
-      error "TODO (error): stage-1, AppOpt"
+      typeError trav $ CannotUseAppOptGivenAtStage1 spanInFile
     AppOptOmitted _ ->
-      error "TODO (error): stage-1, AppOptOmitted"
+      typeError trav $ CannotUseAppOptOmittedAtStage1 spanInFile
     LetIn x e1 e2 -> do
       (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
       a1tye1 <- validateEmptyRetAppContext "stage-1, LetIn" result1
@@ -840,6 +841,6 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
       pure $ A1TyArrow a1tye1 a1tye2
     TyOptArrow _ _ ->
-      error "TODO (error): stage-1, TyOptArrow"
+      typeError trav $ CannotUseOptArrowTypeAtStage1 spanInFile
     TyCode _ -> do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile
