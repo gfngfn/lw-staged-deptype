@@ -17,12 +17,8 @@ data TypeError
   | UnknownTypeOrInvalidArityAtStage0 SpanInFile TypeName Int
   | UnknownTypeOrInvalidArityAtStage1 SpanInFile TypeName Int
   | NotAnIntLitArgAtStage0 SpanInFile Ass0Expr
-  | NotAnIntTypedArgAtStage1 SpanInFile Ass0TypeExpr
   | TypeContradictionAtStage0 SpanInFile Ass0TypeExpr Ass0TypeExpr
   | TypeContradictionAtStage1 SpanInFile Ass1TypeExpr Ass1TypeExpr
-  | NotAFunctionTypeForStage0 SpanInFile Ass0TypeExpr
-  | NotAFunctionTypeForStage1 SpanInFile Ass1TypeExpr
-  | NotAnOptFunctionTypeForStage0 SpanInFile Ass0TypeExpr
   | NotABoolTypeForStage0 SpanInFile Ass0TypeExpr
   | NotABoolTypeForStage1 SpanInFile Ass1TypeExpr
   | NotACodeType SpanInFile Ass0TypeExpr

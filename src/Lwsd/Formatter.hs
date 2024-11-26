@@ -391,8 +391,6 @@ instance Disp TypeError where
       "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n <+> disp spanInFile
     NotAnIntLitArgAtStage0 spanInFile a0e ->
       "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
-    NotAnIntTypedArgAtStage1 spanInFile a0tye ->
-      "An argument expression at stage 1 is not Int-typed:" <+> stage0Style (disp a0tye) <+> disp spanInFile
     TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
       "Type contradiction at stage 0"
         <+> disp spanInFile
@@ -411,12 +409,6 @@ instance Disp TypeError where
         <> hardline
         <> "right:"
         <> nest 2 (hardline <> stage1Style (disp a1tye2))
-    NotAFunctionTypeForStage0 spanInFile a0tye ->
-      "Not a function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
-    NotAFunctionTypeForStage1 spanInFile a1tye ->
-      "Not a function type (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
-    NotAnOptFunctionTypeForStage0 spanInFile a0tye ->
-      "Not an optional function type (at stage 0):" <+> stage0Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage0 spanInFile a0tye ->
       "Not bool (at stage 0):" <+> stage1Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage1 spanInFile a1tye ->
