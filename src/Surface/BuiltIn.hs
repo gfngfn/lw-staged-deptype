@@ -17,10 +17,10 @@ wrap1 :: BITypeMainF BindingTimeConst BindingTimeConst -> BITypeVoid
 wrap1 = BIType BT1
 
 base0 :: BITypeVoid
-base0 = wrap0 BITyBase
+base0 = wrap0 $ BITyBase []
 
 base1 :: BITypeVoid
-base1 = wrap1 BITyBase
+base1 = wrap1 $ BITyBase []
 
 (-->) :: BITypeVoid -> BITypeVoid -> BITypeVoid
 (-->) bity1 bity2 = wrap1 $ BITyArrow bity1 bity2
@@ -56,7 +56,7 @@ initialBindingTimeEnv =
       base `arrow` (base `arrow` base)
       where
         wrap = BIType ()
-        base = wrap BITyBase
+        base = wrap $ BITyBase []
         arrow bity1 bity2 = wrap $ BITyArrow bity1 bity2
 
     bityVadd :: BITypeVoid
