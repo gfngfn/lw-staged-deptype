@@ -777,6 +777,22 @@ validateIntLiteral trav = \case
   (IA0TypeArg _a0tye, _loc) -> do
     error "TODO (error): validateIntLiteral, IA0TypeArg"
 
+validateIntListLiteral :: trav -> (IntermediateArgForAss0Type, Span) -> M trav [Int]
+validateIntListLiteral trav = \case
+  (IA0ExprArg a0e@(A0Literal (ALitList a0es)), loc) -> do
+    spanInFile <- askSpanInFile loc
+    mapM
+      ( \case
+          A0Literal (ALitInt n) -> pure n
+          _ -> typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
+      )
+      a0es
+  (IA0ExprArg a0e, loc) -> do
+    spanInFile <- askSpanInFile loc
+    typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
+  (IA0TypeArg _a0tye, _loc) -> do
+    error "TODO (error): validateIntLiteral, IA0TypeArg"
+
 data IntermediateArgForAss0Type
   = IA0ExprArg Ass0Expr
   | IA0TypeArg Ass0TypeExpr
@@ -816,8 +832,9 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
           m <- validateIntLiteral trav arg1
           n <- validateIntLiteral trav arg2
           pure $ A0TyPrim (a0TyMat m n)
-        ("Tensor", _) -> do
-          error "TODO: typecheckTypeExpr0, Tensor"
+        ("Tensor", [arg]) -> do
+          ns <- validateIntListLiteral trav arg
+          pure $ A0TyPrim (A0TyTensor ns)
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1

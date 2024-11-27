@@ -420,6 +420,8 @@ instance Disp TypeError where
       "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n <+> disp spanInFile
     NotAnIntLitArgAtStage0 spanInFile a0e ->
       "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
+    NotAnIntListLitArgAtStage0 spanInFile a0e ->
+      "An argument expression at stage 0 is not an integer list literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
     TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
       "Type contradiction at stage 0"
         <+> disp spanInFile
@@ -690,7 +692,7 @@ instance Disp Bta.AnalysisError where
     Bta.BITypeContradiction spanInFile bity1 bity2 ->
       "Basic type contradiction;" <+> disp (show bity1) <> "," <+> disp (show bity2) <+> disp spanInFile
     Bta.UnknownTypeOrInvalidArgs spanInFile _tyName _args ->
-      -- TODO: detailed report
+      -- TODO (enhance): detailed report
       "Unknown type or invalid arguments" <+> disp spanInFile
 
 dispWithBindingTime :: (Disp exprMain) => Bta.BindingTimeConst -> exprMain -> Doc Ann
