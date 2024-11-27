@@ -9,6 +9,7 @@ module Surface.BindingTime.Core
     BindingTimeEnv,
     BExpr,
     BTypeExpr,
+    BArgForType,
   )
 where
 
@@ -52,3 +53,5 @@ type BindingTimeEnv = Map Var BindingTimeEnvEntry
 type BExpr = ExprF (BindingTime, Span)
 
 type BTypeExpr = TypeExprF (BindingTime, Span)
+
+type BArgForType = ArgForTypeF (BindingTime, Span)

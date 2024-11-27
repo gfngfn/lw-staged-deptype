@@ -83,9 +83,9 @@ assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
   btv <- fresh
   TypeExpr (BTVar btv, ann)
     <$> case typeExprMain of
-      TyName tyName es -> do
-        bes <- mapM assignBindingTimeVarToExpr es
-        pure $ TyName tyName bes
+      TyName tyName args -> do
+        bargs <- mapM assignBindingTimeVarToArgForType args
+        pure $ TyName tyName bargs
       TyArrow (xOpt, ty1) ty2 -> do
         bty1 <- assignBindingTimeVarToTypeExpr ty1
         bty2 <- assignBindingTimeVarToTypeExpr ty2
@@ -94,6 +94,11 @@ assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
         bty1 <- assignBindingTimeVarToTypeExpr ty1
         bty2 <- assignBindingTimeVarToTypeExpr ty2
         pure $ TyOptArrow (x, bty1) bty2
+
+assignBindingTimeVarToArgForType :: ArgForType -> Assigner BArgForType
+assignBindingTimeVarToArgForType = \case
+  ExprArg e -> ExprArg <$> assignBindingTimeVarToExpr e
+  TypeArg tye -> TypeArg <$> assignBindingTimeVarToTypeExpr tye
 
 newtype AnalysisConfig = AnalysisConfig
   { sourceSpec :: SourceSpec
@@ -263,24 +268,37 @@ makeConstraintsFromBITypeEquation ann = go
             spanInFile <- askSpanInFile ann
             analysisError $ BITypeContradiction spanInFile bity1 bity2
 
+extractConstraintsFromExprArgsForType :: BindingTimeEnv -> BindingTime -> Span -> [BExpr] -> M ([BExpr], [Constraint Span])
+extractConstraintsFromExprArgsForType btenv bt ann args = do
+  triples <- mapM (extractConstraintsFromExpr btenv) args
+  let args' = map (\(e', _, _) -> e') triples
+  let bts = map (\(_, BIType bt' _, _) -> bt') triples
+  let constraintsSub = concatMap (\(_, _, constraints') -> constraints') triples
+  let constraintsArgsZero = map (\bt' -> CEqual ann bt' (BTConst BT0)) bts
+  let constraints = constraintsSub ++ constraintsArgsZero ++ [CEqual ann bt (BTConst BT1)]
+  pure (args', constraints)
+
 extractConstraintsFromTypeExpr :: BindingTimeEnv -> BTypeExpr -> M (BTypeExpr, BIType, [Constraint Span])
 extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
   case typeExprMain of
     TyName tyName args -> do
       (args', constraints) <-
-        case args of
-          [] ->
-            case tyName of
-              "Nat" -> pure ([], [CEqual ann bt (BTConst BT0)])
-              _ -> pure ([], [])
-          _ : _ -> do
-            triples <- mapM (extractConstraintsFromExpr btenv) args
-            let args' = map (\(e', _, _) -> e') triples
-            let bts = map (\(_, BIType bt' _, _) -> bt') triples
-            let constraintsSub = concatMap (\(_, _, constraints') -> constraints') triples
-            let constraintsArgsZero = map (\bt' -> CEqual ann bt' (BTConst BT0)) bts
-            let constraints = constraintsSub ++ constraintsArgsZero ++ [CEqual ann bt (BTConst BT1)]
-            pure (args', constraints)
+        case (tyName, args) of
+          ("Nat", []) -> pure ([], [CEqual ann bt (BTConst BT0)])
+          ("Int", []) -> pure ([], [])
+          ("Bool", []) -> pure ([], [])
+          ("List", [TypeArg tye]) -> do
+            (tyeElem, BIType btElem _, cs) <- extractConstraintsFromTypeExpr btenv tye
+            pure ([TypeArg tyeElem], cs ++ [CLeq ann bt btElem])
+          ("Vec", [ExprArg e]) -> do
+            (exprArgs, cs) <- extractConstraintsFromExprArgsForType btenv bt ann [e]
+            pure (map ExprArg exprArgs, cs)
+          ("Mat", [ExprArg e1, ExprArg e2]) -> do
+            (exprArgs, cs) <- extractConstraintsFromExprArgsForType btenv bt ann [e1, e2]
+            pure (map ExprArg exprArgs, cs)
+          (_, _) -> do
+            spanInFile <- askSpanInFile ann
+            analysisError $ UnknownTypeOrInvalidArgs spanInFile tyName args
       let tye' = TypeExpr (bt, ann) (TyName tyName args')
       pure (tye', BIType bt BITyBase, constraints)
     TyArrow (x1opt, tye1) tye2 -> do

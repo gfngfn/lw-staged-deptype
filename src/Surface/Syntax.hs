@@ -8,8 +8,10 @@ module Surface.Syntax
     TypeName,
     TypeExprF (..),
     TypeExprMainF (..),
+    ArgForTypeF (..),
     TypeExpr,
     TypeExprMain,
+    ArgForType,
     mapMLiteral,
   )
 where
@@ -53,14 +55,21 @@ data TypeExprF ann = TypeExpr ann (TypeExprMainF ann)
   deriving stock (Show, Functor)
 
 data TypeExprMainF ann
-  = TyName TypeName [ExprF ann]
+  = TyName TypeName [ArgForTypeF ann]
   | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
   | TyOptArrow (Var, TypeExprF ann) (TypeExprF ann)
+  deriving stock (Show, Functor)
+
+data ArgForTypeF ann
+  = ExprArg (ExprF ann)
+  | TypeArg (TypeExprF ann)
   deriving stock (Show, Functor)
 
 type TypeExpr = TypeExprF Span
 
 type TypeExprMain = TypeExprMainF Span
+
+type ArgForType = ArgForTypeF Span
 
 mapMLiteral :: (Monad m) => (a -> m b) -> Literal a -> m (Literal b)
 mapMLiteral f = \case

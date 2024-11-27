@@ -317,6 +317,11 @@ instance Disp Surface.TypeExprMain where
     Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     Surface.TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
 
+instance Disp Surface.ArgForType where
+  dispGen req = \case
+    Surface.ExprArg e -> dispGen req e
+    Surface.TypeArg tye -> dispGen req tye
+
 instance (Disp e) => Disp (AssLiteral e) where
   dispGen _ = \case
     ALitInt n -> pretty n
@@ -678,6 +683,9 @@ instance Disp Bta.AnalysisError where
       "Binding-time contradiction" <+> disp spanInFile
     Bta.BITypeContradiction spanInFile bity1 bity2 ->
       "Basic type contradiction;" <+> disp (show bity1) <> "," <+> disp (show bity2) <+> disp spanInFile
+    Bta.UnknownTypeOrInvalidArgs spanInFile _tyName _args ->
+      -- TODO: detailed report
+      "Unknown type or invalid arguments" <+> disp spanInFile
 
 dispWithBindingTime :: (Disp exprMain) => Bta.BindingTimeConst -> exprMain -> Doc Ann
 dispWithBindingTime btc eMain =
@@ -715,3 +723,8 @@ instance Disp (Bta.BCTypeExprMainF ann) where
     Surface.TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
     Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     Surface.TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
+
+instance Disp (Bta.BCArgForTypeF ann) where
+  dispGen req = \case
+    Surface.ExprArg e -> dispGen req e
+    Surface.TypeArg tye -> dispGen req tye

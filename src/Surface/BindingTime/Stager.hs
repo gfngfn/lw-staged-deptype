@@ -3,6 +3,7 @@ module Surface.BindingTime.Stager
     BCExprMainF,
     BCTypeExprF,
     BCTypeExprMainF,
+    BCArgForTypeF,
     stageExpr0,
   )
 where
@@ -19,6 +20,8 @@ type BCExprMainF ann = ExprMainF (BindingTimeConst, ann)
 type BCTypeExprF ann = TypeExprF (BindingTimeConst, ann)
 
 type BCTypeExprMainF ann = TypeExprMainF (BindingTimeConst, ann)
+
+type BCArgForTypeF ann = ArgForTypeF (BindingTimeConst, ann)
 
 stageExpr0 :: BCExprF ann -> Lwsd.ExprF ann
 stageExpr0 (Expr (btc, ann) exprMain) =
@@ -107,9 +110,14 @@ stageTypeExpr1 (TypeExpr (btc, ann) typeExprMain) =
 
 stageTypeExpr1Main :: BCTypeExprMainF ann -> Lwsd.TypeExprMainF ann
 stageTypeExpr1Main = \case
-  TyName tyName args -> Lwsd.TyName tyName (map (Lwsd.ExprArgPersistent . stageExpr0) args)
+  TyName tyName args -> Lwsd.TyName tyName (map stageArgForType1 args)
   TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
   TyOptArrow (x, tye1) tye2 -> Lwsd.TyOptArrow (x, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
+
+stageArgForType1 :: BCArgForTypeF ann -> Lwsd.ArgForTypeF ann
+stageArgForType1 = \case
+  ExprArg e -> Lwsd.ExprArgPersistent (stageExpr0 e)
+  TypeArg tye -> Lwsd.TypeArg (stageTypeExpr1 tye)
 
 convertLiteral :: (se -> le) -> Literal se -> Lwsd.Literal le
 convertLiteral conv = \case
