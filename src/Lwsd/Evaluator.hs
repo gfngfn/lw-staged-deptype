@@ -27,6 +27,7 @@ data Bug
   | NotAClosure Ass0Val
   | NotACodeValue Ass0Val
   | NotAnInteger (Maybe AssVar) Ass0Val
+  | NotAList (Maybe AssVar) Ass0Val
   | NotAVector AssVar Ass0Val
   | NotAMatrix AssVar Ass0Val
   | NotABoolean Ass0Val
@@ -95,6 +96,13 @@ findInt0 env x = do
     A0ValLiteral (ALitInt n) -> pure n
     _ -> bug $ NotAnInteger (Just x) a0v
 
+findList0 :: Env0 -> AssVar -> M [Ass0Val]
+findList0 env x = do
+  a0v <- findVal0 env x
+  case a0v of
+    A0ValLiteral (ALitList a0es) -> pure a0es
+    _ -> bug $ NotAList (Just x) a0v
+
 findVec0 :: Env0 -> AssVar -> M Vector
 findVec0 env x = do
   a0v <- findVal0 env x
@@ -108,6 +116,20 @@ findMat0 env x = do
   case a0v of
     A0ValLiteral (ALitMat mat) -> pure mat
     _ -> bug $ NotAMatrix x a0v
+
+reduceBeta :: Ass0Val -> Ass0Val -> M Ass0Val
+reduceBeta a0v1 a0v2 =
+  case a0v1 of
+    A0ValLam Nothing (x, _a0tyv11) a0e12 env1 ->
+      evalExpr0
+        (Map.insert x (Ass0ValEntry a0v2) env1)
+        a0e12
+    A0ValLam (Just (f, _a0tyvRec)) (x, _a0tyv11) a0e12 env1 ->
+      evalExpr0
+        (Map.insert x (Ass0ValEntry a0v2) (Map.insert f (Ass0ValEntry a0v1) env1))
+        a0e12
+    _ ->
+      bug $ NotAClosure a0v1
 
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
@@ -140,6 +162,11 @@ evalExpr0 env = \case
             EvalState {sourceSpec} <- get
             let spanInFile = getSpanInFile sourceSpec loc
             evalError $ NatAssertionFailure spanInFile n1
+      BIListMap f x -> do
+        a0vF <- findVal0 env f
+        a0vsIn <- findList0 env x
+        a0vsOut <- mapM (reduceBeta a0vF) a0vsIn
+        pure $ A0ValLiteral (ALitList a0vsOut)
       BIGenVadd x1 -> do
         n1 <- findInt0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
@@ -202,17 +229,7 @@ evalExpr0 env = \case
   A0App a0e1 a0e2 -> do
     a0v1 <- evalExpr0 env a0e1
     a0v2 <- evalExpr0 env a0e2
-    case a0v1 of
-      A0ValLam Nothing (x, _a0tyv11) a0e12 env1 ->
-        evalExpr0
-          (Map.insert x (Ass0ValEntry a0v2) env1)
-          a0e12
-      A0ValLam (Just (f, _a0tyvRec)) (x, _a0tyv11) a0e12 env1 ->
-        evalExpr0
-          (Map.insert x (Ass0ValEntry a0v2) (Map.insert f (Ass0ValEntry a0v1) env1))
-          a0e12
-      _ ->
-        bug $ NotAClosure a0v1
+    reduceBeta a0v1 a0v2
   A0LetIn (x, a0tye1) a0e1 a0e2 ->
     evalExpr0 env (A0App (A0Lam Nothing (x, a0tye1) a0e2) a0e1)
   A0IfThenElse a0e0 a0e1 a0e2 -> do

@@ -1,5 +1,6 @@
 module Lwsd.BuiltIn
   ( ass0exprAssertNat,
+    ass0exprListMap,
     ass0exprVadd,
     ass0exprVconcat,
     ass0exprMtranspose,
@@ -161,6 +162,15 @@ ass0exprAssertNat loc =
     A0AppBuiltIn (BIAssertNat loc x1)
   where
     x1 = AssVar "n1"
+
+ass0exprListMap :: StrictAss0TypeExpr -> StrictAss0TypeExpr -> Ass0Expr
+ass0exprListMap styDom styCod =
+  lam f (SA0TyArrow (Nothing, styDom) styCod) $
+    lam x styDom $
+      A0AppBuiltIn (BIListMap f x)
+  where
+    f = AssVar "f"
+    x = AssVar "x"
 
 ass0exprVadd :: Int -> Ass0Expr
 ass0exprVadd n =

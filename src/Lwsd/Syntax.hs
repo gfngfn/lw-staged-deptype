@@ -63,6 +63,7 @@ data BuiltIn
   | BIMult AssVar AssVar
   | BILeq AssVar AssVar
   | BIAssertNat Span AssVar
+  | BIListMap AssVar AssVar
   | BIGenVadd AssVar
   | BIGenVconcat AssVar AssVar
   | BIGenMtranspose AssVar AssVar

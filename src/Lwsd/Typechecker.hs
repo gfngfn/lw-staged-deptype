@@ -20,7 +20,7 @@ import Data.Set (Set, (\\))
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Data.Tuple.Extra
-import Lwsd.BuiltIn (ass0exprAssertNat)
+import Lwsd.BuiltIn
 import Lwsd.SrcSyntax
 import Lwsd.Subst
 import Lwsd.Syntax
@@ -111,7 +111,14 @@ makeAssertiveCast trav loc =
                     else typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
             _ -> typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
         (A0TyList a0tye1', A0TyList a0tye2') -> do
-          go varsToInfer a0tye1' a0tye2'
+          (cast', solution) <- go varsToInfer a0tye1' a0tye2'
+          case cast' of
+            Nothing ->
+              pure (Nothing, solution)
+            Just a0eCast -> do
+              let sa0tye1' = strictify (applySolution solution a0tye1')
+              let sa0tye2' = strictify (applySolution solution a0tye2')
+              pure (Just (A0App (ass0exprListMap sa0tye1' sa0tye2') a0eCast), solution)
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22withX2opt) -> do
           (castDom, solutionDom) <- go varsToInfer a0tye11 a0tye21
           (x, a0tye22) <-
@@ -894,7 +901,7 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
           a0e2 <- insertCastForNatArg trav (a0tye2, a0e2', loc2)
           pure $ A1TyPrim (a1TyMat a0e1 a0e2)
         ("Tensor", [(IA1ExprArg _a0e' _a0tye, _loc')]) -> do
-          error "TODO: typecheckTypeExpr1, Tensor. Use built-in `list_map` here for casts"
+          error "TODO: typecheckTypeExpr1, Tensor. Use `ass0exprListMap` here for casts"
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
