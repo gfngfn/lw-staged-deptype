@@ -9,6 +9,7 @@ module Surface.BindingTime.Core
     BindingTimeEnv,
     BExpr,
     BTypeExpr,
+    BArgForType,
   )
 where
 
@@ -34,7 +35,7 @@ data BITypeF bt ann = BIType bt (BITypeMainF bt ann)
   deriving stock (Show)
 
 data BITypeMainF bt ann
-  = BITyBase
+  = BITyBase [BITypeF bt ann]
   | BITyArrow (BITypeF bt ann) (BITypeF bt ann)
   | BITyOptArrow (BITypeF bt ann) (BITypeF bt ann)
   deriving stock (Show)
@@ -52,3 +53,5 @@ type BindingTimeEnv = Map Var BindingTimeEnvEntry
 type BExpr = ExprF (BindingTime, Span)
 
 type BTypeExpr = TypeExprF (BindingTime, Span)
+
+type BArgForType = ArgForTypeF (BindingTime, Span)

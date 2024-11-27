@@ -3,6 +3,7 @@ module Surface.BindingTime.Stager
     BCExprMainF,
     BCTypeExprF,
     BCTypeExprMainF,
+    BCArgForTypeF,
     stageExpr0,
   )
 where
@@ -20,6 +21,8 @@ type BCTypeExprF ann = TypeExprF (BindingTimeConst, ann)
 
 type BCTypeExprMainF ann = TypeExprMainF (BindingTimeConst, ann)
 
+type BCArgForTypeF ann = ArgForTypeF (BindingTimeConst, ann)
+
 stageExpr0 :: BCExprF ann -> Lwsd.ExprF ann
 stageExpr0 (Expr (btc, ann) exprMain) =
   case btc of
@@ -29,7 +32,7 @@ stageExpr0 (Expr (btc, ann) exprMain) =
 stageExpr0Main :: BCExprMainF ann -> Lwsd.ExprMainF ann
 stageExpr0Main = \case
   Literal lit ->
-    Lwsd.Literal (convertLiteral lit)
+    Lwsd.Literal (convertLiteral stageExpr0 lit)
   Var x ->
     Lwsd.Var x
   Lam Nothing (x, tye1) e2 ->
@@ -60,7 +63,7 @@ stageExpr1 (Expr (btc, ann) exprMain) =
 stageExpr1Main :: BCExprMainF ann -> Lwsd.ExprMainF ann
 stageExpr1Main = \case
   Literal lit ->
-    Lwsd.Literal (convertLiteral lit)
+    Lwsd.Literal (convertLiteral stageExpr1 lit)
   Var x ->
     Lwsd.Var x
   Lam Nothing (x, tye1) e2 ->
@@ -107,12 +110,18 @@ stageTypeExpr1 (TypeExpr (btc, ann) typeExprMain) =
 
 stageTypeExpr1Main :: BCTypeExprMainF ann -> Lwsd.TypeExprMainF ann
 stageTypeExpr1Main = \case
-  TyName tyName args -> Lwsd.TyName tyName (map (Lwsd.PersistentArg . stageExpr0) args)
+  TyName tyName args -> Lwsd.TyName tyName (map stageArgForType1 args)
   TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
   TyOptArrow (x, tye1) tye2 -> Lwsd.TyOptArrow (x, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
 
-convertLiteral :: Literal -> Lwsd.Literal
-convertLiteral = \case
+stageArgForType1 :: BCArgForTypeF ann -> Lwsd.ArgForTypeF ann
+stageArgForType1 = \case
+  ExprArg e -> Lwsd.ExprArgPersistent (stageExpr0 e)
+  TypeArg tye -> Lwsd.TypeArg (stageTypeExpr1 tye)
+
+convertLiteral :: (se -> le) -> Literal se -> Lwsd.Literal le
+convertLiteral conv = \case
   LitInt n -> Lwsd.LitInt n
+  LitList es -> Lwsd.LitList (map conv es)
   LitVec ns -> Lwsd.LitVec ns
   LitMat nss -> Lwsd.LitMat nss

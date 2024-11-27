@@ -103,6 +103,8 @@ makeAssertiveCast trav loc =
             (A0TyVec n1, A0TyVec n2) | n1 == n2 -> nothingOrIdentityLam (A0TyPrim (A0TyVec n1))
             (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> nothingOrIdentityLam (A0TyPrim (A0TyMat m1 n1))
             _ -> typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
+        (A0TyList a0tye1', A0TyList a0tye2') -> do
+          go varsToInfer a0tye1' a0tye2'
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22withX2opt) -> do
           (castDom, solutionDom) <- go varsToInfer a0tye11 a0tye21
           (x, a0tye22) <-
@@ -261,6 +263,8 @@ mergeTypesByConditional0 a0e0 = go0
           if a0tyePrim1 == a0tyePrim2
             then pure a0tye1
             else Left $ CannotMerge0 a0tye1 a0tye2
+        (A0TyList a0tye1', A0TyList a0tye2') ->
+          A0TyList <$> go0 a0tye1' a0tye2'
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
           a0tye1u <- go0 a0tye11 a0tye21
           (xu, a0tye2u) <-
@@ -468,6 +472,23 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               case lit of
                 LitInt n ->
                   pure (A0TyPrim (if n >= 0 then A0TyNat else A0TyInt), ALitInt n)
+                LitList es ->
+                  case es of
+                    [] ->
+                      error "TODO: typecheckExpr0, empty list literals"
+                    eFirst : esTail -> do
+                      (resultFirst, a0eFirst) <- typecheckExpr0 trav tyEnv [] eFirst
+                      a0tyeFirst <- validateEmptyRetAppContext "stage-0, LitList, first" resultFirst
+                      a0esTail <-
+                        mapM
+                          ( \e@(Expr locElem _) -> do
+                              (result, a0e) <- typecheckExpr0 trav tyEnv [] e
+                              a0tye <- validateEmptyRetAppContext "stage-0, LitList, tail" result
+                              (cast, _solution) <- makeAssertiveCast trav locElem Set.empty a0tye a0tyeFirst
+                              pure $ applyCast cast a0e
+                          )
+                          esTail
+                      pure (A0TyList a0tyeFirst, ALitList (a0eFirst : a0esTail))
                 LitVec ns -> do
                   let vec = Vector.fromList ns
                   pure (A0TyPrim (A0TyVec (Vector.length vec)), ALitVec vec)
@@ -613,6 +634,23 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
             case lit of
               LitInt n ->
                 pure (A1TyPrim A1TyInt, ALitInt n)
+              LitList es ->
+                case es of
+                  [] ->
+                    error "TODO: typecheckExpr1, empty list literal"
+                  eFirst : esTail -> do
+                    (resultFirst, a1eFirst) <- typecheckExpr1 trav tyEnv [] eFirst
+                    a1tyeFirst <- validateEmptyRetAppContext "stage-1, LitList, first" resultFirst
+                    a1esTail <-
+                      mapM
+                        ( \e@(Expr locElem _) -> do
+                            (result, a1e) <- typecheckExpr1 trav tyEnv [] e
+                            a1tye <- validateEmptyRetAppContext "stage-1, LitList, tail" result
+                            (eq, _solution) <- makeEquation1 trav locElem Set.empty a1tye a1tyeFirst
+                            pure (applyEquationCast locElem eq a1e)
+                        )
+                        esTail
+                    pure (A1TyList a1tyeFirst, ALitList (a1eFirst : a1esTail))
               LitVec ns -> do
                 let vec = Vector.fromList ns
                 pure (A1TyPrim (A1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)
@@ -746,13 +784,19 @@ insertCastForNatArg trav (a0tye, a0e, loc) = do
   (cast, _) <- makeAssertiveCast trav loc Set.empty a0tye (A0TyPrim A0TyNat)
   pure $ applyCast cast a0e
 
-validateIntLiteral :: trav -> (Ass0Expr, Span) -> M trav Int
+validateIntLiteral :: trav -> (IntermediateArgForAss0Type, Span) -> M trav Int
 validateIntLiteral trav = \case
-  (A0Literal (ALitInt n), _) ->
+  (IA0ExprArg (A0Literal (ALitInt n)), _) ->
     pure n
-  (a0e, loc) -> do
+  (IA0ExprArg a0e, loc) -> do
     spanInFile <- askSpanInFile loc
     typeError trav $ NotAnIntLitArgAtStage0 spanInFile a0e
+  (IA0TypeArg _a0tye, _loc) -> do
+    error "TODO (error): validateIntLiteral, IA0TypeArg"
+
+data IntermediateArgForAss0Type
+  = IA0ExprArg Ass0Expr
+  | IA0TypeArg Ass0TypeExpr
 
 typecheckTypeExpr0 :: trav -> TypeEnv -> TypeExpr -> M trav Ass0TypeExpr
 typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
@@ -762,31 +806,34 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       results <-
         mapM
           ( \case
-              PersistentArg e -> do
-                let Expr loc' _ = e
+              ExprArgPersistent (Expr loc' _) -> do
                 spanInFile' <- askSpanInFile loc'
                 typeError trav $ CannotUsePersistentArgAtStage0 spanInFile'
-              NormalArg e -> do
-                let Expr loc' _ = e
+              ExprArgNormal e@(Expr loc' _) -> do
                 (result, a0e) <- typecheckExpr0 trav tyEnv [] e
                 _a0tye <- validateEmptyRetAppContext "NormalArg" result
-                pure (a0e, loc')
+                pure (IA0ExprArg a0e, loc')
+              TypeArg tye@(TypeExpr loc' _) -> do
+                a0tye <- typecheckTypeExpr0 trav tyEnv tye
+                pure (IA0TypeArg a0tye, loc')
           )
           args
-      tyPrim <-
-        case (tyName, results) of
-          ("Int", []) -> pure A0TyInt
-          ("Nat", []) -> pure A0TyNat
-          ("Bool", []) -> pure A0TyBool
-          ("Vec", [arg]) -> do
-            n <- validateIntLiteral trav arg
-            pure $ A0TyVec n
-          ("Mat", [arg1, arg2]) -> do
-            m <- validateIntLiteral trav arg1
-            n <- validateIntLiteral trav arg2
-            pure $ A0TyMat m n
-          _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
-      pure $ A0TyPrim tyPrim
+      case (tyName, results) of
+        ("Int", []) -> pure $ A0TyPrim A0TyInt
+        ("Nat", []) -> pure $ A0TyPrim A0TyNat
+        ("Bool", []) -> pure $ A0TyPrim A0TyBool
+        ("List", [arg]) -> do
+          case arg of
+            (IA0TypeArg a0tye, _) -> pure $ A0TyList a0tye
+            (IA0ExprArg _a0e, _loc) -> error "TODO (error): typecheckTypeExpr0, TyName, List, IA0ExprArg"
+        ("Vec", [arg]) -> do
+          n <- validateIntLiteral trav arg
+          pure $ A0TyPrim (A0TyVec n)
+        ("Mat", [arg1, arg2]) -> do
+          m <- validateIntLiteral trav arg1
+          n <- validateIntLiteral trav arg2
+          pure $ A0TyPrim (A0TyMat m n)
+        _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
       a0tye2 <-
@@ -805,6 +852,10 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       let ax = AssVar x
       pure $ A0TyOptArrow (ax, a0tye1) a0tye2
 
+data IntermediateArgForAss1Type
+  = IA1ExprArg Ass0Expr Ass0TypeExpr
+  | IA1TypeArg Ass1TypeExpr
+
 typecheckTypeExpr1 :: trav -> TypeEnv -> TypeExpr -> M trav Ass1TypeExpr
 typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
   spanInFile <- askSpanInFile loc
@@ -813,30 +864,31 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       results <-
         mapM
           ( \case
-              PersistentArg e -> do
-                let Expr loc' _ = e
+              ExprArgPersistent e@(Expr loc' _) -> do
                 (result, a0e) <- typecheckExpr0 trav tyEnv [] e
                 a0tye <- validateEmptyRetAppContext "PersistentArg" result
-                pure (a0tye, a0e, loc')
-              NormalArg e -> do
-                let Expr loc' _ = e
+                pure (IA1ExprArg a0e a0tye, loc')
+              ExprArgNormal (Expr loc' _) -> do
                 spanInFile' <- askSpanInFile loc'
                 typeError trav $ CannotUseNormalArgAtStage1 spanInFile'
+              TypeArg tye@(TypeExpr loc' _) -> do
+                a1tye <- typecheckTypeExpr1 trav tyEnv tye
+                pure (IA1TypeArg a1tye, loc')
           )
           args
-      a1tyPrim <-
-        case (tyName, results) of
-          ("Int", []) -> pure A1TyInt
-          ("Bool", []) -> pure A1TyBool
-          ("Vec", [arg]) -> do
-            a0e <- insertCastForNatArg trav arg
-            pure $ A1TyVec a0e
-          ("Mat", [arg1, arg2]) -> do
-            a0e1 <- insertCastForNatArg trav arg1
-            a0e2 <- insertCastForNatArg trav arg2
-            pure $ A1TyMat a0e1 a0e2
-          _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
-      pure $ A1TyPrim a1tyPrim
+      case (tyName, results) of
+        ("Int", []) -> pure $ A1TyPrim A1TyInt
+        ("Bool", []) -> pure $ A1TyPrim A1TyBool
+        ("List", [(IA1TypeArg a1tye, _)]) -> do
+          pure $ A1TyList a1tye
+        ("Vec", [(IA1ExprArg a0e' a0tye, loc')]) -> do
+          a0e <- insertCastForNatArg trav (a0tye, a0e', loc')
+          pure $ A1TyPrim (A1TyVec a0e)
+        ("Mat", [(IA1ExprArg a0e1' a0tye1, loc1), (IA1ExprArg a0e2' a0tye2, loc2)]) -> do
+          a0e1 <- insertCastForNatArg trav (a0tye1, a0e1', loc1)
+          a0e2 <- insertCastForNatArg trav (a0tye2, a0e2', loc2)
+          pure $ A1TyPrim (A1TyMat a0e1 a0e2)
+        _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       () <-

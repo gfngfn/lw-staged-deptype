@@ -194,13 +194,21 @@ typeExpr = fun
 
     app :: P TypeExpr
     app =
-      (makeTyName <$> upper <*> some exprAtom)
+      (makeTyName <$> upper <*> some argForType)
         `or` atom
       where
-        makeTyName (Located locFirst t) tyeArgs =
-          let Expr locLast _ = NonEmpty.last tyeArgs
+        makeTyName (Located locFirst t) args =
+          let locLast =
+                case NonEmpty.last args of
+                  ExprArg (Expr locLast' _) -> locLast'
+                  TypeArg (TypeExpr locLast' _) -> locLast'
               loc = mergeSpan locFirst locLast
-           in TypeExpr loc (TyName t (NonEmpty.toList tyeArgs))
+           in TypeExpr loc (TyName t (NonEmpty.toList args))
+
+    argForType :: P ArgForType
+    argForType =
+      (ExprArg <$> exprAtom)
+        `or` (TypeArg <$> atom)
 
     fun :: P TypeExpr
     fun =

@@ -43,6 +43,9 @@ int = expectToken (^? #_TokInt)
 vec :: P (Located [Int])
 vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 
+list :: P a -> P (Located [a])
+list = genVec TokLeftSquare TokRightSquare TokComma
+
 mat :: P (Located [[Int]])
 mat = genMat TokMatLeft TokMatRight TokSemicolon TokComma (noLoc int)
 
@@ -65,6 +68,7 @@ exprAtom, expr :: P Expr
     atom =
       tries
         [ located (Literal . LitInt) <$> int,
+          located (Literal . LitList) <$> list letin,
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
           located Var <$> lower
@@ -217,14 +221,18 @@ typeExpr = fun
       where
         arg :: P ArgForType
         arg =
-          (PersistentArg <$> (token TokPersistent *> exprAtom))
-            `or` (NormalArg <$> exprAtom)
+          tries
+            [ ExprArgPersistent <$> (token TokPersistent *> exprAtom),
+              ExprArgNormal <$> exprAtom
+            ]
+            (TypeArg <$> atom)
 
         makeTyName (Located locFirst t) tyeArgs =
           let loc =
                 case NonEmpty.last tyeArgs of
-                  PersistentArg (Expr locLast _) -> mergeSpan locFirst locLast
-                  NormalArg (Expr locLast _) -> mergeSpan locFirst locLast
+                  ExprArgPersistent (Expr locLast _) -> mergeSpan locFirst locLast
+                  ExprArgNormal (Expr locLast _) -> mergeSpan locFirst locLast
+                  TypeArg (TypeExpr locLast _) -> mergeSpan locFirst locLast
            in TypeExpr loc (TyName t (NonEmpty.toList tyeArgs))
 
     fun :: P TypeExpr

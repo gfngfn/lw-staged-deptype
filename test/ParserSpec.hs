@@ -29,6 +29,12 @@ spec = do
     it "parses integer literals (2)" $
       parseExpr "0"
         `shouldBe` pure (litInt 0)
+    it "parses list literals (1)" $
+      parseExpr "[]"
+        `shouldBe` pure (litList [])
+    it "parses list literals (2)" $
+      parseExpr "[n + 1, x y]"
+        `shouldBe` pure (litList [add (var "n") (litInt 1), app (var "x") (var "y")])
     it "parses vector literals (1)" $
       parseExpr "[| |]"
         `shouldBe` pure (litVec [])

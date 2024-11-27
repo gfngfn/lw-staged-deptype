@@ -22,6 +22,8 @@ module Lwsd.Syntax
     Ass1PrimTypeVal (..),
     Env0,
     EnvEntry (..),
+    mapAssLiteral,
+    mapMAssLiteral,
     strictify,
     decomposeType1Equation,
     AppContext,
@@ -69,15 +71,16 @@ data BuiltIn
   | BIMconcatVert Int Int Int AssVar AssVar
   deriving stock (Eq, Show)
 
-data AssLiteral
+data AssLiteral e
   = ALitInt Int
   | ALitBool Bool
+  | ALitList [e]
   | ALitVec Vector
   | ALitMat Matrix
   deriving stock (Eq, Show)
 
 data Ass0Expr
-  = A0Literal AssLiteral
+  = A0Literal (AssLiteral Ass0Expr)
   | A0AppBuiltIn BuiltIn
   | A0Var AssVar
   | A0Lam (Maybe (AssVar, StrictAss0TypeExpr)) (AssVar, StrictAss0TypeExpr) Ass0Expr
@@ -89,7 +92,7 @@ data Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass1Expr
-  = A1Literal AssLiteral
+  = A1Literal (AssLiteral Ass1Expr)
   | A1Var AssVar
   | A1Lam (Maybe (AssVar, Ass1TypeExpr)) (AssVar, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
@@ -100,6 +103,7 @@ data Ass1Expr
 -- For type-checking.
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType
+  | A0TyList Ass0TypeExpr
   | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyOptArrow (AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyCode Ass1TypeExpr
@@ -108,6 +112,7 @@ data Ass0TypeExpr
 -- For type annotations in target terms.
 data StrictAss0TypeExpr
   = SA0TyPrim Ass0PrimType
+  | SA0TyList StrictAss0TypeExpr
   | SA0TyArrow (Maybe AssVar, StrictAss0TypeExpr) StrictAss0TypeExpr
   | SA0TyCode Ass1TypeExpr
   deriving stock (Eq, Show)
@@ -122,6 +127,7 @@ data Ass0PrimType
 
 data Ass1TypeExpr
   = A1TyPrim Ass1PrimType
+  | A1TyList Ass1TypeExpr
   | A1TyArrow Ass1TypeExpr Ass1TypeExpr
   deriving stock (Eq, Show)
 
@@ -133,13 +139,13 @@ data Ass1PrimType
   deriving stock (Eq, Show)
 
 data Ass0Val
-  = A0ValLiteral AssLiteral
+  = A0ValLiteral (AssLiteral Ass0Val)
   | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr Env0
   | A0ValBracket Ass1Val
   deriving stock (Eq, Show)
 
 data Ass1Val
-  = A1ValLiteral AssLiteral
+  = A1ValLiteral (AssLiteral Ass1Val)
   | A1ValConst Ass1ValConst
   | A1ValVar Symbol
   | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) Ass1Val
@@ -157,6 +163,7 @@ data Ass1ValConst
 
 data Ass0TypeVal
   = A0TyValPrim Ass0PrimTypeVal
+  | A0TyValList Ass0TypeVal
   | A0TyValArrow (Maybe AssVar, Ass0TypeVal) StrictAss0TypeExpr
   | A0TyValCode Ass1TypeVal
   deriving stock (Eq, Show)
@@ -171,6 +178,7 @@ data Ass0PrimTypeVal
 
 data Ass1TypeVal
   = A1TyValPrim Ass1PrimTypeVal
+  | A1TyValList Ass1TypeVal
   | A1TyValArrow Ass1TypeVal Ass1TypeVal
   deriving stock (Eq, Show)
 
@@ -200,9 +208,26 @@ data EnvEntry
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
 
+mapAssLiteral :: (e1 -> e2) -> AssLiteral e1 -> AssLiteral e2
+mapAssLiteral f = \case
+  ALitInt n -> ALitInt n
+  ALitBool b -> ALitBool b
+  ALitList es -> ALitList (map f es)
+  ALitVec vec -> ALitVec vec
+  ALitMat mat -> ALitMat mat
+
+mapMAssLiteral :: (Monad m) => (e -> m v) -> AssLiteral e -> m (AssLiteral v)
+mapMAssLiteral eval = \case
+  ALitInt n -> pure $ ALitInt n
+  ALitBool b -> pure $ ALitBool b
+  ALitList a0es -> ALitList <$> mapM eval a0es
+  ALitVec vec -> pure $ ALitVec vec
+  ALitMat mat -> pure $ ALitMat mat
+
 strictify :: Ass0TypeExpr -> StrictAss0TypeExpr
 strictify = \case
   A0TyPrim a0tyPrim -> SA0TyPrim a0tyPrim
+  A0TyList a0tye -> SA0TyList (strictify a0tye)
   A0TyArrow (x1opt, a0tye1) a0tye2 -> SA0TyArrow (x1opt, strictify a0tye1) (strictify a0tye2)
   A0TyCode a1tye1 -> SA0TyCode a1tye1
   A0TyOptArrow (x1, a0tye1) a0tye2 -> SA0TyArrow (Just x1, strictify a0tye1) (strictify a0tye2)

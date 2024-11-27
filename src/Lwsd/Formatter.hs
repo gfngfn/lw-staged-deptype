@@ -161,6 +161,11 @@ dispEscape :: (Disp expr) => expr -> Doc Ann
 dispEscape e =
   stagingOperatorStyle "~" <> stage0Style (dispGen Atomic e)
 
+dispListType :: (Disp ty) => Associativity -> ty -> Doc Ann
+dispListType req tye =
+  deepenParenWhen (req <= Atomic) $
+    group ("List" <+> dispGen Atomic tye)
+
 dispArrowType :: (Disp var, Disp ty1, Disp ty2) => Associativity -> Maybe var -> ty1 -> ty2 -> Doc Ann
 dispArrowType req xOpt tye1 tye2 =
   deepenParenWhen (req <= FunDomain) $
@@ -181,6 +186,10 @@ dispOptArrowType req x tye1 tye2 =
     group (docDom <> " ->" <> line <> disp tye2)
   where
     docDom = "{" <> disp x <+> ":" <+> disp tye1 <> "}"
+
+dispListLiteral :: (Disp e) => [e] -> Doc Ann
+dispListLiteral es =
+  "[" <> disps es <> "]"
 
 dispVectorLiteral :: [Int] -> Doc Ann
 dispVectorLiteral ns =
@@ -215,9 +224,10 @@ instance Disp AssVar where
 instance Disp Symbol where
   dispGen _ symb = disp (symbolToVar symb)
 
-instance Disp Literal where
+instance (Disp e) => Disp (Literal e) where
   dispGen _ = \case
     LitInt n -> pretty n
+    LitList es -> dispListLiteral es
     LitVec ns -> dispVectorLiteral ns
     LitMat nss -> dispMatrixLiteral nss
 
@@ -252,8 +262,9 @@ instance Disp (TypeExprMainF ann) where
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
-    PersistentArg e -> dispPersistent e
-    NormalArg e -> dispGen req e
+    ExprArgPersistent e -> dispPersistent e
+    ExprArgNormal e -> dispGen req e
+    TypeArg tye -> dispGen req tye
 
 instance Disp BuiltIn where
   dispGen _ = \case
@@ -273,9 +284,10 @@ instance Disp BuiltIn where
     BIMmult k m n x1 x2 -> "MMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
     BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
 
-instance Disp Surface.Literal where
+instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
     Surface.LitInt n -> pretty n
+    Surface.LitList es -> dispListLiteral es
     Surface.LitVec ns -> dispVectorLiteral ns
     Surface.LitMat nss -> dispMatrixLiteral nss
 
@@ -305,11 +317,17 @@ instance Disp Surface.TypeExprMain where
     Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     Surface.TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
 
-instance Disp AssLiteral where
+instance Disp Surface.ArgForType where
+  dispGen req = \case
+    Surface.ExprArg e -> dispGen req e
+    Surface.TypeArg tye -> dispGen req tye
+
+instance (Disp e) => Disp (AssLiteral e) where
   dispGen _ = \case
     ALitInt n -> pretty n
     ALitBool True -> "true"
     ALitBool False -> "false"
+    ALitList es -> dispListLiteral es
     ALitVec v -> dispVectorLiteral (Vector.toList v)
     ALitMat m -> dispMatrixLiteral (Matrix.toRows m)
 
@@ -349,6 +367,7 @@ instance Disp Ass0PrimType where
 instance Disp Ass0TypeExpr where
   dispGen req = \case
     A0TyPrim a0tyPrim -> disp a0tyPrim
+    A0TyList a0tye -> dispListType req a0tye
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
@@ -356,6 +375,7 @@ instance Disp Ass0TypeExpr where
 instance Disp StrictAss0TypeExpr where
   dispGen req = \case
     SA0TyPrim a0tyPrim -> disp a0tyPrim
+    SA0TyList sa0tye -> dispListType req sa0tye
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
 
@@ -369,6 +389,7 @@ instance Disp Ass1PrimType where
 instance Disp Ass1TypeExpr where
   dispGen req = \case
     A1TyPrim a1tyPrim -> dispGen req a1tyPrim
+    A1TyList a1tye -> dispListType req a1tye
     A1TyArrow a1tye1 a1tye2 -> dispNondepArrowType req a1tye1 a1tye2
 
 instance Disp Matrix.ConstructionError where
@@ -562,6 +583,7 @@ instance Disp Ass1Val where
 instance Disp Ass0TypeVal where
   dispGen req = \case
     A0TyValPrim a0tyvPrim -> dispGen req a0tyvPrim
+    A0TyValList a0tyv1 -> dispListType req a0tyv1
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
 
@@ -576,6 +598,7 @@ instance Disp Ass0PrimTypeVal where
 instance Disp Ass1TypeVal where
   dispGen req = \case
     A1TyValPrim a1tyvPrim -> dispGen req a1tyvPrim
+    A1TyValList a1tyv -> dispListType req a1tyv
     A1TyValArrow a1tyv1 a1tyv2 -> dispNondepArrowType req a1tyv1 a1tyv2
 
 instance Disp Ass1PrimTypeVal where
@@ -662,6 +685,9 @@ instance Disp Bta.AnalysisError where
       "Binding-time contradiction" <+> disp spanInFile
     Bta.BITypeContradiction spanInFile bity1 bity2 ->
       "Basic type contradiction;" <+> disp (show bity1) <> "," <+> disp (show bity2) <+> disp spanInFile
+    Bta.UnknownTypeOrInvalidArgs spanInFile _tyName _args ->
+      -- TODO: detailed report
+      "Unknown type or invalid arguments" <+> disp spanInFile
 
 dispWithBindingTime :: (Disp exprMain) => Bta.BindingTimeConst -> exprMain -> Doc Ann
 dispWithBindingTime btc eMain =
@@ -699,3 +725,8 @@ instance Disp (Bta.BCTypeExprMainF ann) where
     Surface.TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
     Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     Surface.TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
+
+instance Disp (Bta.BCArgForTypeF ann) where
+  dispGen req = \case
+    Surface.ExprArg e -> dispGen req e
+    Surface.TypeArg tye -> dispGen req tye

@@ -111,7 +111,7 @@ findMat0 env x = do
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
-    pure $ A0ValLiteral lit
+    A0ValLiteral <$> mapMAssLiteral (evalExpr0 env) lit
   A0AppBuiltIn bi ->
     case bi of
       BIAdd x1 x2 -> do
@@ -240,7 +240,7 @@ evalExpr0 env = \case
 evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
   A1Literal lit ->
-    pure $ A1ValLiteral lit
+    A1ValLiteral <$> mapMAssLiteral (evalExpr1 env) lit
   A1Var x -> do
     symb <- findSymbol env x
     pure $ A1ValVar symb
@@ -281,9 +281,12 @@ evalTypeExpr0 env = \case
         A0TyBool -> A0TyValBool
         A0TyVec n -> A0TyValVec n
         A0TyMat m n -> A0TyValMat m n
-  SA0TyArrow (xOpt, a0tye1) a0tye2 -> do
-    a0tyv1 <- evalTypeExpr0 env a0tye1
-    pure $ A0TyValArrow (xOpt, a0tyv1) a0tye2
+  SA0TyList sa0tye1 -> do
+    a0tyv1 <- evalTypeExpr0 env sa0tye1
+    pure $ A0TyValList a0tyv1
+  SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> do
+    a0tyv1 <- evalTypeExpr0 env sa0tye1
+    pure $ A0TyValArrow (xOpt, a0tyv1) sa0tye2
   SA0TyCode a1tye1 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1
@@ -307,6 +310,9 @@ evalTypeExpr1 env = \case
           m <- validateIntLiteral =<< evalExpr0 env a0e1
           n <- validateIntLiteral =<< evalExpr0 env a0e2
           pure $ A1TyValMat m n
+  A1TyList a1tye -> do
+    a1tyv <- evalTypeExpr1 env a1tye
+    pure $ A1TyValList a1tyv
   A1TyArrow a1tye1 a1tye2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
@@ -315,7 +321,7 @@ evalTypeExpr1 env = \case
 unliftVal :: Ass1Val -> Ass0Expr
 unliftVal = \case
   A1ValLiteral lit ->
-    A0Literal lit
+    A0Literal (mapAssLiteral unliftVal lit)
   A1ValConst c ->
     case c of
       A1ValConstVadd n -> BuiltIn.ass0exprVadd n
@@ -343,5 +349,7 @@ unliftTypeVal = \case
         A1TyValBool -> A0TyBool
         A1TyValVec n -> A0TyVec n
         A1TyValMat m n -> A0TyMat m n
+  A1TyValList a1tyv ->
+    SA0TyList (unliftTypeVal a1tyv)
   A1TyValArrow a1tyv1 a1tyv2 ->
     SA0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
