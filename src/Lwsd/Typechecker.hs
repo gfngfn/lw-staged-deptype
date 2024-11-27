@@ -481,10 +481,10 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                       a0tyeFirst <- validateEmptyRetAppContext "stage-0, LitList, first" resultFirst
                       a0esTail <-
                         mapM
-                          ( \e -> do
+                          ( \e@(Expr locElem _) -> do
                               (result, a0e) <- typecheckExpr0 trav tyEnv [] e
                               a0tye <- validateEmptyRetAppContext "stage-0, LitList, tail" result
-                              (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye a0tyeFirst
+                              (cast, _solution) <- makeAssertiveCast trav locElem Set.empty a0tye a0tyeFirst
                               pure $ applyCast cast a0e
                           )
                           esTail

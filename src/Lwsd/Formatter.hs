@@ -164,7 +164,7 @@ dispEscape e =
 dispListType :: (Disp ty) => Associativity -> ty -> Doc Ann
 dispListType req tye =
   deepenParenWhen (req <= Atomic) $
-    group ("list" <+> dispGen Atomic tye)
+    group ("List" <+> dispGen Atomic tye)
 
 dispArrowType :: (Disp var, Disp ty1, Disp ty2) => Associativity -> Maybe var -> ty1 -> ty2 -> Doc Ann
 dispArrowType req xOpt tye1 tye2 =
