@@ -22,6 +22,8 @@ module Lwsd.Syntax
     Ass1PrimTypeVal (..),
     Env0,
     EnvEntry (..),
+    mapLiteral,
+    mapMLiteral,
     strictify,
     decomposeType1Equation,
     AppContext,
@@ -69,15 +71,16 @@ data BuiltIn
   | BIMconcatVert Int Int Int AssVar AssVar
   deriving stock (Eq, Show)
 
-data AssLiteral
+data AssLiteral e
   = ALitInt Int
   | ALitBool Bool
+  | ALitList [e]
   | ALitVec Vector
   | ALitMat Matrix
   deriving stock (Eq, Show)
 
 data Ass0Expr
-  = A0Literal AssLiteral
+  = A0Literal (AssLiteral Ass0Expr)
   | A0AppBuiltIn BuiltIn
   | A0Var AssVar
   | A0Lam (Maybe (AssVar, StrictAss0TypeExpr)) (AssVar, StrictAss0TypeExpr) Ass0Expr
@@ -89,7 +92,7 @@ data Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass1Expr
-  = A1Literal AssLiteral
+  = A1Literal (AssLiteral Ass1Expr)
   | A1Var AssVar
   | A1Lam (Maybe (AssVar, Ass1TypeExpr)) (AssVar, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
@@ -135,13 +138,13 @@ data Ass1PrimType
   deriving stock (Eq, Show)
 
 data Ass0Val
-  = A0ValLiteral AssLiteral
+  = A0ValLiteral (AssLiteral Ass0Val)
   | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr Env0
   | A0ValBracket Ass1Val
   deriving stock (Eq, Show)
 
 data Ass1Val
-  = A1ValLiteral AssLiteral
+  = A1ValLiteral (AssLiteral Ass1Val)
   | A1ValConst Ass1ValConst
   | A1ValVar Symbol
   | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) Ass1Val
@@ -202,6 +205,22 @@ data EnvEntry
   = Ass0ValEntry Ass0Val
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
+
+mapLiteral :: (e1 -> e2) -> AssLiteral e1 -> AssLiteral e2
+mapLiteral f = \case
+  ALitInt n -> ALitInt n
+  ALitBool b -> ALitBool b
+  ALitList es -> ALitList (map f es)
+  ALitVec vec -> ALitVec vec
+  ALitMat mat -> ALitMat mat
+
+mapMLiteral :: (Monad m) => (e -> m v) -> AssLiteral e -> m (AssLiteral v)
+mapMLiteral eval = \case
+  ALitInt n -> pure $ ALitInt n
+  ALitBool b -> pure $ ALitBool b
+  ALitList a0es -> ALitList <$> mapM eval a0es
+  ALitVec vec -> pure $ ALitVec vec
+  ALitMat mat -> pure $ ALitMat mat
 
 strictify :: Ass0TypeExpr -> StrictAss0TypeExpr
 strictify = \case

@@ -20,6 +20,8 @@ data Token
   | TokRightParen
   | TokLeftBrace
   | TokRightBrace
+  | TokLeftSquare
+  | TokRightSquare
   | TokArrow
   | TokEqual
   | TokColon
@@ -96,6 +98,8 @@ token =
       TokVecRight <$ Mp.chunk "|]",
       TokMatLeft <$ Mp.chunk "[#",
       TokMatRight <$ Mp.chunk "#]",
+      TokLeftSquare <$ Mp.single '[',
+      TokRightSquare <$ Mp.single ']',
       TokOpAdd <$ Mp.single '+',
       TokOpSub <$ Mp.single '-',
       TokOpMult <$ Mp.single '*',

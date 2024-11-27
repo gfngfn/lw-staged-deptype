@@ -111,7 +111,7 @@ stageTypeExpr1Main = \case
   TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
   TyOptArrow (x, tye1) tye2 -> Lwsd.TyOptArrow (x, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
 
-convertLiteral :: Literal -> Lwsd.Literal
+convertLiteral :: Literal -> Lwsd.Literal a
 convertLiteral = \case
   LitInt n -> Lwsd.LitInt n
   LitVec ns -> Lwsd.LitVec ns

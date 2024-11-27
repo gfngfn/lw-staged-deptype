@@ -187,6 +187,10 @@ dispOptArrowType req x tye1 tye2 =
   where
     docDom = "{" <> disp x <+> ":" <+> disp tye1 <> "}"
 
+dispListLiteral :: (Disp e) => [e] -> Doc Ann
+dispListLiteral es =
+  "[" <> disps es <> "]"
+
 dispVectorLiteral :: [Int] -> Doc Ann
 dispVectorLiteral ns =
   encloseSep ("[|" <> space) (space <> "|]") (";" <> softline) (disp <$> ns)
@@ -220,9 +224,10 @@ instance Disp AssVar where
 instance Disp Symbol where
   dispGen _ symb = disp (symbolToVar symb)
 
-instance Disp Literal where
+instance (Disp e) => Disp (Literal e) where
   dispGen _ = \case
     LitInt n -> pretty n
+    LitList es -> dispListLiteral es
     LitVec ns -> dispVectorLiteral ns
     LitMat nss -> dispMatrixLiteral nss
 
@@ -311,11 +316,12 @@ instance Disp Surface.TypeExprMain where
     Surface.TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     Surface.TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
 
-instance Disp AssLiteral where
+instance (Disp e) => Disp (AssLiteral e) where
   dispGen _ = \case
     ALitInt n -> pretty n
     ALitBool True -> "true"
     ALitBool False -> "false"
+    ALitList es -> dispListLiteral es
     ALitVec v -> dispVectorLiteral (Vector.toList v)
     ALitMat m -> dispMatrixLiteral (Matrix.toRows m)
 

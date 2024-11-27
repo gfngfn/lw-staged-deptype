@@ -24,18 +24,20 @@ import Prelude
 
 type Var = Text
 
-data Literal
+data Literal e
   = LitInt Int
+  | LitList [e]
   | LitVec [Int]
   | LitMat [[Int]]
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 Literal)
 
 data ExprF ann = Expr ann (ExprMainF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ExprF)
 
 data ExprMainF ann
-  = Literal Literal
+  = Literal (Literal (ExprF ann))
   | Var Var
   | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)

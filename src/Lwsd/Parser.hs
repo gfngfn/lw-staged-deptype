@@ -43,6 +43,9 @@ int = expectToken (^? #_TokInt)
 vec :: P (Located [Int])
 vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 
+list :: P a -> P (Located [a])
+list = genVec TokLeftSquare TokRightSquare TokComma
+
 mat :: P (Located [[Int]])
 mat = genMat TokMatLeft TokMatRight TokSemicolon TokComma (noLoc int)
 
@@ -65,6 +68,7 @@ exprAtom, expr :: P Expr
     atom =
       tries
         [ located (Literal . LitInt) <$> int,
+          located (Literal . LitList) <$> list letin,
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
           located Var <$> lower
