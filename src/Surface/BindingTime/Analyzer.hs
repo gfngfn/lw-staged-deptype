@@ -4,6 +4,7 @@ module Surface.BindingTime.Analyzer
   )
 where
 
+import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
@@ -124,12 +125,41 @@ enhanceBIType enhBt enh (BIType bt bityMain) =
   where
     fBIType = enhanceBIType enhBt enh
 
+extractConstraintsFromLiteral :: BindingTimeEnv -> (BindingTime, Span) -> Literal BExpr -> M (Literal BExpr, [Constraint Span])
+extractConstraintsFromLiteral btenv (btLit, annLit) = \case
+  LitInt n ->
+    pure (LitInt n, [])
+  LitList es ->
+    case es of
+      [] ->
+        pure (LitList [], [])
+      eFirst : esTail -> do
+        (eFirst', bityFirst@(BIType btElem _), constraintsFirst) <- extractConstraintsFromExpr btenv eFirst
+        let constraintsLit = [CLeq annLit btLit btElem]
+        (eAcc', constraintsAcc) <-
+          foldM
+            ( \(eAcc', constraintsAcc) e@(Expr (_, ann) _) -> do
+                (e', bity, constraints) <- extractConstraintsFromExpr btenv e
+                constraintsEq <- makeConstraintsFromBITypeEquation ann bityFirst bity
+                pure (e' : eAcc', constraintsEq : constraints : constraintsAcc)
+            )
+            ([], [])
+            esTail
+        let es' = eFirst' : reverse eAcc'
+        let constraints = constraintsLit ++ constraintsFirst ++ concat (reverse constraintsAcc)
+        pure (LitList es', constraints)
+  LitVec ns ->
+    pure (LitVec ns, [])
+  LitMat nss ->
+    pure (LitMat nss, [])
+
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BExpr, BIType, [Constraint Span])
 extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
   spanInFile <- askSpanInFile ann
   case exprMain of
     Literal lit -> do
-      pure (Expr (bt, ann) (Literal lit), BIType bt BITyBase, [])
+      (lit', constraints) <- extractConstraintsFromLiteral btenv (bt, ann) lit
+      pure (Expr (bt, ann) (Literal lit'), BIType bt BITyBase, constraints)
     Var x -> do
       (x', bity, constraints) <-
         case Map.lookup x btenv of
