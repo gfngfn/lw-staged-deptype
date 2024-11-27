@@ -9,6 +9,7 @@ module Lwsd.Evaluator
   )
 where
 
+import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
@@ -279,8 +280,7 @@ evalTypeExpr0 env = \case
         A0TyInt -> A0TyValInt
         A0TyNat -> A0TyValNat
         A0TyBool -> A0TyValBool
-        A0TyVec n -> A0TyValVec n
-        A0TyMat m n -> A0TyValMat m n
+        A0TyTensor n -> A0TyValTensor n
   SA0TyList sa0tye1 -> do
     a0tyv1 <- evalTypeExpr0 env sa0tye1
     pure $ A0TyValList a0tyv1
@@ -303,13 +303,9 @@ evalTypeExpr1 env = \case
       <$> case a1tyPrim of
         A1TyInt -> pure A1TyValInt
         A1TyBool -> pure A1TyValBool
-        A1TyVec a0e1 -> do
-          n <- validateIntLiteral =<< evalExpr0 env a0e1
-          pure $ A1TyValVec n
-        A1TyMat a0e1 a0e2 -> do
-          m <- validateIntLiteral =<< evalExpr0 env a0e1
-          n <- validateIntLiteral =<< evalExpr0 env a0e2
-          pure $ A1TyValMat m n
+        A1TyTensor a0es -> do
+          ns <- mapM (validateIntLiteral <=< evalExpr0 env) a0es
+          pure $ A1TyValTensor ns
   A1TyList a1tye -> do
     a1tyv <- evalTypeExpr1 env a1tye
     pure $ A1TyValList a1tyv
@@ -347,8 +343,7 @@ unliftTypeVal = \case
       case a1tyvPrim of
         A1TyValInt -> A0TyInt
         A1TyValBool -> A0TyBool
-        A1TyValVec n -> A0TyVec n
-        A1TyValMat m n -> A0TyMat m n
+        A1TyValTensor ns -> A0TyTensor ns
   A1TyValList a1tyv ->
     SA0TyList (unliftTypeVal a1tyv)
   A1TyValArrow a1tyv1 a1tyv2 ->

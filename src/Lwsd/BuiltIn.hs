@@ -28,10 +28,10 @@ tyBool :: Ass0TypeExpr
 tyBool = A0TyPrim A0TyBool
 
 ty1Vec :: Ass0Expr -> Ass1TypeExpr
-ty1Vec = A1TyPrim . A1TyVec
+ty1Vec = A1TyPrim . a1TyVec
 
 ty1Mat :: Ass0Expr -> Ass0Expr -> Ass1TypeExpr
-ty1Mat a0e1 a0e2 = A1TyPrim (A1TyMat a0e1 a0e2)
+ty1Mat a0e1 a0e2 = A1TyPrim (a1TyMat a0e1 a0e2)
 
 (-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
 (-->) a0tye1 = A0TyArrow (Nothing, a0tye1)
@@ -143,10 +143,10 @@ styNat :: StrictAss0TypeExpr
 styNat = SA0TyPrim A0TyNat
 
 sty0Vec :: Int -> StrictAss0TypeExpr
-sty0Vec = SA0TyPrim . A0TyVec
+sty0Vec = SA0TyPrim . a0TyVec
 
 sty0Mat :: Int -> Int -> StrictAss0TypeExpr
-sty0Mat m n = SA0TyPrim (A0TyMat m n)
+sty0Mat m n = SA0TyPrim (a0TyMat m n)
 
 -- Makes a closure equipped with `initialEnv`.
 clo :: AssVar -> Ass0TypeVal -> Ass0Expr -> Ass0Val

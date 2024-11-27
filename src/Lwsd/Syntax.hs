@@ -22,6 +22,10 @@ module Lwsd.Syntax
     Ass1PrimTypeVal (..),
     Env0,
     EnvEntry (..),
+    a0TyVec,
+    a0TyMat,
+    a1TyVec,
+    a1TyMat,
     mapAssLiteral,
     mapMAssLiteral,
     strictify,
@@ -121,8 +125,7 @@ data Ass0PrimType
   = A0TyInt
   | A0TyNat
   | A0TyBool
-  | A0TyVec Int
-  | A0TyMat Int Int
+  | A0TyTensor [Int]
   deriving stock (Eq, Show)
 
 data Ass1TypeExpr
@@ -134,8 +137,7 @@ data Ass1TypeExpr
 data Ass1PrimType
   = A1TyInt
   | A1TyBool
-  | A1TyVec Ass0Expr
-  | A1TyMat Ass0Expr Ass0Expr
+  | A1TyTensor [Ass0Expr]
   deriving stock (Eq, Show)
 
 data Ass0Val
@@ -172,8 +174,7 @@ data Ass0PrimTypeVal
   = A0TyValInt
   | A0TyValNat
   | A0TyValBool
-  | A0TyValVec Int
-  | A0TyValMat Int Int
+  | A0TyValTensor [Int]
   deriving stock (Eq, Show)
 
 data Ass1TypeVal
@@ -185,8 +186,7 @@ data Ass1TypeVal
 data Ass1PrimTypeVal
   = A1TyValInt
   | A1TyValBool
-  | A1TyValVec Int
-  | A1TyValMat Int Int
+  | A1TyValTensor [Int]
   deriving stock (Eq, Show)
 
 data Type1Equation
@@ -197,8 +197,7 @@ data Type1Equation
 data Type1PrimEquation
   = TyEq1Int
   | TyEq1Bool
-  | TyEq1Vec Ass0Expr Ass0Expr
-  | TyEq1Mat Ass0Expr Ass0Expr Ass0Expr Ass0Expr
+  | TyEq1Tensor [(Ass0Expr, Ass0Expr)]
   deriving stock (Eq, Show)
 
 type Env0 = Map AssVar EnvEntry
@@ -232,14 +231,25 @@ strictify = \case
   A0TyCode a1tye1 -> SA0TyCode a1tye1
   A0TyOptArrow (x1, a0tye1) a0tye2 -> SA0TyArrow (Just x1, strictify a0tye1) (strictify a0tye2)
 
+a0TyVec :: Int -> Ass0PrimType
+a0TyVec n = A0TyTensor [n]
+
+a0TyMat :: Int -> Int -> Ass0PrimType
+a0TyMat m n = A0TyTensor [m, n]
+
+a1TyVec :: Ass0Expr -> Ass1PrimType
+a1TyVec a0e = A1TyTensor [a0e]
+
+a1TyMat :: Ass0Expr -> Ass0Expr -> Ass1PrimType
+a1TyMat a0e1 a0e2 = A1TyTensor [a0e1, a0e2]
+
 decomposeType1Equation :: Type1Equation -> (Ass1TypeExpr, Ass1TypeExpr)
 decomposeType1Equation = \case
   TyEq1Prim ty1eqPrim ->
     case ty1eqPrim of
       TyEq1Int -> prims A1TyInt
       TyEq1Bool -> prims A1TyBool
-      TyEq1Vec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
-      TyEq1Mat a0e11 a0e12 a0e21 a0e22 -> (A1TyPrim (A1TyMat a0e11 a0e12), A1TyPrim (A1TyMat a0e21 a0e22))
+      TyEq1Tensor zipped -> (A1TyPrim (A1TyTensor (map fst zipped)), A1TyPrim (A1TyTensor (map snd zipped)))
   TyEq1Arrow ty1eqDom ty1eqCod ->
     let (a1tye11, a1tye21) = decomposeType1Equation ty1eqDom
         (a1tye12, a1tye22) = decomposeType1Equation ty1eqCod
