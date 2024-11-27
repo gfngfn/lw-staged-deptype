@@ -472,8 +472,23 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               case lit of
                 LitInt n ->
                   pure (A0TyPrim (if n >= 0 then A0TyNat else A0TyInt), ALitInt n)
-                LitList _es ->
-                  error "TODO: typecheckExpr0, LitList"
+                LitList es ->
+                  case es of
+                    [] ->
+                      error "TODO: typecheckExpr0, empty list literals"
+                    eFirst : esTail -> do
+                      (resultFirst, a0eFirst) <- typecheckExpr0 trav tyEnv [] eFirst
+                      a0tyeFirst <- validateEmptyRetAppContext "stage-0, LitList, first" resultFirst
+                      a0esTail <-
+                        mapM
+                          ( \e -> do
+                              (result, a0e) <- typecheckExpr0 trav tyEnv [] e
+                              a0tye <- validateEmptyRetAppContext "stage-0, LitList, tail" result
+                              (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye a0tyeFirst
+                              pure $ applyCast cast a0e
+                          )
+                          esTail
+                      pure (A0TyList a0tyeFirst, ALitList (a0eFirst : a0esTail))
                 LitVec ns -> do
                   let vec = Vector.fromList ns
                   pure (A0TyPrim (A0TyVec (Vector.length vec)), ALitVec vec)
