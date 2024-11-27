@@ -75,8 +75,9 @@ type TypeExpr = TypeExprF Span
 type TypeExprMain = TypeExprMainF Span
 
 data ArgForTypeF ann
-  = PersistentArg (ExprF ann)
-  | NormalArg (ExprF ann)
+  = ExprArgPersistent (ExprF ann)
+  | ExprArgNormal (ExprF ann)
+  | TypeArg (TypeExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ArgForTypeF)
 

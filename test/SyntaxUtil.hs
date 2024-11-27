@@ -18,10 +18,10 @@ tyBool :: TypeExprVoid
 tyBool = typ (TyName "Bool" [])
 
 tyNormalVec :: ExprVoid -> TypeExprVoid
-tyNormalVec e = typ (TyName "Vec" [NormalArg e])
+tyNormalVec e = typ (TyName "Vec" [ExprArgNormal e])
 
 tyPersVec :: ExprVoid -> TypeExprVoid
-tyPersVec e = typ (TyName "Vec" [PersistentArg e])
+tyPersVec e = typ (TyName "Vec" [ExprArgPersistent e])
 
 tyCode :: TypeExprVoid -> TypeExprVoid
 tyCode = typ . TyCode

@@ -217,14 +217,18 @@ typeExpr = fun
       where
         arg :: P ArgForType
         arg =
-          (PersistentArg <$> (token TokPersistent *> exprAtom))
-            `or` (NormalArg <$> exprAtom)
+          tries
+            [ ExprArgPersistent <$> (token TokPersistent *> exprAtom),
+              ExprArgNormal <$> exprAtom
+            ]
+            (TypeArg <$> atom)
 
         makeTyName (Located locFirst t) tyeArgs =
           let loc =
                 case NonEmpty.last tyeArgs of
-                  PersistentArg (Expr locLast _) -> mergeSpan locFirst locLast
-                  NormalArg (Expr locLast _) -> mergeSpan locFirst locLast
+                  ExprArgPersistent (Expr locLast _) -> mergeSpan locFirst locLast
+                  ExprArgNormal (Expr locLast _) -> mergeSpan locFirst locLast
+                  TypeArg (TypeExpr locLast _) -> mergeSpan locFirst locLast
            in TypeExpr loc (TyName t (NonEmpty.toList tyeArgs))
 
     fun :: P TypeExpr

@@ -161,6 +161,11 @@ dispEscape :: (Disp expr) => expr -> Doc Ann
 dispEscape e =
   stagingOperatorStyle "~" <> stage0Style (dispGen Atomic e)
 
+dispListType :: (Disp ty) => Associativity -> ty -> Doc Ann
+dispListType req tye =
+  deepenParenWhen (req <= Atomic) $
+    group ("list" <+> dispGen Atomic tye)
+
 dispArrowType :: (Disp var, Disp ty1, Disp ty2) => Associativity -> Maybe var -> ty1 -> ty2 -> Doc Ann
 dispArrowType req xOpt tye1 tye2 =
   deepenParenWhen (req <= FunDomain) $
@@ -252,8 +257,9 @@ instance Disp (TypeExprMainF ann) where
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
-    PersistentArg e -> dispPersistent e
-    NormalArg e -> dispGen req e
+    ExprArgPersistent e -> dispPersistent e
+    ExprArgNormal e -> dispGen req e
+    TypeArg tye -> dispGen req tye
 
 instance Disp BuiltIn where
   dispGen _ = \case
@@ -349,6 +355,7 @@ instance Disp Ass0PrimType where
 instance Disp Ass0TypeExpr where
   dispGen req = \case
     A0TyPrim a0tyPrim -> disp a0tyPrim
+    A0TyList a0tye -> dispListType req a0tye
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
@@ -356,6 +363,7 @@ instance Disp Ass0TypeExpr where
 instance Disp StrictAss0TypeExpr where
   dispGen req = \case
     SA0TyPrim a0tyPrim -> disp a0tyPrim
+    SA0TyList sa0tye -> dispListType req sa0tye
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
 

@@ -100,6 +100,7 @@ data Ass1Expr
 -- For type-checking.
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType
+  | A0TyList Ass0TypeExpr
   | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyOptArrow (AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyCode Ass1TypeExpr
@@ -108,6 +109,7 @@ data Ass0TypeExpr
 -- For type annotations in target terms.
 data StrictAss0TypeExpr
   = SA0TyPrim Ass0PrimType
+  | SA0TyList StrictAss0TypeExpr
   | SA0TyArrow (Maybe AssVar, StrictAss0TypeExpr) StrictAss0TypeExpr
   | SA0TyCode Ass1TypeExpr
   deriving stock (Eq, Show)

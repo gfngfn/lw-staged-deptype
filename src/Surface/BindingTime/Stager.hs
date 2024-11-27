@@ -107,7 +107,7 @@ stageTypeExpr1 (TypeExpr (btc, ann) typeExprMain) =
 
 stageTypeExpr1Main :: BCTypeExprMainF ann -> Lwsd.TypeExprMainF ann
 stageTypeExpr1Main = \case
-  TyName tyName args -> Lwsd.TyName tyName (map (Lwsd.PersistentArg . stageExpr0) args)
+  TyName tyName args -> Lwsd.TyName tyName (map (Lwsd.ExprArgPersistent . stageExpr0) args)
   TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
   TyOptArrow (x, tye1) tye2 -> Lwsd.TyOptArrow (x, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
 
