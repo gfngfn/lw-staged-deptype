@@ -10,6 +10,7 @@ module Surface.Syntax
     TypeExprMainF (..),
     TypeExpr,
     TypeExprMain,
+    mapMLiteral,
   )
 where
 
@@ -19,17 +20,18 @@ import Prelude
 
 type Var = Text
 
-data Literal
+data Literal e
   = LitInt Int
+  | LitList [e]
   | LitVec [Int]
   | LitMat [[Int]]
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
 data ExprF ann = Expr ann (ExprMainF ann)
   deriving stock (Show, Functor)
 
 data ExprMainF ann
-  = Literal Literal
+  = Literal (Literal (ExprF ann))
   | Var Var
   | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)
@@ -59,3 +61,10 @@ data TypeExprMainF ann
 type TypeExpr = TypeExprF Span
 
 type TypeExprMain = TypeExprMainF Span
+
+mapMLiteral :: (Monad m) => (a -> m b) -> Literal a -> m (Literal b)
+mapMLiteral f = \case
+  LitInt n -> pure $ LitInt n
+  LitList es -> LitList <$> mapM f es
+  LitVec ns -> pure $ LitVec ns
+  LitMat nss -> pure $ LitMat nss

@@ -472,6 +472,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               case lit of
                 LitInt n ->
                   pure (A0TyPrim (if n >= 0 then A0TyNat else A0TyInt), ALitInt n)
+                LitList _es ->
+                  error "TODO: typecheckExpr0, LitList"
                 LitVec ns -> do
                   let vec = Vector.fromList ns
                   pure (A0TyPrim (A0TyVec (Vector.length vec)), ALitVec vec)
@@ -617,6 +619,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
             case lit of
               LitInt n ->
                 pure (A1TyPrim A1TyInt, ALitInt n)
+              LitList _es ->
+                error "TODO: typecheckExpr1, LitList"
               LitVec ns -> do
                 let vec = Vector.fromList ns
                 pure (A1TyPrim (A1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)

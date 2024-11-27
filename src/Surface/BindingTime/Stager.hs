@@ -29,7 +29,7 @@ stageExpr0 (Expr (btc, ann) exprMain) =
 stageExpr0Main :: BCExprMainF ann -> Lwsd.ExprMainF ann
 stageExpr0Main = \case
   Literal lit ->
-    Lwsd.Literal (convertLiteral lit)
+    Lwsd.Literal (convertLiteral stageExpr0 lit)
   Var x ->
     Lwsd.Var x
   Lam Nothing (x, tye1) e2 ->
@@ -60,7 +60,7 @@ stageExpr1 (Expr (btc, ann) exprMain) =
 stageExpr1Main :: BCExprMainF ann -> Lwsd.ExprMainF ann
 stageExpr1Main = \case
   Literal lit ->
-    Lwsd.Literal (convertLiteral lit)
+    Lwsd.Literal (convertLiteral stageExpr1 lit)
   Var x ->
     Lwsd.Var x
   Lam Nothing (x, tye1) e2 ->
@@ -111,8 +111,9 @@ stageTypeExpr1Main = \case
   TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
   TyOptArrow (x, tye1) tye2 -> Lwsd.TyOptArrow (x, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
 
-convertLiteral :: Literal -> Lwsd.Literal a
-convertLiteral = \case
+convertLiteral :: (se -> le) -> Literal se -> Lwsd.Literal le
+convertLiteral conv = \case
   LitInt n -> Lwsd.LitInt n
+  LitList es -> Lwsd.LitList (map conv es)
   LitVec ns -> Lwsd.LitVec ns
   LitMat nss -> Lwsd.LitMat nss

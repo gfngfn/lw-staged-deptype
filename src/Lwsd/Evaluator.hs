@@ -111,7 +111,7 @@ findMat0 env x = do
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
-    A0ValLiteral <$> mapMLiteral (evalExpr0 env) lit
+    A0ValLiteral <$> mapMAssLiteral (evalExpr0 env) lit
   A0AppBuiltIn bi ->
     case bi of
       BIAdd x1 x2 -> do
@@ -240,7 +240,7 @@ evalExpr0 env = \case
 evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
   A1Literal lit ->
-    A1ValLiteral <$> mapMLiteral (evalExpr1 env) lit
+    A1ValLiteral <$> mapMAssLiteral (evalExpr1 env) lit
   A1Var x -> do
     symb <- findSymbol env x
     pure $ A1ValVar symb
@@ -318,7 +318,7 @@ evalTypeExpr1 env = \case
 unliftVal :: Ass1Val -> Ass0Expr
 unliftVal = \case
   A1ValLiteral lit ->
-    A0Literal (mapLiteral unliftVal lit)
+    A0Literal (mapAssLiteral unliftVal lit)
   A1ValConst c ->
     case c of
       A1ValConstVadd n -> BuiltIn.ass0exprVadd n

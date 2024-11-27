@@ -284,9 +284,10 @@ instance Disp BuiltIn where
     BIMmult k m n x1 x2 -> "MMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
     BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
 
-instance Disp Surface.Literal where
+instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
     Surface.LitInt n -> pretty n
+    Surface.LitList es -> dispListLiteral es
     Surface.LitVec ns -> dispVectorLiteral ns
     Surface.LitMat nss -> dispMatrixLiteral nss
 

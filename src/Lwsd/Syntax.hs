@@ -22,8 +22,8 @@ module Lwsd.Syntax
     Ass1PrimTypeVal (..),
     Env0,
     EnvEntry (..),
-    mapLiteral,
-    mapMLiteral,
+    mapAssLiteral,
+    mapMAssLiteral,
     strictify,
     decomposeType1Equation,
     AppContext,
@@ -206,16 +206,16 @@ data EnvEntry
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
 
-mapLiteral :: (e1 -> e2) -> AssLiteral e1 -> AssLiteral e2
-mapLiteral f = \case
+mapAssLiteral :: (e1 -> e2) -> AssLiteral e1 -> AssLiteral e2
+mapAssLiteral f = \case
   ALitInt n -> ALitInt n
   ALitBool b -> ALitBool b
   ALitList es -> ALitList (map f es)
   ALitVec vec -> ALitVec vec
   ALitMat mat -> ALitMat mat
 
-mapMLiteral :: (Monad m) => (e -> m v) -> AssLiteral e -> m (AssLiteral v)
-mapMLiteral eval = \case
+mapMAssLiteral :: (Monad m) => (e -> m v) -> AssLiteral e -> m (AssLiteral v)
+mapMAssLiteral eval = \case
   ALitInt n -> pure $ ALitInt n
   ALitBool b -> pure $ ALitBool b
   ALitList a0es -> ALitList <$> mapM eval a0es

@@ -37,7 +37,7 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
   Expr (BTVar btv, ann)
     <$> case exprMain of
       Literal lit ->
-        pure $ Literal lit
+        Literal <$> mapMLiteral assignBindingTimeVarToExpr lit
       Var x ->
         pure $ Var x
       Lam Nothing (x, ty) e -> do
