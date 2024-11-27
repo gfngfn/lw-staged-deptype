@@ -10,6 +10,7 @@ where
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Lwsd.Syntax
+import Safe.Exact
 import Prelude
 
 -- TODO (refactor): use `Traversal` to implement `occurs0` and `subst0`
@@ -39,10 +40,37 @@ unionPairs :: [(Set AssVar, Set AssVar)] -> (Set AssVar, Set AssVar)
 unionPairs pairs =
   (Set.unions (map fst pairs), Set.unions (map snd pairs))
 
+instance (HasVar e) => HasVar (AssLiteral e) where
+  frees = \case
+    ALitInt _ -> (Set.empty, Set.empty)
+    ALitBool _ -> (Set.empty, Set.empty)
+    ALitList es -> unionPairs (map frees es)
+    ALitVec _ -> (Set.empty, Set.empty)
+    ALitMat _ -> (Set.empty, Set.empty)
+
+  subst s = \case
+    ALitInt n -> ALitInt n
+    ALitBool b -> ALitBool b
+    ALitList es -> ALitList (map (subst s) es)
+    ALitVec vec -> ALitVec vec
+    ALitMat mat -> ALitMat mat
+
+  alphaEquivalent alit1 alit2 =
+    case (alit1, alit2) of
+      (ALitInt n1, ALitInt n2) -> n1 == n2
+      (ALitBool b1, ALitBool b2) -> b1 == b2
+      (ALitList es1, ALitList es2) ->
+        case zipExactMay es1 es2 of
+          Nothing -> False
+          Just zipped -> all (uncurry alphaEquivalent) zipped
+      (ALitVec vec1, ALitVec vec2) -> vec1 == vec2
+      (ALitMat mat1, ALitMat mat2) -> mat1 == mat2
+      (_, _) -> False
+
 instance HasVar Ass0Expr where
   frees = \case
-    A0Literal _ ->
-      (Set.empty, Set.empty)
+    A0Literal alit ->
+      frees alit
     A0AppBuiltIn _ ->
       (Set.empty, Set.empty) -- We do not see variables for built-in functions
     A0Var y ->
@@ -107,8 +135,8 @@ instance HasVar Ass0Expr where
 
   alphaEquivalent a0e1 a0e2 =
     case (a0e1, a0e2) of
-      (A0Literal lit1, A0Literal lit2) ->
-        lit1 == lit2
+      (A0Literal alit1, A0Literal alit2) ->
+        alphaEquivalent alit1 alit2
       (A0AppBuiltIn builtIn1, A0AppBuiltIn builtIn2) ->
         case (builtIn1, builtIn2) of
           (BIAssertNat _loc1 x1, BIAssertNat _loc2 x2) -> x1 == x2 -- Ignores the difference of `Span`
@@ -138,8 +166,8 @@ instance HasVar Ass0Expr where
 
 instance HasVar Ass1Expr where
   frees = \case
-    A1Literal _ ->
-      (Set.empty, Set.empty)
+    A1Literal alit ->
+      frees alit
     A1Var y ->
       (Set.empty, Set.singleton y)
     A1Lam Nothing (y, a1tye1) a1e2 ->
@@ -190,7 +218,7 @@ instance HasVar Ass1Expr where
   alphaEquivalent a1e1 a1e2 =
     case (a1e1, a1e2) of
       (A1Literal lit1, A1Literal lit2) ->
-        lit1 == lit2 -- TODO: fix this
+        alphaEquivalent lit1 lit2
       (A1Var x1, A1Var x2) ->
         x1 == x2
       (A1Lam Nothing (x1, a1tye11) a1e12, A1Lam Nothing (x2, a1tye21) a1e22) ->
