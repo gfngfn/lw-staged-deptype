@@ -127,6 +127,7 @@ data Ass0PrimType
 
 data Ass1TypeExpr
   = A1TyPrim Ass1PrimType
+  | A1TyList Ass1TypeExpr
   | A1TyArrow Ass1TypeExpr Ass1TypeExpr
   deriving stock (Eq, Show)
 
@@ -177,6 +178,7 @@ data Ass0PrimTypeVal
 
 data Ass1TypeVal
   = A1TyValPrim Ass1PrimTypeVal
+  | A1TyValList Ass1TypeVal
   | A1TyValArrow Ass1TypeVal Ass1TypeVal
   deriving stock (Eq, Show)
 

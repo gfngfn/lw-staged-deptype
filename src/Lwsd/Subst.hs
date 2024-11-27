@@ -190,7 +190,7 @@ instance HasVar Ass1Expr where
   alphaEquivalent a1e1 a1e2 =
     case (a1e1, a1e2) of
       (A1Literal lit1, A1Literal lit2) ->
-        lit1 == lit2
+        lit1 == lit2 -- TODO: fix this
       (A1Var x1, A1Var x2) ->
         x1 == x2
       (A1Lam Nothing (x1, a1tye11) a1e12, A1Lam Nothing (x2, a1tye21) a1e22) ->
@@ -262,6 +262,8 @@ instance HasVar Ass0TypeExpr where
     case (a0tye1, a0tye2) of
       (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) ->
         a0tyPrim1 == a0tyPrim2 -- Exact match
+      (A0TyList a0tye1', A0TyList a0tye2') ->
+        alphaEquivalent a0tye1' a0tye2'
       (A0TyArrow (y1opt, a0tye11) a0tye12, A0TyArrow (y2opt, a0tye21) a0tye22) ->
         (alphaEquivalent a0tye11 a0tye21 &&) $
           case (y1opt, y2opt) of
@@ -288,6 +290,8 @@ instance HasVar Ass1TypeExpr where
         A1TyBool -> (Set.empty, Set.empty)
         A1TyVec a0e1 -> frees a0e1
         A1TyMat a0e1 a0e2 -> unionPairs [frees a0e1, frees a0e2]
+    A1TyList a1tye1 ->
+      frees a1tye1
     A1TyArrow a1tye1 a1tye2 ->
       unionPairs [frees a1tye1, frees a1tye2]
 
@@ -298,6 +302,8 @@ instance HasVar Ass1TypeExpr where
         A1TyBool -> A1TyBool
         A1TyVec a0e1 -> A1TyVec (go a0e1)
         A1TyMat a0e1 a0e2 -> A1TyMat (go a0e1) (go a0e2)
+    A1TyList a1tye1 ->
+      A1TyList (go a1tye1)
     A1TyArrow a1tye1 a1tye2 ->
       A1TyArrow (go a1tye1) (go a1tye2)
     where
@@ -318,6 +324,8 @@ instance HasVar Ass1TypeExpr where
             alphaEquivalent a0e11 a0e21 && alphaEquivalent a0e12 a0e22
           (_, _) ->
             False
+      (A1TyList a1tye1', A1TyList a1tye2') ->
+        alphaEquivalent a1tye1' a1tye2'
       (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
         alphaEquivalent a1tye11 a1tye21 && alphaEquivalent a1tye12 a1tye22
       (_, _) ->

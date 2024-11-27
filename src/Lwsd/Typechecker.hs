@@ -837,6 +837,10 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       let ax = AssVar x
       pure $ A0TyOptArrow (ax, a0tye1) a0tye2
 
+data IntermediateArgForAss1Type
+  = IA1ExprArg Ass0Expr Ass0TypeExpr
+  | IA1TypeArg Ass1TypeExpr
+
 typecheckTypeExpr1 :: trav -> TypeEnv -> TypeExpr -> M trav Ass1TypeExpr
 typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
   spanInFile <- askSpanInFile loc
@@ -845,32 +849,31 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       results <-
         mapM
           ( \case
-              ExprArgPersistent e -> do
-                let Expr loc' _ = e
+              ExprArgPersistent e@(Expr loc' _) -> do
                 (result, a0e) <- typecheckExpr0 trav tyEnv [] e
                 a0tye <- validateEmptyRetAppContext "PersistentArg" result
-                pure (a0tye, a0e, loc')
-              ExprArgNormal e -> do
-                let Expr loc' _ = e
+                pure (IA1ExprArg a0e a0tye, loc')
+              ExprArgNormal (Expr loc' _) -> do
                 spanInFile' <- askSpanInFile loc'
                 typeError trav $ CannotUseNormalArgAtStage1 spanInFile'
-              TypeArg _tye -> do
-                error "TODO: typecheckTypeExpr1, TyName, TypeArg"
+              TypeArg tye@(TypeExpr loc' _) -> do
+                a1tye <- typecheckTypeExpr1 trav tyEnv tye
+                pure (IA1TypeArg a1tye, loc')
           )
           args
-      a1tyPrim <-
-        case (tyName, results) of
-          ("Int", []) -> pure A1TyInt
-          ("Bool", []) -> pure A1TyBool
-          ("Vec", [arg]) -> do
-            a0e <- insertCastForNatArg trav arg
-            pure $ A1TyVec a0e
-          ("Mat", [arg1, arg2]) -> do
-            a0e1 <- insertCastForNatArg trav arg1
-            a0e2 <- insertCastForNatArg trav arg2
-            pure $ A1TyMat a0e1 a0e2
-          _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
-      pure $ A1TyPrim a1tyPrim
+      case (tyName, results) of
+        ("Int", []) -> pure $ A1TyPrim A1TyInt
+        ("Bool", []) -> pure $ A1TyPrim A1TyBool
+        ("List", [(IA1TypeArg a1tye, _)]) -> do
+          pure $ A1TyList a1tye
+        ("Vec", [(IA1ExprArg a0e' a0tye, loc')]) -> do
+          a0e <- insertCastForNatArg trav (a0tye, a0e', loc')
+          pure $ A1TyPrim (A1TyVec a0e)
+        ("Mat", [(IA1ExprArg a0e1' a0tye1, loc1), (IA1ExprArg a0e2' a0tye2, loc2)]) -> do
+          a0e1 <- insertCastForNatArg trav (a0tye1, a0e1', loc1)
+          a0e2 <- insertCastForNatArg trav (a0tye2, a0e2', loc2)
+          pure $ A1TyPrim (A1TyMat a0e1 a0e2)
+        _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       () <-

@@ -389,6 +389,7 @@ instance Disp Ass1PrimType where
 instance Disp Ass1TypeExpr where
   dispGen req = \case
     A1TyPrim a1tyPrim -> dispGen req a1tyPrim
+    A1TyList a1tye -> dispListType req a1tye
     A1TyArrow a1tye1 a1tye2 -> dispNondepArrowType req a1tye1 a1tye2
 
 instance Disp Matrix.ConstructionError where
@@ -597,6 +598,7 @@ instance Disp Ass0PrimTypeVal where
 instance Disp Ass1TypeVal where
   dispGen req = \case
     A1TyValPrim a1tyvPrim -> dispGen req a1tyvPrim
+    A1TyValList a1tyv -> dispListType req a1tyv
     A1TyValArrow a1tyv1 a1tyv2 -> dispNondepArrowType req a1tyv1 a1tyv2
 
 instance Disp Ass1PrimTypeVal where

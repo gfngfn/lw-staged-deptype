@@ -310,6 +310,9 @@ evalTypeExpr1 env = \case
           m <- validateIntLiteral =<< evalExpr0 env a0e1
           n <- validateIntLiteral =<< evalExpr0 env a0e2
           pure $ A1TyValMat m n
+  A1TyList a1tye -> do
+    a1tyv <- evalTypeExpr1 env a1tye
+    pure $ A1TyValList a1tyv
   A1TyArrow a1tye1 a1tye2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
@@ -346,5 +349,7 @@ unliftTypeVal = \case
         A1TyValBool -> A0TyBool
         A1TyValVec n -> A0TyVec n
         A1TyValMat m n -> A0TyMat m n
+  A1TyValList a1tyv ->
+    SA0TyList (unliftTypeVal a1tyv)
   A1TyValArrow a1tyv1 a1tyv2 ->
     SA0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
