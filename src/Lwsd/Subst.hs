@@ -421,6 +421,8 @@ instance HasVar Type1Equation where
         TyEq1Int -> (Set.empty, Set.empty)
         TyEq1Bool -> (Set.empty, Set.empty)
         TyEq1Tensor zipped -> unionPairs (concatMap (\(a0e1, a0e2) -> [frees a0e1, frees a0e2]) zipped)
+    TyEq1List ty1eqElem ->
+      frees ty1eqElem
     TyEq1Arrow ty1eqDom ty1eqCod ->
       unionPairs [frees ty1eqDom, frees ty1eqCod]
 
@@ -431,6 +433,8 @@ instance HasVar Type1Equation where
           TyEq1Int -> TyEq1Int
           TyEq1Bool -> TyEq1Bool
           TyEq1Tensor zipped -> TyEq1Tensor (map (both go) zipped)
+    TyEq1List ty1eqElem ->
+      TyEq1List (go ty1eqElem)
     TyEq1Arrow ty1eqDom ty1eqCod ->
       TyEq1Arrow (go ty1eqDom) (go ty1eqCod)
     where
@@ -457,6 +461,8 @@ instance HasVar Type1Equation where
                   zippedZipped
           (_, _) ->
             False
+      (TyEq1List ty1eqElem1, TyEq1List ty1eqElem2) ->
+        alphaEquivalent ty1eqElem1 ty1eqElem2
       (TyEq1Arrow ty1eqDom1 ty1eqCod1, TyEq1Arrow ty1eqDom2 ty1eqCod2) ->
         alphaEquivalent ty1eqDom1 ty1eqDom2
           && alphaEquivalent ty1eqCod1 ty1eqCod2

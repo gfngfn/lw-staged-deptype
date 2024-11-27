@@ -191,6 +191,7 @@ data Ass1PrimTypeVal
 
 data Type1Equation
   = TyEq1Prim Type1PrimEquation
+  | TyEq1List Type1Equation
   | TyEq1Arrow Type1Equation Type1Equation
   deriving stock (Eq, Show)
 
@@ -250,6 +251,9 @@ decomposeType1Equation = \case
       TyEq1Int -> prims A1TyInt
       TyEq1Bool -> prims A1TyBool
       TyEq1Tensor zipped -> (A1TyPrim (A1TyTensor (map fst zipped)), A1TyPrim (A1TyTensor (map snd zipped)))
+  TyEq1List ty1eqElem ->
+    let (a1tye1elem, a1tye2elem) = decomposeType1Equation ty1eqElem
+     in (A1TyList a1tye1elem, A1TyList a1tye2elem)
   TyEq1Arrow ty1eqDom ty1eqCod ->
     let (a1tye11, a1tye21) = decomposeType1Equation ty1eqDom
         (a1tye12, a1tye22) = decomposeType1Equation ty1eqCod

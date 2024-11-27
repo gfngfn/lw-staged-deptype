@@ -229,6 +229,9 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
                   pure (trivial, TyEq1Prim (TyEq1Tensor (reverse equationAccResult)), solution)
             (_, _) ->
               Left ()
+        (A1TyList a1tye1elem, A1TyList a1tye2elem) -> do
+          (trivial, ty1eqElem, solution) <- go varsToInfer a1tye1elem a1tye2elem
+          pure (trivial, TyEq1List ty1eqElem, solution)
         (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
           (trivial1, ty1eqDom, solution1) <- go varsToInfer a1tye11 a1tye21
           (trivial2, ty1eqCod, solution2) <- go (varsToInfer \\ Map.keysSet solution1) a1tye12 (applySolution solution1 a1tye22)
@@ -890,8 +893,8 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
           a0e1 <- insertCastForNatArg trav (a0tye1, a0e1', loc1)
           a0e2 <- insertCastForNatArg trav (a0tye2, a0e2', loc2)
           pure $ A1TyPrim (a1TyMat a0e1 a0e2)
-        ("Tensor", _) -> do
-          error "TODO: typecheckTypeExpr1, Tensor"
+        ("Tensor", [(IA1ExprArg _a0e' _a0tye, _loc')]) -> do
+          error "TODO: typecheckTypeExpr1, Tensor. Use built-in `list_map` here for casts"
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
