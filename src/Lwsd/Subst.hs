@@ -216,6 +216,8 @@ instance HasVar Ass0TypeExpr where
   frees = \case
     A0TyPrim _ ->
       (Set.empty, Set.empty)
+    A0TyList a0tye ->
+      frees a0tye
     A0TyArrow (yOpt, a0tye1) a0tye2 ->
       let (var0set1, var1set1) = frees a0tye1
           (var0set2, var1set2) = frees a0tye2
@@ -238,6 +240,8 @@ instance HasVar Ass0TypeExpr where
   subst s = \case
     A0TyPrim a0tyPrim ->
       A0TyPrim a0tyPrim
+    A0TyList a0tye ->
+      A0TyList (go a0tye)
     A0TyArrow (yOpt, a0tye1) a0tye2 ->
       A0TyArrow (yOpt, go a0tye1) $
         case (yOpt, s) of
@@ -323,6 +327,8 @@ instance HasVar StrictAss0TypeExpr where
   frees = \case
     SA0TyPrim _ ->
       (Set.empty, Set.empty)
+    SA0TyList a0tye ->
+      frees a0tye
     SA0TyArrow (yOpt, a0tye1) a0tye2 ->
       let (var0set1, var1set1) = frees a0tye1
           (var0set2, var1set2) = frees a0tye2
@@ -339,6 +345,8 @@ instance HasVar StrictAss0TypeExpr where
   subst s = \case
     SA0TyPrim a0tyPrim ->
       SA0TyPrim a0tyPrim
+    SA0TyList a0tye ->
+      SA0TyList (go a0tye)
     SA0TyArrow (yOpt, sa0tye1) sa0tye2 ->
       SA0TyArrow (yOpt, go sa0tye1) $
         case (yOpt, s) of

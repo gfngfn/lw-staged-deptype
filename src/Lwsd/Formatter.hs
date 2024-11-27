@@ -570,6 +570,7 @@ instance Disp Ass1Val where
 instance Disp Ass0TypeVal where
   dispGen req = \case
     A0TyValPrim a0tyvPrim -> dispGen req a0tyvPrim
+    A0TyValList a0tyv1 -> dispListType req a0tyv1
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
 

@@ -281,9 +281,12 @@ evalTypeExpr0 env = \case
         A0TyBool -> A0TyValBool
         A0TyVec n -> A0TyValVec n
         A0TyMat m n -> A0TyValMat m n
-  SA0TyArrow (xOpt, a0tye1) a0tye2 -> do
-    a0tyv1 <- evalTypeExpr0 env a0tye1
-    pure $ A0TyValArrow (xOpt, a0tyv1) a0tye2
+  SA0TyList sa0tye1 -> do
+    a0tyv1 <- evalTypeExpr0 env sa0tye1
+    pure $ A0TyValList a0tyv1
+  SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> do
+    a0tyv1 <- evalTypeExpr0 env sa0tye1
+    pure $ A0TyValArrow (xOpt, a0tyv1) sa0tye2
   SA0TyCode a1tye1 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1

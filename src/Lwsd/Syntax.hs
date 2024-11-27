@@ -159,6 +159,7 @@ data Ass1ValConst
 
 data Ass0TypeVal
   = A0TyValPrim Ass0PrimTypeVal
+  | A0TyValList Ass0TypeVal
   | A0TyValArrow (Maybe AssVar, Ass0TypeVal) StrictAss0TypeExpr
   | A0TyValCode Ass1TypeVal
   deriving stock (Eq, Show)
@@ -205,6 +206,7 @@ data EnvEntry
 strictify :: Ass0TypeExpr -> StrictAss0TypeExpr
 strictify = \case
   A0TyPrim a0tyPrim -> SA0TyPrim a0tyPrim
+  A0TyList a0tye -> SA0TyList (strictify a0tye)
   A0TyArrow (x1opt, a0tye1) a0tye2 -> SA0TyArrow (x1opt, strictify a0tye1) (strictify a0tye2)
   A0TyCode a1tye1 -> SA0TyCode a1tye1
   A0TyOptArrow (x1, a0tye1) a0tye2 -> SA0TyArrow (Just x1, strictify a0tye1) (strictify a0tye2)
