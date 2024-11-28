@@ -188,6 +188,10 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         n3 <- findInt0 env x3
         pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
+      BIGenTadd x1 -> do
+        a0vs <- findList0 env x1
+        ns <- mapM validateIntLiteral a0vs
+        pure $ A0ValBracket (A1ValConst (A1ValConstTadd ns))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
@@ -217,6 +221,16 @@ evalExpr0 env = \case
         case Matrix.concatVert m1 m2 n mat1 mat2 of
           Just mat -> pure $ A0ValLiteral (ALitMat mat)
           Nothing -> bug $ InconsistentAppBuiltIn bi
+      BITadd ns x1 x2 ->
+        case ns of
+          [n] -> do
+            v1 <- findVec0 env x1
+            v2 <- findVec0 env x2
+            case Vector.add n v1 v2 of
+              Just v -> pure $ A0ValLiteral (ALitVec v)
+              Nothing -> bug $ InconsistentAppBuiltIn bi
+          _ -> do
+            error "TODO: evalExpr0, BITadd, dimension >= 2"
   A0Var x ->
     findVal0 env x
   A0Lam Nothing (x, a0tye1) a0e2 -> do
@@ -349,6 +363,7 @@ unliftVal = \case
       A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
+      A1ValConstTadd ns -> BuiltIn.ass0exprTadd ns
   A1ValVar symbX ->
     A0Var (symbolToVar symbX)
   A1ValLam Nothing (symbX, a1tyv1) a1v2 ->

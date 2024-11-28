@@ -69,11 +69,13 @@ data BuiltIn
   | BIGenMtranspose AssVar AssVar
   | BIGenMmult AssVar AssVar AssVar
   | BIGenMconcatVert AssVar AssVar AssVar
+  | BIGenTadd AssVar
   | BIVadd Int AssVar AssVar
   | BIVconcat Int Int AssVar AssVar
   | BIMtranspose Int Int AssVar
   | BIMmult Int Int Int AssVar AssVar
   | BIMconcatVert Int Int Int AssVar AssVar
+  | BITadd [Int] AssVar AssVar
   deriving stock (Eq, Show)
 
 data AssLiteral e
@@ -162,6 +164,7 @@ data Ass1ValConst
   | A1ValConstMtranspose Int Int
   | A1ValConstMmult Int Int Int
   | A1ValConstMconcatVert Int Int Int
+  | A1ValConstTadd [Int]
   deriving stock (Eq, Show)
 
 data Ass0TypeVal

@@ -6,6 +6,7 @@ module Lwsd.BuiltIn
     ass0exprMtranspose,
     ass0exprMmult,
     ass0exprMconcatVert,
+    ass0exprTadd,
     initialTypeEnv,
     initialEnv,
   )
@@ -28,11 +29,17 @@ tyNat = A0TyPrim A0TyNat
 tyBool :: Ass0TypeExpr
 tyBool = A0TyPrim A0TyBool
 
+tyList :: Ass0TypeExpr -> Ass0TypeExpr
+tyList = A0TyList
+
 ty1Vec :: Ass0Expr -> Ass1TypeExpr
 ty1Vec = A1TyPrim . a1TyVec
 
 ty1Mat :: Ass0Expr -> Ass0Expr -> Ass1TypeExpr
 ty1Mat a0e1 a0e2 = A1TyPrim (a1TyMat a0e1 a0e2)
+
+ty1Tensor :: Ass0Expr -> Ass1TypeExpr
+ty1Tensor = A1TyPrim . A1TyTensor
 
 (-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
 (-->) a0tye1 = A0TyArrow (Nothing, a0tye1)
@@ -63,20 +70,21 @@ initialTypeEnv =
       ("gen_vconcat", tyGenVconcat),
       ("gen_mtranspose", tyGenMtranspose),
       ("gen_mmult", tyGenMmult),
-      ("gen_mconcat_vert", tyGenMconcatVert)
+      ("gen_mconcat_vert", tyGenMconcatVert),
+      ("gen_tadd", tyGenTadd)
     ]
   where
     tyGenVadd :: Ass0TypeExpr
     tyGenVadd =
-      (a, tyInt)
+      (a, tyNat)
         -:> A0TyCode (ty1Vec (A0Var a) ==> ty1Vec (A0Var a) ==> ty1Vec (A0Var a))
       where
         a = AssVar "a"
 
     tyGenVconcat :: Ass0TypeExpr
     tyGenVconcat =
-      (a, tyInt)
-        -:> (b, tyInt)
+      (a, tyNat)
+        -:> (b, tyNat)
         -:> A0TyCode
           ( ty1Vec (A0Var a)
               ==> ty1Vec (A0Var b)
@@ -88,8 +96,8 @@ initialTypeEnv =
 
     tyGenMtranspose :: Ass0TypeExpr
     tyGenMtranspose =
-      (a, tyInt)
-        -:> (b, tyInt)
+      (a, tyNat)
+        -:> (b, tyNat)
         -:> A0TyCode
           ( ty1Mat (A0Var a) (A0Var b)
               ==> ty1Mat (A0Var b) (A0Var a)
@@ -100,9 +108,9 @@ initialTypeEnv =
 
     tyGenMmult :: Ass0TypeExpr
     tyGenMmult =
-      (a, tyInt)
-        -:> (b, tyInt)
-        -:> (c, tyInt)
+      (a, tyNat)
+        -:> (b, tyNat)
+        -:> (c, tyNat)
         -:> A0TyCode
           ( ty1Mat (A0Var a) (A0Var b)
               ==> ty1Mat (A0Var b) (A0Var c)
@@ -115,9 +123,9 @@ initialTypeEnv =
 
     tyGenMconcatVert :: Ass0TypeExpr
     tyGenMconcatVert =
-      (a, tyInt)
-        -:> (b, tyInt)
-        -:> (c, tyInt)
+      (a, tyNat)
+        -:> (b, tyNat)
+        -:> (c, tyNat)
         -:> A0TyCode
           ( ty1Mat (A0Var a) (A0Var c)
               ==> ty1Mat (A0Var b) (A0Var c)
@@ -127,6 +135,13 @@ initialTypeEnv =
         a = AssVar "a"
         b = AssVar "b"
         c = AssVar "c"
+
+    tyGenTadd :: Ass0TypeExpr
+    tyGenTadd =
+      (shape, tyList tyNat)
+        -:> A0TyCode (ty1Tensor (A0Var shape) ==> ty1Tensor (A0Var shape) ==> ty1Tensor (A0Var shape))
+      where
+        shape = AssVar "shape"
 
     a0add :: Ass0Expr -> Ass0Expr -> Ass0Expr
     a0add a0e1 = A0App (A0App (A0Var (AssVar "+")) a0e1)
@@ -148,6 +163,9 @@ sty0Vec = SA0TyPrim . a0TyVec
 
 sty0Mat :: Int -> Int -> StrictAss0TypeExpr
 sty0Mat m n = SA0TyPrim (a0TyMat m n)
+
+sty0Tensor :: [Int] -> StrictAss0TypeExpr
+sty0Tensor = SA0TyPrim . A0TyTensor
 
 -- Makes a closure equipped with `initialEnv`.
 clo :: AssVar -> Ass0TypeVal -> Ass0Expr -> Ass0Val
@@ -223,6 +241,15 @@ ass0valBinaryInt f =
     x1 = AssVar "x1"
     x2 = AssVar "x2"
 
+ass0exprTadd :: [Int] -> Ass0Expr
+ass0exprTadd ns =
+  lam x1 (sty0Tensor ns) $
+    lam x2 (sty0Tensor ns) $
+      A0AppBuiltIn (BITadd ns x1 x2)
+  where
+    x1 = AssVar "v1"
+    x2 = AssVar "v2"
+
 ass0valAdd :: Ass0Val
 ass0valAdd = ass0valBinaryInt BIAdd
 
@@ -237,7 +264,7 @@ ass0valLeq = ass0valBinaryInt BILeq
 
 ass0valGenVadd :: Ass0Val
 ass0valGenVadd =
-  clo x1 tyValInt $
+  clo x1 tyValNat $
     A0AppBuiltIn (BIGenVadd x1)
   where
     x1 = AssVar "x1"
@@ -282,6 +309,13 @@ ass0valGenMconcatVert =
     x2 = AssVar "x2"
     x3 = AssVar "x3"
 
+ass0valGenTadd :: Ass0Val
+ass0valGenTadd =
+  clo x1 tyValNat $
+    A0AppBuiltIn (BIGenTadd x1)
+  where
+    x1 = AssVar "x1"
+
 initialEnv :: Env0
 initialEnv =
   List.foldl'
@@ -295,5 +329,6 @@ initialEnv =
       ("gen_vconcat", ass0valGenVconcat),
       ("gen_mtranspose", ass0valGenMtranspose),
       ("gen_mmult", ass0valGenMmult),
-      ("gen_mconcat_vert", ass0valGenMconcatVert)
+      ("gen_mconcat_vert", ass0valGenMconcatVert),
+      ("gen_tadd", ass0valGenTadd)
     ]
