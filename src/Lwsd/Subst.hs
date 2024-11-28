@@ -317,7 +317,7 @@ instance HasVar Ass1TypeExpr where
       case a1tyPrim of
         A1TyInt -> (Set.empty, Set.empty)
         A1TyBool -> (Set.empty, Set.empty)
-        A1TyTensor a0es -> unionPairs (map frees a0es)
+        A1TyTensor a0eList -> frees a0eList
     A1TyList a1tye1 ->
       frees a1tye1
     A1TyArrow a1tye1 a1tye2 ->
@@ -328,7 +328,7 @@ instance HasVar Ass1TypeExpr where
       A1TyPrim $ case a1tyPrim of
         A1TyInt -> A1TyInt
         A1TyBool -> A1TyBool
-        A1TyTensor a0es -> A1TyTensor (map go a0es)
+        A1TyTensor a0eList -> A1TyTensor (go a0eList)
     A1TyList a1tye1 ->
       A1TyList (go a1tye1)
     A1TyArrow a1tye1 a1tye2 ->
@@ -345,10 +345,8 @@ instance HasVar Ass1TypeExpr where
             True
           (A1TyBool, A1TyBool) ->
             True
-          (A1TyTensor a0es1, A1TyTensor a0es2) ->
-            case zipExactMay a0es1 a0es2 of
-              Nothing -> False
-              Just zipped -> all (uncurry alphaEquivalent) zipped
+          (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
+            alphaEquivalent a0eList1 a0eList2
           (_, _) ->
             False
       (A1TyList a1tye1', A1TyList a1tye2') ->
@@ -420,7 +418,8 @@ instance HasVar Type1Equation where
       case ty1eqPrim of
         TyEq1Int -> (Set.empty, Set.empty)
         TyEq1Bool -> (Set.empty, Set.empty)
-        TyEq1Tensor zipped -> unionPairs (concatMap (\(a0e1, a0e2) -> [frees a0e1, frees a0e2]) zipped)
+        TyEq1TensorByLiteral zipped -> unionPairs (concatMap (\(a0e1, a0e2) -> [frees a0e1, frees a0e2]) zipped)
+        TyEq1TensorByWhole a0eList1 a0eList2 -> unionPairs [frees a0eList1, frees a0eList2]
     TyEq1List ty1eqElem ->
       frees ty1eqElem
     TyEq1Arrow ty1eqDom ty1eqCod ->
@@ -432,7 +431,8 @@ instance HasVar Type1Equation where
         case ty1eqPrim of
           TyEq1Int -> TyEq1Int
           TyEq1Bool -> TyEq1Bool
-          TyEq1Tensor zipped -> TyEq1Tensor (map (both go) zipped)
+          TyEq1TensorByLiteral zipped -> TyEq1TensorByLiteral (map (both go) zipped)
+          TyEq1TensorByWhole a0eList1 a0eList2 -> TyEq1TensorByWhole (go a0eList1) (go a0eList2)
     TyEq1List ty1eqElem ->
       TyEq1List (go ty1eqElem)
     TyEq1Arrow ty1eqDom ty1eqCod ->
@@ -449,7 +449,7 @@ instance HasVar Type1Equation where
             True
           (TyEq1Bool, TyEq1Bool) ->
             True
-          (TyEq1Tensor zipped1, TyEq1Tensor zipped2) ->
+          (TyEq1TensorByLiteral zipped1, TyEq1TensorByLiteral zipped2) ->
             case zipExactMay zipped1 zipped2 of
               Nothing ->
                 False
@@ -459,6 +459,8 @@ instance HasVar Type1Equation where
                       alphaEquivalent a0e11 a0e21 && alphaEquivalent a0e12 a0e22
                   )
                   zippedZipped
+          (TyEq1TensorByWhole a0eList11 a0eList12, TyEq1TensorByWhole a0eList21 a0eList22) ->
+            alphaEquivalent a0eList11 a0eList21 && alphaEquivalent a0eList12 a0eList22
           (_, _) ->
             False
       (TyEq1List ty1eqElem1, TyEq1List ty1eqElem2) ->

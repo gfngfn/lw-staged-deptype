@@ -313,6 +313,11 @@ validateIntLiteral = \case
   A0ValLiteral (ALitInt n) -> pure n
   a0v -> bug $ NotAnInteger Nothing a0v
 
+validateListValue :: Ass0Val -> M [Ass0Val]
+validateListValue = \case
+  A0ValLiteral (ALitList a0vs) -> pure a0vs
+  a0v -> bug $ NotAList Nothing a0v
+
 evalTypeExpr1 :: Env0 -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case
   A1TyPrim a1tyPrim ->
@@ -320,8 +325,10 @@ evalTypeExpr1 env = \case
       <$> case a1tyPrim of
         A1TyInt -> pure A1TyValInt
         A1TyBool -> pure A1TyValBool
-        A1TyTensor a0es -> do
-          ns <- mapM (validateIntLiteral <=< evalExpr0 env) a0es
+        A1TyTensor a0eList -> do
+          a0v <- evalExpr0 env a0eList
+          a0vs <- validateListValue a0v
+          ns <- mapM validateIntLiteral a0vs
           pure $ A1TyValTensor ns
   A1TyList a1tye -> do
     a1tyv <- evalTypeExpr1 env a1tye

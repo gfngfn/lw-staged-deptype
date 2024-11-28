@@ -138,7 +138,7 @@ data Ass1TypeExpr
 data Ass1PrimType
   = A1TyInt
   | A1TyBool
-  | A1TyTensor [Ass0Expr]
+  | A1TyTensor Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass0Val
@@ -199,7 +199,8 @@ data Type1Equation
 data Type1PrimEquation
   = TyEq1Int
   | TyEq1Bool
-  | TyEq1Tensor [(Ass0Expr, Ass0Expr)]
+  | TyEq1TensorByLiteral [(Ass0Expr, Ass0Expr)]
+  | TyEq1TensorByWhole Ass0Expr Ass0Expr -- A Pair of ASTs of type `List Nat`
   deriving stock (Eq, Show)
 
 type Env0 = Map AssVar EnvEntry
@@ -240,10 +241,10 @@ a0TyMat :: Int -> Int -> Ass0PrimType
 a0TyMat m n = A0TyTensor [m, n]
 
 a1TyVec :: Ass0Expr -> Ass1PrimType
-a1TyVec a0e = A1TyTensor [a0e]
+a1TyVec a0e = A1TyTensor (A0Literal (ALitList [a0e]))
 
 a1TyMat :: Ass0Expr -> Ass0Expr -> Ass1PrimType
-a1TyMat a0e1 a0e2 = A1TyTensor [a0e1, a0e2]
+a1TyMat a0e1 a0e2 = A1TyTensor (A0Literal (ALitList [a0e1, a0e2]))
 
 decomposeType1Equation :: Type1Equation -> (Ass1TypeExpr, Ass1TypeExpr)
 decomposeType1Equation = \case
@@ -251,7 +252,12 @@ decomposeType1Equation = \case
     case ty1eqPrim of
       TyEq1Int -> prims A1TyInt
       TyEq1Bool -> prims A1TyBool
-      TyEq1Tensor zipped -> (A1TyPrim (A1TyTensor (map fst zipped)), A1TyPrim (A1TyTensor (map snd zipped)))
+      TyEq1TensorByLiteral zipped ->
+        let a0eList1 = A0Literal (ALitList (map fst zipped))
+            a0eList2 = A0Literal (ALitList (map snd zipped))
+         in (A1TyPrim (A1TyTensor a0eList1), A1TyPrim (A1TyTensor a0eList2))
+      TyEq1TensorByWhole a0eList1 a0eList2 ->
+        (A1TyPrim (A1TyTensor a0eList1), A1TyPrim (A1TyTensor a0eList2))
   TyEq1List ty1eqElem ->
     let (a1tye1elem, a1tye2elem) = decomposeType1Equation ty1eqElem
      in (A1TyList a1tye1elem, A1TyList a1tye2elem)

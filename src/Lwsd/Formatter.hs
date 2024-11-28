@@ -273,6 +273,7 @@ instance Disp BuiltIn where
     BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
     BILeq x1 x2 -> "LEQ(" <> disps [x1, x2] <> ")"
     BIAssertNat _loc x1 -> "ASSERT_NAT(" <> disp x1 <> ")"
+    BIListMap f x -> "LIST_MAP(" <> disps [f, x] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
@@ -384,9 +385,11 @@ instance Disp Ass1PrimType where
   dispGen req = \case
     A1TyInt -> "Int"
     A1TyBool -> "Bool"
-    A1TyTensor [a0e] -> dispNameWithArgs req "Vec" dispPersistent [a0e]
-    A1TyTensor [a0e1, a0e2] -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
-    A1TyTensor a0es -> dispNameWithArgs req "Tensor" dispListLiteral [a0es]
+    A1TyTensor a0eList ->
+      case a0eList of
+        A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
+        A0Literal (ALitList [a0e1, a0e2]) -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
+        _ -> dispNameWithArgs req "Tensor" disp [a0eList]
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case
@@ -644,6 +647,10 @@ instance Disp Evaluator.Bug where
       "Not an integer:" <+> disp a0v
     Evaluator.NotAnInteger (Just x) a0v ->
       "Not an integer:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
+    Evaluator.NotAList Nothing a0v ->
+      "Not a list:" <+> disp a0v
+    Evaluator.NotAList (Just x) a0v ->
+      "Not a list:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.NotAVector x a0v ->
       "Not a vector:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.NotAMatrix x a0v ->
