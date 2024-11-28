@@ -23,6 +23,7 @@ import Prelude
 data Argument = Argument
   { inputFilePath :: String,
     optimize :: Bool,
+    distributeIf :: Bool,
     displayWidth :: Int,
     compileTimeOnly :: Bool
   }
@@ -33,11 +34,12 @@ success = return True
 failure = return False
 
 typecheckAndEval :: Argument -> SourceSpec -> Expr -> IO Bool
-typecheckAndEval Argument {optimize, displayWidth, compileTimeOnly} sourceSpec e = do
+typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly} sourceSpec e = do
   let initialEvalState = Evaluator.initialState sourceSpec
   let typecheckerConfig =
         TypecheckState
           { optimizeTrivialAssertion = optimize,
+            distributeIfUnderTensorShape = distributeIf,
             sourceSpec,
             nextVarIndex = 0
           }

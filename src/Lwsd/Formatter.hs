@@ -389,7 +389,7 @@ instance Disp Ass1PrimType where
       case a0eList of
         A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
         A0Literal (ALitList [a0e1, a0e2]) -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
-        _ -> dispNameWithArgs req "Tensor" disp [a0eList]
+        _ -> dispNameWithArgs req "Tensor" (dispGen Atomic) [a0eList]
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case

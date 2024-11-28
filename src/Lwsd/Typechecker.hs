@@ -36,6 +36,7 @@ import Prelude
 
 data TypecheckState = TypecheckState
   { optimizeTrivialAssertion :: Bool,
+    distributeIfUnderTensorShape :: Bool,
     sourceSpec :: SourceSpec,
     nextVarIndex :: Int
   }
@@ -82,7 +83,8 @@ applyEquationCast :: Span -> Maybe Type1Equation -> Ass1Expr -> Ass1Expr
 applyEquationCast loc eq =
   applyCast1 (A0TyEqAssert loc <$> eq)
 
--- Returning `Nothing` means there's no need to insert a cast.
+-- The core part of the cast insertion for stage 0.
+-- Returning `(Nothing, ...)` means there's no need to insert a cast.
 makeAssertiveCast :: forall trav. trav -> Span -> Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
 makeAssertiveCast trav loc =
   go
@@ -191,6 +193,7 @@ makeAssertiveCast trav loc =
         then pure (Nothing, Map.empty)
         else (\a0e -> (Just a0e, Map.empty)) <$> makeIdentityLam a0tye
 
+-- The core part of the cast insertion for stage 1.
 makeEquation1 :: forall trav. trav -> Span -> Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> M trav (Maybe Type1Equation, InferenceSolution)
 makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
   TypecheckState {optimizeTrivialAssertion} <- get
@@ -220,6 +223,7 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
               pure (True, TyEq1Prim TyEq1Bool, Map.empty)
             (A1TyTensor a0eList1, A1TyTensor a0eList2) -> do
               case (a0eList1, a0eList2) of
+                -- Enhancement for the argument inference 1:
                 (A0Literal (ALitList a0es1), A0Literal (ALitList a0es2)) ->
                   case zipExactMay a0es1 a0es2 of
                     Nothing ->
@@ -236,8 +240,14 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
                               (True, [], varsToInfer, Map.empty)
                               zipped
                       pure (trivial, TyEq1Prim (TyEq1TensorByLiteral (reverse equationAccResult)), solution)
-                (_, _) ->
-                  error $ "TODO: makeEquation1, non-literal equations. a0eList1 = " ++ show a0eList1 ++ ", a0eList2 = "  ++ show a0eList2
+                -- Enhancement for the argument inference 2:
+                (_, A0Var x2)
+                  | x2 `elem` varsToInfer ->
+                      pure (True, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList1), Map.singleton x2 a0eList1)
+                -- General rule:
+                (_, _) -> do
+                  let trivial = alphaEquivalent a0eList1 a0eList2
+                  pure (trivial, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList2), Map.empty)
             (_, _) ->
               Left ()
         (A1TyList a1tye1elem, A1TyList a1tye2elem) -> do
@@ -250,8 +260,8 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
         (_, _) ->
           Left ()
 
-mergeTypesByConditional0 :: Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
-mergeTypesByConditional0 a0e0 = go0
+mergeTypesByConditional0 :: Bool -> Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
+mergeTypesByConditional0 distributeIfUnderTensorShape a0e0 = go0
   where
     go0 :: Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
     go0 a0tye1 a0tye2 =
@@ -281,10 +291,10 @@ mergeTypesByConditional0 a0e0 = go0
           Left $ CannotMerge0 a0tye1 a0tye2
 
     go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
-    go1 = mergeTypesByConditional1 a0e0
+    go1 = mergeTypesByConditional1 distributeIfUnderTensorShape a0e0
 
-mergeTypesByConditional1 :: Ass0Expr -> Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
-mergeTypesByConditional1 a0e0 = go1
+mergeTypesByConditional1 :: Bool -> Ass0Expr -> Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
+mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 = go1
   where
     go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
     go1 a1tye1 a1tye2 =
@@ -297,7 +307,15 @@ mergeTypesByConditional1 a0e0 = go1
               (A1TyBool, A1TyBool) ->
                 pure A1TyBool
               (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
-                pure $ A1TyTensor (a0branch a0eList1 a0eList2)
+                case (a0eList1, a0eList2) of
+                  -- Slight enhancement for the argument inference:
+                  (A0Literal (ALitList a0es1), A0Literal (ALitList a0es2)) | distributeIfUnderTensorShape ->
+                    case zipExactMay a0es1 a0es2 of
+                      Nothing -> Left $ CannotMerge1 a1tye1 a1tye2
+                      Just zipped -> pure $ A1TyTensor (A0Literal (ALitList (map (uncurry a0branch) zipped)))
+                  -- General rule:
+                  (_, _) ->
+                    pure $ A1TyTensor (a0branch a0eList1 a0eList2)
               _ ->
                 Left $ CannotMerge1 a1tye1 a1tye2
         (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
@@ -338,8 +356,9 @@ mergeResultsByConditional0 trav loc a0e0 = go
     a0branch = A0IfThenElse a0e0
 
     mergeTypes0 :: Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0TypeExpr
-    mergeTypes0 a0tye1 a0tye2 =
-      case mergeTypesByConditional0 a0e0 a0tye1 a0tye2 of
+    mergeTypes0 a0tye1 a0tye2 = do
+      TypecheckState {distributeIfUnderTensorShape} <- get
+      case mergeTypesByConditional0 distributeIfUnderTensorShape a0e0 a0tye1 a0tye2 of
         Left condErr -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotMergeTypesByConditional0 spanInFile a0tye1 a0tye2 condErr
@@ -347,8 +366,9 @@ mergeResultsByConditional0 trav loc a0e0 = go
           pure a0tye
 
     mergeTypes1 :: Ass1TypeExpr -> Ass1TypeExpr -> M trav Ass1TypeExpr
-    mergeTypes1 a1tye1 a1tye2 =
-      case mergeTypesByConditional1 a0e0 a1tye1 a1tye2 of
+    mergeTypes1 a1tye1 a1tye2 = do
+      TypecheckState {distributeIfUnderTensorShape} <- get
+      case mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 a1tye1 a1tye2 of
         Left condErr -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotMergeTypesByConditional1 spanInFile a1tye1 a1tye2 condErr

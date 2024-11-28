@@ -6,11 +6,12 @@ import Surface.SurfaceMain qualified as SurfaceMain
 import System.Exit
 
 defaultDisplayWidth :: Int
-defaultDisplayWidth = 80
+defaultDisplayWidth = 120
 
-helpDisplayWidth, helpOptimize, helpCompileTimeOnly :: String
+helpDisplayWidth, helpOptimize, helpDistributeIf, helpCompileTimeOnly :: String
 helpDisplayWidth = "Set the display width (default: " ++ show defaultDisplayWidth ++ ")"
 helpOptimize = "Inserts only non-trivial cast assertions"
+helpDistributeIf = "Distributes if-expressions under list literals for tensor shapes"
 helpCompileTimeOnly = "Stops after the compile-time evaluation"
 
 data Argument
@@ -29,6 +30,7 @@ lwsdArgumentParser =
   LwsdMain.Argument
     <$> strArgument (metavar "INPUT-FILE-PATH")
     <*> switch (short 'O' <> long "optimize" <> help helpOptimize)
+    <*> switch (short 'D' <> long "distribute-if" <> help helpDistributeIf)
     <*> option auto (short 'w' <> long "display-width" <> value defaultDisplayWidth <> help helpDisplayWidth)
     <*> switch (short 'c' <> long "compile-time-only" <> help helpCompileTimeOnly)
 
@@ -37,6 +39,7 @@ surfaceArgumentParser =
   SurfaceMain.Argument
     <$> strArgument (metavar "INPUT-FILE-PATH")
     <*> switch (short 'O' <> long "optimize" <> help helpOptimize)
+    <*> switch (short 'D' <> long "distribute-if" <> help helpDistributeIf)
     <*> option auto (short 'w' <> long "display-width" <> value defaultDisplayWidth <> help helpDisplayWidth)
     <*> switch (short 'c' <> long "compile-time-only" <> help helpCompileTimeOnly)
     <*> switch (short 'd' <> long "default-to-stage-0" <> help "Make ambiguous binding times default to 0, which promotes inlining")
