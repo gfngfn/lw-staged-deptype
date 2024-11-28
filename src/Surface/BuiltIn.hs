@@ -19,6 +19,9 @@ wrap1 = BIType BT1
 base0 :: BITypeVoid
 base0 = wrap0 $ BITyBase []
 
+base0WithArg :: [BITypeVoid] -> BITypeVoid
+base0WithArg = wrap0 . BITyBase
+
 base1 :: BITypeVoid
 base1 = wrap1 $ BITyBase []
 
@@ -45,7 +48,8 @@ initialBindingTimeEnv =
       ("vconcat", fixed0 "gen_vconcat" bityVconcat),
       ("mtranspose", fixed0 "gen_mtranspose" bityMtranspose),
       ("mmult", fixed0 "gen_mmult" bityMmult),
-      ("mconcat_vert", fixed0 "gen_mconcat_vert" bityMconcatVert)
+      ("mconcat_vert", fixed0 "gen_mconcat_vert" bityMconcatVert),
+      ("tadd", fixed0 "gen_tadd" bityTadd)
     ]
   where
     persistent = EntryBuiltInPersistent
@@ -73,3 +77,6 @@ initialBindingTimeEnv =
 
     bityMconcatVert :: BITypeVoid
     bityMconcatVert = base0 -?> base0 -?> base0 -?> base1 --> base1 --> base1
+
+    bityTadd :: BITypeVoid
+    bityTadd = base0WithArg [base0] -?> base1 --> base1 --> base1
