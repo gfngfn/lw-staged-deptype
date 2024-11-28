@@ -237,7 +237,7 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
                               zipped
                       pure (trivial, TyEq1Prim (TyEq1TensorByLiteral (reverse equationAccResult)), solution)
                 (_, _) ->
-                  error "TODO: makeEquation1, non-literal equations"
+                  error $ "TODO: makeEquation1, non-literal equations. a0eList1 = " ++ show a0eList1 ++ ", a0eList2 = "  ++ show a0eList2
             (_, _) ->
               Left ()
         (A1TyList a1tye1elem, A1TyList a1tye2elem) -> do

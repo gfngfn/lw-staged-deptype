@@ -100,7 +100,7 @@ instance HasVar Ass0Expr where
 
   subst s = \case
     A0Literal lit ->
-      A0Literal lit
+      A0Literal (go lit)
     A0AppBuiltIn bi ->
       A0AppBuiltIn bi -- We do not see variables for built-in functions
     A0Var y ->
