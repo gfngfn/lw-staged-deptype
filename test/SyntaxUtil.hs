@@ -116,4 +116,4 @@ a1tyInt :: Ass1TypeExpr
 a1tyInt = A1TyPrim A1TyInt
 
 a1tyVec :: Ass0Expr -> Ass1TypeExpr
-a1tyVec a0e = A1TyPrim (A1TyVec a0e)
+a1tyVec a0e = A1TyPrim (a1TyVec a0e)

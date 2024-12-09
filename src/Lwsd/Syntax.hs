@@ -22,6 +22,10 @@ module Lwsd.Syntax
     Ass1PrimTypeVal (..),
     Env0,
     EnvEntry (..),
+    a0TyVec,
+    a0TyMat,
+    a1TyVec,
+    a1TyMat,
     mapAssLiteral,
     mapMAssLiteral,
     strictify,
@@ -59,16 +63,19 @@ data BuiltIn
   | BIMult AssVar AssVar
   | BILeq AssVar AssVar
   | BIAssertNat Span AssVar
+  | BIListMap AssVar AssVar
   | BIGenVadd AssVar
   | BIGenVconcat AssVar AssVar
   | BIGenMtranspose AssVar AssVar
   | BIGenMmult AssVar AssVar AssVar
   | BIGenMconcatVert AssVar AssVar AssVar
+  | BIGenTadd AssVar
   | BIVadd Int AssVar AssVar
   | BIVconcat Int Int AssVar AssVar
   | BIMtranspose Int Int AssVar
   | BIMmult Int Int Int AssVar AssVar
   | BIMconcatVert Int Int Int AssVar AssVar
+  | BITadd [Int] AssVar AssVar
   deriving stock (Eq, Show)
 
 data AssLiteral e
@@ -121,8 +128,7 @@ data Ass0PrimType
   = A0TyInt
   | A0TyNat
   | A0TyBool
-  | A0TyVec Int
-  | A0TyMat Int Int
+  | A0TyTensor [Int]
   deriving stock (Eq, Show)
 
 data Ass1TypeExpr
@@ -134,8 +140,7 @@ data Ass1TypeExpr
 data Ass1PrimType
   = A1TyInt
   | A1TyBool
-  | A1TyVec Ass0Expr
-  | A1TyMat Ass0Expr Ass0Expr
+  | A1TyTensor Ass0Expr
   deriving stock (Eq, Show)
 
 data Ass0Val
@@ -159,6 +164,7 @@ data Ass1ValConst
   | A1ValConstMtranspose Int Int
   | A1ValConstMmult Int Int Int
   | A1ValConstMconcatVert Int Int Int
+  | A1ValConstTadd [Int]
   deriving stock (Eq, Show)
 
 data Ass0TypeVal
@@ -172,8 +178,7 @@ data Ass0PrimTypeVal
   = A0TyValInt
   | A0TyValNat
   | A0TyValBool
-  | A0TyValVec Int
-  | A0TyValMat Int Int
+  | A0TyValTensor [Int]
   deriving stock (Eq, Show)
 
 data Ass1TypeVal
@@ -185,20 +190,20 @@ data Ass1TypeVal
 data Ass1PrimTypeVal
   = A1TyValInt
   | A1TyValBool
-  | A1TyValVec Int
-  | A1TyValMat Int Int
+  | A1TyValTensor [Int]
   deriving stock (Eq, Show)
 
 data Type1Equation
   = TyEq1Prim Type1PrimEquation
+  | TyEq1List Type1Equation
   | TyEq1Arrow Type1Equation Type1Equation
   deriving stock (Eq, Show)
 
 data Type1PrimEquation
   = TyEq1Int
   | TyEq1Bool
-  | TyEq1Vec Ass0Expr Ass0Expr
-  | TyEq1Mat Ass0Expr Ass0Expr Ass0Expr Ass0Expr
+  | TyEq1TensorByLiteral [(Ass0Expr, Ass0Expr)]
+  | TyEq1TensorByWhole Ass0Expr Ass0Expr -- A Pair of ASTs of type `List Nat`
   deriving stock (Eq, Show)
 
 type Env0 = Map AssVar EnvEntry
@@ -232,14 +237,33 @@ strictify = \case
   A0TyCode a1tye1 -> SA0TyCode a1tye1
   A0TyOptArrow (x1, a0tye1) a0tye2 -> SA0TyArrow (Just x1, strictify a0tye1) (strictify a0tye2)
 
+a0TyVec :: Int -> Ass0PrimType
+a0TyVec n = A0TyTensor [n]
+
+a0TyMat :: Int -> Int -> Ass0PrimType
+a0TyMat m n = A0TyTensor [m, n]
+
+a1TyVec :: Ass0Expr -> Ass1PrimType
+a1TyVec a0e = A1TyTensor (A0Literal (ALitList [a0e]))
+
+a1TyMat :: Ass0Expr -> Ass0Expr -> Ass1PrimType
+a1TyMat a0e1 a0e2 = A1TyTensor (A0Literal (ALitList [a0e1, a0e2]))
+
 decomposeType1Equation :: Type1Equation -> (Ass1TypeExpr, Ass1TypeExpr)
 decomposeType1Equation = \case
   TyEq1Prim ty1eqPrim ->
     case ty1eqPrim of
       TyEq1Int -> prims A1TyInt
       TyEq1Bool -> prims A1TyBool
-      TyEq1Vec a0e1 a0e2 -> (A1TyPrim (A1TyVec a0e1), A1TyPrim (A1TyVec a0e2))
-      TyEq1Mat a0e11 a0e12 a0e21 a0e22 -> (A1TyPrim (A1TyMat a0e11 a0e12), A1TyPrim (A1TyMat a0e21 a0e22))
+      TyEq1TensorByLiteral zipped ->
+        let a0eList1 = A0Literal (ALitList (map fst zipped))
+            a0eList2 = A0Literal (ALitList (map snd zipped))
+         in (A1TyPrim (A1TyTensor a0eList1), A1TyPrim (A1TyTensor a0eList2))
+      TyEq1TensorByWhole a0eList1 a0eList2 ->
+        (A1TyPrim (A1TyTensor a0eList1), A1TyPrim (A1TyTensor a0eList2))
+  TyEq1List ty1eqElem ->
+    let (a1tye1elem, a1tye2elem) = decomposeType1Equation ty1eqElem
+     in (A1TyList a1tye1elem, A1TyList a1tye2elem)
   TyEq1Arrow ty1eqDom ty1eqCod ->
     let (a1tye11, a1tye21) = decomposeType1Equation ty1eqDom
         (a1tye12, a1tye22) = decomposeType1Equation ty1eqCod

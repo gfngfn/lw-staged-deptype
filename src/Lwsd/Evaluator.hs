@@ -9,6 +9,7 @@ module Lwsd.Evaluator
   )
 where
 
+import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
@@ -26,6 +27,7 @@ data Bug
   | NotAClosure Ass0Val
   | NotACodeValue Ass0Val
   | NotAnInteger (Maybe AssVar) Ass0Val
+  | NotAList (Maybe AssVar) Ass0Val
   | NotAVector AssVar Ass0Val
   | NotAMatrix AssVar Ass0Val
   | NotABoolean Ass0Val
@@ -94,6 +96,13 @@ findInt0 env x = do
     A0ValLiteral (ALitInt n) -> pure n
     _ -> bug $ NotAnInteger (Just x) a0v
 
+findList0 :: Env0 -> AssVar -> M [Ass0Val]
+findList0 env x = do
+  a0v <- findVal0 env x
+  case a0v of
+    A0ValLiteral (ALitList a0es) -> pure a0es
+    _ -> bug $ NotAList (Just x) a0v
+
 findVec0 :: Env0 -> AssVar -> M Vector
 findVec0 env x = do
   a0v <- findVal0 env x
@@ -107,6 +116,20 @@ findMat0 env x = do
   case a0v of
     A0ValLiteral (ALitMat mat) -> pure mat
     _ -> bug $ NotAMatrix x a0v
+
+reduceBeta :: Ass0Val -> Ass0Val -> M Ass0Val
+reduceBeta a0v1 a0v2 =
+  case a0v1 of
+    A0ValLam Nothing (x, _a0tyv11) a0e12 env1 ->
+      evalExpr0
+        (Map.insert x (Ass0ValEntry a0v2) env1)
+        a0e12
+    A0ValLam (Just (f, _a0tyvRec)) (x, _a0tyv11) a0e12 env1 ->
+      evalExpr0
+        (Map.insert x (Ass0ValEntry a0v2) (Map.insert f (Ass0ValEntry a0v1) env1))
+        a0e12
+    _ ->
+      bug $ NotAClosure a0v1
 
 evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
@@ -139,6 +162,11 @@ evalExpr0 env = \case
             EvalState {sourceSpec} <- get
             let spanInFile = getSpanInFile sourceSpec loc
             evalError $ NatAssertionFailure spanInFile n1
+      BIListMap f x -> do
+        a0vF <- findVal0 env f
+        a0vsIn <- findList0 env x
+        a0vsOut <- mapM (reduceBeta a0vF) a0vsIn
+        pure $ A0ValLiteral (ALitList a0vsOut)
       BIGenVadd x1 -> do
         n1 <- findInt0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
@@ -160,6 +188,10 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         n3 <- findInt0 env x3
         pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
+      BIGenTadd x1 -> do
+        a0vs <- findList0 env x1
+        ns <- mapM validateIntLiteral a0vs
+        pure $ A0ValBracket (A1ValConst (A1ValConstTadd ns))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
@@ -189,6 +221,22 @@ evalExpr0 env = \case
         case Matrix.concatVert m1 m2 n mat1 mat2 of
           Just mat -> pure $ A0ValLiteral (ALitMat mat)
           Nothing -> bug $ InconsistentAppBuiltIn bi
+      BITadd ns x1 x2 ->
+        case ns of
+          [n] -> do
+            v1 <- findVec0 env x1
+            v2 <- findVec0 env x2
+            case Vector.add n v1 v2 of
+              Just v -> pure $ A0ValLiteral (ALitVec v)
+              Nothing -> bug $ InconsistentAppBuiltIn bi
+          [m, n] -> do
+            mat1 <- findMat0 env x1
+            mat2 <- findMat0 env x2
+            case Matrix.add m n mat1 mat2 of
+              Just mat -> pure $ A0ValLiteral (ALitMat mat)
+              Nothing -> bug $ InconsistentAppBuiltIn bi
+          _ ->
+            error "TODO: evalExpr0, BITadd, dimension >= 3"
   A0Var x ->
     findVal0 env x
   A0Lam Nothing (x, a0tye1) a0e2 -> do
@@ -201,17 +249,7 @@ evalExpr0 env = \case
   A0App a0e1 a0e2 -> do
     a0v1 <- evalExpr0 env a0e1
     a0v2 <- evalExpr0 env a0e2
-    case a0v1 of
-      A0ValLam Nothing (x, _a0tyv11) a0e12 env1 ->
-        evalExpr0
-          (Map.insert x (Ass0ValEntry a0v2) env1)
-          a0e12
-      A0ValLam (Just (f, _a0tyvRec)) (x, _a0tyv11) a0e12 env1 ->
-        evalExpr0
-          (Map.insert x (Ass0ValEntry a0v2) (Map.insert f (Ass0ValEntry a0v1) env1))
-          a0e12
-      _ ->
-        bug $ NotAClosure a0v1
+    reduceBeta a0v1 a0v2
   A0LetIn (x, a0tye1) a0e1 a0e2 ->
     evalExpr0 env (A0App (A0Lam Nothing (x, a0tye1) a0e2) a0e1)
   A0IfThenElse a0e0 a0e1 a0e2 -> do
@@ -279,8 +317,7 @@ evalTypeExpr0 env = \case
         A0TyInt -> A0TyValInt
         A0TyNat -> A0TyValNat
         A0TyBool -> A0TyValBool
-        A0TyVec n -> A0TyValVec n
-        A0TyMat m n -> A0TyValMat m n
+        A0TyTensor n -> A0TyValTensor n
   SA0TyList sa0tye1 -> do
     a0tyv1 <- evalTypeExpr0 env sa0tye1
     pure $ A0TyValList a0tyv1
@@ -296,6 +333,11 @@ validateIntLiteral = \case
   A0ValLiteral (ALitInt n) -> pure n
   a0v -> bug $ NotAnInteger Nothing a0v
 
+validateListValue :: Ass0Val -> M [Ass0Val]
+validateListValue = \case
+  A0ValLiteral (ALitList a0vs) -> pure a0vs
+  a0v -> bug $ NotAList Nothing a0v
+
 evalTypeExpr1 :: Env0 -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case
   A1TyPrim a1tyPrim ->
@@ -303,13 +345,11 @@ evalTypeExpr1 env = \case
       <$> case a1tyPrim of
         A1TyInt -> pure A1TyValInt
         A1TyBool -> pure A1TyValBool
-        A1TyVec a0e1 -> do
-          n <- validateIntLiteral =<< evalExpr0 env a0e1
-          pure $ A1TyValVec n
-        A1TyMat a0e1 a0e2 -> do
-          m <- validateIntLiteral =<< evalExpr0 env a0e1
-          n <- validateIntLiteral =<< evalExpr0 env a0e2
-          pure $ A1TyValMat m n
+        A1TyTensor a0eList -> do
+          a0v <- evalExpr0 env a0eList
+          a0vs <- validateListValue a0v
+          ns <- mapM validateIntLiteral a0vs
+          pure $ A1TyValTensor ns
   A1TyList a1tye -> do
     a1tyv <- evalTypeExpr1 env a1tye
     pure $ A1TyValList a1tyv
@@ -329,6 +369,7 @@ unliftVal = \case
       A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
+      A1ValConstTadd ns -> BuiltIn.ass0exprTadd ns
   A1ValVar symbX ->
     A0Var (symbolToVar symbX)
   A1ValLam Nothing (symbX, a1tyv1) a1v2 ->
@@ -347,8 +388,7 @@ unliftTypeVal = \case
       case a1tyvPrim of
         A1TyValInt -> A0TyInt
         A1TyValBool -> A0TyBool
-        A1TyValVec n -> A0TyVec n
-        A1TyValMat m n -> A0TyMat m n
+        A1TyValTensor ns -> A0TyTensor ns
   A1TyValList a1tyv ->
     SA0TyList (unliftTypeVal a1tyv)
   A1TyValArrow a1tyv1 a1tyv2 ->

@@ -203,7 +203,7 @@ dispRowContents :: [Int] -> Doc Ann
 dispRowContents row =
   commaSep (disp <$> row)
 
-dispNameWithArgs :: (Disp arg) => Associativity -> Doc Ann -> (arg -> Doc Ann) -> [arg] -> Doc Ann
+dispNameWithArgs :: Associativity -> Doc Ann -> (arg -> Doc Ann) -> [arg] -> Doc Ann
 dispNameWithArgs req name dispArg args =
   case args of
     [] -> name
@@ -273,16 +273,19 @@ instance Disp BuiltIn where
     BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
     BILeq x1 x2 -> "LEQ(" <> disps [x1, x2] <> ")"
     BIAssertNat _loc x1 -> "ASSERT_NAT(" <> disp x1 <> ")"
+    BIListMap f x -> "LIST_MAP(" <> disps [f, x] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
     BIGenMmult x1 x2 x3 -> "GEN_MMULT(" <> disps [x1, x2, x3] <> ")"
     BIGenMconcatVert x1 x2 x3 -> "GEN_MCONCAT_VERT(" <> disps [x1, x2, x3] <> ")"
+    BIGenTadd x -> "GEN_TADD(" <> disp x <> ")"
     BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
     BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
     BIMtranspose m n x1 -> "MTRANSPOSE@{" <> disps [m, n] <> "}(" <> disp x1 <> ")"
     BIMmult k m n x1 x2 -> "MMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
     BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
+    BITadd ns x1 x2 -> "TADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
 
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
@@ -361,8 +364,9 @@ instance Disp Ass0PrimType where
     A0TyInt -> "Int"
     A0TyNat -> "Nat"
     A0TyBool -> "Bool"
-    A0TyVec n -> deepenParenWhen (req <= Atomic) ("Vec" <+> disp n)
-    A0TyMat m n -> deepenParenWhen (req <= Atomic) ("Mat" <+> disp m <+> disp n)
+    A0TyTensor [n] -> dispNameWithArgs req "Vec" disp [n]
+    A0TyTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
+    A0TyTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
 
 instance Disp Ass0TypeExpr where
   dispGen req = \case
@@ -383,8 +387,11 @@ instance Disp Ass1PrimType where
   dispGen req = \case
     A1TyInt -> "Int"
     A1TyBool -> "Bool"
-    A1TyVec a0e -> dispNameWithArgs req "Vec" dispPersistent [a0e]
-    A1TyMat a0e1 a0e2 -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
+    A1TyTensor a0eList ->
+      case a0eList of
+        A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
+        A0Literal (ALitList [a0e1, a0e2]) -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
+        _ -> dispNameWithArgs req "Tensor" (dispGen Atomic) [a0eList]
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case
@@ -418,6 +425,8 @@ instance Disp TypeError where
       "Unknown type or invalid arity (at stage 1):" <+> disp tyName <> "," <+> disp n <+> disp spanInFile
     NotAnIntLitArgAtStage0 spanInFile a0e ->
       "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
+    NotAnIntListLitArgAtStage0 spanInFile a0e ->
+      "An argument expression at stage 0 is not an integer list literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
     TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
       "Type contradiction at stage 0"
         <+> disp spanInFile
@@ -565,6 +574,7 @@ instance Disp Ass1ValConst where
     A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
     A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
     A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
+    A1ValConstTadd ns -> "tadd@{" <> dispListLiteral ns <> "}"
 
 instance Disp Ass1Val where
   dispGen req = \case
@@ -592,8 +602,9 @@ instance Disp Ass0PrimTypeVal where
     A0TyValInt -> "Int"
     A0TyValNat -> "Nat"
     A0TyValBool -> "Bool"
-    A0TyValVec n -> dispNameWithArgs req "Vec" disp [n]
-    A0TyValMat m n -> dispNameWithArgs req "Mat" disp [m, n]
+    A0TyValTensor [n] -> dispNameWithArgs req "Vec" disp [n]
+    A0TyValTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
+    A0TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
 
 instance Disp Ass1TypeVal where
   dispGen req = \case
@@ -605,8 +616,9 @@ instance Disp Ass1PrimTypeVal where
   dispGen req = \case
     A1TyValInt -> "Int"
     A1TyValBool -> "Bool"
-    A1TyValVec n -> dispNameWithArgs req "Vec" dispPersistent [n]
-    A1TyValMat m n -> dispNameWithArgs req "Mat" dispPersistent [m, n]
+    A1TyValTensor [n] -> dispNameWithArgs req "Vec" dispPersistent [n]
+    A1TyValTensor [m, n] -> dispNameWithArgs req "Mat" dispPersistent [m, n]
+    A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
@@ -638,6 +650,10 @@ instance Disp Evaluator.Bug where
       "Not an integer:" <+> disp a0v
     Evaluator.NotAnInteger (Just x) a0v ->
       "Not an integer:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
+    Evaluator.NotAList Nothing a0v ->
+      "Not a list:" <+> disp a0v
+    Evaluator.NotAList (Just x) a0v ->
+      "Not a list:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.NotAVector x a0v ->
       "Not a vector:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.NotAMatrix x a0v ->
@@ -686,7 +702,7 @@ instance Disp Bta.AnalysisError where
     Bta.BITypeContradiction spanInFile bity1 bity2 ->
       "Basic type contradiction;" <+> disp (show bity1) <> "," <+> disp (show bity2) <+> disp spanInFile
     Bta.UnknownTypeOrInvalidArgs spanInFile _tyName _args ->
-      -- TODO: detailed report
+      -- TODO (enhance): detailed report
       "Unknown type or invalid arguments" <+> disp spanInFile
 
 dispWithBindingTime :: (Disp exprMain) => Bta.BindingTimeConst -> exprMain -> Doc Ann

@@ -20,13 +20,14 @@ import Data.Set (Set, (\\))
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Data.Tuple.Extra
-import Lwsd.BuiltIn (ass0exprAssertNat)
+import Lwsd.BuiltIn
 import Lwsd.SrcSyntax
 import Lwsd.Subst
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.TypeError
+import Safe.Exact
 import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.Matrix qualified as Matrix
 import Util.TokenUtil (Span)
@@ -35,6 +36,7 @@ import Prelude
 
 data TypecheckState = TypecheckState
   { optimizeTrivialAssertion :: Bool,
+    distributeIfUnderTensorShape :: Bool,
     sourceSpec :: SourceSpec,
     nextVarIndex :: Int
   }
@@ -81,7 +83,8 @@ applyEquationCast :: Span -> Maybe Type1Equation -> Ass1Expr -> Ass1Expr
 applyEquationCast loc eq =
   applyCast1 (A0TyEqAssert loc <$> eq)
 
--- Returning `Nothing` means there's no need to insert a cast.
+-- The core part of the cast insertion for stage 0.
+-- Returning `(Nothing, ...)` means there's no need to insert a cast.
 makeAssertiveCast :: forall trav. trav -> Span -> Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
 makeAssertiveCast trav loc =
   go
@@ -100,11 +103,24 @@ makeAssertiveCast trav loc =
             (A0TyNat, A0TyInt) -> nothingOrIdentityLam (A0TyPrim A0TyInt) -- Implicit upcast
             (A0TyInt, A0TyNat) -> pure (Just (ass0exprAssertNat loc), Map.empty) -- Assertive downcast
             (A0TyBool, A0TyBool) -> nothingOrIdentityLam (A0TyPrim A0TyBool)
-            (A0TyVec n1, A0TyVec n2) | n1 == n2 -> nothingOrIdentityLam (A0TyPrim (A0TyVec n1))
-            (A0TyMat m1 n1, A0TyMat m2 n2) | m1 == m2 && n1 == n2 -> nothingOrIdentityLam (A0TyPrim (A0TyMat m1 n1))
+            (A0TyTensor ns1, A0TyTensor ns2) ->
+              case zipExactMay ns1 ns2 of
+                Nothing ->
+                  typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
+                Just zipped ->
+                  if all (uncurry (==)) zipped
+                    then nothingOrIdentityLam (A0TyPrim (A0TyTensor ns1))
+                    else typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
             _ -> typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
         (A0TyList a0tye1', A0TyList a0tye2') -> do
-          go varsToInfer a0tye1' a0tye2'
+          (cast', solution) <- go varsToInfer a0tye1' a0tye2'
+          case cast' of
+            Nothing ->
+              pure (Nothing, solution)
+            Just a0eCast -> do
+              let sa0tye1' = strictify (applySolution solution a0tye1')
+              let sa0tye2' = strictify (applySolution solution a0tye2')
+              pure (Just (A0App (ass0exprListMap sa0tye1' sa0tye2') a0eCast), solution)
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22withX2opt) -> do
           (castDom, solutionDom) <- go varsToInfer a0tye11 a0tye21
           (x, a0tye22) <-
@@ -177,6 +193,7 @@ makeAssertiveCast trav loc =
         then pure (Nothing, Map.empty)
         else (\a0e -> (Just a0e, Map.empty)) <$> makeIdentityLam a0tye
 
+-- The core part of the cast insertion for stage 1.
 makeEquation1 :: forall trav. trav -> Span -> Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> M trav (Maybe Type1Equation, InferenceSolution)
 makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
   TypecheckState {optimizeTrivialAssertion} <- get
@@ -189,6 +206,12 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
     Left () ->
       typeError trav $ TypeContradictionAtStage1 spanInFile a1tye1' a1tye2'
   where
+    checkExprArgs :: Set AssVar -> Ass0Expr -> Ass0Expr -> (Bool, Ass0Expr, InferenceSolution)
+    checkExprArgs varsToInfer a0e1 a0e2 =
+      case a0e2 of
+        A0Var x | x `elem` varsToInfer -> (True, a0e1, Map.singleton x a0e1)
+        _ -> (alphaEquivalent a0e1 a0e2, a0e2, Map.empty)
+
     go :: Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> Either () (Bool, Type1Equation, InferenceSolution)
     go varsToInfer a1tye1 a1tye2 =
       case (a1tye1, a1tye2) of
@@ -198,54 +221,38 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
               pure (True, TyEq1Prim TyEq1Int, Map.empty)
             (A1TyBool, A1TyBool) ->
               pure (True, TyEq1Prim TyEq1Bool, Map.empty)
-            (A1TyVec a0e1, A1TyVec a0e2) -> do
-              let (trivial, a0e2', solution) =
-                    case a0e2 of
-                      A0Var x
-                        | x `elem` varsToInfer ->
-                            ( True,
-                              a0e1,
-                              Map.singleton x a0e1
-                            )
-                      _ ->
-                        ( alphaEquivalent a0e1 a0e2,
-                          a0e2,
-                          Map.empty
-                        )
-              pure (trivial, TyEq1Prim (TyEq1Vec a0e1 a0e2'), solution)
-            (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) -> do
-              let (trivial, a0e21', a0e22', solution) =
-                    case (a0e21, a0e22) of
-                      (A0Var x1, A0Var x2)
-                        | x1 `elem` varsToInfer && x2 `elem` varsToInfer ->
-                            ( True,
-                              a0e11,
-                              a0e12,
-                              Map.empty & Map.insert x1 a0e11 & Map.insert x2 a0e12
-                            )
-                      (A0Var x1, _)
-                        | x1 `elem` varsToInfer ->
-                            ( alphaEquivalent a0e12 a0e22,
-                              a0e11,
-                              a0e22,
-                              Map.singleton x1 a0e11
-                            )
-                      (_, A0Var x2)
-                        | x2 `elem` varsToInfer ->
-                            ( alphaEquivalent a0e11 a0e21,
-                              a0e21,
-                              a0e12,
-                              Map.singleton x2 a0e12
-                            )
-                      (_, _) ->
-                        ( alphaEquivalent a0e11 a0e21 && alphaEquivalent a0e12 a0e22,
-                          a0e21,
-                          a0e22,
-                          Map.empty
-                        )
-              pure (trivial, TyEq1Prim (TyEq1Mat a0e11 a0e12 a0e21' a0e22'), solution)
+            (A1TyTensor a0eList1, A1TyTensor a0eList2) -> do
+              case (a0eList1, a0eList2) of
+                -- Enhancement for the argument inference 1:
+                (A0Literal (ALitList a0es1), A0Literal (ALitList a0es2)) ->
+                  case zipExactMay a0es1 a0es2 of
+                    Nothing ->
+                      Left ()
+                    Just zipped -> do
+                      let (trivial, equationAccResult, _varsToInfer, solution) =
+                            List.foldl'
+                              ( \(trivialAcc, equationAcc, varsToInferAcc, solutionAcc) (a0e1, a0e2) ->
+                                  let a0e1sub = applySolution solutionAcc a0e1
+                                      a0e2sub = applySolution solutionAcc a0e2
+                                      (trivial', a0e2', solution') = checkExprArgs varsToInferAcc a0e1sub a0e2sub
+                                   in (trivialAcc && trivial', (a0e1sub, a0e2') : equationAcc, varsToInferAcc \\ Map.keysSet solution', Map.union solution' solutionAcc)
+                              )
+                              (True, [], varsToInfer, Map.empty)
+                              zipped
+                      pure (trivial, TyEq1Prim (TyEq1TensorByLiteral (reverse equationAccResult)), solution)
+                -- Enhancement for the argument inference 2:
+                (_, A0Var x2)
+                  | x2 `elem` varsToInfer ->
+                      pure (True, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList1), Map.singleton x2 a0eList1)
+                -- General rule:
+                (_, _) -> do
+                  let trivial = alphaEquivalent a0eList1 a0eList2
+                  pure (trivial, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList2), Map.empty)
             (_, _) ->
               Left ()
+        (A1TyList a1tye1elem, A1TyList a1tye2elem) -> do
+          (trivial, ty1eqElem, solution) <- go varsToInfer a1tye1elem a1tye2elem
+          pure (trivial, TyEq1List ty1eqElem, solution)
         (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) -> do
           (trivial1, ty1eqDom, solution1) <- go varsToInfer a1tye11 a1tye21
           (trivial2, ty1eqCod, solution2) <- go (varsToInfer \\ Map.keysSet solution1) a1tye12 (applySolution solution1 a1tye22)
@@ -253,8 +260,8 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
         (_, _) ->
           Left ()
 
-mergeTypesByConditional0 :: Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
-mergeTypesByConditional0 a0e0 = go0
+mergeTypesByConditional0 :: Bool -> Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
+mergeTypesByConditional0 distributeIfUnderTensorShape a0e0 = go0
   where
     go0 :: Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
     go0 a0tye1 a0tye2 =
@@ -284,10 +291,10 @@ mergeTypesByConditional0 a0e0 = go0
           Left $ CannotMerge0 a0tye1 a0tye2
 
     go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
-    go1 = mergeTypesByConditional1 a0e0
+    go1 = mergeTypesByConditional1 distributeIfUnderTensorShape a0e0
 
-mergeTypesByConditional1 :: Ass0Expr -> Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
-mergeTypesByConditional1 a0e0 = go1
+mergeTypesByConditional1 :: Bool -> Ass0Expr -> Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
+mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 = go1
   where
     go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
     go1 a1tye1 a1tye2 =
@@ -299,10 +306,16 @@ mergeTypesByConditional1 a0e0 = go1
                 pure A1TyInt
               (A1TyBool, A1TyBool) ->
                 pure A1TyBool
-              (A1TyVec a0e1, A1TyVec a0e2) ->
-                pure $ A1TyVec (a0branch a0e1 a0e2)
-              (A1TyMat a0e11 a0e12, A1TyMat a0e21 a0e22) ->
-                pure $ A1TyMat (a0branch a0e11 a0e21) (a0branch a0e12 a0e22)
+              (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
+                case (a0eList1, a0eList2) of
+                  -- Slight enhancement for the argument inference:
+                  (A0Literal (ALitList a0es1), A0Literal (ALitList a0es2)) | distributeIfUnderTensorShape ->
+                    case zipExactMay a0es1 a0es2 of
+                      Nothing -> Left $ CannotMerge1 a1tye1 a1tye2
+                      Just zipped -> pure $ A1TyTensor (A0Literal (ALitList (map (uncurry a0branch) zipped)))
+                  -- General rule:
+                  (_, _) ->
+                    pure $ A1TyTensor (a0branch a0eList1 a0eList2)
               _ ->
                 Left $ CannotMerge1 a1tye1 a1tye2
         (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
@@ -343,8 +356,9 @@ mergeResultsByConditional0 trav loc a0e0 = go
     a0branch = A0IfThenElse a0e0
 
     mergeTypes0 :: Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0TypeExpr
-    mergeTypes0 a0tye1 a0tye2 =
-      case mergeTypesByConditional0 a0e0 a0tye1 a0tye2 of
+    mergeTypes0 a0tye1 a0tye2 = do
+      TypecheckState {distributeIfUnderTensorShape} <- get
+      case mergeTypesByConditional0 distributeIfUnderTensorShape a0e0 a0tye1 a0tye2 of
         Left condErr -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotMergeTypesByConditional0 spanInFile a0tye1 a0tye2 condErr
@@ -352,8 +366,9 @@ mergeResultsByConditional0 trav loc a0e0 = go
           pure a0tye
 
     mergeTypes1 :: Ass1TypeExpr -> Ass1TypeExpr -> M trav Ass1TypeExpr
-    mergeTypes1 a1tye1 a1tye2 =
-      case mergeTypesByConditional1 a0e0 a1tye1 a1tye2 of
+    mergeTypes1 a1tye1 a1tye2 = do
+      TypecheckState {distributeIfUnderTensorShape} <- get
+      case mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 a1tye1 a1tye2 of
         Left condErr -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotMergeTypesByConditional1 spanInFile a1tye1 a1tye2 condErr
@@ -491,10 +506,10 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                       pure (A0TyList a0tyeFirst, ALitList (a0eFirst : a0esTail))
                 LitVec ns -> do
                   let vec = Vector.fromList ns
-                  pure (A0TyPrim (A0TyVec (Vector.length vec)), ALitVec vec)
+                  pure (A0TyPrim (a0TyVec (Vector.length vec)), ALitVec vec)
                 LitMat nss -> do
                   mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral spanInFile e, trav)) $ Matrix.fromRows nss
-                  pure (A0TyPrim (uncurry A0TyMat (Matrix.size mat)), ALitMat mat)
+                  pure (A0TyPrim (uncurry a0TyMat (Matrix.size mat)), ALitMat mat)
             pure (Pure a0tye, A0Literal alit)
           _ : _ ->
             typeError trav $ CannotApplyLiteral spanInFile
@@ -653,10 +668,10 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
                     pure (A1TyList a1tyeFirst, ALitList (a1eFirst : a1esTail))
               LitVec ns -> do
                 let vec = Vector.fromList ns
-                pure (A1TyPrim (A1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)
+                pure (A1TyPrim (a1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)
               LitMat nss -> do
                 mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral spanInFile e, trav)) $ Matrix.fromRows nss
-                pure (A1TyPrim (uncurry A1TyMat (both (A0Literal . ALitInt) (Matrix.size mat))), ALitMat mat)
+                pure (A1TyPrim (uncurry a1TyMat (both (A0Literal . ALitInt) (Matrix.size mat))), ALitMat mat)
           pure (Pure a1tye, A1Literal alit)
         _ : _ ->
           typeError trav $ CannotApplyLiteral spanInFile
@@ -779,9 +794,9 @@ mapMPure f = go
     go (FillInferred0 a0e r) = FillInferred0 a0e <$> go r
     go (InsertInferred0 a0e r) = InsertInferred0 a0e <$> go r
 
-insertCastForNatArg :: trav -> (Ass0TypeExpr, Ass0Expr, Span) -> M trav Ass0Expr
-insertCastForNatArg trav (a0tye, a0e, loc) = do
-  (cast, _) <- makeAssertiveCast trav loc Set.empty a0tye (A0TyPrim A0TyNat)
+insertCastForExprArg :: trav -> (Ass0TypeExpr, Ass0Expr, Span) -> Ass0TypeExpr -> M trav Ass0Expr
+insertCastForExprArg trav (a0tye, a0e, loc) a0tyeReq = do
+  (cast, _) <- makeAssertiveCast trav loc Set.empty a0tye a0tyeReq
   pure $ applyCast cast a0e
 
 validateIntLiteral :: trav -> (IntermediateArgForAss0Type, Span) -> M trav Int
@@ -791,6 +806,22 @@ validateIntLiteral trav = \case
   (IA0ExprArg a0e, loc) -> do
     spanInFile <- askSpanInFile loc
     typeError trav $ NotAnIntLitArgAtStage0 spanInFile a0e
+  (IA0TypeArg _a0tye, _loc) -> do
+    error "TODO (error): validateIntLiteral, IA0TypeArg"
+
+validateIntListLiteral :: trav -> (IntermediateArgForAss0Type, Span) -> M trav [Int]
+validateIntListLiteral trav = \case
+  (IA0ExprArg a0e@(A0Literal (ALitList a0es)), loc) -> do
+    spanInFile <- askSpanInFile loc
+    mapM
+      ( \case
+          A0Literal (ALitInt n) -> pure n
+          _ -> typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
+      )
+      a0es
+  (IA0ExprArg a0e, loc) -> do
+    spanInFile <- askSpanInFile loc
+    typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
   (IA0TypeArg _a0tye, _loc) -> do
     error "TODO (error): validateIntLiteral, IA0TypeArg"
 
@@ -828,11 +859,14 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
             (IA0ExprArg _a0e, _loc) -> error "TODO (error): typecheckTypeExpr0, TyName, List, IA0ExprArg"
         ("Vec", [arg]) -> do
           n <- validateIntLiteral trav arg
-          pure $ A0TyPrim (A0TyVec n)
+          pure $ A0TyPrim (a0TyVec n)
         ("Mat", [arg1, arg2]) -> do
           m <- validateIntLiteral trav arg1
           n <- validateIntLiteral trav arg2
-          pure $ A0TyPrim (A0TyMat m n)
+          pure $ A0TyPrim (a0TyMat m n)
+        ("Tensor", [arg]) -> do
+          ns <- validateIntListLiteral trav arg
+          pure $ A0TyPrim (A0TyTensor ns)
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
@@ -882,12 +916,15 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
         ("List", [(IA1TypeArg a1tye, _)]) -> do
           pure $ A1TyList a1tye
         ("Vec", [(IA1ExprArg a0e' a0tye, loc')]) -> do
-          a0e <- insertCastForNatArg trav (a0tye, a0e', loc')
-          pure $ A1TyPrim (A1TyVec a0e)
+          a0e <- insertCastForExprArg trav (a0tye, a0e', loc') (A0TyPrim A0TyNat)
+          pure $ A1TyPrim (a1TyVec a0e)
         ("Mat", [(IA1ExprArg a0e1' a0tye1, loc1), (IA1ExprArg a0e2' a0tye2, loc2)]) -> do
-          a0e1 <- insertCastForNatArg trav (a0tye1, a0e1', loc1)
-          a0e2 <- insertCastForNatArg trav (a0tye2, a0e2', loc2)
-          pure $ A1TyPrim (A1TyMat a0e1 a0e2)
+          a0e1 <- insertCastForExprArg trav (a0tye1, a0e1', loc1) (A0TyPrim A0TyNat)
+          a0e2 <- insertCastForExprArg trav (a0tye2, a0e2', loc2) (A0TyPrim A0TyNat)
+          pure $ A1TyPrim (a1TyMat a0e1 a0e2)
+        ("Tensor", [(IA1ExprArg a0e' a0tye, loc')]) -> do
+          a0eList <- insertCastForExprArg trav (a0tye, a0e', loc') (A0TyList (A0TyPrim A0TyNat))
+          pure $ A1TyPrim (A1TyTensor a0eList)
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
