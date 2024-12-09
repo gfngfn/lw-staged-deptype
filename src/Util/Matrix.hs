@@ -6,11 +6,13 @@ module Util.Matrix
     size,
     transpose,
     mult,
+    add,
     concatVert,
   )
 where
 
 import Data.List qualified as List
+import Safe.Exact
 import Prelude
 
 newtype Matrix = Matrix [[Int]]
@@ -71,6 +73,20 @@ mult k m n mat1 mat2 = do
   where
     calc :: [Int] -> [Int] -> Int
     calc row column = List.foldl' (+) 0 $ zipWith (*) row column
+
+add :: Int -> Int -> Matrix -> Matrix -> Maybe Matrix
+add m n mat1 mat2 = do
+  let Matrix rows1 = mat1
+  let Matrix rows2 = mat2
+  if size mat1 == (m, n) && size mat2 == (m, n)
+    then do
+      zippedRows <- zipExactMay rows1 rows2
+      Matrix
+        <$> mapM
+          (\(elems1, elems2) -> map (uncurry (+)) <$> zipExactMay elems1 elems2)
+          zippedRows
+    else
+      Nothing
 
 concatVert :: Int -> Int -> Int -> Matrix -> Matrix -> Maybe Matrix
 concatVert m1 m2 n mat1 mat2 =

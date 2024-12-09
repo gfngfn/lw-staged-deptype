@@ -229,8 +229,14 @@ evalExpr0 env = \case
             case Vector.add n v1 v2 of
               Just v -> pure $ A0ValLiteral (ALitVec v)
               Nothing -> bug $ InconsistentAppBuiltIn bi
-          _ -> do
-            error "TODO: evalExpr0, BITadd, dimension >= 2"
+          [m, n] -> do
+            mat1 <- findMat0 env x1
+            mat2 <- findMat0 env x2
+            case Matrix.add m n mat1 mat2 of
+              Just mat -> pure $ A0ValLiteral (ALitMat mat)
+              Nothing -> bug $ InconsistentAppBuiltIn bi
+          _ ->
+            error "TODO: evalExpr0, BITadd, dimension >= 3"
   A0Var x ->
     findVal0 env x
   A0Lam Nothing (x, a0tye1) a0e2 -> do
