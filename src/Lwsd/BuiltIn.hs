@@ -20,27 +20,8 @@ import Lwsd.TypeEnv qualified as TypeEnv
 import Util.TokenUtil (Span)
 import Prelude
 
-tyInt :: Ass0TypeExpr
-tyInt = A0TyPrim A0TyInt
-
-tyBool :: Ass0TypeExpr
-tyBool = A0TyPrim A0TyBool
-
-(-->) :: Ass0TypeExpr -> Ass0TypeExpr -> Ass0TypeExpr
-(-->) a0tye1 = A0TyArrow (Nothing, a0tye1)
-
-infixr 0 -->
-
 initialTypeEnv :: TypeEnv
-initialTypeEnv =
-  List.foldl'
-    (\tyEnv (x, a0tye) -> TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye) tyEnv)
-    TypeEnv.empty
-    [ ("+", tyInt --> tyInt --> tyInt),
-      ("-", tyInt --> tyInt --> tyInt),
-      ("*", tyInt --> tyInt --> tyInt),
-      ("<=", tyInt --> tyInt --> tyBool)
-    ]
+initialTypeEnv = TypeEnv.empty
 
 tyValInt :: Ass0TypeVal
 tyValInt = A0TyValPrim A0TyValInt
