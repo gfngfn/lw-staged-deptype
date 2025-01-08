@@ -3,6 +3,7 @@ module Lwsd.Typechecker
     typecheckExpr1,
     typecheckTypeExpr0,
     typecheckTypeExpr1,
+    typecheckDecl,
     TypecheckState (..),
     M,
   )
@@ -938,3 +939,13 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       typeError trav $ CannotUseOptArrowTypeAtStage1 spanInFile
     TyCode _ -> do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile
+
+typecheckDecl :: trav -> TypeEnv -> Decl -> M trav (Map Var TypeEnv.Entry)
+typecheckDecl trav tyEnv (Decl _ann declMain) =
+  case declMain of
+    DeclVal0 x tye _ext -> do
+      a0tye <- typecheckTypeExpr0 trav tyEnv tye
+      pure $ Map.singleton x (TypeEnv.Ass0Entry a0tye)
+    DeclVal1 x tye _ext -> do
+      a1tye <- typecheckTypeExpr1 trav tyEnv tye
+      pure $ Map.singleton x (TypeEnv.Ass1Entry a1tye)
