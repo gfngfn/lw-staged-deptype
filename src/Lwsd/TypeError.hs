@@ -44,6 +44,7 @@ data TypeError
   | CannotInstantiateGuidedByAppContext1 SpanInFile AppContext Ass1TypeExpr
   | CannotInferOptional SpanInFile AssVar
   | Stage1IfThenElseRestrictedToEmptyContext SpanInFile AppContext
+  | DeclarationOverwritten SpanInFile Var
   deriving stock (Eq, Show)
 
 data ConditionalMergeError

@@ -536,6 +536,8 @@ instance Disp TypeError where
         <> hardline
         <+> "application context:"
         <> nest 2 (hardline <> disps appCtx)
+    DeclarationOverwritten spanInFile x ->
+      "Declaration of a value " <+> disp x <+> "is overwritten" <+> disp spanInFile
 
 instance Disp ConditionalMergeError where
   dispGen _ = \case

@@ -4,6 +4,7 @@ module Lwsd.Typechecker
     typecheckTypeExpr0,
     typecheckTypeExpr1,
     typecheckDecl,
+    typecheckDecls,
     TypecheckState (..),
     M,
   )
@@ -25,7 +26,7 @@ import Lwsd.BuiltIn
 import Lwsd.SrcSyntax
 import Lwsd.Subst
 import Lwsd.Syntax
-import Lwsd.TypeEnv (TypeEnv)
+import Lwsd.TypeEnv (SigRecord, TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.TypeError
 import Safe.Exact
@@ -940,8 +941,8 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
     TyCode _ -> do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile
 
-typecheckDecl :: trav -> TypeEnv -> Decl -> M trav (Map Var TypeEnv.Entry)
-typecheckDecl trav tyEnv (Decl _ann declMain) =
+typecheckDecl :: trav -> TypeEnv -> Decl -> M trav SigRecord
+typecheckDecl trav tyEnv (Decl _loc declMain) =
   case declMain of
     DeclVal0 x tye _ext -> do
       a0tye <- typecheckTypeExpr0 trav tyEnv tye
@@ -949,3 +950,17 @@ typecheckDecl trav tyEnv (Decl _ann declMain) =
     DeclVal1 x tye _ext -> do
       a1tye <- typecheckTypeExpr1 trav tyEnv tye
       pure $ Map.singleton x (TypeEnv.Ass1Entry a1tye)
+
+typecheckDecls :: trav -> TypeEnv -> [Decl] -> M trav (TypeEnv, SigRecord)
+typecheckDecls trav tyEnv =
+  foldM
+    ( \(tyEnv', sigr') decl@(Decl loc _) -> do
+        sigr <- typecheckDecl trav tyEnv' decl
+        case Map.toList (Map.intersection sigr' sigr) of
+          [] ->
+            pure (TypeEnv.appendSigRecord tyEnv' sigr, Map.union sigr' sigr)
+          (x, _) : _ -> do
+            spanInFile <- askSpanInFile loc
+            typeError trav $ DeclarationOverwritten spanInFile x
+    )
+    (tyEnv, Map.empty)
