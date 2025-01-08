@@ -1,6 +1,7 @@
 module Lwsd.Parser
   ( parseExpr,
     parseTypeExpr,
+    parseDecls,
   )
 where
 
@@ -261,6 +262,17 @@ typeExpr = fun
         makeFunDom isMandatory locFirst x tyeDom =
           (Just (isMandatory, locFirst, x), tyeDom)
 
+decl :: P Decl
+decl =
+  (makeDeclVal DeclVal0 <$> token TokVal <*> (token TokEscape *> noLoc lower) <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+    `or` (makeDeclVal DeclVal1 <$> token TokVal <*> noLoc lower <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+  where
+    makeDeclVal ctor locFirst x tye (Located locLast ext) =
+      Decl (mergeSpan locFirst locLast) (ctor x tye ext)
+
+external :: P (Located External)
+external = lower
+
 parse :: P a -> Text -> Either String a
 parse p source = do
   locatedTokens <- Token.lex source
@@ -271,3 +283,6 @@ parseExpr = parse expr
 
 parseTypeExpr :: Text -> Either String TypeExpr
 parseTypeExpr = parse typeExpr
+
+parseDecls :: Text -> Either String [Decl]
+parseDecls = parse (many decl)

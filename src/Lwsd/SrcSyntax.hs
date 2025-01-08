@@ -12,6 +12,10 @@ module Lwsd.SrcSyntax
     TypeExprMain,
     ArgForTypeF (..),
     ArgForType,
+    Decl,
+    DeclF (..),
+    DeclMainF (..),
+    External,
   )
 where
 
@@ -84,3 +88,14 @@ data ArgForTypeF ann
   deriving (Eq1, Show1) via (Generically1 ArgForTypeF)
 
 type ArgForType = ArgForTypeF Span
+
+type Decl = DeclF Span
+
+data DeclF ann = Decl ann (DeclMainF ann)
+
+-- TODO: add the declaration for persistent values and type constructors
+data DeclMainF ann
+  = DeclVal0 Var (TypeExprF ann) External
+  | DeclVal1 Var (TypeExprF ann) External
+
+type External = Text
