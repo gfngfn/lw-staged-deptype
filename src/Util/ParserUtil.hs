@@ -2,8 +2,10 @@ module Util.ParserUtil
   ( GenP,
     runParser,
     failure,
+    eof,
     some,
     many,
+    manyNoTry,
     tries,
     or,
     expectToken,
@@ -31,6 +33,9 @@ runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [
 runParser p locatedTokens =
   Either.mapLeft Mp.errorBundlePretty $ Mp.parse p "input" locatedTokens
 
+eof :: (Ord token) => GenP token ()
+eof = Mp.eof
+
 failure :: (Ord token) => Located token -> GenP token a
 failure unexpectedToken =
   Mp.failure (Just (Mp.Tokens (unexpectedToken :| []))) Set.empty
@@ -44,6 +49,9 @@ some p = do
 
 many :: (Ord token) => GenP token a -> GenP token [a]
 many = Mp.many . Mp.try
+
+manyNoTry :: (Ord token) => GenP token a -> GenP token [a]
+manyNoTry = Mp.many
 
 tries :: (Ord token) => [GenP token a] -> GenP token a -> GenP token a
 tries ps pAcc0 = foldr or pAcc0 ps

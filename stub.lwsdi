@@ -1,0 +1,2 @@
+val ~gen_vadd : (a : Nat) -> &(Vec %a -> Vec %a -> Vec %a) external gen_vadd
+val a : Int external b

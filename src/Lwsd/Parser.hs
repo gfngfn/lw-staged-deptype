@@ -1,6 +1,6 @@
 module Lwsd.Parser
   ( parseExpr,
-    parseTypeExpr,
+    parseTypeExpr, -- Made public for tests
     parseDecls,
   )
 where
@@ -279,10 +279,10 @@ parse p source = do
   runParser p locatedTokens
 
 parseExpr :: Text -> Either String Expr
-parseExpr = parse expr
+parseExpr = parse (expr <* eof)
 
 parseTypeExpr :: Text -> Either String TypeExpr
-parseTypeExpr = parse typeExpr
+parseTypeExpr = parse (typeExpr <* eof)
 
 parseDecls :: Text -> Either String [Decl]
-parseDecls = parse (many decl)
+parseDecls = parse (manyNoTry decl <* eof)

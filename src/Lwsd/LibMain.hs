@@ -103,7 +103,9 @@ handle arg@Argument {inputFilePath, stubFilePath, displayWidth} = do
       putStrLn "-------- parse error of stub: --------"
       putStrLn err
       failure
-    Right _decls -> do
+    Right decls -> do
+      putStrLn "-------- parsed stub: --------"
+      print decls
       source <- TextIO.readFile inputFilePath
       case Parser.parseExpr source of
         Left err -> do
