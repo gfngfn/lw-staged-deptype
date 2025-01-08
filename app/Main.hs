@@ -8,7 +8,8 @@ import System.Exit
 defaultDisplayWidth :: Int
 defaultDisplayWidth = 120
 
-helpDisplayWidth, helpOptimize, helpDistributeIf, helpCompileTimeOnly :: String
+helpStub, helpDisplayWidth, helpOptimize, helpDistributeIf, helpCompileTimeOnly :: String
+helpStub = "Specify the stub file"
 helpDisplayWidth = "Set the display width (default: " ++ show defaultDisplayWidth ++ ")"
 helpOptimize = "Inserts only non-trivial cast assertions"
 helpDistributeIf = "Distributes if-expressions under list literals for tensor shapes"
@@ -29,6 +30,7 @@ lwsdArgumentParser :: Parser LwsdMain.Argument
 lwsdArgumentParser =
   LwsdMain.Argument
     <$> strArgument (metavar "INPUT-FILE-PATH")
+    <*> option auto (short 's' <> long "stub" <> value "stub.lwsdi" <> help helpStub)
     <*> switch (short 'O' <> long "optimize" <> help helpOptimize)
     <*> switch (short 'D' <> long "distribute-if" <> help helpDistributeIf)
     <*> option auto (short 'w' <> long "display-width" <> value defaultDisplayWidth <> help helpDisplayWidth)
@@ -38,6 +40,7 @@ surfaceArgumentParser :: Parser SurfaceMain.Argument
 surfaceArgumentParser =
   SurfaceMain.Argument
     <$> strArgument (metavar "INPUT-FILE-PATH")
+    <*> option auto (short 's' <> long "stub" <> value "stub.lwsdi" <> help helpStub)
     <*> switch (short 'O' <> long "optimize" <> help helpOptimize)
     <*> switch (short 'D' <> long "distribute-if" <> help helpDistributeIf)
     <*> option auto (short 'w' <> long "display-width" <> value defaultDisplayWidth <> help helpDisplayWidth)

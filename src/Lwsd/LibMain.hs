@@ -22,6 +22,7 @@ import Prelude
 
 data Argument = Argument
   { inputFilePath :: String,
+    stubFilePath :: String,
     optimize :: Bool,
     distributeIf :: Bool,
     displayWidth :: Int,
@@ -94,23 +95,30 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
 
 -- Returns a boolean that represents success or failure
 handle :: Argument -> IO Bool
-handle arg@Argument {inputFilePath, displayWidth} = do
+handle arg@Argument {inputFilePath, stubFilePath, displayWidth} = do
   putStrLn "Lightweight Dependent Types via Staging"
-  source <- TextIO.readFile inputFilePath
-  case Parser.parseExpr source of
+  stub <- TextIO.readFile stubFilePath
+  case Parser.parseDecls stub of
     Left err -> do
-      putStrLn "-------- parse error: --------"
+      putStrLn "-------- parse error of stub: --------"
       putStrLn err
       failure
-    Right e -> do
-      putStrLn "-------- parsed expression: --------"
-      putRenderedLinesAtStage0 e
-      let sourceSpec =
-            SourceSpec
-              { LocationInFile.source = source,
-                LocationInFile.inputFilePath = inputFilePath
-              }
-      typecheckAndEval arg sourceSpec e
+    Right _decls -> do
+      source <- TextIO.readFile inputFilePath
+      case Parser.parseExpr source of
+        Left err -> do
+          putStrLn "-------- parse error of source: --------"
+          putStrLn err
+          failure
+        Right e -> do
+          putStrLn "-------- parsed expression: --------"
+          putRenderedLinesAtStage0 e
+          let sourceSpec =
+                SourceSpec
+                  { LocationInFile.source = source,
+                    LocationInFile.inputFilePath = inputFilePath
+                  }
+          typecheckAndEval arg sourceSpec e
   where
     putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
     putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth

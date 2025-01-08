@@ -17,6 +17,7 @@ import Prelude
 
 data Argument = Argument
   { inputFilePath :: String,
+    stubFilePath :: String,
     optimize :: Bool,
     distributeIf :: Bool,
     displayWidth :: Int,
@@ -25,7 +26,7 @@ data Argument = Argument
   }
 
 handle :: Argument -> IO Bool
-handle Argument {inputFilePath, optimize, distributeIf, displayWidth, compileTimeOnly, fallBackToBindingTime0} = do
+handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWidth, compileTimeOnly, fallBackToBindingTime0} = do
   putStrLn "Lightweight Dependent Types via Staging (Surface Language)"
   source <- TextIO.readFile inputFilePath
   let sourceSpec =
@@ -54,6 +55,7 @@ handle Argument {inputFilePath, optimize, distributeIf, displayWidth, compileTim
           let lwArg =
                 LwsdMain.Argument
                   { LwsdMain.inputFilePath = inputFilePath,
+                    LwsdMain.stubFilePath = stubFilePath,
                     LwsdMain.optimize = optimize,
                     LwsdMain.distributeIf = distributeIf,
                     LwsdMain.displayWidth = displayWidth,
