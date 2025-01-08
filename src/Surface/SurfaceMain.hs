@@ -8,6 +8,7 @@ import Data.Text.IO qualified as TextIO
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.LibMain qualified as LwsdMain
+import Lwsd.Parser qualified as LwsdParser
 import Surface.BindingTime qualified as BindingTime
 import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
@@ -28,40 +29,47 @@ data Argument = Argument
 handle :: Argument -> IO Bool
 handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWidth, compileTimeOnly, fallBackToBindingTime0} = do
   putStrLn "Lightweight Dependent Types via Staging (Surface Language)"
-  source <- TextIO.readFile inputFilePath
-  let sourceSpec =
-        SourceSpec
-          { LocationInFile.source = source,
-            LocationInFile.inputFilePath = inputFilePath
-          }
-  case Parser.parseExpr source of
+  stub <- TextIO.readFile stubFilePath
+  case LwsdParser.parseDecls stub of
     Left err -> do
-      putStrLn "-------- parse error: --------"
+      putStrLn "-------- parse error of stub: --------"
       putStrLn err
       failure
-    Right e -> do
-      putStrLn "-------- parsed expression: --------"
-      putRenderedLines e
-      case BindingTime.analyze sourceSpec fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
-        Left analyErr -> do
-          putStrLn "-------- binding-time analysis error: --------"
-          putRenderedLines analyErr
+    Right declsInStub -> do
+      source <- TextIO.readFile inputFilePath
+      let sourceSpec =
+            SourceSpec
+              { LocationInFile.source = source,
+                LocationInFile.inputFilePath = inputFilePath
+              }
+      case Parser.parseExpr source of
+        Left err -> do
+          putStrLn "-------- parse error: --------"
+          putStrLn err
           failure
-        Right (bce, lwe) -> do
-          putStrLn "-------- result of binding-time analysis: --------"
-          putRenderedLines bce
-          putStrLn "-------- result of staging: --------"
-          putRenderedLinesAtStage0 lwe
-          let lwArg =
-                LwsdMain.Argument
-                  { LwsdMain.inputFilePath = inputFilePath,
-                    LwsdMain.stubFilePath = stubFilePath,
-                    LwsdMain.optimize = optimize,
-                    LwsdMain.distributeIf = distributeIf,
-                    LwsdMain.displayWidth = displayWidth,
-                    LwsdMain.compileTimeOnly = compileTimeOnly
-                  }
-          LwsdMain.typecheckAndEval lwArg sourceSpec lwe
+        Right e -> do
+          putStrLn "-------- parsed expression: --------"
+          putRenderedLines e
+          case BindingTime.analyze sourceSpec fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
+            Left analyErr -> do
+              putStrLn "-------- binding-time analysis error: --------"
+              putRenderedLines analyErr
+              failure
+            Right (bce, lwe) -> do
+              putStrLn "-------- result of binding-time analysis: --------"
+              putRenderedLines bce
+              putStrLn "-------- result of staging: --------"
+              putRenderedLinesAtStage0 lwe
+              let lwArg =
+                    LwsdMain.Argument
+                      { LwsdMain.inputFilePath = inputFilePath,
+                        LwsdMain.stubFilePath = stubFilePath,
+                        LwsdMain.optimize = optimize,
+                        LwsdMain.distributeIf = distributeIf,
+                        LwsdMain.displayWidth = displayWidth,
+                        LwsdMain.compileTimeOnly = compileTimeOnly
+                      }
+              LwsdMain.typecheckAndEval lwArg sourceSpec declsInStub lwe
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth
