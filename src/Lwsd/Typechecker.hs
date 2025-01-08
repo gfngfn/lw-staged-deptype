@@ -517,11 +517,15 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             typeError trav $ CannotApplyLiteral spanInFile
       Var x -> do
         entry <- findVar trav loc x tyEnv
-        let ax = AssVar x
         case entry of
-          TypeEnv.Ass0Entry a0tye -> do
+          TypeEnv.Ass0Entry a0tye builtInNameOpt -> do
             result <- instantiateGuidedByAppContext0 trav loc appCtx a0tye
-            pure (result, A0Var ax)
+            case builtInNameOpt of
+              Just builtInName ->
+                pure (result, A0BuiltInName builtInName)
+              Nothing -> do
+                let ax = AssVar x
+                pure (result, A0Var ax)
           TypeEnv.Ass1Entry _ ->
             typeError trav $ NotAStage0Var spanInFile x
       Lam recOpt (x1, tye1) e2 ->
@@ -531,7 +535,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               Nothing -> do
                 a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
                 (result2, a0e2) <-
-                  typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) [] e2
+                  typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1 Nothing) tyEnv) [] e2
                 a0tye2 <- validateEmptyRetAppContext "stage-0, Lam, non-rec" result2
                 let ax1 = AssVar x1
                 let sa0tye1 = strictify a0tye1
@@ -542,8 +546,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 (result2, a0e2) <- do
                   let tyEnv' =
                         tyEnv
-                          & TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1)
-                          & TypeEnv.addVar f (TypeEnv.Ass0Entry a0tyeRec)
+                          & TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1 Nothing)
+                          & TypeEnv.addVar f (TypeEnv.Ass0Entry a0tyeRec Nothing)
                   typecheckExpr0 trav tyEnv' [] e2
                 a0tye2 <- validateEmptyRetAppContext "stage-0, Lam, rec" result2
                 let ax1 = AssVar x1
@@ -568,8 +572,9 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         case appCtx of
           [] -> do
             a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
-            (result2, a0e2) <-
-              typecheckExpr0 trav (TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1) tyEnv) [] e2
+            (result2, a0e2) <- do
+              let tyEnv' = TypeEnv.addVar x1 (TypeEnv.Ass0Entry a0tye1 Nothing) tyEnv
+              typecheckExpr0 trav tyEnv' [] e2
             a0tye2 <- validateEmptyRetAppContext "stage-1, Lam, non-rec" result2
             let ax1 = AssVar x1
             let sa0tye1 = strictify a0tye1
@@ -595,8 +600,9 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
       LetIn x e1 e2 -> do
         (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
         a0tye1 <- validateEmptyRetAppContext "stage-0, LetIn" result1
-        (result2, a0e2) <-
-          typecheckExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) appCtx e2
+        (result2, a0e2) <- do
+          let tyEnv' = TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1 Nothing) tyEnv
+          typecheckExpr0 trav tyEnv' appCtx e2
         let ax = AssVar x
         let sa0tye1 = strictify a0tye1
         if ax `occurs0` result2
@@ -681,7 +687,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       entry <- findVar trav loc x tyEnv
       let ax = AssVar x
       case entry of
-        TypeEnv.Ass0Entry _ ->
+        TypeEnv.Ass0Entry _ _ ->
           typeError trav $ NotAStage1Var spanInFile x
         TypeEnv.Ass1Entry a1tye -> do
           (result, _) <- instantiateGuidedByAppContext1 trav loc Set.empty appCtx a1tye
@@ -872,10 +878,12 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
-      a0tye2 <-
-        case xOpt of
-          Just x -> typecheckTypeExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) tye2
-          Nothing -> typecheckTypeExpr0 trav tyEnv tye2
+      a0tye2 <- do
+        let tyEnv' =
+              case xOpt of
+                Just x -> TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1 Nothing) tyEnv
+                Nothing -> tyEnv
+        typecheckTypeExpr0 trav tyEnv' tye2
       let axOpt = fmap AssVar xOpt
       pure $ A0TyArrow (axOpt, a0tye1) a0tye2
     TyCode tye1 -> do
@@ -883,8 +891,9 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       pure $ A0TyCode a1tye1
     TyOptArrow (x, tye1) tye2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
-      a0tye2 <-
-        typecheckTypeExpr0 trav (TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1) tyEnv) tye2
+      a0tye2 <- do
+        let tyEnv' = TypeEnv.addVar x (TypeEnv.Ass0Entry a0tye1 Nothing) tyEnv
+        typecheckTypeExpr0 trav tyEnv' tye2
       let ax = AssVar x
       pure $ A0TyOptArrow (ax, a0tye1) a0tye2
 
@@ -942,12 +951,19 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile
 
 typecheckDecl :: trav -> TypeEnv -> Decl -> M trav SigRecord
-typecheckDecl trav tyEnv (Decl _loc declMain) =
+typecheckDecl trav tyEnv (Decl loc declMain) =
   case declMain of
-    DeclVal0 x tye _ext -> do
+    DeclVal0 x tye extName -> do
       a0tye <- typecheckTypeExpr0 trav tyEnv tye
-      pure $ Map.singleton x (TypeEnv.Ass0Entry a0tye)
-    DeclVal1 x tye _ext -> do
+      builtInName <-
+        case validateExternalName extName of
+          Just builtInName' ->
+            pure builtInName'
+          Nothing -> do
+            spanInFile <- askSpanInFile loc
+            typeError trav $ UnknownExternalName spanInFile extName
+      pure $ Map.singleton x (TypeEnv.Ass0Entry a0tye (Just builtInName))
+    DeclVal1 x tye _extName -> do
       a1tye <- typecheckTypeExpr1 trav tyEnv tye
       pure $ Map.singleton x (TypeEnv.Ass1Entry a1tye)
 

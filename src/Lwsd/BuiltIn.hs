@@ -9,11 +9,22 @@ module Lwsd.BuiltIn
     ass0exprTadd,
     initialTypeEnv,
     initialEnv,
+    ass0valAdd,
+    ass0valSub,
+    ass0valMult,
+    ass0valLeq,
+    ass0valGenVadd,
+    ass0valGenVconcat,
+    ass0valGenMtranspose,
+    ass0valGenMmult,
+    ass0valGenMconcatVert,
+    ass0valGenTadd,
+    validateExternalName,
   )
 where
 
-import Data.List qualified as List
 import Data.Map qualified as Map
+import Data.Text (Text)
 import Lwsd.Syntax
 import Lwsd.TypeEnv (TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
@@ -194,18 +205,18 @@ ass0valGenTadd =
     x1 = AssVar "x1"
 
 initialEnv :: Env0
-initialEnv =
-  List.foldl'
-    (\env (x, a0v) -> Map.insert (AssVar x) (Ass0ValEntry a0v) env)
-    Map.empty
-    [ ("+", ass0valAdd),
-      ("-", ass0valSub),
-      ("*", ass0valMult),
-      ("<=", ass0valLeq),
-      ("gen_vadd", ass0valGenVadd),
-      ("gen_vconcat", ass0valGenVconcat),
-      ("gen_mtranspose", ass0valGenMtranspose),
-      ("gen_mmult", ass0valGenMmult),
-      ("gen_mconcat_vert", ass0valGenMconcatVert),
-      ("gen_tadd", ass0valGenTadd)
-    ]
+initialEnv = Map.empty
+
+validateExternalName :: Text -> Maybe Ass0BuiltInName
+validateExternalName = \case
+  "int_add" -> pure A0BINameAdd
+  "int_sub" -> pure A0BINameSub
+  "int_mult" -> pure A0BINameMult
+  "int_leq" -> pure A0BINameLeq
+  "gen_vadd" -> pure A0BINameGenVadd
+  "gen_vconcat" -> pure A0BINameGenVconcat
+  "gen_mtranspose" -> pure A0BINameGenMtranspose
+  "gen_mmult" -> pure A0BINameGenMmult
+  "gen_mconcat_vert" -> pure A0BINameGenMconcatVert
+  "gen_tadd" -> pure A0BINameGenTadd
+  _ -> Nothing

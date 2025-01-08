@@ -1,8 +1,7 @@
-val ~( + ) : Int -> Int -> Int external int_plus
-val ~( - ) : Int -> Int -> Int external int_minus
-val ~( * ) : Int -> Int -> Int external int_times
-val ~( <= ) : Int -> Int -> Int external int_leq
-val ~assert_nat : Int -> Nat external assert_nat
+val ~( + ) : Int -> Int -> Int external int_add
+val ~( - ) : Int -> Int -> Int external int_sub
+val ~( * ) : Int -> Int -> Int external int_mult
+val ~( <= ) : Int -> Int -> Bool external int_leq
 val ~gen_vadd : {a : Nat} -> &(Vec %a -> Vec %a -> Vec %a) external gen_vadd
 val ~gen_vconcat : {a : Nat} -> {b : Nat} -> &(Vec %a -> Vec %b -> Vec %(a + b)) external gen_vconcat
 val ~gen_mtranspose : {a : Nat} -> {b : Nat} -> &(Mat %a %b -> Mat %b %a) external gen_mtranspose

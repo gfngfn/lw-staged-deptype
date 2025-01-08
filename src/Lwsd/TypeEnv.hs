@@ -19,7 +19,7 @@ import Prelude
 newtype TypeEnv = TypeEnv [(Var, Entry)]
 
 data Entry
-  = Ass0Entry Ass0TypeExpr
+  = Ass0Entry Ass0TypeExpr (Maybe Ass0BuiltInName)
   | Ass1Entry Ass1TypeExpr
 
 type SigRecord = Map Var Entry

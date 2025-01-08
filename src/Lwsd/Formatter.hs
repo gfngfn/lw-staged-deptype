@@ -287,6 +287,9 @@ instance Disp BuiltIn where
     BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
     BITadd ns x1 x2 -> "TADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
 
+instance Disp Ass0BuiltInName where
+  dispGen _ builtInName = "<" <> disp (show builtInName) <> ">"
+
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
     Surface.LitInt n -> pretty n
@@ -339,6 +342,7 @@ instance Disp Ass0Expr where
     A0Literal lit -> disp lit
     A0AppBuiltIn bi -> disp bi
     A0Var y -> disp y
+    A0BuiltInName builtInName -> disp builtInName
     A0Lam Nothing (y, a0tye1) a0e2 -> dispNonrecLam req y a0tye1 a0e2
     A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 -> dispRecLam req f a0tyeRec y a0tye1 a0e2
     A0App a0e1 a0e2 -> dispApp req a0e1 a0e2
@@ -538,6 +542,8 @@ instance Disp TypeError where
         <> nest 2 (hardline <> disps appCtx)
     DeclarationOverwritten spanInFile x ->
       "Declaration of a value " <+> disp x <+> "is overwritten" <+> disp spanInFile
+    UnknownExternalName spanInFile extName ->
+      "Unknown external name" <+> disp extName <+> disp spanInFile
 
 instance Disp ConditionalMergeError where
   dispGen _ = \case
