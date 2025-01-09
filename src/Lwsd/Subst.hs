@@ -76,6 +76,8 @@ instance HasVar Ass0Expr where
       (Set.empty, Set.empty) -- We do not see variables for built-in functions
     A0Var y ->
       (Set.singleton y, Set.empty)
+    A0BuiltInName _ ->
+      (Set.empty, Set.empty)
     A0Lam Nothing (y, a0tye1) a0e2 ->
       let (var0set1, var1set1) = frees a0tye1
           (var0set2, var1set2) = frees a0e2
@@ -107,6 +109,8 @@ instance HasVar Ass0Expr where
       case s of
         Subst0 x a0e -> if y == x then a0e else A0Var y
         Subst1 _ _ -> A0Var y
+    A0BuiltInName builtInName ->
+      A0BuiltInName builtInName
     A0Lam Nothing (y, a0tye1) a0e2 ->
       A0Lam Nothing (y, go a0tye1) $
         case s of
@@ -144,6 +148,8 @@ instance HasVar Ass0Expr where
           (_, _) -> builtIn1 == builtIn2
       (A0Var x1, A0Var x2) ->
         x1 == x2
+      (A0BuiltInName builtInName1, A0BuiltInName builtInName2) ->
+        builtInName1 == builtInName2
       (A0Lam Nothing (x1, a0tye11) a0e12, A0Lam Nothing (x2, a0tye21) a0e22) ->
         alphaEquivalent a0tye11 a0tye21
           && alphaEquivalent a0e12 (subst0 (A0Var x1) x2 a0e22)

@@ -22,6 +22,7 @@ import Prelude
 
 data Argument = Argument
   { inputFilePath :: String,
+    stubFilePath :: String,
     optimize :: Bool,
     distributeIf :: Bool,
     displayWidth :: Int,
@@ -33,8 +34,8 @@ success, failure :: IO Bool
 success = return True
 failure = return False
 
-typecheckAndEval :: Argument -> SourceSpec -> Expr -> IO Bool
-typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly} sourceSpec e = do
+typecheckAndEval :: Argument -> SourceSpec -> [Decl] -> Expr -> IO Bool
+typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly} sourceSpec declsInStub e = do
   let initialEvalState = Evaluator.initialState sourceSpec
   let typecheckerConfig =
         TypecheckState
@@ -43,45 +44,51 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
             sourceSpec,
             nextVarIndex = 0
           }
-  case evalStateT (Typechecker.typecheckExpr0 id BuiltIn.initialTypeEnv [] e) typecheckerConfig of
+  case evalStateT (Typechecker.typecheckDecls id BuiltIn.initialTypeEnv declsInStub) typecheckerConfig of
     Left (tyErr, _travMod) -> do
-      putStrLn "-------- type error: --------"
+      putStrLn "-------- type error by stub: --------"
       putRenderedLines tyErr
       failure
-    Right (result, a0e) -> do
-      putStrLn "-------- type: --------"
-      putRenderedLinesAtStage0 result
-      putStrLn "-------- elaborated expression: --------"
-      putRenderedLinesAtStage0 a0e
-      case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) initialEvalState of
-        Left err -> do
-          putStrLn "-------- error during compile-time code generation: --------"
-          putRenderedLines err
+    Right (tyEnvStub, _) -> do
+      case evalStateT (Typechecker.typecheckExpr0 id tyEnvStub [] e) typecheckerConfig of
+        Left (tyErr, _travMod) -> do
+          putStrLn "-------- type error: --------"
+          putRenderedLines tyErr
           failure
-        Right a0v -> do
-          case a0v of
-            A0ValBracket a1v -> do
-              putStrLn "-------- generated code: --------"
-              putRenderedLinesAtStage1 a1v
-              let a0eRuntime = Evaluator.unliftVal a1v
-              if compileTimeOnly
-                then success
-                else case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
-                  Left err -> do
-                    putStrLn "-------- eval error: --------"
-                    putRenderedLines err
-                    failure
-                  Right a0vRuntime -> do
-                    putStrLn "-------- result of runtime evaluation: --------"
-                    putRenderedLinesAtStage0 a0vRuntime
-                    success
-            _ -> do
-              putStrLn "-------- stage-0 result: --------"
-              putStrLn "(The stage-0 result was not a code value)"
-              putRenderedLinesAtStage0 a0v
-              if compileTimeOnly
-                then success
-                else failure
+        Right (result, a0e) -> do
+          putStrLn "-------- type: --------"
+          putRenderedLinesAtStage0 result
+          putStrLn "-------- elaborated expression: --------"
+          putRenderedLinesAtStage0 a0e
+          case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) initialEvalState of
+            Left err -> do
+              putStrLn "-------- error during compile-time code generation: --------"
+              putRenderedLines err
+              failure
+            Right a0v -> do
+              case a0v of
+                A0ValBracket a1v -> do
+                  putStrLn "-------- generated code: --------"
+                  putRenderedLinesAtStage1 a1v
+                  let a0eRuntime = Evaluator.unliftVal a1v
+                  if compileTimeOnly
+                    then success
+                    else case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
+                      Left err -> do
+                        putStrLn "-------- eval error: --------"
+                        putRenderedLines err
+                        failure
+                      Right a0vRuntime -> do
+                        putStrLn "-------- result of runtime evaluation: --------"
+                        putRenderedLinesAtStage0 a0vRuntime
+                        success
+                _ -> do
+                  putStrLn "-------- stage-0 result: --------"
+                  putStrLn "(The stage-0 result was not a code value)"
+                  putRenderedLinesAtStage0 a0v
+                  if compileTimeOnly
+                    then success
+                    else failure
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth
@@ -94,23 +101,30 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
 
 -- Returns a boolean that represents success or failure
 handle :: Argument -> IO Bool
-handle arg@Argument {inputFilePath, displayWidth} = do
+handle arg@Argument {inputFilePath, stubFilePath, displayWidth} = do
   putStrLn "Lightweight Dependent Types via Staging"
-  source <- TextIO.readFile inputFilePath
-  case Parser.parseExpr source of
+  stub <- TextIO.readFile stubFilePath
+  case Parser.parseDecls stub of
     Left err -> do
-      putStrLn "-------- parse error: --------"
+      putStrLn "-------- parse error of stub: --------"
       putStrLn err
       failure
-    Right e -> do
-      putStrLn "-------- parsed expression: --------"
-      putRenderedLinesAtStage0 e
-      let sourceSpec =
-            SourceSpec
-              { LocationInFile.source = source,
-                LocationInFile.inputFilePath = inputFilePath
-              }
-      typecheckAndEval arg sourceSpec e
+    Right declsInStub -> do
+      source <- TextIO.readFile inputFilePath
+      case Parser.parseExpr source of
+        Left err -> do
+          putStrLn "-------- parse error of source: --------"
+          putStrLn err
+          failure
+        Right e -> do
+          putStrLn "-------- parsed expression: --------"
+          putRenderedLinesAtStage0 e
+          let sourceSpec =
+                SourceSpec
+                  { LocationInFile.source = source,
+                    LocationInFile.inputFilePath = inputFilePath
+                  }
+          typecheckAndEval arg sourceSpec declsInStub e
   where
     putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
     putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth

@@ -3,6 +3,7 @@ module Lwsd.Syntax
     Symbol (..),
     symbolToVar,
     BuiltIn (..),
+    Ass0BuiltInName (..),
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
@@ -78,6 +79,19 @@ data BuiltIn
   | BITadd [Int] AssVar AssVar
   deriving stock (Eq, Show)
 
+data Ass0BuiltInName
+  = A0BINameAdd
+  | A0BINameSub
+  | A0BINameMult
+  | A0BINameLeq
+  | A0BINameGenVadd
+  | A0BINameGenVconcat
+  | A0BINameGenMtranspose
+  | A0BINameGenMmult
+  | A0BINameGenMconcatVert
+  | A0BINameGenTadd
+  deriving stock (Eq, Show)
+
 data AssLiteral e
   = ALitInt Int
   | ALitBool Bool
@@ -90,6 +104,7 @@ data Ass0Expr
   = A0Literal (AssLiteral Ass0Expr)
   | A0AppBuiltIn BuiltIn
   | A0Var AssVar
+  | A0BuiltInName Ass0BuiltInName
   | A0Lam (Maybe (AssVar, StrictAss0TypeExpr)) (AssVar, StrictAss0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0LetIn (AssVar, StrictAss0TypeExpr) Ass0Expr Ass0Expr

@@ -1,6 +1,7 @@
 module Lwsd.Parser
   ( parseExpr,
-    parseTypeExpr,
+    parseTypeExpr, -- Made public for tests
+    parseDecls,
   )
 where
 
@@ -37,6 +38,11 @@ lower = expectToken (^? #_TokLower)
 upper :: P (Located Text)
 upper = expectToken (^? #_TokUpper)
 
+lowerOrOp :: P (Located Text)
+lowerOrOp = lower `or` (makeOp <$> token TokLeftParen <*> operator <*> token TokRightParen)
+  where
+    makeOp locLeft (Located _ opName) locRight = Located (mergeSpan locLeft locRight) opName
+
 int :: P (Located Int)
 int = expectToken (^? #_TokInt)
 
@@ -48,6 +54,34 @@ list = genVec TokLeftSquare TokRightSquare TokComma
 
 mat :: P (Located [[Int]])
 mat = genMat TokMatLeft TokMatRight TokSemicolon TokComma (noLoc int)
+
+operator :: P (Located Var)
+operator = tries [compOp, addOp] multOp
+
+multOp :: P (Located Var)
+multOp =
+  expectToken
+    ( \case
+        TokOpMult -> Just "*"
+        _ -> Nothing
+    )
+
+addOp :: P (Located Var)
+addOp =
+  expectToken
+    ( \case
+        TokOpAdd -> Just "+"
+        TokOpSub -> Just "-"
+        _ -> Nothing
+    )
+
+compOp :: P (Located Var)
+compOp =
+  expectToken
+    ( \case
+        TokOpLeq -> Just "<="
+        _ -> Nothing
+    )
 
 makeBinOpApp :: Expr -> Located Var -> Expr -> Expr
 makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
@@ -71,7 +105,7 @@ exprAtom, expr :: P Expr
           located (Literal . LitList) <$> list letin,
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
-          located Var <$> lower
+          located Var <$> lowerOrOp
         ]
         (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
@@ -121,41 +155,13 @@ exprAtom, expr :: P Expr
           Expr (mergeSpan loc1 loc2) (As e1 tye2)
 
     mult :: P Expr
-    mult =
-      binSep makeBinOpApp multOp as
-      where
-        multOp :: P (Located Var)
-        multOp =
-          expectToken
-            ( \case
-                TokOpMult -> Just "*"
-                _ -> Nothing
-            )
+    mult = binSep makeBinOpApp multOp as
 
     add :: P Expr
-    add =
-      binSep makeBinOpApp addOp mult
-      where
-        addOp :: P (Located Var)
-        addOp =
-          expectToken
-            ( \case
-                TokOpAdd -> Just "+"
-                TokOpSub -> Just "-"
-                _ -> Nothing
-            )
+    add = binSep makeBinOpApp addOp mult
 
     comp :: P Expr
-    comp =
-      binSep makeBinOpApp compOp add
-      where
-        compOp :: P (Located Var)
-        compOp =
-          expectToken
-            ( \case
-                TokOpLeq -> Just "<="
-                _ -> Nothing
-            )
+    comp = binSep makeBinOpApp compOp add
 
     lam :: P Expr
     lam =
@@ -189,7 +195,7 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      (makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+      (makeLetIn <$> token TokLet <*> noLoc lowerOrOp <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         `or` lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
@@ -261,13 +267,27 @@ typeExpr = fun
         makeFunDom isMandatory locFirst x tyeDom =
           (Just (isMandatory, locFirst, x), tyeDom)
 
+decl :: P Decl
+decl =
+  (makeDeclVal DeclVal0 <$> token TokVal <*> (token TokEscape *> noLoc lowerOrOp) <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+    `or` (makeDeclVal DeclVal1 <$> token TokVal <*> noLoc lowerOrOp <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+  where
+    makeDeclVal ctor locFirst x tye (Located locLast ext) =
+      Decl (mergeSpan locFirst locLast) (ctor x tye ext)
+
+external :: P (Located External)
+external = lower
+
 parse :: P a -> Text -> Either String a
 parse p source = do
   locatedTokens <- Token.lex source
   runParser p locatedTokens
 
 parseExpr :: Text -> Either String Expr
-parseExpr = parse expr
+parseExpr = parse (expr <* eof)
 
 parseTypeExpr :: Text -> Either String TypeExpr
-parseTypeExpr = parse typeExpr
+parseTypeExpr = parse (typeExpr <* eof)
+
+parseDecls :: Text -> Either String [Decl]
+parseDecls = parse (manyNoTry decl <* eof)

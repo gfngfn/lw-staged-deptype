@@ -4,6 +4,7 @@ module Lwsd.TypeError
   )
 where
 
+import Data.Text (Text)
 import Lwsd.SrcSyntax
 import Lwsd.Syntax
 import Util.LocationInFile (SpanInFile)
@@ -44,6 +45,8 @@ data TypeError
   | CannotInstantiateGuidedByAppContext1 SpanInFile AppContext Ass1TypeExpr
   | CannotInferOptional SpanInFile AssVar
   | Stage1IfThenElseRestrictedToEmptyContext SpanInFile AppContext
+  | DeclarationOverwritten SpanInFile Var
+  | UnknownExternalName SpanInFile Text
   deriving stock (Eq, Show)
 
 data ConditionalMergeError
