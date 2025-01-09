@@ -21,6 +21,7 @@ newtype TypeEnv = TypeEnv [(Var, Entry)]
 data Entry
   = Ass0Entry Ass0TypeExpr (Maybe Ass0BuiltInName)
   | Ass1Entry Ass1TypeExpr
+  | AssPersEntry AssPersTypeExpr Ass1BuiltInName
 
 type SigRecord = Map Var Entry
 

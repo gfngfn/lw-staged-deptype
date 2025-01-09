@@ -37,7 +37,12 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
       failure
     Right declsInStub -> do
       source <- TextIO.readFile inputFilePath
-      let sourceSpec =
+      let sourceSpecOfStub =
+            SourceSpec
+              { LocationInFile.source = stub,
+                LocationInFile.inputFilePath = stubFilePath
+              }
+          sourceSpecOfInput =
             SourceSpec
               { LocationInFile.source = source,
                 LocationInFile.inputFilePath = inputFilePath
@@ -50,7 +55,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
         Right e -> do
           putStrLn "-------- parsed expression: --------"
           putRenderedLines e
-          case BindingTime.analyze sourceSpec fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
+          case BindingTime.analyze sourceSpecOfInput fallBackToBindingTime0 BuiltIn.initialBindingTimeEnv e of
             Left analyErr -> do
               putStrLn "-------- binding-time analysis error: --------"
               putRenderedLines analyErr
@@ -69,7 +74,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
                         LwsdMain.displayWidth = displayWidth,
                         LwsdMain.compileTimeOnly = compileTimeOnly
                       }
-              LwsdMain.typecheckAndEval lwArg sourceSpec declsInStub lwe
+              LwsdMain.typecheckAndEval lwArg sourceSpecOfStub declsInStub sourceSpecOfInput lwe
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth

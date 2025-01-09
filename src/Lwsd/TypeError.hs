@@ -47,6 +47,7 @@ data TypeError
   | Stage1IfThenElseRestrictedToEmptyContext SpanInFile AppContext
   | DeclarationOverwritten SpanInFile Var
   | UnknownExternalName SpanInFile Text
+  | InvalidPersistentType SpanInFile Ass0TypeExpr
   deriving stock (Eq, Show)
 
 data ConditionalMergeError

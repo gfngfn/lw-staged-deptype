@@ -95,10 +95,10 @@ data DeclF ann = Decl ann (DeclMainF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 DeclF)
 
--- TODO: add the declaration for persistent values and type constructors
 data DeclMainF ann
   = DeclVal0 Var (TypeExprF ann) External
   | DeclVal1 Var (TypeExprF ann) External
+  | DeclValPers Var (TypeExprF ann) External
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 DeclMainF)
 

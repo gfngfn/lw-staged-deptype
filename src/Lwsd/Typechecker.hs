@@ -517,17 +517,21 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             typeError trav $ CannotApplyLiteral spanInFile
       Var x -> do
         entry <- findVar trav loc x tyEnv
-        case entry of
-          TypeEnv.Ass0Entry a0tye builtInNameOpt -> do
-            result <- instantiateGuidedByAppContext0 trav loc appCtx a0tye
-            case builtInNameOpt of
-              Just builtInName ->
-                pure (result, A0BuiltInName builtInName)
-              Nothing -> do
-                let ax = AssVar x
-                pure (result, A0Var ax)
-          TypeEnv.Ass1Entry _ ->
-            typeError trav $ NotAStage0Var spanInFile x
+        (a0tye, builtInNameOpt) <-
+          case entry of
+            TypeEnv.Ass0Entry a0tye' builtInNameOpt' ->
+              pure (a0tye', builtInNameOpt')
+            TypeEnv.AssPersEntry aPtye a1builtInName ->
+              pure (persistentTypeTo0 aPtye, Just (unliftBuiltInName a1builtInName))
+            TypeEnv.Ass1Entry _ ->
+              typeError trav $ NotAStage0Var spanInFile x
+        result <- instantiateGuidedByAppContext0 trav loc appCtx a0tye
+        case builtInNameOpt of
+          Just builtInName ->
+            pure (result, A0BuiltInName builtInName)
+          Nothing -> do
+            let ax = AssVar x
+            pure (result, A0Var ax)
       Lam recOpt (x1, tye1) e2 ->
         case appCtx of
           [] ->
@@ -686,11 +690,19 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
     Var x -> do
       entry <- findVar trav loc x tyEnv
       let ax = AssVar x
-      case entry of
-        TypeEnv.Ass0Entry _ _ ->
-          typeError trav $ NotAStage1Var spanInFile x
-        TypeEnv.Ass1Entry a1tye -> do
-          (result, _) <- instantiateGuidedByAppContext1 trav loc Set.empty appCtx a1tye
+      (a1tye, a1builtInNameOpt) <-
+        case entry of
+          TypeEnv.Ass0Entry _ _ ->
+            typeError trav $ NotAStage1Var spanInFile x
+          TypeEnv.AssPersEntry aPtye a1builtInName ->
+            pure (persistentTypeTo1 aPtye, Just a1builtInName)
+          TypeEnv.Ass1Entry a1tye' ->
+            pure (a1tye', Nothing)
+      (result, _) <- instantiateGuidedByAppContext1 trav loc Set.empty appCtx a1tye
+      case a1builtInNameOpt of
+        Just a1builtInName ->
+          pure (result, A1BuiltInName a1builtInName)
+        Nothing ->
           pure (result, A1Var ax)
     Lam recOpt (x1, tye1) e2 ->
       case appCtx of
@@ -950,22 +962,58 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
     TyCode _ -> do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile
 
+validatePersistentType :: trav -> Span -> Ass0TypeExpr -> M trav AssPersTypeExpr
+validatePersistentType trav loc a0tye =
+  case go a0tye of
+    Just aPtye ->
+      pure aPtye
+    Nothing -> do
+      spanInFile <- askSpanInFile loc
+      typeError trav $ InvalidPersistentType spanInFile a0tye
+  where
+    go = \case
+      A0TyPrim a0tyPrim ->
+        pure $ APersTyPrim a0tyPrim
+      A0TyList a0tye' ->
+        APersTyList <$> go a0tye'
+      A0TyArrow (Nothing, a0tye1) a0tye2 -> do
+        aPtye1 <- go a0tye1
+        aPtye2 <- go a0tye2
+        pure $ APersTyArrow aPtye1 aPtye2
+      A0TyArrow (Just _x, _a0tye1) _a0tye2 -> do
+        Nothing
+      A0TyOptArrow (_x, _a0tye1) _a0tye2 -> do
+        Nothing
+      A0TyCode _ ->
+        Nothing
+
 typecheckDecl :: trav -> TypeEnv -> Decl -> M trav SigRecord
 typecheckDecl trav tyEnv (Decl loc declMain) =
   case declMain of
     DeclVal0 x tye extName -> do
       a0tye <- typecheckTypeExpr0 trav tyEnv tye
-      builtInName <-
-        case validateExternalName extName of
-          Just builtInName' ->
-            pure builtInName'
+      a0builtInName <-
+        case validateExternalName0 extName of
+          Just a0builtInName' ->
+            pure a0builtInName'
           Nothing -> do
             spanInFile <- askSpanInFile loc
             typeError trav $ UnknownExternalName spanInFile extName
-      pure $ Map.singleton x (TypeEnv.Ass0Entry a0tye (Just builtInName))
+      pure $ Map.singleton x (TypeEnv.Ass0Entry a0tye (Just a0builtInName))
     DeclVal1 x tye _extName -> do
       a1tye <- typecheckTypeExpr1 trav tyEnv tye
       pure $ Map.singleton x (TypeEnv.Ass1Entry a1tye)
+    DeclValPers x tye extName -> do
+      a0tye <- typecheckTypeExpr0 trav tyEnv tye
+      aPtye <- validatePersistentType trav loc a0tye
+      a1builtInName <-
+        case validateExternalName1 extName of
+          Just a1builtInName' ->
+            pure a1builtInName'
+          Nothing -> do
+            spanInFile <- askSpanInFile loc
+            typeError trav $ UnknownExternalName spanInFile extName
+      pure $ Map.singleton x (TypeEnv.AssPersEntry aPtye a1builtInName)
 
 typecheckDecls :: trav -> TypeEnv -> [Decl] -> M trav (TypeEnv, SigRecord)
 typecheckDecls trav tyEnv =
