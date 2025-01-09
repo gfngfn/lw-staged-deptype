@@ -275,9 +275,9 @@ decl =
     binder =
       tries
         [ DeclVal0 <$> (token TokEscape *> noLoc lowerOrOp),
-          DeclVal1 <$> (token TokPersistent *> noLoc lowerOrOp)
+          DeclValPers <$> (token TokPersistent *> noLoc lowerOrOp)
         ]
-        (DeclValPers <$> noLoc lowerOrOp)
+        (DeclVal1 <$> noLoc lowerOrOp)
 
     makeDeclVal locFirst ctor tye (Located locLast ext) =
       Decl (mergeSpan locFirst locLast) (ctor tye ext)
