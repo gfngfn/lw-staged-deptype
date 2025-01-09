@@ -153,6 +153,10 @@ dispPersistent :: (Disp expr) => expr -> Doc Ann
 dispPersistent e =
   stagingOperatorStyle "%" <> stage0Style (dispGen Atomic e)
 
+dispPersistentListLiteral :: (Disp expr) => [expr] -> Doc Ann
+dispPersistentListLiteral es =
+  stagingOperatorStyle "%" <> stage0Style (dispListLiteral es)
+
 dispBracket :: (Disp expr) => expr -> Doc Ann
 dispBracket e =
   stagingOperatorStyle "&" <> stage1Style (dispGen Atomic e)
@@ -399,7 +403,7 @@ instance Disp Ass1PrimType where
       case a0eList of
         A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
         A0Literal (ALitList [a0e1, a0e2]) -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
-        _ -> dispNameWithArgs req "Tensor" (dispGen Atomic) [a0eList]
+        _ -> dispNameWithArgs req "Tensor" dispPersistent [a0eList]
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case
@@ -633,7 +637,7 @@ instance Disp Ass1PrimTypeVal where
     A1TyValBool -> "Bool"
     A1TyValTensor [n] -> dispNameWithArgs req "Vec" dispPersistent [n]
     A1TyValTensor [m, n] -> dispNameWithArgs req "Mat" dispPersistent [m, n]
-    A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
+    A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispPersistentListLiteral [ns]
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =
