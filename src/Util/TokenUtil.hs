@@ -7,6 +7,7 @@ module Util.TokenUtil
     lowerIdent,
     upperIdent,
     integerLiteral,
+    stringLiteral,
     genLex,
   )
 where
@@ -60,6 +61,18 @@ integerLiteral = (\s -> read s :: Int) <$> (((:) <$> p1 <*> p2) <|> ((: []) <$> 
   where
     p1 = Mp.satisfy (\c -> Char.isDigit c && c /= '0')
     p2 = Mp.many (Mp.satisfy Char.isDigit) <* Mp.notFollowedBy (Mp.satisfy Char.isDigit)
+
+stringLiteral :: Tokenizer Text
+stringLiteral = do
+  Text.pack <$> (Mp.single '"' *> Mp.many charInStringLiteral <* Mp.single '"')
+
+charInStringLiteral :: Tokenizer Char
+charInStringLiteral =
+  choice
+    [ '"' <$ Mp.chunk "\\\"",
+      '\\' <$ Mp.chunk "\\\\",
+      Mp.satisfy (\c -> c /= '"' && c /= '\\')
+    ]
 
 tokenWithOffsets :: Tokenizer token -> Tokenizer (Located token)
 tokenWithOffsets getToken = do

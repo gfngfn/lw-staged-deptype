@@ -38,6 +38,7 @@ data Token
   | TokLower Text
   | TokUpper Text
   | TokInt Int
+  | TokString Text
   | TokFun
   | TokRec
   | TokLet
@@ -110,7 +111,8 @@ token =
       TokOpLeq <$ Mp.chunk "<=",
       lowerIdentOrKeyword,
       TokUpper <$> upperIdent,
-      TokInt <$> integerLiteral
+      TokInt <$> integerLiteral,
+      TokString <$> stringLiteral
     ]
 
 lex :: Text -> Either String [Located Token]
