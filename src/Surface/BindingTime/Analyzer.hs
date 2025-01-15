@@ -116,15 +116,15 @@ askSpanInFile loc = do
   AnalysisConfig {sourceSpec} <- ask
   pure $ getSpanInFile sourceSpec loc
 
-enhanceBIType :: (bt -> BindingTime) -> (ann -> (BindingTime, Span)) -> BITypeF bt ann -> BIType
-enhanceBIType enhBt enh (BIType bt bityMain) =
+enhanceBIType :: (bt -> BindingTime) -> BITypeF bt -> BIType
+enhanceBIType enhBt (BIType bt bityMain) =
   BIType (enhBt bt) $
     case bityMain of
       BITyBase bityBaseArgs -> BITyBase (map fBIType bityBaseArgs)
       BITyArrow bity1 bity2 -> BITyArrow (fBIType bity1) (fBIType bity2)
       BITyOptArrow bity1 bity2 -> BITyOptArrow (fBIType bity1) (fBIType bity2)
   where
-    fBIType = enhanceBIType enhBt enh
+    fBIType = enhanceBIType enhBt
 
 extractConstraintsFromLiteral :: BindingTimeEnv -> (BindingTime, Span) -> Literal BExpr -> M (Literal BExpr, [BIType], [Constraint Span])
 extractConstraintsFromLiteral btenv (btLit, annLit) = \case
@@ -168,10 +168,10 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
             analysisError $ UnboundVar spanInFile x
           Just (EntryBuiltInPersistent bityVoid) ->
             -- TODO (enhance): refine `ann`
-            pure (x, enhanceBIType (\() -> bt) (\() -> (bt, ann)) bityVoid, [])
+            pure (x, enhanceBIType (\() -> bt) bityVoid, [])
           Just (EntryBuiltInFixed x' btc' bityConst) ->
             -- TODO (enhance): refine `ann`
-            pure (x', enhanceBIType BTConst (\btc -> (BTConst btc, ann)) bityConst, [CEqual ann bt (BTConst btc')])
+            pure (x', enhanceBIType BTConst bityConst, [CEqual ann bt (BTConst btc')])
           Just (EntryLocallyBound bt' bity) ->
             pure (x, bity, [CEqual ann bt bt'])
       pure (Expr (bt, ann) (Var x'), bity, constraints)

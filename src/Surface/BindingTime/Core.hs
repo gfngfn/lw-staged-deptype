@@ -31,20 +31,20 @@ data BindingTime
   deriving stock (Eq, Show, Generic)
 
 -- Intermediate, minimal type representations for binding-time analysis
-data BITypeF bt ann = BIType bt (BITypeMainF bt ann)
+data BITypeF bt = BIType bt (BITypeMainF bt)
   deriving stock (Show)
 
-data BITypeMainF bt ann
-  = BITyBase [BITypeF bt ann]
-  | BITyArrow (BITypeF bt ann) (BITypeF bt ann)
-  | BITyOptArrow (BITypeF bt ann) (BITypeF bt ann)
+data BITypeMainF bt
+  = BITyBase [BITypeF bt]
+  | BITyArrow (BITypeF bt) (BITypeF bt)
+  | BITyOptArrow (BITypeF bt) (BITypeF bt)
   deriving stock (Show)
 
-type BIType = BITypeF BindingTime (BindingTime, Span)
+type BIType = BITypeF BindingTime
 
 data BindingTimeEnvEntry
-  = EntryBuiltInPersistent (BITypeF () ())
-  | EntryBuiltInFixed Var BindingTimeConst (BITypeF BindingTimeConst BindingTimeConst)
+  = EntryBuiltInPersistent (BITypeF ())
+  | EntryBuiltInFixed Var BindingTimeConst (BITypeF BindingTimeConst)
   | EntryLocallyBound BindingTime BIType
   deriving stock (Show)
 
