@@ -4,6 +4,8 @@ module Lwsd.Syntax
     symbolToVar,
     BuiltIn (..),
     Ass0BuiltInName (..),
+    Ass1BuiltInName (..),
+    unliftBuiltInName,
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
@@ -14,6 +16,10 @@ module Lwsd.Syntax
     Ass0PrimType (..),
     Ass1TypeExpr (..),
     Ass1PrimType (..),
+    AssPersTypeExpr (..),
+    persistentTypeTo0,
+    persistentTypeTo1,
+    liftPrimType,
     Ass0Val (..),
     Ass1Val (..),
     Ass1ValConst (..),
@@ -92,6 +98,20 @@ data Ass0BuiltInName
   | A0BINameGenTadd
   deriving stock (Eq, Show)
 
+data Ass1BuiltInName
+  = A1BINameAdd
+  | A1BINameSub
+  | A1BINameMult
+  | A1BINameLeq
+  deriving stock (Eq, Show)
+
+unliftBuiltInName :: Ass1BuiltInName -> Ass0BuiltInName
+unliftBuiltInName = \case
+  A1BINameAdd -> A0BINameAdd
+  A1BINameSub -> A0BINameSub
+  A1BINameMult -> A0BINameMult
+  A1BINameLeq -> A0BINameLeq
+
 data AssLiteral e
   = ALitInt Int
   | ALitBool Bool
@@ -116,6 +136,7 @@ data Ass0Expr
 data Ass1Expr
   = A1Literal (AssLiteral Ass1Expr)
   | A1Var AssVar
+  | A1BuiltInName Ass1BuiltInName
   | A1Lam (Maybe (AssVar, Ass1TypeExpr)) (AssVar, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
   | A1IfThenElse Ass1Expr Ass1Expr Ass1Expr
@@ -158,6 +179,32 @@ data Ass1PrimType
   | A1TyTensor Ass0Expr
   deriving stock (Eq, Show)
 
+-- Types for persistent value items.
+data AssPersTypeExpr
+  = APersTyPrim Ass0PrimType
+  | APersTyList AssPersTypeExpr
+  | APersTyArrow AssPersTypeExpr AssPersTypeExpr
+  deriving stock (Eq, Show)
+
+persistentTypeTo0 :: AssPersTypeExpr -> Ass0TypeExpr
+persistentTypeTo0 = \case
+  APersTyPrim a0tyPrim -> A0TyPrim a0tyPrim
+  APersTyList aPtye -> A0TyList (persistentTypeTo0 aPtye)
+  APersTyArrow aPtye1 aPtye2 -> A0TyArrow (Nothing, persistentTypeTo0 aPtye1) (persistentTypeTo0 aPtye2)
+
+persistentTypeTo1 :: AssPersTypeExpr -> Ass1TypeExpr
+persistentTypeTo1 = \case
+  APersTyPrim a0tyPrim -> A1TyPrim (liftPrimType a0tyPrim)
+  APersTyList aPtye -> A1TyList (persistentTypeTo1 aPtye)
+  APersTyArrow aPtye1 aPtye2 -> A1TyArrow (persistentTypeTo1 aPtye1) (persistentTypeTo1 aPtye2)
+
+liftPrimType :: Ass0PrimType -> Ass1PrimType
+liftPrimType = \case
+  A0TyInt -> A1TyInt
+  A0TyNat -> A1TyInt
+  A0TyBool -> A1TyBool
+  A0TyTensor ns -> A1TyTensor (A0Literal (ALitList (map (A0Literal . ALitInt) ns)))
+
 data Ass0Val
   = A0ValLiteral (AssLiteral Ass0Val)
   | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr Env0
@@ -180,6 +227,7 @@ data Ass1ValConst
   | A1ValConstMmult Int Int Int
   | A1ValConstMconcatVert Int Int Int
   | A1ValConstTadd [Int]
+  | A1ValConstBuiltInName Ass1BuiltInName -- TODO: consider merging `Ass1BuiltInName` and `Ass1ValConst`
   deriving stock (Eq, Show)
 
 data Ass0TypeVal

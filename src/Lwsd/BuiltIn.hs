@@ -1,5 +1,9 @@
 module Lwsd.BuiltIn
-  ( ass0exprAssertNat,
+  ( ass0exprAdd,
+    ass0exprSub,
+    ass0exprMult,
+    ass0exprLeq,
+    ass0exprAssertNat,
     ass0exprListMap,
     ass0exprVadd,
     ass0exprVconcat,
@@ -19,7 +23,8 @@ module Lwsd.BuiltIn
     ass0valGenMmult,
     ass0valGenMconcatVert,
     ass0valGenTadd,
-    validateExternalName,
+    validateExternalName0,
+    validateExternalName1,
   )
 where
 
@@ -61,6 +66,19 @@ clo x a0tyv1 a0tye2 = A0ValLam Nothing (x, a0tyv1) a0tye2 initialEnv
 
 lam :: AssVar -> StrictAss0TypeExpr -> Ass0Expr -> Ass0Expr
 lam x sa0tye1 = A0Lam Nothing (x, sa0tye1)
+
+ass0exprBinaryInt :: (AssVar -> AssVar -> BuiltIn) -> Ass0Expr
+ass0exprBinaryInt f =
+  lam x1 styInt $ lam x2 styInt $ A0AppBuiltIn (f x1 x2)
+  where
+    x1 = AssVar "x1"
+    x2 = AssVar "x2"
+
+ass0exprAdd, ass0exprSub, ass0exprMult, ass0exprLeq :: Ass0Expr
+ass0exprAdd = ass0exprBinaryInt BIAdd
+ass0exprSub = ass0exprBinaryInt BISub
+ass0exprMult = ass0exprBinaryInt BIMult
+ass0exprLeq = ass0exprBinaryInt BILeq
 
 ass0exprAssertNat :: Span -> Ass0Expr
 ass0exprAssertNat loc =
@@ -138,16 +156,10 @@ ass0exprTadd ns =
     x1 = AssVar "v1"
     x2 = AssVar "v2"
 
-ass0valAdd :: Ass0Val
+ass0valAdd, ass0valSub, ass0valMult, ass0valLeq :: Ass0Val
 ass0valAdd = ass0valBinaryInt BIAdd
-
-ass0valSub :: Ass0Val
 ass0valSub = ass0valBinaryInt BISub
-
-ass0valMult :: Ass0Val
 ass0valMult = ass0valBinaryInt BIMult
-
-ass0valLeq :: Ass0Val
 ass0valLeq = ass0valBinaryInt BILeq
 
 ass0valGenVadd :: Ass0Val
@@ -207,8 +219,8 @@ ass0valGenTadd =
 initialEnv :: Env0
 initialEnv = Map.empty
 
-validateExternalName :: Text -> Maybe Ass0BuiltInName
-validateExternalName = \case
+validateExternalName0 :: Text -> Maybe Ass0BuiltInName
+validateExternalName0 = \case
   "int_add" -> pure A0BINameAdd
   "int_sub" -> pure A0BINameSub
   "int_mult" -> pure A0BINameMult
@@ -219,4 +231,12 @@ validateExternalName = \case
   "gen_mmult" -> pure A0BINameGenMmult
   "gen_mconcat_vert" -> pure A0BINameGenMconcatVert
   "gen_tadd" -> pure A0BINameGenTadd
+  _ -> Nothing
+
+validateExternalName1 :: Text -> Maybe Ass1BuiltInName
+validateExternalName1 = \case
+  "int_add" -> pure A1BINameAdd
+  "int_sub" -> pure A1BINameSub
+  "int_mult" -> pure A1BINameMult
+  "int_leq" -> pure A1BINameLeq
   _ -> Nothing

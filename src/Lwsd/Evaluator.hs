@@ -294,6 +294,8 @@ evalExpr1 env = \case
   A1Var x -> do
     symb <- findSymbol env x
     pure $ A1ValVar symb
+  A1BuiltInName a1builtInName ->
+    pure $ A1ValConst (A1ValConstBuiltInName a1builtInName)
   A1Lam Nothing (x, a1tye1) a1e2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     symbX <- generateFreshSymbol
@@ -382,6 +384,12 @@ unliftVal = \case
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
       A1ValConstTadd ns -> BuiltIn.ass0exprTadd ns
+      A1ValConstBuiltInName a1builtInName ->
+        case a1builtInName of
+          A1BINameAdd -> BuiltIn.ass0exprAdd
+          A1BINameSub -> BuiltIn.ass0exprSub
+          A1BINameMult -> BuiltIn.ass0exprMult
+          A1BINameLeq -> BuiltIn.ass0exprLeq
   A1ValVar symbX ->
     A0Var (symbolToVar symbX)
   A1ValLam Nothing (symbX, a1tyv1) a1v2 ->

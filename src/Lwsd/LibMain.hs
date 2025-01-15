@@ -34,23 +34,24 @@ success, failure :: IO Bool
 success = return True
 failure = return False
 
-typecheckAndEval :: Argument -> SourceSpec -> [Decl] -> Expr -> IO Bool
-typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly} sourceSpec declsInStub e = do
-  let initialEvalState = Evaluator.initialState sourceSpec
-  let typecheckerConfig =
+typecheckAndEval :: Argument -> SourceSpec -> [Decl] -> SourceSpec -> Expr -> IO Bool
+typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly} sourceSpecOfStub declsInStub sourceSpecOfInput e = do
+  let initialEvalState = Evaluator.initialState sourceSpecOfInput
+  let typecheckerConfigOfStub =
         TypecheckState
           { optimizeTrivialAssertion = optimize,
             distributeIfUnderTensorShape = distributeIf,
-            sourceSpec,
+            sourceSpec = sourceSpecOfStub,
             nextVarIndex = 0
           }
-  case evalStateT (Typechecker.typecheckDecls id BuiltIn.initialTypeEnv declsInStub) typecheckerConfig of
+  case runStateT (Typechecker.typecheckDecls id BuiltIn.initialTypeEnv declsInStub) typecheckerConfigOfStub of
     Left (tyErr, _travMod) -> do
       putStrLn "-------- type error by stub: --------"
       putRenderedLines tyErr
       failure
-    Right (tyEnvStub, _) -> do
-      case evalStateT (Typechecker.typecheckExpr0 id tyEnvStub [] e) typecheckerConfig of
+    Right ((tyEnvStub, _), stateAfterTraversingStub) -> do
+      let typecheckerConfigOfInput = stateAfterTraversingStub {sourceSpec = sourceSpecOfInput}
+      case evalStateT (Typechecker.typecheckExpr0 id tyEnvStub [] e) typecheckerConfigOfInput of
         Left (tyErr, _travMod) -> do
           putStrLn "-------- type error: --------"
           putRenderedLines tyErr
@@ -119,12 +120,17 @@ handle arg@Argument {inputFilePath, stubFilePath, displayWidth} = do
         Right e -> do
           putStrLn "-------- parsed expression: --------"
           putRenderedLinesAtStage0 e
-          let sourceSpec =
+          let sourceSpecOfInput =
                 SourceSpec
                   { LocationInFile.source = source,
                     LocationInFile.inputFilePath = inputFilePath
                   }
-          typecheckAndEval arg sourceSpec declsInStub e
+              sourceSpecOfStub =
+                SourceSpec
+                  { LocationInFile.source = stub,
+                    LocationInFile.inputFilePath = stubFilePath
+                  }
+          typecheckAndEval arg sourceSpecOfStub declsInStub sourceSpecOfInput e
   where
     putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
     putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth

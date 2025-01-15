@@ -269,11 +269,18 @@ typeExpr = fun
 
 decl :: P Decl
 decl =
-  (makeDeclVal DeclVal0 <$> token TokVal <*> (token TokEscape *> noLoc lowerOrOp) <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
-    `or` (makeDeclVal DeclVal1 <$> token TokVal <*> noLoc lowerOrOp <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+  makeDeclVal <$> token TokVal <*> binder <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external)
   where
-    makeDeclVal ctor locFirst x tye (Located locLast ext) =
-      Decl (mergeSpan locFirst locLast) (ctor x tye ext)
+    binder :: P (TypeExpr -> Text -> DeclMainF Span)
+    binder =
+      tries
+        [ DeclVal0 <$> (token TokEscape *> noLoc lowerOrOp),
+          DeclValPers <$> (token TokPersistent *> noLoc lowerOrOp)
+        ]
+        (DeclVal1 <$> noLoc lowerOrOp)
+
+    makeDeclVal locFirst ctor tye (Located locLast ext) =
+      Decl (mergeSpan locFirst locLast) (ctor tye ext)
 
 external :: P (Located External)
 external = lower

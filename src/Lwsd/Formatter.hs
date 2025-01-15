@@ -153,6 +153,10 @@ dispPersistent :: (Disp expr) => expr -> Doc Ann
 dispPersistent e =
   stagingOperatorStyle "%" <> stage0Style (dispGen Atomic e)
 
+dispPersistentListLiteral :: (Disp expr) => [expr] -> Doc Ann
+dispPersistentListLiteral es =
+  stagingOperatorStyle "%" <> stage0Style (dispListLiteral es)
+
 dispBracket :: (Disp expr) => expr -> Doc Ann
 dispBracket e =
   stagingOperatorStyle "&" <> stage1Style (dispGen Atomic e)
@@ -288,7 +292,10 @@ instance Disp BuiltIn where
     BITadd ns x1 x2 -> "TADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
 
 instance Disp Ass0BuiltInName where
-  dispGen _ builtInName = "<" <> disp (show builtInName) <> ">"
+  dispGen _ a0builtInName = "<" <> disp (show a0builtInName) <> ">"
+
+instance Disp Ass1BuiltInName where
+  dispGen _ a1builtInName = "<" <> disp (show a1builtInName) <> ">"
 
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
@@ -357,6 +364,7 @@ instance Disp Ass1Expr where
   dispGen req = \case
     A1Literal lit -> disp lit
     A1Var x -> disp x
+    A1BuiltInName a1builtInName -> disp a1builtInName
     A1Lam Nothing (x, a1tye1) a1e2 -> dispNonrecLam req x a1tye1 a1e2
     A1Lam (Just (f, a1tyeRec)) (x, a1tye1) a1e2 -> dispRecLam req f a1tyeRec x a1tye1 a1e2
     A1App a1e1 a1e2 -> dispApp req a1e1 a1e2
@@ -395,7 +403,7 @@ instance Disp Ass1PrimType where
       case a0eList of
         A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
         A0Literal (ALitList [a0e1, a0e2]) -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
-        _ -> dispNameWithArgs req "Tensor" (dispGen Atomic) [a0eList]
+        _ -> dispNameWithArgs req "Tensor" dispPersistent [a0eList]
 
 instance Disp Ass1TypeExpr where
   dispGen req = \case
@@ -544,6 +552,8 @@ instance Disp TypeError where
       "Declaration of a value " <+> disp x <+> "is overwritten" <+> disp spanInFile
     UnknownExternalName spanInFile extName ->
       "Unknown external name" <+> disp extName <+> disp spanInFile
+    InvalidPersistentType spanInFile a0tye ->
+      "Invalid persistent type:" <+> stage0Style (disp a0tye) <+> disp spanInFile
 
 instance Disp ConditionalMergeError where
   dispGen _ = \case
@@ -583,6 +593,7 @@ instance Disp Ass1ValConst where
     A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
     A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
     A1ValConstTadd ns -> "tadd@{" <> dispListLiteral ns <> "}"
+    A1ValConstBuiltInName a1builtInName -> disp a1builtInName
 
 instance Disp Ass1Val where
   dispGen req = \case
@@ -626,7 +637,7 @@ instance Disp Ass1PrimTypeVal where
     A1TyValBool -> "Bool"
     A1TyValTensor [n] -> dispNameWithArgs req "Vec" dispPersistent [n]
     A1TyValTensor [m, n] -> dispNameWithArgs req "Mat" dispPersistent [m, n]
-    A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
+    A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispPersistentListLiteral [ns]
 
 instance Disp LocationInFile where
   dispGen _ (LocationInFile l c) =

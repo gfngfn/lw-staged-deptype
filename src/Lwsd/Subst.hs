@@ -101,8 +101,8 @@ instance HasVar Ass0Expr where
       frees ty0eq
 
   subst s = \case
-    A0Literal lit ->
-      A0Literal (go lit)
+    A0Literal alit ->
+      A0Literal (go alit)
     A0AppBuiltIn bi ->
       A0AppBuiltIn bi -- We do not see variables for built-in functions
     A0Var y ->
@@ -177,6 +177,8 @@ instance HasVar Ass1Expr where
       frees alit
     A1Var y ->
       (Set.empty, Set.singleton y)
+    A1BuiltInName _ ->
+      (Set.empty, Set.empty)
     A1Lam Nothing (y, a1tye1) a1e2 ->
       let (var0set1, var1set1) = frees a1tye1
           (var0set2, var1set2) = frees a1e2
@@ -196,12 +198,14 @@ instance HasVar Ass1Expr where
       frees a0e1
 
   subst s = \case
-    A1Literal lit ->
-      A1Literal lit
+    A1Literal alit ->
+      A1Literal (go alit)
     A1Var y ->
       case s of
         Subst0 _ _ -> A1Var y
         Subst1 x a1e -> if y == x then a1e else A1Var y
+    A1BuiltInName a1builtInName ->
+      A1BuiltInName a1builtInName
     A1Lam Nothing (y, a1tye1) a1e2 ->
       A1Lam Nothing (y, go a1tye1) $
         case s of
