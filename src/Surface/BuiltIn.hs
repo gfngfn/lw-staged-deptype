@@ -5,10 +5,8 @@ where
 
 import Data.List qualified as List
 import Data.Map qualified as Map
-import Surface.BindingTime.Core (BITypeF (..), BITypeMainF (..), BindingTimeConst (..), BindingTimeEnv, BindingTimeEnvEntry (..))
+import Surface.BindingTime.Core
 import Prelude
-
-type BITypeVoid = BITypeF BindingTimeConst
 
 wrap0 :: BITypeMainF BindingTimeConst -> BITypeVoid
 wrap0 = BIType BT0
