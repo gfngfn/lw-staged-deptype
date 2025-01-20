@@ -26,7 +26,7 @@ import Lwsd.BuiltIn
 import Lwsd.SrcSyntax
 import Lwsd.Subst
 import Lwsd.Syntax
-import Lwsd.TypeEnv (SigRecord, TypeEnv)
+import Lwsd.TypeEnv (Ass0Metadata (..), SigRecord, TypeEnv)
 import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.TypeError
 import Safe.Exact
@@ -519,8 +519,12 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         entry <- findVar trav loc x tyEnv
         (a0tye, builtInNameOpt) <-
           case entry of
-            TypeEnv.Ass0Entry a0tye' builtInNameOpt' ->
-              pure (a0tye', builtInNameOpt')
+            TypeEnv.Ass0Entry a0tye' a0metadataOpt ->
+              pure $
+                (a0tye',) $
+                  case a0metadataOpt of
+                    Just Ass0Metadata {builtInName} -> Just builtInName
+                    Nothing -> Nothing
             TypeEnv.AssPersEntry aPtye a1builtInName ->
               pure (persistentTypeTo0 aPtye, Just (unliftBuiltInName a1builtInName))
             TypeEnv.Ass1Entry _ ->
@@ -992,14 +996,15 @@ typecheckDecl trav tyEnv (Decl loc declMain) =
   case declMain of
     DeclVal0 x tye extName -> do
       a0tye <- typecheckTypeExpr0 trav tyEnv tye
-      a0builtInName <-
+      _a0builtInName <-
         case validateExternalName0 extName of
           Just a0builtInName' ->
             pure a0builtInName'
           Nothing -> do
             spanInFile <- askSpanInFile loc
             typeError trav $ UnknownExternalName spanInFile extName
-      pure $ Map.singleton x (TypeEnv.Ass0Entry a0tye (Just a0builtInName))
+      let a0metadata = error "TODO: typecheckDecl, a0metadata (use a0builtInName)"
+      pure $ Map.singleton x (TypeEnv.Ass0Entry a0tye (Just a0metadata))
     DeclVal1 x tye _extName -> do
       a1tye <- typecheckTypeExpr1 trav tyEnv tye
       pure $ Map.singleton x (TypeEnv.Ass1Entry a1tye)
