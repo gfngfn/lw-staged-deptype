@@ -13,7 +13,6 @@ import Lwsd.Parser qualified as LwsdParser
 import Lwsd.TypeEnv (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), Entry (..), SigRecord)
 import Surface.BindingTime qualified as BindingTime
 import Surface.BindingTime.Core
-import Surface.BuiltIn qualified as BuiltIn
 import Surface.Parser qualified as Parser
 import Util.LocationInFile (SourceSpec (SourceSpec))
 import Util.LocationInFile qualified as LocationInFile
@@ -89,9 +88,8 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
           putStrLn "-------- type error of stub: --------"
           putRenderedLines tyErr
           failure
-        Right (tyEnvStub, _sigr, stateAfterTraversingStub) -> do
-          -- let initialBindingTimeEnv = makeBindingTimeEnvFromStub sigr -- TODO: use this
-          let initialBindingTimeEnv = BuiltIn.initialBindingTimeEnv -- TODO: remove this
+        Right (tyEnvStub, sigr, stateAfterTraversingStub) -> do
+          let initialBindingTimeEnv = makeBindingTimeEnvFromStub sigr
           source <- TextIO.readFile inputFilePath
           let sourceSpecOfInput =
                 SourceSpec
