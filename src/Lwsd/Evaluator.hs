@@ -64,53 +64,53 @@ generateFreshSymbol = do
   put $ currentState {nextSymbolIndex = nextSymbolIndex + 1}
   pure $ Symbol nextSymbolIndex
 
-generateIdentityFunction :: Env0 -> Ass0TypeVal -> M Ass0Val
+generateIdentityFunction :: EvalEnv -> Ass0TypeVal -> M Ass0Val
 generateIdentityFunction env a0tyv = do
   x <- symbolToVar <$> generateFreshSymbol
   pure $ A0ValLam Nothing (x, a0tyv) (A0Var x) env
 
-findEntry :: Env0 -> AssVar -> M EnvEntry
+findEntry :: EvalEnv -> AssVar -> M EvalEnvEntry
 findEntry env x =
   case Map.lookup x env of
     Nothing -> bug $ UnboundVar x
     Just envEntry -> pure envEntry
 
-findVal0 :: Env0 -> AssVar -> M Ass0Val
+findVal0 :: EvalEnv -> AssVar -> M Ass0Val
 findVal0 env x = do
   entry <- findEntry env x
   case entry of
     Ass0ValEntry a0v -> pure a0v
     SymbolEntry symb -> bug $ FoundSymbol x symb
 
-findSymbol :: Env0 -> AssVar -> M Symbol
+findSymbol :: EvalEnv -> AssVar -> M Symbol
 findSymbol env x = do
   entry <- findEntry env x
   case entry of
     Ass0ValEntry a0v -> bug $ FoundAss0Val x a0v
     SymbolEntry symb -> pure symb
 
-findInt0 :: Env0 -> AssVar -> M Int
+findInt0 :: EvalEnv -> AssVar -> M Int
 findInt0 env x = do
   a0v <- findVal0 env x
   case a0v of
     A0ValLiteral (ALitInt n) -> pure n
     _ -> bug $ NotAnInteger (Just x) a0v
 
-findList0 :: Env0 -> AssVar -> M [Ass0Val]
+findList0 :: EvalEnv -> AssVar -> M [Ass0Val]
 findList0 env x = do
   a0v <- findVal0 env x
   case a0v of
     A0ValLiteral (ALitList a0es) -> pure a0es
     _ -> bug $ NotAList (Just x) a0v
 
-findVec0 :: Env0 -> AssVar -> M Vector
+findVec0 :: EvalEnv -> AssVar -> M Vector
 findVec0 env x = do
   a0v <- findVal0 env x
   case a0v of
     A0ValLiteral (ALitVec v) -> pure v
     _ -> bug $ NotAVector x a0v
 
-findMat0 :: Env0 -> AssVar -> M Matrix
+findMat0 :: EvalEnv -> AssVar -> M Matrix
 findMat0 env x = do
   a0v <- findVal0 env x
   case a0v of
@@ -131,7 +131,7 @@ reduceBeta a0v1 a0v2 =
     _ ->
       bug $ NotAClosure a0v1
 
-evalExpr0 :: Env0 -> Ass0Expr -> M Ass0Val
+evalExpr0 :: EvalEnv -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
     A0ValLiteral <$> mapMAssLiteral (evalExpr0 env) lit
@@ -287,7 +287,7 @@ evalExpr0 env = \case
         let spanInFile = getSpanInFile sourceSpec loc
         evalError $ AssertionFailure spanInFile a1tyv1 a1tyv2
 
-evalExpr1 :: Env0 -> Ass1Expr -> M Ass1Val
+evalExpr1 :: EvalEnv -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
   A1Literal lit ->
     A1ValLiteral <$> mapMAssLiteral (evalExpr1 env) lit
@@ -323,7 +323,7 @@ evalExpr1 env = \case
       A0ValBracket a1v1 -> pure a1v1
       _ -> bug $ NotACodeValue a0v1
 
-evalTypeExpr0 :: Env0 -> StrictAss0TypeExpr -> M Ass0TypeVal
+evalTypeExpr0 :: EvalEnv -> StrictAss0TypeExpr -> M Ass0TypeVal
 evalTypeExpr0 env = \case
   SA0TyPrim a0tyPrim ->
     pure . A0TyValPrim $
@@ -352,7 +352,7 @@ validateListValue = \case
   A0ValLiteral (ALitList a0vs) -> pure a0vs
   a0v -> bug $ NotAList Nothing a0v
 
-evalTypeExpr1 :: Env0 -> Ass1TypeExpr -> M Ass1TypeVal
+evalTypeExpr1 :: EvalEnv -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case
   A1TyPrim a1tyPrim ->
     A1TyValPrim

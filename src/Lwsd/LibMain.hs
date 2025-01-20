@@ -1,19 +1,23 @@
 module Lwsd.LibMain
   ( Argument (..),
-    typecheckAndEval,
+    typecheckStub,
+    typecheckAndEvalInput,
     handle,
   )
 where
 
 import Control.Monad.Trans.State
+import Data.Map qualified as Map
 import Data.Text.IO qualified as TextIO
-import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.Parser qualified as Parser
 import Lwsd.SrcSyntax
 import Lwsd.Syntax
+import Lwsd.TypeEnv (SigRecord, TypeEnv)
+import Lwsd.TypeEnv qualified as TypeEnv
+import Lwsd.TypeError (TypeError)
 import Lwsd.Typechecker (TypecheckState (..))
 import Lwsd.Typechecker qualified as Typechecker
 import Util.LocationInFile (SourceSpec (SourceSpec))
@@ -34,9 +38,8 @@ success, failure :: IO Bool
 success = return True
 failure = return False
 
-typecheckAndEval :: Argument -> SourceSpec -> [Decl] -> SourceSpec -> Expr -> IO Bool
-typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly} sourceSpecOfStub declsInStub sourceSpecOfInput e = do
-  let initialEvalState = Evaluator.initialState sourceSpecOfInput
+typecheckStub :: Argument -> SourceSpec -> [Decl] -> Either TypeError (TypeEnv, SigRecord, TypecheckState)
+typecheckStub Argument {optimize, distributeIf} sourceSpecOfStub declsInStub = do
   let typecheckerConfigOfStub =
         TypecheckState
           { optimizeTrivialAssertion = optimize,
@@ -44,53 +47,66 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
             sourceSpec = sourceSpecOfStub,
             nextVarIndex = 0
           }
-  case runStateT (Typechecker.typecheckDecls id BuiltIn.initialTypeEnv declsInStub) typecheckerConfigOfStub of
-    Left (tyErr, _travMod) -> do
-      putStrLn "-------- type error by stub: --------"
+      initialTypeEnv = TypeEnv.empty
+  case runStateT (Typechecker.typecheckDecls id initialTypeEnv declsInStub) typecheckerConfigOfStub of
+    Left (tyErr, _travMod) ->
+      Left tyErr
+    Right ((tyEnvStub, sigr), stateAfterTraversingStub) -> do
+      pure (tyEnvStub, sigr, stateAfterTraversingStub)
+
+typecheckInput :: TypecheckState -> TypeEnv -> Expr -> Either TypeError (Result Ass0TypeExpr, Ass0Expr)
+typecheckInput typecheckerConfigOfInput tyEnvStub e =
+  case evalStateT (Typechecker.typecheckExpr0 id tyEnvStub [] e) typecheckerConfigOfInput of
+    Left (tyErr, _travMod) -> Left tyErr
+    Right resultAndExpr -> pure resultAndExpr
+
+typecheckAndEvalInput :: Argument -> TypecheckState -> SourceSpec -> TypeEnv -> Expr -> IO Bool
+typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTraversingStub sourceSpecOfInput tyEnvStub e = do
+  let initialEvalState = Evaluator.initialState sourceSpecOfInput
+  let typecheckerConfigOfInput = stateAfterTraversingStub {sourceSpec = sourceSpecOfInput}
+  case typecheckInput typecheckerConfigOfInput tyEnvStub e of
+    Left tyErr -> do
+      putStrLn "-------- type error: --------"
       putRenderedLines tyErr
       failure
-    Right ((tyEnvStub, _), stateAfterTraversingStub) -> do
-      let typecheckerConfigOfInput = stateAfterTraversingStub {sourceSpec = sourceSpecOfInput}
-      case evalStateT (Typechecker.typecheckExpr0 id tyEnvStub [] e) typecheckerConfigOfInput of
-        Left (tyErr, _travMod) -> do
-          putStrLn "-------- type error: --------"
-          putRenderedLines tyErr
+    Right (result, a0e) -> do
+      putStrLn "-------- type: --------"
+      putRenderedLinesAtStage0 result
+      putStrLn "-------- elaborated expression: --------"
+      putRenderedLinesAtStage0 a0e
+      case evalStateT (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of
+        Left err -> do
+          putStrLn "-------- error during compile-time code generation: --------"
+          putRenderedLines err
           failure
-        Right (result, a0e) -> do
-          putStrLn "-------- type: --------"
-          putRenderedLinesAtStage0 result
-          putStrLn "-------- elaborated expression: --------"
-          putRenderedLinesAtStage0 a0e
-          case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) initialEvalState of
-            Left err -> do
-              putStrLn "-------- error during compile-time code generation: --------"
-              putRenderedLines err
-              failure
-            Right a0v -> do
-              case a0v of
-                A0ValBracket a1v -> do
-                  putStrLn "-------- generated code: --------"
-                  putRenderedLinesAtStage1 a1v
-                  let a0eRuntime = Evaluator.unliftVal a1v
-                  if compileTimeOnly
-                    then success
-                    else case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
-                      Left err -> do
-                        putStrLn "-------- eval error: --------"
-                        putRenderedLines err
-                        failure
-                      Right a0vRuntime -> do
-                        putStrLn "-------- result of runtime evaluation: --------"
-                        putRenderedLinesAtStage0 a0vRuntime
-                        success
-                _ -> do
-                  putStrLn "-------- stage-0 result: --------"
-                  putStrLn "(The stage-0 result was not a code value)"
-                  putRenderedLinesAtStage0 a0v
-                  if compileTimeOnly
-                    then success
-                    else failure
+        Right a0v -> do
+          case a0v of
+            A0ValBracket a1v -> do
+              putStrLn "-------- generated code: --------"
+              putRenderedLinesAtStage1 a1v
+              let a0eRuntime = Evaluator.unliftVal a1v
+              if compileTimeOnly
+                then success
+                else case evalStateT (Evaluator.evalExpr0 initialEnv a0eRuntime) initialEvalState of
+                  Left err -> do
+                    putStrLn "-------- eval error: --------"
+                    putRenderedLines err
+                    failure
+                  Right a0vRuntime -> do
+                    putStrLn "-------- result of runtime evaluation: --------"
+                    putRenderedLinesAtStage0 a0vRuntime
+                    success
+            _ -> do
+              putStrLn "-------- stage-0 result: --------"
+              putStrLn "(The stage-0 result was not a code value)"
+              putRenderedLinesAtStage0 a0v
+              if compileTimeOnly
+                then success
+                else failure
   where
+    initialEnv :: EvalEnv
+    initialEnv = Map.empty
+
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth
 
@@ -99,6 +115,19 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
 
     putRenderedLinesAtStage1 :: (Disp a) => a -> IO ()
     putRenderedLinesAtStage1 = Formatter.putRenderedLinesAtStage1 displayWidth
+
+typecheckAndEval :: Argument -> SourceSpec -> [Decl] -> SourceSpec -> Expr -> IO Bool
+typecheckAndEval arg@Argument {displayWidth} sourceSpecOfStub declsInStub sourceSpecOfInput e = do
+  case typecheckStub arg sourceSpecOfStub declsInStub of
+    Left tyErr -> do
+      putStrLn "-------- type error by stub: --------"
+      putRenderedLines tyErr
+      failure
+    Right (tyEnvStub, _sigr, stateAfterTraversingStub) -> do
+      typecheckAndEvalInput arg stateAfterTraversingStub sourceSpecOfInput tyEnvStub e
+  where
+    putRenderedLines :: (Disp a) => a -> IO ()
+    putRenderedLines = Formatter.putRenderedLines displayWidth
 
 -- Returns a boolean that represents success or failure
 handle :: Argument -> IO Bool

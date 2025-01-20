@@ -77,7 +77,6 @@ library
       Surface.BindingTime.Constraint,
       Surface.BindingTime.Core,
       Surface.BindingTime.Stager,
-      Surface.BuiltIn,
       Surface.Parser,
       Surface.Syntax,
       Surface.SurfaceMain,
