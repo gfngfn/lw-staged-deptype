@@ -700,8 +700,12 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
             typeError trav $ NotAStage1Var spanInFile x
           TypeEnv.AssPersEntry aPtye AssPersMetadata {assPbuiltInName} ->
             pure (persistentTypeTo1 aPtye, Just assPbuiltInName)
-          TypeEnv.Ass1Entry a1tye' _ ->
-            pure (a1tye', Nothing)
+          TypeEnv.Ass1Entry a1tye' a1metadataOpt ->
+            pure $
+              (a1tye',) $
+                case a1metadataOpt of
+                  Just Ass1Metadata {ass1builtInName} -> Just ass1builtInName
+                  Nothing -> Nothing
       (result, _) <- instantiateGuidedByAppContext1 trav loc Set.empty appCtx a1tye
       case a1builtInNameOpt of
         Just a1builtInName ->
