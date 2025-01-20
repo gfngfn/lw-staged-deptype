@@ -6,14 +6,16 @@ module Lwsd.LibMain
 where
 
 import Control.Monad.Trans.State
+import Data.Map qualified as Map
 import Data.Text.IO qualified as TextIO
-import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.Parser qualified as Parser
 import Lwsd.SrcSyntax
 import Lwsd.Syntax
+import Lwsd.TypeEnv (TypeEnv)
+import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.Typechecker (TypecheckState (..))
 import Lwsd.Typechecker qualified as Typechecker
 import Util.LocationInFile (SourceSpec (SourceSpec))
@@ -44,7 +46,7 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
             sourceSpec = sourceSpecOfStub,
             nextVarIndex = 0
           }
-  case runStateT (Typechecker.typecheckDecls id BuiltIn.initialTypeEnv declsInStub) typecheckerConfigOfStub of
+  case runStateT (Typechecker.typecheckDecls id initialTypeEnv declsInStub) typecheckerConfigOfStub of
     Left (tyErr, _travMod) -> do
       putStrLn "-------- type error by stub: --------"
       putRenderedLines tyErr
@@ -61,7 +63,7 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
           putRenderedLinesAtStage0 result
           putStrLn "-------- elaborated expression: --------"
           putRenderedLinesAtStage0 a0e
-          case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0e) initialEvalState of
+          case evalStateT (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of
             Left err -> do
               putStrLn "-------- error during compile-time code generation: --------"
               putRenderedLines err
@@ -74,7 +76,7 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
                   let a0eRuntime = Evaluator.unliftVal a1v
                   if compileTimeOnly
                     then success
-                    else case evalStateT (Evaluator.evalExpr0 BuiltIn.initialEnv a0eRuntime) initialEvalState of
+                    else case evalStateT (Evaluator.evalExpr0 initialEnv a0eRuntime) initialEvalState of
                       Left err -> do
                         putStrLn "-------- eval error: --------"
                         putRenderedLines err
@@ -91,6 +93,12 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
                     then success
                     else failure
   where
+    initialTypeEnv :: TypeEnv
+    initialTypeEnv = TypeEnv.empty
+
+    initialEnv :: Env0
+    initialEnv = Map.empty
+
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth
 

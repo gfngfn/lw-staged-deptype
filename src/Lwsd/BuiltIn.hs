@@ -11,8 +11,6 @@ module Lwsd.BuiltIn
     ass0exprMmult,
     ass0exprMconcatVert,
     ass0exprTadd,
-    initialTypeEnv,
-    initialEnv,
     ass0valAdd,
     ass0valSub,
     ass0valMult,
@@ -31,13 +29,8 @@ where
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Lwsd.Syntax
-import Lwsd.TypeEnv (TypeEnv)
-import Lwsd.TypeEnv qualified as TypeEnv
 import Util.TokenUtil (Span)
 import Prelude
-
-initialTypeEnv :: TypeEnv
-initialTypeEnv = TypeEnv.empty
 
 tyValInt :: Ass0TypeVal
 tyValInt = A0TyValPrim A0TyValInt
@@ -60,12 +53,14 @@ sty0Mat m n = SA0TyPrim (a0TyMat m n)
 sty0Tensor :: [Int] -> StrictAss0TypeExpr
 sty0Tensor = SA0TyPrim . A0TyTensor
 
--- Makes a closure equipped with `initialEnv`.
+-- Makes a closure equipped with the empty runtime environment.
 clo :: AssVar -> Ass0TypeVal -> Ass0Expr -> Ass0Val
-clo x a0tyv1 a0tye2 = A0ValLam Nothing (x, a0tyv1) a0tye2 initialEnv
+clo x a0tyv1 a0tye2 =
+  A0ValLam Nothing (x, a0tyv1) a0tye2 Map.empty
 
 lam :: AssVar -> StrictAss0TypeExpr -> Ass0Expr -> Ass0Expr
-lam x sa0tye1 = A0Lam Nothing (x, sa0tye1)
+lam x sa0tye1 =
+  A0Lam Nothing (x, sa0tye1)
 
 ass0exprBinaryInt :: (AssVar -> AssVar -> BuiltIn) -> Ass0Expr
 ass0exprBinaryInt f =
@@ -215,9 +210,6 @@ ass0valGenTadd =
     A0AppBuiltIn (BIGenTadd x1)
   where
     x1 = AssVar "x1"
-
-initialEnv :: Env0
-initialEnv = Map.empty
 
 validateExternalName0 :: Text -> Maybe Ass0BuiltInName
 validateExternalName0 = \case
