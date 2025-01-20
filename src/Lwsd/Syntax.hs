@@ -27,8 +27,8 @@ module Lwsd.Syntax
     Ass0PrimTypeVal (..),
     Ass1TypeVal (..),
     Ass1PrimTypeVal (..),
-    Env0,
-    EnvEntry (..),
+    EvalEnv,
+    EvalEnvEntry (..),
     a0TyVec,
     a0TyMat,
     a1TyVec,
@@ -207,7 +207,7 @@ liftPrimType = \case
 
 data Ass0Val
   = A0ValLiteral (AssLiteral Ass0Val)
-  | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr Env0
+  | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr EvalEnv
   | A0ValBracket Ass1Val
   deriving stock (Eq, Show)
 
@@ -269,9 +269,9 @@ data Type1PrimEquation
   | TyEq1TensorByWhole Ass0Expr Ass0Expr -- A Pair of ASTs of type `List Nat`
   deriving stock (Eq, Show)
 
-type Env0 = Map AssVar EnvEntry
+type EvalEnv = Map AssVar EvalEnvEntry
 
-data EnvEntry
+data EvalEnvEntry
   = Ass0ValEntry Ass0Val
   | SymbolEntry Symbol
   deriving stock (Eq, Show)

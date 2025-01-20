@@ -96,7 +96,7 @@ typecheckAndEval Argument {optimize, distributeIf, displayWidth, compileTimeOnly
     initialTypeEnv :: TypeEnv
     initialTypeEnv = TypeEnv.empty
 
-    initialEnv :: Env0
+    initialEnv :: EvalEnv
     initialEnv = Map.empty
 
     putRenderedLines :: (Disp a) => a -> IO ()
