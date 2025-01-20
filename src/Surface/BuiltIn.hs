@@ -38,10 +38,10 @@ initialBindingTimeEnv =
   List.foldl'
     (\btenv (x, entry) -> Map.insert x entry btenv)
     Map.empty
-    [ ("+", persistent bityBinary),
-      ("-", persistent bityBinary),
-      ("*", persistent bityBinary),
-      ("<=", persistent bityBinary),
+    [ ("+", persistent "+" bityBinary),
+      ("-", persistent "-" bityBinary),
+      ("*", persistent "*" bityBinary),
+      ("<=", persistent "<=" bityBinary),
       ("vadd", fixed0 "gen_vadd" bityVadd),
       ("vconcat", fixed0 "gen_vconcat" bityVconcat),
       ("mtranspose", fixed0 "gen_mtranspose" bityMtranspose),

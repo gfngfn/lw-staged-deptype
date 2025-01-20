@@ -10,7 +10,7 @@ import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.LibMain qualified as LwsdMain
 import Lwsd.Parser qualified as LwsdParser
-import Lwsd.TypeEnv (Entry (..), SigRecord)
+import Lwsd.TypeEnv (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), Entry (..), SigRecord)
 import Surface.BindingTime qualified as BindingTime
 import Surface.BindingTime.Core
 import Surface.BuiltIn qualified as BuiltIn
@@ -32,11 +32,31 @@ data Argument = Argument
 makeBindingTimeEnvFromStub :: SigRecord -> BindingTimeEnv
 makeBindingTimeEnvFromStub =
   Map.foldrWithKey
-    ( \_var entry _bindingTimeEnv ->
+    ( \var entry bindingTimeEnv ->
         case entry of
-          Ass0Entry _a0tye _ -> error "TODO: makeBindingTimeEnvFromStub, Ass0Entry"
-          Ass1Entry _a1tye -> error "TODO: makeBindingTimeEnvFromStub, Ass1Entry"
-          AssPersEntry _aPtye _ -> error "TODO: makeBindingTimeEnvFromStub, AssPersEntry"
+          Ass0Entry a0tye a0metadataOpt ->
+            case a0metadataOpt of
+              Just Ass0Metadata {ass0surfaceName = x} ->
+                Map.insert
+                  x
+                  (EntryBuiltInFixed var BT0 (fromStaged0 a0tye))
+                  bindingTimeEnv
+              Nothing ->
+                bindingTimeEnv
+          Ass1Entry a1tye a1metadataOpt ->
+            case a1metadataOpt of
+              Just Ass1Metadata {ass1surfaceName = x} ->
+                Map.insert
+                  x
+                  (EntryBuiltInFixed var BT1 (fromStaged1 a1tye))
+                  bindingTimeEnv
+              Nothing ->
+                bindingTimeEnv
+          AssPersEntry aPtye AssPersMetadata {assPsurfaceName = x} ->
+            Map.insert
+              x
+              (EntryBuiltInPersistent var (fromStagedPers aPtye))
+              bindingTimeEnv
     )
     Map.empty
 

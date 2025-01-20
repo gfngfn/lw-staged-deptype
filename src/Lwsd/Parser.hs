@@ -46,6 +46,9 @@ lowerOrOp = lower `or` (makeOp <$> token TokLeftParen <*> operator <*> token Tok
 int :: P (Located Int)
 int = expectToken (^? #_TokInt)
 
+string :: P (Located Text)
+string = expectToken (^? #_TokString)
+
 vec :: P (Located [Int])
 vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 
@@ -269,9 +272,9 @@ typeExpr = fun
 
 decl :: P Decl
 decl =
-  makeDeclVal <$> token TokVal <*> binder <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external)
+  makeDeclVal <$> token TokVal <*> binder <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external) <*> string
   where
-    binder :: P (TypeExpr -> Text -> DeclMainF Span)
+    binder :: P (TypeExpr -> External -> Text -> DeclMainF Span)
     binder =
       tries
         [ DeclVal0 <$> (token TokEscape *> noLoc lowerOrOp),
@@ -279,11 +282,11 @@ decl =
         ]
         (DeclVal1 <$> noLoc lowerOrOp)
 
-    makeDeclVal locFirst ctor tye (Located locLast ext) =
-      Decl (mergeSpan locFirst locLast) (ctor tye ext)
+    makeDeclVal locFirst ctor tye ext (Located locLast surf) =
+      Decl (mergeSpan locFirst locLast) (ctor tye ext surf)
 
-external :: P (Located External)
-external = lower
+external :: P External
+external = noLoc string
 
 parse :: P a -> Text -> Either String a
 parse p source = do

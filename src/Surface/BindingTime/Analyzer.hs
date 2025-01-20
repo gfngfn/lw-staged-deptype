@@ -166,11 +166,9 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
         case Map.lookup x btenv of
           Nothing ->
             analysisError $ UnboundVar spanInFile x
-          Just (EntryBuiltInPersistent bityVoid) ->
-            -- TODO (enhance): refine `ann`
-            pure (x, enhanceBIType (\() -> bt) bityVoid, [])
+          Just (EntryBuiltInPersistent x' bityVoid) ->
+            pure (x', enhanceBIType (\() -> bt) bityVoid, [])
           Just (EntryBuiltInFixed x' btc' bityConst) ->
-            -- TODO (enhance): refine `ann`
             pure (x', enhanceBIType BTConst bityConst, [CEqual ann bt (BTConst btc')])
           Just (EntryLocallyBound bt' bity) ->
             pure (x, bity, [CEqual ann bt bt'])

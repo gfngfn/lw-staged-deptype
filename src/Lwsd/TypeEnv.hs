@@ -1,6 +1,8 @@
 module Lwsd.TypeEnv
   ( TypeEnv,
     Ass0Metadata (..),
+    Ass1Metadata (..),
+    AssPersMetadata (..),
     Entry (..),
     SigRecord,
     empty,
@@ -21,14 +23,24 @@ import Prelude
 newtype TypeEnv = TypeEnv [(Var, Entry)]
 
 data Ass0Metadata = Ass0Metadata
-  { builtInName :: Ass0BuiltInName,
-    surfaceName :: SurfaceSyntax.Var
+  { ass0builtInName :: Ass0BuiltInName,
+    ass0surfaceName :: SurfaceSyntax.Var
+  }
+
+data Ass1Metadata = Ass1Metadata
+  { ass1builtInName :: Ass1BuiltInName,
+    ass1surfaceName :: SurfaceSyntax.Var
+  }
+
+data AssPersMetadata = AssPersMetadata
+  { assPbuiltInName :: Ass1BuiltInName,
+    assPsurfaceName :: SurfaceSyntax.Var
   }
 
 data Entry
   = Ass0Entry Ass0TypeExpr (Maybe Ass0Metadata)
-  | Ass1Entry Ass1TypeExpr
-  | AssPersEntry AssPersTypeExpr Ass1BuiltInName
+  | Ass1Entry Ass1TypeExpr (Maybe Ass1Metadata)
+  | AssPersEntry AssPersTypeExpr AssPersMetadata
 
 type SigRecord = Map Var Entry
 

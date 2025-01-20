@@ -96,9 +96,9 @@ data DeclF ann = Decl ann (DeclMainF ann)
   deriving (Eq1, Show1) via (Generically1 DeclF)
 
 data DeclMainF ann
-  = DeclVal0 Var (TypeExprF ann) External
-  | DeclVal1 Var (TypeExprF ann) External
-  | DeclValPers Var (TypeExprF ann) External
+  = DeclVal0 Var (TypeExprF ann) External Text
+  | DeclVal1 Var (TypeExprF ann) External Text
+  | DeclValPers Var (TypeExprF ann) External Text
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 DeclMainF)
 

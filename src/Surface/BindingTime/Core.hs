@@ -13,6 +13,7 @@ module Surface.BindingTime.Core
     BITypeVoid,
     fromStaged0,
     fromStaged1,
+    fromStagedPers,
   )
 where
 
@@ -47,7 +48,7 @@ data BITypeMainF bt
 type BIType = BITypeF BindingTime
 
 data BindingTimeEnvEntry
-  = EntryBuiltInPersistent (BITypeF ())
+  = EntryBuiltInPersistent Var (BITypeF ())
   | EntryBuiltInFixed Var BindingTimeConst (BITypeF BindingTimeConst)
   | EntryLocallyBound BindingTime BIType
   deriving stock (Show)
@@ -88,3 +89,14 @@ fromStaged1 a1tye =
         BITyBase [fromStaged1 a1tye']
       Lwsd.A1TyArrow a1tye1 a1tye2 ->
         BITyArrow (fromStaged1 a1tye1) (fromStaged1 a1tye2)
+
+fromStagedPers :: Lwsd.AssPersTypeExpr -> BITypeF ()
+fromStagedPers aPtye =
+  BIType () $
+    case aPtye of
+      Lwsd.APersTyPrim _a0tyPrim ->
+        BITyBase []
+      Lwsd.APersTyList aPtye' ->
+        BITyBase [fromStagedPers aPtye']
+      Lwsd.APersTyArrow aPtye1 aPtye2 ->
+        BITyArrow (fromStagedPers aPtye1) (fromStagedPers aPtye2)
