@@ -56,7 +56,7 @@ askSpanInFile loc = do
   TypecheckState {sourceSpec} <- get
   pure $ getSpanInFile sourceSpec loc
 
-findVar :: trav -> Span -> Var -> TypeEnv -> M trav TypeEnv.Entry
+findVar :: trav -> Span -> Var -> TypeEnv -> M trav TypeEnv.ValEntry
 findVar trav loc x tyEnv = do
   spanInFile <- askSpanInFile loc
   lift $ maybeToEither (UnboundVar spanInFile x, trav) $ TypeEnv.findVar x tyEnv
@@ -529,8 +529,6 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               pure (persistentTypeTo0 aPtye, Just (unliftBuiltInName assPbuiltInName))
             TypeEnv.Ass1Entry _ _ ->
               typeError trav $ NotAStage0Var spanInFile x
-            TypeEnv.ModuleEntry _ ->
-              error "TODO (error): Var, ModuleEntry"
         result <- instantiateGuidedByAppContext0 trav loc appCtx a0tye
         case builtInNameOpt of
           Just builtInName ->
@@ -708,8 +706,6 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
                 case a1metadataOpt of
                   Just Ass1Metadata {ass1builtInName} -> Just ass1builtInName
                   Nothing -> Nothing
-          TypeEnv.ModuleEntry _ ->
-            error "TODO (error): Var, ModuleEntry"
       (result, _) <- instantiateGuidedByAppContext1 trav loc Set.empty appCtx a1tye
       case a1builtInNameOpt of
         Just a1builtInName ->
@@ -1012,7 +1008,7 @@ typecheckDecl trav tyEnv (Decl loc declMain) =
             spanInFile <- askSpanInFile loc
             typeError trav $ UnknownExternalName spanInFile extName
       let a0metadata = Ass0Metadata {ass0builtInName, ass0surfaceName}
-      pure $ Map.singleton x (TypeEnv.Ass0Entry a0tye (Just a0metadata))
+      pure $ TypeEnv.singletonVal x (TypeEnv.Ass0Entry a0tye (Just a0metadata))
     DeclVal1 x tye extName ass1surfaceName -> do
       ass1builtInName <-
         case validateExternalName1 extName of
@@ -1023,7 +1019,7 @@ typecheckDecl trav tyEnv (Decl loc declMain) =
             typeError trav $ UnknownExternalName spanInFile extName
       a1tye <- typecheckTypeExpr1 trav tyEnv tye
       let a1metadata = Ass1Metadata {ass1builtInName, ass1surfaceName}
-      pure $ Map.singleton x (TypeEnv.Ass1Entry a1tye (Just a1metadata))
+      pure $ TypeEnv.singletonVal x (TypeEnv.Ass1Entry a1tye (Just a1metadata))
     DeclValPers x tye extName assPsurfaceName -> do
       a0tye <- typecheckTypeExpr0 trav tyEnv tye
       aPtye <- validatePersistentType trav loc a0tye
@@ -1035,21 +1031,24 @@ typecheckDecl trav tyEnv (Decl loc declMain) =
             spanInFile <- askSpanInFile loc
             typeError trav $ UnknownExternalName spanInFile extName
       let aPmetadata = AssPersMetadata {assPbuiltInName, assPsurfaceName}
-      pure $ Map.singleton x (TypeEnv.AssPersEntry aPtye aPmetadata)
+      pure $ TypeEnv.singletonVal x (TypeEnv.AssPersEntry aPtye aPmetadata)
     DeclModule m decls -> do
       (_, sigr) <- typecheckDecls trav tyEnv decls
-      pure $ Map.singleton m (TypeEnv.ModuleEntry sigr)
+      pure $ TypeEnv.singletonModule m (TypeEnv.ModuleEntry sigr)
 
 typecheckDecls :: trav -> TypeEnv -> [Decl] -> M trav (TypeEnv, SigRecord)
 typecheckDecls trav tyEnv =
   foldM
     ( \(tyEnv', sigr') decl@(Decl loc _) -> do
         sigr <- typecheckDecl trav tyEnv' decl
-        case Map.toList (Map.intersection sigr' sigr) of
-          [] ->
-            pure (TypeEnv.appendSigRecord tyEnv' sigr, Map.union sigr' sigr)
-          (x, _) : _ -> do
+        case TypeEnv.intersectSigRecord sigr' sigr of
+          ([], []) ->
+            pure (TypeEnv.appendSigRecord tyEnv' sigr, TypeEnv.mergeSigRecord sigr' sigr)
+          (x : _, _) -> do
             spanInFile <- askSpanInFile loc
             typeError trav $ DeclarationOverwritten spanInFile x
+          (_, m : _) -> do
+            spanInFile <- askSpanInFile loc
+            typeError trav $ DeclarationOverwritten spanInFile m
     )
-    (tyEnv, Map.empty)
+    (tyEnv, TypeEnv.emptySigRecord)

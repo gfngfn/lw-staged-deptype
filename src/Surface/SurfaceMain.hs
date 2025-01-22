@@ -10,7 +10,7 @@ import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.LibMain qualified as LwsdMain
 import Lwsd.Parser qualified as LwsdParser
-import Lwsd.TypeEnv (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), Entry (..), SigRecord)
+import Lwsd.TypeEnv (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), ModuleEntry (..), SigRecord, ValEntry (..), foldSigRecord)
 import Surface.BindingTime qualified as BindingTime
 import Surface.BindingTime.Core
 import Surface.Parser qualified as Parser
@@ -30,7 +30,7 @@ data Argument = Argument
 
 makeBindingTimeEnvFromStub :: SigRecord -> BindingTimeEnv
 makeBindingTimeEnvFromStub =
-  Map.foldrWithKey
+  foldSigRecord
     ( \var entry bindingTimeEnv ->
         case entry of
           Ass0Entry a0tye a0metadataOpt ->
@@ -56,12 +56,13 @@ makeBindingTimeEnvFromStub =
               x
               (EntryBuiltInPersistent var (fromStagedPers aPtye))
               bindingTimeEnv
-          ModuleEntry sigr ->
-            -- Reuses the module name `var` in the core language for the surface language.
-            Map.insert
-              var
-              (EntryModule (makeBindingTimeEnvFromStub sigr))
-              bindingTimeEnv
+    )
+    ( \varM (ModuleEntry sigr) bindingTimeEnv ->
+        -- Reuses the module name `varM` in the core language for the surface language.
+        Map.insert
+          varM
+          (EntryModule (makeBindingTimeEnvFromStub sigr))
+          bindingTimeEnv
     )
     Map.empty
 

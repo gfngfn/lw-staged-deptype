@@ -3,11 +3,19 @@ module Lwsd.TypeEnv
     Ass0Metadata (..),
     Ass1Metadata (..),
     AssPersMetadata (..),
-    Entry (..),
+    ValEntry (..),
+    ModuleEntry (..),
     SigRecord,
     empty,
     addVar,
     findVar,
+    addModule,
+    emptySigRecord,
+    singletonVal,
+    singletonModule,
+    intersectSigRecord,
+    mergeSigRecord,
+    foldSigRecord,
     appendSigRecord,
   )
 where
@@ -20,7 +28,10 @@ import Lwsd.Syntax
 import Surface.Syntax qualified as SurfaceSyntax
 import Prelude
 
-newtype TypeEnv = TypeEnv [(Var, Entry)]
+data TypeEnv = TypeEnv
+  { envVals :: [(Var, ValEntry)],
+    envModules :: [(Var, ModuleEntry)]
+  }
 
 data Ass0Metadata = Ass0Metadata
   { ass0builtInName :: Ass0BuiltInName,
@@ -37,26 +48,56 @@ data AssPersMetadata = AssPersMetadata
     assPsurfaceName :: SurfaceSyntax.Var
   }
 
-data Entry
+data ValEntry
   = Ass0Entry Ass0TypeExpr (Maybe Ass0Metadata)
   | Ass1Entry Ass1TypeExpr (Maybe Ass1Metadata)
   | AssPersEntry AssPersTypeExpr AssPersMetadata
-  | ModuleEntry SigRecord
 
-type SigRecord = Map Var Entry
+newtype ModuleEntry
+  = ModuleEntry SigRecord
+
+data SigRecord = SigRecord
+  { sigVals :: Map Var ValEntry,
+    sigModules :: Map Var ModuleEntry
+  }
 
 empty :: TypeEnv
-empty = TypeEnv []
+empty = TypeEnv {envVals = [], envModules = []}
 
-addVar :: Var -> Entry -> TypeEnv -> TypeEnv
-addVar var entry (TypeEnv revEntries) =
-  TypeEnv ((var, entry) : revEntries)
+addVar :: Var -> ValEntry -> TypeEnv -> TypeEnv
+addVar var entry (TypeEnv revValEntries revModEntries) =
+  TypeEnv ((var, entry) : revValEntries) revModEntries
 
-findVar :: Var -> TypeEnv -> Maybe Entry
-findVar var0 (TypeEnv revEntries) =
+findVar :: Var -> TypeEnv -> Maybe ValEntry
+findVar var0 (TypeEnv revEntries _revModEntries) =
   List.firstJust
     (\(var, entry) -> if var == var0 then Just entry else Nothing)
     revEntries
 
+addModule :: Var -> ModuleEntry -> TypeEnv -> TypeEnv
+addModule = error "TODO: TypeEnv.addModule"
+
+emptySigRecord :: SigRecord
+emptySigRecord = SigRecord Map.empty Map.empty
+
+singletonVal :: Var -> ValEntry -> SigRecord
+singletonVal var entry = SigRecord (Map.singleton var entry) Map.empty
+
+singletonModule :: Var -> ModuleEntry -> SigRecord
+singletonModule m modEntry = SigRecord Map.empty (Map.singleton m modEntry)
+
+intersectSigRecord :: SigRecord -> SigRecord -> ([Var], [Var])
+intersectSigRecord (SigRecord vals1 modules1) (SigRecord vals2 modules2) =
+  (map fst $ Map.toList (Map.intersection vals1 vals2), map fst $ Map.toList (Map.intersection modules1 modules2))
+
+mergeSigRecord :: SigRecord -> SigRecord -> SigRecord
+mergeSigRecord (SigRecord vals1 modules1) (SigRecord vals2 modules2) =
+  SigRecord (Map.union vals1 vals2) (Map.union modules1 modules2)
+
+foldSigRecord :: (Var -> ValEntry -> a -> a) -> (Var -> ModuleEntry -> a -> a) -> a -> SigRecord -> a
+foldSigRecord fVal fModule acc (SigRecord {sigVals, sigModules}) =
+  Map.foldrWithKey fModule (Map.foldrWithKey fVal acc sigVals) sigModules
+
 appendSigRecord :: TypeEnv -> SigRecord -> TypeEnv
-appendSigRecord = Map.foldrWithKey addVar
+appendSigRecord tyEnv SigRecord {sigVals, sigModules} =
+  Map.foldrWithKey addModule (Map.foldrWithKey addVar tyEnv sigVals) sigModules
