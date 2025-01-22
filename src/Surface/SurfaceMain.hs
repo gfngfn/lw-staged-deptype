@@ -56,6 +56,12 @@ makeBindingTimeEnvFromStub =
               x
               (EntryBuiltInPersistent var (fromStagedPers aPtye))
               bindingTimeEnv
+          ModuleEntry sigr ->
+            -- Reuses the module name `var` in the core language for the surface language.
+            Map.insert
+              var
+              (EntryModule (makeBindingTimeEnvFromStub sigr))
+              bindingTimeEnv
     )
     Map.empty
 

@@ -529,6 +529,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               pure (persistentTypeTo0 aPtye, Just (unliftBuiltInName assPbuiltInName))
             TypeEnv.Ass1Entry _ _ ->
               typeError trav $ NotAStage0Var spanInFile x
+            TypeEnv.ModuleEntry _ ->
+              error "TODO (error): Var, ModuleEntry"
         result <- instantiateGuidedByAppContext0 trav loc appCtx a0tye
         case builtInNameOpt of
           Just builtInName ->
@@ -706,6 +708,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
                 case a1metadataOpt of
                   Just Ass1Metadata {ass1builtInName} -> Just ass1builtInName
                   Nothing -> Nothing
+          TypeEnv.ModuleEntry _ ->
+            error "TODO (error): Var, ModuleEntry"
       (result, _) <- instantiateGuidedByAppContext1 trav loc Set.empty appCtx a1tye
       case a1builtInNameOpt of
         Just a1builtInName ->
@@ -1032,6 +1036,9 @@ typecheckDecl trav tyEnv (Decl loc declMain) =
             typeError trav $ UnknownExternalName spanInFile extName
       let aPmetadata = AssPersMetadata {assPbuiltInName, assPsurfaceName}
       pure $ Map.singleton x (TypeEnv.AssPersEntry aPtye aPmetadata)
+    DeclModule m decls -> do
+      (_, sigr) <- typecheckDecls trav tyEnv decls
+      pure $ Map.singleton m (TypeEnv.ModuleEntry sigr)
 
 typecheckDecls :: trav -> TypeEnv -> [Decl] -> M trav (TypeEnv, SigRecord)
 typecheckDecls trav tyEnv =

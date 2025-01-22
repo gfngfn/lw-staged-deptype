@@ -48,6 +48,9 @@ data Token
   | TokElse
   | TokAs
   | TokVal
+  | TokModule
+  | TokSig
+  | TokEnd
   | TokExternal
   | TokOpAdd
   | TokOpSub
@@ -73,6 +76,9 @@ keywordMap =
       ("else", TokElse),
       ("as", TokAs),
       ("val", TokVal),
+      ("module", TokModule),
+      ("sig", TokSig),
+      ("end", TokEnd),
       ("external", TokExternal)
     ]
 

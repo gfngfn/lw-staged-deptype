@@ -51,6 +51,7 @@ data BindingTimeEnvEntry
   = EntryBuiltInPersistent Var (BITypeF ())
   | EntryBuiltInFixed Var BindingTimeConst (BITypeF BindingTimeConst)
   | EntryLocallyBound BindingTime BIType
+  | EntryModule BindingTimeEnv
   deriving stock (Show)
 
 type BindingTimeEnv = Map Var BindingTimeEnvEntry

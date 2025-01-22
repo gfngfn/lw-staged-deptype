@@ -172,6 +172,8 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
             pure (x', enhanceBIType BTConst bityConst, [CEqual ann bt (BTConst btc')])
           Just (EntryLocallyBound bt' bity) ->
             pure (x, bity, [CEqual ann bt bt'])
+          Just (EntryModule _) ->
+            error "TODO (error): extractConstraintsFromExpr, Var, EntryModule"
       pure (Expr (bt, ann) (Var x'), bity, constraints)
     Lam Nothing (x1, btye1) e2 -> do
       (btye1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1

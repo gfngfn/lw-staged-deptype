@@ -41,6 +41,7 @@ data Entry
   = Ass0Entry Ass0TypeExpr (Maybe Ass0Metadata)
   | Ass1Entry Ass1TypeExpr (Maybe Ass1Metadata)
   | AssPersEntry AssPersTypeExpr AssPersMetadata
+  | ModuleEntry SigRecord
 
 type SigRecord = Map Var Entry
 
