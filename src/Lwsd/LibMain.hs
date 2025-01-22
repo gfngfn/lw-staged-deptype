@@ -13,10 +13,11 @@ import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
 import Lwsd.Parser qualified as Parser
+import Lwsd.Scope.SigRecord (SigRecord)
+import Lwsd.Scope.TypeEnv (TypeEnv)
+import Lwsd.Scope.TypeEnv qualified as TypeEnv
 import Lwsd.SrcSyntax
 import Lwsd.Syntax
-import Lwsd.TypeEnv (SigRecord, TypeEnv)
-import Lwsd.TypeEnv qualified as TypeEnv
 import Lwsd.TypeError (TypeError)
 import Lwsd.Typechecker (TypecheckState (..))
 import Lwsd.Typechecker qualified as Typechecker
