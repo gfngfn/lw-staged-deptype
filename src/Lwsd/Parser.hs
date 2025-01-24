@@ -38,8 +38,8 @@ lower = expectToken (^? #_TokLower)
 upper :: P (Located Text)
 upper = expectToken (^? #_TokUpper)
 
-longLower :: P (Located ([Text], Text))
-longLower =
+longOrShortLower :: P (Located ([Text], Text))
+longOrShortLower =
   expectToken (^? #_TokLongLower)
     `or` (fmap ([],) <$> lower)
 
@@ -116,7 +116,7 @@ exprAtom, expr :: P Expr
           located (Literal . LitList) <$> list letin,
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
-          located Var <$> longLower,
+          located Var <$> longOrShortLower,
           located (\x -> Var ([], x)) <$> standaloneOp
         ]
         (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)

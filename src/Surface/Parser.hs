@@ -37,6 +37,19 @@ lower = expectToken (^? #_TokLower)
 upper :: P (Located Text)
 upper = expectToken (^? #_TokUpper)
 
+longOrShortLower :: P (Located ([Text], Text))
+longOrShortLower =
+  expectToken (^? #_TokLongLower)
+    `or` (fmap ([],) <$> lower)
+
+standaloneOp :: P (Located Text)
+standaloneOp = makeOp <$> token TokLeftParen <*> operator <*> token TokRightParen
+  where
+    makeOp locLeft (Located _ opName) locRight = Located (mergeSpan locLeft locRight) opName
+
+boundIdent :: P (Located Text)
+boundIdent = lower `or` standaloneOp
+
 int :: P (Located Int)
 int = expectToken (^? #_TokInt)
 
@@ -46,12 +59,40 @@ vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 mat :: P (Located [[Int]])
 mat = genMat TokMatLeft TokMatRight TokSemicolon TokComma (noLoc int)
 
+operator :: P (Located Var)
+operator = tries [compOp, addOp] multOp
+
+multOp :: P (Located Var)
+multOp =
+  expectToken
+    ( \case
+        TokOpMult -> Just "*"
+        _ -> Nothing
+    )
+
+addOp :: P (Located Var)
+addOp =
+  expectToken
+    ( \case
+        TokOpAdd -> Just "+"
+        TokOpSub -> Just "-"
+        _ -> Nothing
+    )
+
+compOp :: P (Located Var)
+compOp =
+  expectToken
+    ( \case
+        TokOpLeq -> Just "<="
+        _ -> Nothing
+    )
+
 makeBinOpApp :: Expr -> Located Var -> Expr -> Expr
 makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
   Expr (mergeSpan locLeft loc2) (App (Expr locLeft (App eOp e1)) e2)
   where
     locLeft = mergeSpan loc1 locBinOp
-    eOp = Expr locBinOp (Var binOp)
+    eOp = Expr locBinOp (Var ([], binOp))
 
 data FunArg
   = FunArgMandatory Expr
@@ -67,7 +108,8 @@ exprAtom, expr :: P Expr
         [ located (Literal . LitInt) <$> int,
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
-          located Var <$> lower
+          located Var <$> longOrShortLower,
+          located (\x -> Var ([], x)) <$> standaloneOp
         ]
         (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
@@ -107,41 +149,13 @@ exprAtom, expr :: P Expr
           Expr (mergeSpan loc1 loc2) (As e1 tye2)
 
     mult :: P Expr
-    mult =
-      binSep makeBinOpApp multOp as
-      where
-        multOp :: P (Located Var)
-        multOp =
-          expectToken
-            ( \case
-                TokOpMult -> Just "*"
-                _ -> Nothing
-            )
+    mult = binSep makeBinOpApp multOp as
 
     add :: P Expr
-    add =
-      binSep makeBinOpApp addOp mult
-      where
-        addOp :: P (Located Var)
-        addOp =
-          expectToken
-            ( \case
-                TokOpAdd -> Just "+"
-                TokOpSub -> Just "-"
-                _ -> Nothing
-            )
+    add = binSep makeBinOpApp addOp mult
 
     comp :: P Expr
-    comp =
-      binSep makeBinOpApp compOp add
-      where
-        compOp :: P (Located Var)
-        compOp =
-          expectToken
-            ( \case
-                TokOpLeq -> Just "<="
-                _ -> Nothing
-            )
+    comp = binSep makeBinOpApp compOp add
 
     lam :: P Expr
     lam =
@@ -175,7 +189,7 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      (makeLetIn <$> token TokLet <*> noLoc lower <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+      (makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         `or` lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =

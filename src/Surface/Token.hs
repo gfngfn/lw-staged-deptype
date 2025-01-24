@@ -32,6 +32,7 @@ data Token
   | TokMatRight
   | TokLower Text
   | TokUpper Text
+  | TokLongLower ([Text], Text)
   | TokInt Int
   | TokFun
   | TokRec
@@ -95,6 +96,7 @@ token =
       TokOpMult <$ Mp.single '*',
       TokOpLeq <$ Mp.chunk "<=",
       lowerIdentOrKeyword,
+      Mp.try (TokLongLower <$> longLowerIdent),
       TokUpper <$> upperIdent,
       TokInt <$> integerLiteral
     ]

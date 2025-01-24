@@ -154,6 +154,18 @@ extractConstraintsFromLiteral btenv (btLit, annLit) = \case
   LitMat nss ->
     pure (LitMat nss, [], [])
 
+findVal :: BindingTimeEnv -> [Var] -> Var -> Maybe BindingTimeEnvEntry
+findVal btenv ms x =
+  case ms of
+    [] ->
+      Map.lookup x btenv
+    m : ms' ->
+      case Map.lookup m btenv of
+        Just (EntryModule btenv') ->
+          findVal btenv' ms' x
+        _ ->
+          error "TODO (error): Surface.BindingTime.Analyzer.findVal"
+
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BExpr, BIType, [Constraint Span])
 extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
   spanInFile <- askSpanInFile ann
@@ -161,9 +173,9 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
     Literal lit -> do
       (lit', bityBaseArgs, constraints) <- extractConstraintsFromLiteral btenv (bt, ann) lit
       pure (Expr (bt, ann) (Literal lit'), BIType bt (BITyBase bityBaseArgs), constraints)
-    Var x -> do
+    Var (ms, x) -> do
       (x', bity, constraints) <-
-        case Map.lookup x btenv of
+        case findVal btenv ms x of
           Nothing ->
             analysisError $ UnboundVar spanInFile x
           Just (EntryBuiltInPersistent x' bityVoid) ->
@@ -174,7 +186,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
             pure (x, bity, [CEqual ann bt bt'])
           Just (EntryModule _) ->
             error "TODO (error): extractConstraintsFromExpr, Var, EntryModule"
-      pure (Expr (bt, ann) (Var x'), bity, constraints)
+      pure (Expr (bt, ann) (Var (ms, x')), bity, constraints)
     Lam Nothing (x1, btye1) e2 -> do
       (btye1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
       (e2', bity2@(BIType bt2 _), constraints2) <-

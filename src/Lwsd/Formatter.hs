@@ -314,7 +314,7 @@ instance Disp Surface.Expr where
 instance Disp Surface.ExprMain where
   dispGen req = \case
     Surface.Literal lit -> dispGen req lit
-    Surface.Var x -> disp x
+    Surface.Var (ms, x) -> dispLongName ms x
     Surface.Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
@@ -744,7 +744,7 @@ instance Disp (Bta.BCExprF ann) where
 instance Disp (Bta.BCExprMainF ann) where
   dispGen req = \case
     Surface.Literal lit -> disp lit
-    Surface.Var x -> disp x
+    Surface.Var (ms, x) -> dispLongName ms x
     Surface.Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
