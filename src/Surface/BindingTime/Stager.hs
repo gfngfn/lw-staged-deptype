@@ -34,7 +34,7 @@ stageExpr0Main = \case
   Literal lit ->
     Lwsd.Literal (convertLiteral stageExpr0 lit)
   Var x ->
-    Lwsd.Var x
+    Lwsd.Var ([], x) -- TODO: fix this about module name chains
   Lam Nothing (x, tye1) e2 ->
     Lwsd.Lam Nothing (x, stageTypeExpr0 tye1) (stageExpr0 e2)
   Lam (Just (f, tyeRec)) (x, tye1) e2 ->
@@ -65,7 +65,7 @@ stageExpr1Main = \case
   Literal lit ->
     Lwsd.Literal (convertLiteral stageExpr1 lit)
   Var x ->
-    Lwsd.Var x
+    Lwsd.Var ([], x) -- TODO: fix this about module name chains
   Lam Nothing (x, tye1) e2 ->
     Lwsd.Lam Nothing (x, stageTypeExpr1 tye1) (stageExpr1 e2)
   Lam (Just (f, tyeRec)) (x, tye1) e2 ->

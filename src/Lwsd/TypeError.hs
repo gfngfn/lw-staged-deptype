@@ -12,7 +12,7 @@ import Util.Matrix qualified as Matrix
 import Prelude
 
 data TypeError
-  = UnboundVar SpanInFile Var
+  = UnboundVar SpanInFile [Var] Var
   | NotAStage0Var SpanInFile Var
   | NotAStage1Var SpanInFile Var
   | UnknownTypeOrInvalidArityAtStage0 SpanInFile TypeName Int

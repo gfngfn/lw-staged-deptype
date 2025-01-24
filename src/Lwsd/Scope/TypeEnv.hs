@@ -1,9 +1,10 @@
 module Lwsd.Scope.TypeEnv
   ( TypeEnv,
     empty,
-    addVar,
-    findVar,
+    addVal,
+    findVal,
     addModule,
+    findModule,
     appendSigRecord,
   )
 where
@@ -23,20 +24,26 @@ data TypeEnv = TypeEnv
 empty :: TypeEnv
 empty = TypeEnv {envVals = [], envModules = []}
 
-addVar :: Var -> ValEntry -> TypeEnv -> TypeEnv
-addVar x valEntry (TypeEnv revValEntries revModEntries) =
+addVal :: Var -> ValEntry -> TypeEnv -> TypeEnv
+addVal x valEntry (TypeEnv revValEntries revModEntries) =
   TypeEnv ((x, valEntry) : revValEntries) revModEntries
 
-findVar :: Var -> TypeEnv -> Maybe ValEntry
-findVar var0 (TypeEnv revValEntries _revModEntries) =
+findVal :: Var -> TypeEnv -> Maybe ValEntry
+findVal x0 (TypeEnv revValEntries _revModEntries) =
   List.firstJust
-    (\(var, entry) -> if var == var0 then Just entry else Nothing)
+    (\(x, valEntry) -> if x == x0 then Just valEntry else Nothing)
     revValEntries
 
 addModule :: Var -> ModuleEntry -> TypeEnv -> TypeEnv
 addModule m modEntry (TypeEnv revValEntries revModEntries) =
   TypeEnv revValEntries ((m, modEntry) : revModEntries)
 
+findModule :: Var -> TypeEnv -> Maybe ModuleEntry
+findModule m0 (TypeEnv _revValEntries revModEntries) =
+  List.firstJust
+    (\(m, modEntry) -> if m == m0 then Just modEntry else Nothing)
+    revModEntries
+
 appendSigRecord :: TypeEnv -> SigRecord -> TypeEnv
 appendSigRecord =
-  SigRecord.fold addVar addModule
+  SigRecord.fold addVal addModule

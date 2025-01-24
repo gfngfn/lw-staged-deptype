@@ -38,10 +38,18 @@ lower = expectToken (^? #_TokLower)
 upper :: P (Located Text)
 upper = expectToken (^? #_TokUpper)
 
-lowerOrOp :: P (Located Text)
-lowerOrOp = lower `or` (makeOp <$> token TokLeftParen <*> operator <*> token TokRightParen)
+longLower :: P (Located ([Text], Text))
+longLower =
+  expectToken (^? #_TokLongLower)
+    `or` (fmap ([],) <$> lower)
+
+standaloneOp :: P (Located Text)
+standaloneOp = makeOp <$> token TokLeftParen <*> operator <*> token TokRightParen
   where
     makeOp locLeft (Located _ opName) locRight = Located (mergeSpan locLeft locRight) opName
+
+boundIdent :: P (Located Text)
+boundIdent = lower `or` standaloneOp
 
 int :: P (Located Int)
 int = expectToken (^? #_TokInt)
@@ -91,7 +99,7 @@ makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
   Expr (mergeSpan locLeft loc2) (App (Expr locLeft (App eOp e1)) e2)
   where
     locLeft = mergeSpan loc1 locBinOp
-    eOp = Expr locBinOp (Var binOp)
+    eOp = Expr locBinOp (Var ([], binOp))
 
 data FunArg
   = FunArgMandatory Expr
@@ -108,7 +116,8 @@ exprAtom, expr :: P Expr
           located (Literal . LitList) <$> list letin,
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
-          located Var <$> lowerOrOp
+          located Var <$> longLower,
+          located (\x -> Var ([], x)) <$> standaloneOp
         ]
         (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
@@ -198,7 +207,7 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      (makeLetIn <$> token TokLet <*> noLoc lowerOrOp <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+      (makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         `or` lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
@@ -278,10 +287,10 @@ decl =
     valBinder :: P (TypeExpr -> External -> Text -> DeclMainF Span)
     valBinder =
       tries
-        [ DeclVal0 <$> (token TokEscape *> noLoc lowerOrOp),
-          DeclValPers <$> (token TokPersistent *> noLoc lowerOrOp)
+        [ DeclVal0 <$> (token TokEscape *> noLoc boundIdent),
+          DeclValPers <$> (token TokPersistent *> noLoc boundIdent)
         ]
-        (DeclVal1 <$> noLoc lowerOrOp)
+        (DeclVal1 <$> noLoc boundIdent)
 
     makeDeclVal locFirst ctor tye ext (Located locLast surf) =
       Decl (mergeSpan locFirst locLast) (ctor tye ext surf)

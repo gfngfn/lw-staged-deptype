@@ -6,6 +6,8 @@ module Lwsd.Scope.SigRecord
     ModuleEntry (..),
     SigRecord,
     empty,
+    findVal,
+    findModule,
     singletonVal,
     singletonModule,
     intersection,
@@ -51,6 +53,12 @@ data SigRecord = SigRecord
 
 empty :: SigRecord
 empty = SigRecord Map.empty Map.empty
+
+findVal :: Var -> SigRecord -> Maybe ValEntry
+findVal x (SigRecord vals _) = Map.lookup x vals
+
+findModule :: Var -> SigRecord -> Maybe ModuleEntry
+findModule m (SigRecord _ modules) = Map.lookup m modules
 
 singletonVal :: Var -> ValEntry -> SigRecord
 singletonVal var entry = SigRecord (Map.singleton var entry) Map.empty

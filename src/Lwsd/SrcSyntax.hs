@@ -42,7 +42,7 @@ data ExprF ann = Expr ann (ExprMainF ann)
 
 data ExprMainF ann
   = Literal (Literal (ExprF ann))
-  | Var Var
+  | Var ([Var], Var) -- A module name chain and a value identifier
   | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)
   | LetIn Var (ExprF ann) (ExprF ann)

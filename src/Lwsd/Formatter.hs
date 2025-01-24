@@ -213,6 +213,10 @@ dispNameWithArgs req name dispArg args =
     [] -> name
     _ : _ -> deepenParenWhen (req <= Atomic) (List.foldl' (<+>) name (map dispArg args))
 
+dispLongName :: (Disp var) => [var] -> var -> Doc Ann
+dispLongName ms x =
+  foldr (\m doc -> disp m <> "." <> doc) (disp x) ms
+
 instance Disp Text where
   dispGen _ = pretty
 
@@ -241,7 +245,7 @@ instance Disp (ExprF ann) where
 instance Disp (ExprMainF ann) where
   dispGen req = \case
     Literal lit -> dispGen req lit
-    Var x -> disp x
+    Var (ms, x) -> dispLongName ms x
     Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     App e1 e2 -> dispApp req e1 e2
@@ -425,8 +429,8 @@ instance Disp Matrix.ConstructionError where
 
 instance Disp TypeError where
   dispGen _ = \case
-    UnboundVar spanInFile x ->
-      "Unbound variable" <+> disp x <+> disp spanInFile
+    UnboundVar spanInFile ms x ->
+      "Unbound variable" <+> dispLongName ms x <+> disp spanInFile
     NotAStage0Var spanInFile x ->
       "Not a stage-0 variable:" <+> disp x <+> disp spanInFile
     NotAStage1Var spanInFile x ->
