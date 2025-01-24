@@ -47,6 +47,12 @@ spec = do
     it "parses variables (2)" $
       parseExpr "foo_bar"
         `shouldBe` pure (var "foo_bar")
+    it "parses long variables (1)" $
+      parseExpr "Foo.x"
+        `shouldBe` pure (longVar ["Foo"] "x")
+    it "parses long variables (2)" $
+      parseExpr "Foo.Bar.x"
+        `shouldBe` pure (longVar ["Foo", "Bar"] "x")
     it "parses applications (1)" $
       parseExpr "x y"
         `shouldBe` pure (app (var "x") (var "y"))
@@ -185,31 +191,31 @@ spec = do
         `shouldBe` pure (exprLoc 0 27 $ Literal (LitMat [[3, 14], [159, 2], [653, 5]]))
     it "parses variables" $
       Parser.parseExpr "foo_bar"
-        `shouldBe` pure (exprLoc 0 7 $ Var "foo_bar")
+        `shouldBe` pure (exprLoc 0 7 $ short "foo_bar")
     it "parses applications (1)" $
       Parser.parseExpr "x y"
-        `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
+        `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))
     it "parses applications (2)" $
       let e =
             exprLoc 0 5 $
               App
-                (exprLoc 0 3 $ App (exprLoc 0 1 $ Var "x") (exprLoc 2 3 $ Var "y"))
-                (exprLoc 4 5 $ Var "z")
+                (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))
+                (exprLoc 4 5 $ short "z")
        in Parser.parseExpr "x y z"
             `shouldBe` pure e
     it "parses applications (3)" $
       let e =
             exprLoc 0 7 $
               App
-                (exprLoc 0 1 $ Var "x")
-                (exprLoc 2 7 $ App (exprLoc 3 4 $ Var "y") (exprLoc 5 6 $ Var "z"))
+                (exprLoc 0 1 $ short "x")
+                (exprLoc 2 7 $ App (exprLoc 3 4 $ short "y") (exprLoc 5 6 $ short "z"))
        in Parser.parseExpr "x (y z)" `shouldBe` pure e
     it "parses brackets" $
       let e =
             exprLoc 0 8 $
               App
-                (exprLoc 0 1 $ Var "f")
-                (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ Var "g") (exprLoc 6 7 $ Var "x")))
+                (exprLoc 0 1 $ short "f")
+                (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ short "g") (exprLoc 6 7 $ short "x")))
        in Parser.parseExpr "f &(g x)"
             `shouldBe` pure e
     it "parses lambda abstractions" $
@@ -223,16 +229,16 @@ spec = do
               Lam
                 Nothing
                 ("x", ty)
-                (exprLoc 31 34 $ App (exprLoc 31 32 $ Var "x") (exprLoc 33 34 $ Var "y"))
+                (exprLoc 31 34 $ App (exprLoc 31 32 $ short "x") (exprLoc 33 34 $ short "y"))
        in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
             `shouldBe` pure e
     it "parses optional applications (1)" $
       Parser.parseExpr "x {y}"
-        `shouldBe` pure (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ Var "x") (exprLoc 3 4 $ Var "y"))
+        `shouldBe` pure (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ short "x") (exprLoc 3 4 $ short "y"))
     it "parses optional applications (2)" $
       let e =
             exprLoc 0 9 $
               AppOptGiven
-                (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ Var "x") (exprLoc 3 4 $ Var "y"))
-                (exprLoc 7 8 $ Var "z")
+                (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ short "x") (exprLoc 3 4 $ short "y"))
+                (exprLoc 7 8 $ short "z")
        in Parser.parseExpr "x {y} {z}" `shouldBe` pure e

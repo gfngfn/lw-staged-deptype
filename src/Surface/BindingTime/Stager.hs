@@ -33,8 +33,8 @@ stageExpr0Main :: BCExprMainF ann -> Lwsd.ExprMainF ann
 stageExpr0Main = \case
   Literal lit ->
     Lwsd.Literal (convertLiteral stageExpr0 lit)
-  Var x ->
-    Lwsd.Var x
+  Var (ms, x) ->
+    Lwsd.Var (ms, x)
   Lam Nothing (x, tye1) e2 ->
     Lwsd.Lam Nothing (x, stageTypeExpr0 tye1) (stageExpr0 e2)
   Lam (Just (f, tyeRec)) (x, tye1) e2 ->
@@ -64,8 +64,8 @@ stageExpr1Main :: BCExprMainF ann -> Lwsd.ExprMainF ann
 stageExpr1Main = \case
   Literal lit ->
     Lwsd.Literal (convertLiteral stageExpr1 lit)
-  Var x ->
-    Lwsd.Var x
+  Var (ms, x) ->
+    Lwsd.Var (ms, x)
   Lam Nothing (x, tye1) e2 ->
     Lwsd.Lam Nothing (x, stageTypeExpr1 tye1) (stageExpr1 e2)
   Lam (Just (f, tyeRec)) (x, tye1) e2 ->

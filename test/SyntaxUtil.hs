@@ -44,8 +44,17 @@ litList = expr . Literal . LitList
 litVec :: [Int] -> ExprVoid
 litVec = expr . Literal . LitVec
 
+short :: Var -> ExprMainF ann
+short x = Var ([], x)
+
+long :: [Var] -> Var -> ExprMainF ann
+long ms x = Var (ms, x)
+
 var :: Var -> ExprVoid
-var = expr . Var
+var = expr . short
+
+longVar :: [Var] -> Var -> ExprVoid
+longVar ms x = expr (long ms x)
 
 nonrecLam :: (Var, TypeExprVoid) -> ExprVoid -> ExprVoid
 nonrecLam binder e = expr (Lam Nothing binder e)
@@ -60,7 +69,7 @@ appOptGiven :: ExprVoid -> ExprVoid -> ExprVoid
 appOptGiven e1 e2 = expr (AppOptGiven e1 e2)
 
 binOp :: Var -> ExprVoid -> ExprVoid -> ExprVoid
-binOp op e1 e2 = app (app (var op) e1) e2
+binOp op e1 = app (app (var op) e1)
 
 add, sub, mult :: ExprVoid -> ExprVoid -> ExprVoid
 add = binOp "+"

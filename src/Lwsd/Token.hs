@@ -37,6 +37,7 @@ data Token
   | TokMatRight
   | TokLower Text
   | TokUpper Text
+  | TokLongLower ([Text], Text)
   | TokInt Int
   | TokString Text
   | TokFun
@@ -48,6 +49,9 @@ data Token
   | TokElse
   | TokAs
   | TokVal
+  | TokModule
+  | TokSig
+  | TokEnd
   | TokExternal
   | TokOpAdd
   | TokOpSub
@@ -73,6 +77,9 @@ keywordMap =
       ("else", TokElse),
       ("as", TokAs),
       ("val", TokVal),
+      ("module", TokModule),
+      ("sig", TokSig),
+      ("end", TokEnd),
       ("external", TokExternal)
     ]
 
@@ -110,6 +117,7 @@ token =
       TokOpMult <$ Mp.single '*',
       TokOpLeq <$ Mp.chunk "<=",
       lowerIdentOrKeyword,
+      Mp.try (TokLongLower <$> longLowerIdent),
       TokUpper <$> upperIdent,
       TokInt <$> integerLiteral,
       TokString <$> stringLiteral

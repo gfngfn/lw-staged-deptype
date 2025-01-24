@@ -6,6 +6,7 @@ module Util.TokenUtil
     space,
     lowerIdent,
     upperIdent,
+    longLowerIdent,
     integerLiteral,
     stringLiteral,
     genLex,
@@ -44,6 +45,9 @@ space = MpLexer.space MpChar.space1 empty empty
 isRestChar :: Char -> Bool
 isRestChar c = Char.isAlphaNum c || c == '_'
 
+isRestCharOrDot :: Char -> Bool
+isRestCharOrDot c = isRestChar c || c == '.'
+
 lowerIdent :: Tokenizer Text
 lowerIdent = Text.pack <$> ((:) <$> p1 <*> p2)
   where
@@ -54,7 +58,16 @@ upperIdent :: Tokenizer Text
 upperIdent = Text.pack <$> ((:) <$> p1 <*> p2)
   where
     p1 = Mp.satisfy Char.isUpper
-    p2 = Mp.many (Mp.satisfy isRestChar) <* Mp.notFollowedBy (Mp.satisfy isRestChar)
+    p2 = Mp.many (Mp.satisfy isRestChar) <* Mp.notFollowedBy (Mp.satisfy isRestCharOrDot)
+
+-- Parses a lowercased identifier preceded by a sequence of module names.
+longLowerIdent :: Tokenizer ([Text], Text)
+longLowerIdent =
+  (,) <$> Mp.many (buildModuleName <$> p1 <*> (p2 <* Mp.single '.')) <*> lowerIdent
+  where
+    p1 = Mp.satisfy Char.isUpper
+    p2 = Mp.many (Mp.satisfy isRestChar)
+    buildModuleName c cs = Text.pack (c : cs)
 
 integerLiteral :: Tokenizer Int
 integerLiteral = (\s -> read s :: Int) <$> (((:) <$> p1 <*> p2) <|> ((: []) <$> Mp.single '0'))
