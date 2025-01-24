@@ -7,4 +7,6 @@ val ~gen_vconcat : {a : Nat} -> {b : Nat} -> &(Vec %a -> Vec %b -> Vec %(a + b))
 val ~gen_mtranspose : {a : Nat} -> {b : Nat} -> &(Mat %a %b -> Mat %b %a) external "gen_mtranspose" "mtranspose"
 val ~gen_mmult : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %b -> Mat %b %c -> Mat %a %c) external "gen_mmult" "mmult"
 val ~gen_mconcat_vert : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %c -> Mat %b %c -> Mat %(a + b) %c) external "gen_mconcat_vert" "mconcat_vert"
-val ~gen_tadd : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Tensor %shape) external "gen_tadd" "tadd"
+module Tensor : sig
+  val ~gen_tadd : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Tensor %shape) external "gen_tadd" "tadd"
+end

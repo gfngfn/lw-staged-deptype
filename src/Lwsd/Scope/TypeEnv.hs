@@ -14,6 +14,7 @@ import Lwsd.Scope.SigRecord qualified as SigRecord
 import Lwsd.SrcSyntax (Var)
 import Prelude
 
+-- TODO (enhance): optimize internal representation
 data TypeEnv = TypeEnv
   { envVals :: [(Var, ValEntry)],
     envModules :: [(Var, ModuleEntry)]
@@ -23,17 +24,18 @@ empty :: TypeEnv
 empty = TypeEnv {envVals = [], envModules = []}
 
 addVar :: Var -> ValEntry -> TypeEnv -> TypeEnv
-addVar var entry (TypeEnv revValEntries revModEntries) =
-  TypeEnv ((var, entry) : revValEntries) revModEntries
+addVar x valEntry (TypeEnv revValEntries revModEntries) =
+  TypeEnv ((x, valEntry) : revValEntries) revModEntries
 
 findVar :: Var -> TypeEnv -> Maybe ValEntry
-findVar var0 (TypeEnv revEntries _revModEntries) =
+findVar var0 (TypeEnv revValEntries _revModEntries) =
   List.firstJust
     (\(var, entry) -> if var == var0 then Just entry else Nothing)
-    revEntries
+    revValEntries
 
 addModule :: Var -> ModuleEntry -> TypeEnv -> TypeEnv
-addModule = error "TODO: TypeEnv.addModule"
+addModule m modEntry (TypeEnv revValEntries revModEntries) =
+  TypeEnv revValEntries ((m, modEntry) : revModEntries)
 
 appendSigRecord :: TypeEnv -> SigRecord -> TypeEnv
 appendSigRecord =

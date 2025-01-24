@@ -273,7 +273,7 @@ typeExpr = fun
 decl :: P Decl
 decl =
   (makeDeclVal <$> token TokVal <*> valBinder <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external) <*> string)
-    `or` (makeDeclModule <$> token TokModule <*> noLoc upper <*> (token TokEqual *> token TokSig *> many decl) <*> token TokEnd)
+    `or` (makeDeclModule <$> token TokModule <*> noLoc upper <*> (token TokColon *> token TokSig *> many decl) <*> token TokEnd)
   where
     valBinder :: P (TypeExpr -> External -> Text -> DeclMainF Span)
     valBinder =
