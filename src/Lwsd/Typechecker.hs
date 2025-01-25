@@ -504,6 +504,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               case lit of
                 LitInt n ->
                   pure (A0TyPrim (if n >= 0 then A0TyNat else A0TyInt), ALitInt n)
+                LitFloat r ->
+                  pure (A0TyPrim A0TyFloat, ALitFloat r)
                 LitList es ->
                   case es of
                     [] ->
@@ -680,6 +682,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
             case lit of
               LitInt n ->
                 pure (A1TyPrim A1TyInt, ALitInt n)
+              LitFloat r ->
+                pure (A1TyPrim A1TyFloat, ALitFloat r)
               LitList es ->
                 case es of
                   [] ->

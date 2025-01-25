@@ -114,6 +114,7 @@ unliftBuiltInName = \case
 
 data AssLiteral e
   = ALitInt Int
+  | ALitFloat Double
   | ALitBool Bool
   | ALitList [e]
   | ALitVec Vector
@@ -289,6 +290,7 @@ data EvalEnvEntry
 mapAssLiteral :: (e1 -> e2) -> AssLiteral e1 -> AssLiteral e2
 mapAssLiteral f = \case
   ALitInt n -> ALitInt n
+  ALitFloat r -> ALitFloat r
   ALitBool b -> ALitBool b
   ALitList es -> ALitList (map f es)
   ALitVec vec -> ALitVec vec
@@ -297,6 +299,7 @@ mapAssLiteral f = \case
 mapMAssLiteral :: (Monad m) => (e -> m v) -> AssLiteral e -> m (AssLiteral v)
 mapMAssLiteral eval = \case
   ALitInt n -> pure $ ALitInt n
+  ALitFloat r -> pure $ ALitFloat r
   ALitBool b -> pure $ ALitBool b
   ALitList a0es -> ALitList <$> mapM eval a0es
   ALitVec vec -> pure $ ALitVec vec

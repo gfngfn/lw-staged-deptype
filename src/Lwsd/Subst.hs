@@ -44,6 +44,7 @@ unionPairs pairs =
 instance (HasVar e) => HasVar (AssLiteral e) where
   frees = \case
     ALitInt _ -> (Set.empty, Set.empty)
+    ALitFloat _ -> (Set.empty, Set.empty)
     ALitBool _ -> (Set.empty, Set.empty)
     ALitList es -> unionPairs (map frees es)
     ALitVec _ -> (Set.empty, Set.empty)
@@ -51,6 +52,7 @@ instance (HasVar e) => HasVar (AssLiteral e) where
 
   subst s = \case
     ALitInt n -> ALitInt n
+    ALitFloat r -> ALitFloat r
     ALitBool b -> ALitBool b
     ALitList es -> ALitList (map (subst s) es)
     ALitVec vec -> ALitVec vec

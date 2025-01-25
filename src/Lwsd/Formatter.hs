@@ -235,6 +235,7 @@ instance Disp Symbol where
 instance (Disp e) => Disp (Literal e) where
   dispGen _ = \case
     LitInt n -> pretty n
+    LitFloat r -> pretty r
     LitList es -> dispListLiteral es
     LitVec ns -> dispVectorLiteral ns
     LitMat nss -> dispMatrixLiteral nss
@@ -342,6 +343,7 @@ instance Disp Surface.ArgForType where
 instance (Disp e) => Disp (AssLiteral e) where
   dispGen _ = \case
     ALitInt n -> pretty n
+    ALitFloat r -> pretty r
     ALitBool True -> "true"
     ALitBool False -> "false"
     ALitList es -> dispListLiteral es

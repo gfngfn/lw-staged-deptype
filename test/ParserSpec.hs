@@ -29,6 +29,15 @@ spec = do
     it "parses integer literals (2)" $
       parseExpr "0"
         `shouldBe` pure (litInt 0)
+    it "parses float literals (1)" $
+      parseExpr "0.57"
+        `shouldBe` pure (litFloat 0.57)
+    it "parses float literals (2)" $
+      parseExpr "44.23"
+        `shouldBe` pure (litFloat 44.23)
+    it "parses float literals (3)" $
+      parseExpr "42.0"
+        `shouldBe` pure (litFloat 42)
     it "parses list literals (1)" $
       parseExpr "[]"
         `shouldBe` pure (litList [])

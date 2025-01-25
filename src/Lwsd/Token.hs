@@ -39,6 +39,7 @@ data Token
   | TokUpper Text
   | TokLongLower ([Text], Text)
   | TokInt Int
+  | TokFloat Double
   | TokString Text
   | TokFun
   | TokRec
@@ -119,6 +120,7 @@ token =
       lowerIdentOrKeyword,
       Mp.try (TokLongLower <$> longLowerIdent),
       TokUpper <$> upperIdent,
+      Mp.try (TokFloat <$> floatLiteral),
       TokInt <$> integerLiteral,
       TokString <$> stringLiteral
     ]
