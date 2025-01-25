@@ -114,6 +114,7 @@ unliftBuiltInName = \case
 
 data AssLiteral e
   = ALitInt Int
+  | ALitFloat Double
   | ALitBool Bool
   | ALitList [e]
   | ALitVec Vector
@@ -163,7 +164,9 @@ data StrictAss0TypeExpr
 data Ass0PrimType
   = A0TyInt
   | A0TyNat
+  | A0TyFloat
   | A0TyBool
+  | A0TyUnit
   | A0TyTensor [Int]
   deriving stock (Eq, Show)
 
@@ -175,7 +178,9 @@ data Ass1TypeExpr
 
 data Ass1PrimType
   = A1TyInt
+  | A1TyFloat
   | A1TyBool
+  | A1TyUnit
   | A1TyTensor Ass0Expr
   deriving stock (Eq, Show)
 
@@ -202,7 +207,9 @@ liftPrimType :: Ass0PrimType -> Ass1PrimType
 liftPrimType = \case
   A0TyInt -> A1TyInt
   A0TyNat -> A1TyInt
+  A0TyFloat -> A1TyFloat
   A0TyBool -> A1TyBool
+  A0TyUnit -> A1TyUnit
   A0TyTensor ns -> A1TyTensor (A0Literal (ALitList (map (A0Literal . ALitInt) ns)))
 
 data Ass0Val
@@ -240,7 +247,9 @@ data Ass0TypeVal
 data Ass0PrimTypeVal
   = A0TyValInt
   | A0TyValNat
+  | A0TyValFloat
   | A0TyValBool
+  | A0TyValUnit
   | A0TyValTensor [Int]
   deriving stock (Eq, Show)
 
@@ -252,7 +261,9 @@ data Ass1TypeVal
 
 data Ass1PrimTypeVal
   = A1TyValInt
+  | A1TyValFloat
   | A1TyValBool
+  | A1TyValUnit
   | A1TyValTensor [Int]
   deriving stock (Eq, Show)
 
@@ -279,6 +290,7 @@ data EvalEnvEntry
 mapAssLiteral :: (e1 -> e2) -> AssLiteral e1 -> AssLiteral e2
 mapAssLiteral f = \case
   ALitInt n -> ALitInt n
+  ALitFloat r -> ALitFloat r
   ALitBool b -> ALitBool b
   ALitList es -> ALitList (map f es)
   ALitVec vec -> ALitVec vec
@@ -287,6 +299,7 @@ mapAssLiteral f = \case
 mapMAssLiteral :: (Monad m) => (e -> m v) -> AssLiteral e -> m (AssLiteral v)
 mapMAssLiteral eval = \case
   ALitInt n -> pure $ ALitInt n
+  ALitFloat r -> pure $ ALitFloat r
   ALitBool b -> pure $ ALitBool b
   ALitList a0es -> ALitList <$> mapM eval a0es
   ALitVec vec -> pure $ ALitVec vec

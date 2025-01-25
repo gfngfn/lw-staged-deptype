@@ -504,6 +504,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               case lit of
                 LitInt n ->
                   pure (A0TyPrim (if n >= 0 then A0TyNat else A0TyInt), ALitInt n)
+                LitFloat r ->
+                  pure (A0TyPrim A0TyFloat, ALitFloat r)
                 LitList es ->
                   case es of
                     [] ->
@@ -680,6 +682,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
             case lit of
               LitInt n ->
                 pure (A1TyPrim A1TyInt, ALitInt n)
+              LitFloat r ->
+                pure (A1TyPrim A1TyFloat, ALitFloat r)
               LitList es ->
                 case es of
                   [] ->
@@ -895,7 +899,9 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       case (tyName, results) of
         ("Int", []) -> pure $ A0TyPrim A0TyInt
         ("Nat", []) -> pure $ A0TyPrim A0TyNat
+        ("Float", []) -> pure $ A0TyPrim A0TyFloat
         ("Bool", []) -> pure $ A0TyPrim A0TyBool
+        ("Unit", []) -> pure $ A0TyPrim A0TyUnit
         ("List", [arg]) -> do
           case arg of
             (IA0TypeArg a0tye, _) -> pure $ A0TyList a0tye
@@ -958,7 +964,9 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
           args
       case (tyName, results) of
         ("Int", []) -> pure $ A1TyPrim A1TyInt
+        ("Float", []) -> pure $ A1TyPrim A1TyFloat
         ("Bool", []) -> pure $ A1TyPrim A1TyBool
+        ("Unit", []) -> pure $ A1TyPrim A1TyUnit
         ("List", [(IA1TypeArg a1tye, _)]) -> do
           pure $ A1TyList a1tye
         ("Vec", [(IA1ExprArg a0e' a0tye, loc')]) -> do

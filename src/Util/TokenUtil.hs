@@ -8,6 +8,7 @@ module Util.TokenUtil
     upperIdent,
     longLowerIdent,
     integerLiteral,
+    floatLiteral,
     stringLiteral,
     genLex,
   )
@@ -69,11 +70,25 @@ longLowerIdent =
     p2 = Mp.many (Mp.satisfy isRestChar)
     buildModuleName c cs = Text.pack (c : cs)
 
+nonzeroDigit :: Tokenizer Char
+nonzeroDigit = Mp.satisfy (\c -> Char.isDigit c && c /= '0')
+
+digit :: Tokenizer Char
+digit = Mp.satisfy Char.isDigit
+
+integerLiteralString :: Tokenizer String
+integerLiteralString =
+  ((:) <$> nonzeroDigit <*> Mp.many digit) <|> ((: []) <$> Mp.single '0')
+
 integerLiteral :: Tokenizer Int
-integerLiteral = (\s -> read s :: Int) <$> (((:) <$> p1 <*> p2) <|> ((: []) <$> Mp.single '0'))
+integerLiteral = read <$> (integerLiteralString <* Mp.notFollowedBy digit)
+
+floatLiteral :: Tokenizer Double
+floatLiteral =
+  read <$> ((\s1 s2 -> s1 ++ "." ++ s2) <$> p1 <*> p2)
   where
-    p1 = Mp.satisfy (\c -> Char.isDigit c && c /= '0')
-    p2 = Mp.many (Mp.satisfy Char.isDigit) <* Mp.notFollowedBy (Mp.satisfy Char.isDigit)
+    p1 = integerLiteralString <* Mp.single '.'
+    p2 = Mp.some digit <* Mp.notFollowedBy digit
 
 stringLiteral :: Tokenizer Text
 stringLiteral = do

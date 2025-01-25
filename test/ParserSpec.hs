@@ -29,6 +29,15 @@ spec = do
     it "parses integer literals (2)" $
       parseExpr "0"
         `shouldBe` pure (litInt 0)
+    it "parses float literals (1)" $
+      parseExpr "0.57"
+        `shouldBe` pure (litFloat 0.57)
+    it "parses float literals (2)" $
+      parseExpr "44.23"
+        `shouldBe` pure (litFloat 44.23)
+    it "parses float literals (3)" $
+      parseExpr "42.0"
+        `shouldBe` pure (litFloat 42)
     it "parses list literals (1)" $
       parseExpr "[]"
         `shouldBe` pure (litList [])
@@ -65,6 +74,9 @@ spec = do
     it "parses applications and integer literals" $
       parseExpr "x 42 z"
         `shouldBe` pure (app (app (var "x") (litInt 42)) (var "z"))
+    it "parses applications and integer/float literals" $
+      parseExpr "x 42 5.7"
+        `shouldBe` pure (app (app (var "x") (litInt 42)) (litFloat 5.7))
     it "parses lambda abstractions (1)" $
       parseExpr "fun (x : Int) -> x"
         `shouldBe` pure (nonrecLam ("x", tyInt) (var "x"))
@@ -183,6 +195,9 @@ spec = do
     it "parses integer literals" $
       Parser.parseExpr "42"
         `shouldBe` pure (exprLoc 0 2 $ Literal (LitInt 42))
+    it "parses float literals" $
+      Parser.parseExpr "5.7"
+        `shouldBe` pure (exprLoc 0 3 $ Literal (LitFloat 5.7))
     it "parses vector literals" $
       Parser.parseExpr "[| 3; 14; 1592 |]"
         `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec [3, 14, 1592]))
@@ -192,6 +207,9 @@ spec = do
     it "parses variables" $
       Parser.parseExpr "foo_bar"
         `shouldBe` pure (exprLoc 0 7 $ short "foo_bar")
+    it "parses variables with module prefixes" $
+      Parser.parseExpr "Foo.Bar.x"
+        `shouldBe` pure (exprLoc 0 9 $ long ["Foo", "Bar"] "x")
     it "parses applications (1)" $
       Parser.parseExpr "x y"
         `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))

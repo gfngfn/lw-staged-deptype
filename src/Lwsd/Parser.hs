@@ -54,6 +54,9 @@ boundIdent = lower `or` standaloneOp
 int :: P (Located Int)
 int = expectToken (^? #_TokInt)
 
+float :: P (Located Double)
+float = expectToken (^? #_TokFloat)
+
 string :: P (Located Text)
 string = expectToken (^? #_TokString)
 
@@ -113,6 +116,7 @@ exprAtom, expr :: P Expr
     atom =
       tries
         [ located (Literal . LitInt) <$> int,
+          located (Literal . LitFloat) <$> float,
           located (Literal . LitList) <$> list letin,
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,

@@ -330,7 +330,9 @@ evalTypeExpr0 env = \case
       case a0tyPrim of
         A0TyInt -> A0TyValInt
         A0TyNat -> A0TyValNat
+        A0TyFloat -> A0TyValFloat
         A0TyBool -> A0TyValBool
+        A0TyUnit -> A0TyValUnit
         A0TyTensor n -> A0TyValTensor n
   SA0TyList sa0tye1 -> do
     a0tyv1 <- evalTypeExpr0 env sa0tye1
@@ -358,7 +360,9 @@ evalTypeExpr1 env = \case
     A1TyValPrim
       <$> case a1tyPrim of
         A1TyInt -> pure A1TyValInt
+        A1TyFloat -> pure A1TyValFloat
         A1TyBool -> pure A1TyValBool
+        A1TyUnit -> pure A1TyValUnit
         A1TyTensor a0eList -> do
           a0v <- evalExpr0 env a0eList
           a0vs <- validateListValue a0v
@@ -407,7 +411,9 @@ unliftTypeVal = \case
     SA0TyPrim $
       case a1tyvPrim of
         A1TyValInt -> A0TyInt
+        A1TyValFloat -> A0TyFloat
         A1TyValBool -> A0TyBool
+        A1TyValUnit -> A0TyUnit
         A1TyValTensor ns -> A0TyTensor ns
   A1TyValList a1tyv ->
     SA0TyList (unliftTypeVal a1tyv)

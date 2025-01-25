@@ -38,6 +38,9 @@ expr = Expr ()
 litInt :: Int -> ExprVoid
 litInt = expr . Literal . LitInt
 
+litFloat :: Double -> ExprVoid
+litFloat = expr . Literal . LitFloat
+
 litList :: [ExprVoid] -> ExprVoid
 litList = expr . Literal . LitList
 

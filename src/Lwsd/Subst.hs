@@ -44,6 +44,7 @@ unionPairs pairs =
 instance (HasVar e) => HasVar (AssLiteral e) where
   frees = \case
     ALitInt _ -> (Set.empty, Set.empty)
+    ALitFloat _ -> (Set.empty, Set.empty)
     ALitBool _ -> (Set.empty, Set.empty)
     ALitList es -> unionPairs (map frees es)
     ALitVec _ -> (Set.empty, Set.empty)
@@ -51,6 +52,7 @@ instance (HasVar e) => HasVar (AssLiteral e) where
 
   subst s = \case
     ALitInt n -> ALitInt n
+    ALitFloat r -> ALitFloat r
     ALitBool b -> ALitBool b
     ALitList es -> ALitList (map (subst s) es)
     ALitVec vec -> ALitVec vec
@@ -326,7 +328,9 @@ instance HasVar Ass1TypeExpr where
     A1TyPrim a1tyPrim ->
       case a1tyPrim of
         A1TyInt -> (Set.empty, Set.empty)
+        A1TyFloat -> (Set.empty, Set.empty)
         A1TyBool -> (Set.empty, Set.empty)
+        A1TyUnit -> (Set.empty, Set.empty)
         A1TyTensor a0eList -> frees a0eList
     A1TyList a1tye1 ->
       frees a1tye1
@@ -337,7 +341,9 @@ instance HasVar Ass1TypeExpr where
     A1TyPrim a1tyPrim ->
       A1TyPrim $ case a1tyPrim of
         A1TyInt -> A1TyInt
+        A1TyFloat -> A1TyFloat
         A1TyBool -> A1TyBool
+        A1TyUnit -> A1TyUnit
         A1TyTensor a0eList -> A1TyTensor (go a0eList)
     A1TyList a1tye1 ->
       A1TyList (go a1tye1)
