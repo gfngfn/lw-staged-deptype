@@ -326,7 +326,9 @@ instance HasVar Ass1TypeExpr where
     A1TyPrim a1tyPrim ->
       case a1tyPrim of
         A1TyInt -> (Set.empty, Set.empty)
+        A1TyFloat -> (Set.empty, Set.empty)
         A1TyBool -> (Set.empty, Set.empty)
+        A1TyUnit -> (Set.empty, Set.empty)
         A1TyTensor a0eList -> frees a0eList
     A1TyList a1tye1 ->
       frees a1tye1
@@ -337,7 +339,9 @@ instance HasVar Ass1TypeExpr where
     A1TyPrim a1tyPrim ->
       A1TyPrim $ case a1tyPrim of
         A1TyInt -> A1TyInt
+        A1TyFloat -> A1TyFloat
         A1TyBool -> A1TyBool
+        A1TyUnit -> A1TyUnit
         A1TyTensor a0eList -> A1TyTensor (go a0eList)
     A1TyList a1tye1 ->
       A1TyList (go a1tye1)

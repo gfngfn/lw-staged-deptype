@@ -379,7 +379,9 @@ instance Disp Ass0PrimType where
   dispGen req = \case
     A0TyInt -> "Int"
     A0TyNat -> "Nat"
+    A0TyFloat -> "Float"
     A0TyBool -> "Bool"
+    A0TyUnit -> "Unit"
     A0TyTensor [n] -> dispNameWithArgs req "Vec" disp [n]
     A0TyTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
@@ -402,7 +404,9 @@ instance Disp StrictAss0TypeExpr where
 instance Disp Ass1PrimType where
   dispGen req = \case
     A1TyInt -> "Int"
+    A1TyFloat -> "Float"
     A1TyBool -> "Bool"
+    A1TyUnit -> "Unit"
     A1TyTensor a0eList ->
       case a0eList of
         A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
@@ -624,7 +628,9 @@ instance Disp Ass0PrimTypeVal where
   dispGen req = \case
     A0TyValInt -> "Int"
     A0TyValNat -> "Nat"
+    A0TyValFloat -> "Float"
     A0TyValBool -> "Bool"
+    A0TyValUnit -> "Unit"
     A0TyValTensor [n] -> dispNameWithArgs req "Vec" disp [n]
     A0TyValTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
@@ -638,7 +644,9 @@ instance Disp Ass1TypeVal where
 instance Disp Ass1PrimTypeVal where
   dispGen req = \case
     A1TyValInt -> "Int"
+    A1TyValFloat -> "Float"
     A1TyValBool -> "Bool"
+    A1TyValUnit -> "Unit"
     A1TyValTensor [n] -> dispNameWithArgs req "Vec" dispPersistent [n]
     A1TyValTensor [m, n] -> dispNameWithArgs req "Mat" dispPersistent [m, n]
     A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispPersistentListLiteral [ns]
