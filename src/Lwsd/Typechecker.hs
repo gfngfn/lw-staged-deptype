@@ -646,17 +646,28 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             let Expr loc0 _ = e0
             spanInFile0 <- askSpanInFile loc0
             typeError trav $ NotABoolTypeForStage0 spanInFile0 a0tye0
-      As e1 tye2 -> do
-        -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
-        (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
-        a0tye1 <- validateEmptyRetAppContext "stage-0, As, 1" result1
-        a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
-        result' <- instantiateGuidedByAppContext0 trav loc (AppArg0 a0e1 a0tye1 : appCtx) a0tye2
-        case result' of
-          Cast0 cast _a0tye' result ->
-            pure (result, applyCast cast a0e1)
-          _ ->
-            bug "stage-0, As"
+      As e1 tye2 ->
+        -- The following is a very ad-hoc branching.
+        -- TODO: fix this with "truly" bidirectional type-checking
+        case e1 of
+          Expr _loc1 (Literal (LitList [])) ->
+            case appCtx of
+              [] -> do
+                a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
+                pure (Pure a0tye2, A0Literal (ALitList []))
+              _ : _ ->
+                typeError trav $ CannotApplyLiteral spanInFile
+          _ -> do
+            -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
+            (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
+            a0tye1 <- validateEmptyRetAppContext "stage-0, As, 1" result1
+            a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
+            result' <- instantiateGuidedByAppContext0 trav loc (AppArg0 a0e1 a0tye1 : appCtx) a0tye2
+            case result' of
+              Cast0 cast _a0tye' result ->
+                pure (result, applyCast cast a0e1)
+              _ ->
+                bug "stage-0, As"
       Bracket e1 -> do
         (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
         result <- mapMPure (pure . A0TyCode) result1
@@ -803,17 +814,28 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           let Expr loc0 _ = e0
           spanInFile0 <- askSpanInFile loc0
           typeError trav $ NotABoolTypeForStage1 spanInFile0 a1tye0
-    As e1 tye2 -> do
-      -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
-      (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
-      a1tye1 <- validateEmptyRetAppContext "stage-1, As" result1
-      a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
-      (result', _) <- instantiateGuidedByAppContext1 trav loc Set.empty (AppArg1 a1tye1 : appCtx) a1tye2
-      case result' of
-        Cast1 cast _a1tye' result -> do
-          pure (result, applyCast1 cast a1e1)
-        _ ->
-          bug "stage-1, As"
+    As e1 tye2 ->
+      -- The following is a very ad-hoc branching.
+      -- TODO: fix this with "truly" bidirectional type-checking
+      case e1 of
+        Expr _loc1 (Literal (LitList [])) ->
+          case appCtx of
+            [] -> do
+              a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
+              pure (Pure a1tye2, A1Literal (ALitList []))
+            _ : _ ->
+              typeError trav $ CannotApplyLiteral spanInFile
+        _ -> do
+          -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
+          (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
+          a1tye1 <- validateEmptyRetAppContext "stage-1, As" result1
+          a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
+          (result', _) <- instantiateGuidedByAppContext1 trav loc Set.empty (AppArg1 a1tye1 : appCtx) a1tye2
+          case result' of
+            Cast1 cast _a1tye' result -> do
+              pure (result, applyCast1 cast a1e1)
+            _ ->
+              bug "stage-1, As"
     Bracket _ ->
       typeError trav $ CannotUseBracketAtStage1 spanInFile
     Escape e1 -> do

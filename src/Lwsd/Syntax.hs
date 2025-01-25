@@ -96,6 +96,11 @@ data Ass0BuiltInName
   | A0BINameGenMmult
   | A0BINameGenMconcatVert
   | A0BINameGenTadd
+  | A0BINameTensorGenF
+  | A0BINameTensorGenZeros
+  | A0BINameTensorFloatValue
+  | A0BINameMnistHelperImageDim
+  | A0BINameMnistHelperLabelCount
   deriving stock (Eq, Show)
 
 data Ass1BuiltInName
@@ -103,6 +108,7 @@ data Ass1BuiltInName
   | A1BINameSub
   | A1BINameMult
   | A1BINameLeq
+  | A1BINameTensorFloatValue
   deriving stock (Eq, Show)
 
 unliftBuiltInName :: Ass1BuiltInName -> Ass0BuiltInName
@@ -111,6 +117,7 @@ unliftBuiltInName = \case
   A1BINameSub -> A0BINameSub
   A1BINameMult -> A0BINameMult
   A1BINameLeq -> A0BINameLeq
+  A1BINameTensorFloatValue -> A0BINameTensorFloatValue
 
 data AssLiteral e
   = ALitInt Int

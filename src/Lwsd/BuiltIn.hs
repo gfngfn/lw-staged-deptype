@@ -223,6 +223,10 @@ validateExternalName0 = \case
   "gen_mmult" -> pure A0BINameGenMmult
   "gen_mconcat_vert" -> pure A0BINameGenMconcatVert
   "gen_tadd" -> pure A0BINameGenTadd
+  "tensor__gen_f" -> pure A0BINameTensorGenF
+  "tensor__gen_zeros" -> pure A0BINameTensorGenZeros
+  "mnist_helper__image_dim" -> pure A0BINameMnistHelperImageDim
+  "mnist_helper__label_count" -> pure A0BINameMnistHelperLabelCount
   _ -> Nothing
 
 validateExternalName1 :: Text -> Maybe Ass1BuiltInName
@@ -231,4 +235,5 @@ validateExternalName1 = \case
   "int_sub" -> pure A1BINameSub
   "int_mult" -> pure A1BINameMult
   "int_leq" -> pure A1BINameLeq
+  "tensor__float_value" -> pure A1BINameTensorFloatValue
   _ -> Nothing
