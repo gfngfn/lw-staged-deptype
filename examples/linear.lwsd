@@ -29,5 +29,5 @@
       float sum / float num_test_images
     in
     print (show_float test_accuracy)
-  ) [1, 200]
+  ) (range 1 200)
 )))
