@@ -8,7 +8,10 @@ import Control.Monad.Combinators
 import Data.Either.Extra
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as Text
 import GHC.Base
 import GHC.Generics
 import Text.Megaparsec qualified as Mp
@@ -54,10 +57,9 @@ data Token
   | TokSig
   | TokEnd
   | TokExternal
-  | TokOpAdd
-  | TokOpSub
-  | TokOpMult
-  | TokOpLeq
+  | TokOpAdd Text
+  | TokOpMult Text
+  | TokOpComp Text
   deriving stock (Ord, Eq, Show, Generic)
 
 instance Mp.VisualStream [Located Token] where
@@ -91,6 +93,18 @@ lowerIdentOrKeyword = do
     Just tok -> tok
     Nothing -> TokLower t
 
+opRestCharSet :: Set Char
+opRestCharSet =
+  Set.fromList ['+', '-', '*', '=', '<', '>']
+
+opRestChar :: Tokenizer Char
+opRestChar =
+  Mp.satisfy (`elem` opRestCharSet)
+
+operator :: Char -> Tokenizer Text
+operator firstChar =
+  Text.pack <$> ((:) <$> Mp.single firstChar <*> (Mp.many opRestChar <* Mp.notFollowedBy opRestChar))
+
 token :: Tokenizer Token
 token =
   choice
@@ -113,10 +127,12 @@ token =
       TokMatRight <$ Mp.chunk "#]",
       TokLeftSquare <$ Mp.single '[',
       TokRightSquare <$ Mp.single ']',
-      TokOpAdd <$ Mp.single '+',
-      TokOpSub <$ Mp.single '-',
-      TokOpMult <$ Mp.single '*',
-      TokOpLeq <$ Mp.chunk "<=",
+      TokOpAdd <$> operator '+',
+      TokOpAdd <$> operator '-',
+      TokOpMult <$> operator '*',
+      TokOpComp <$> operator '=',
+      TokOpComp <$> operator '<',
+      TokOpComp <$> operator '>',
       lowerIdentOrKeyword,
       Mp.try (TokLongLower <$> longLowerIdent),
       TokUpper <$> upperIdent,

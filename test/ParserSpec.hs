@@ -115,12 +115,15 @@ spec = do
     it "parses binary operators (3)" $
       parseExpr "2 + 3 * 4"
         `shouldBe` pure (add (litInt 2) (mult (litInt 3) (litInt 4)))
-    it "parses binary operators (3)" $
+    it "parses binary operators (4)" $
       parseExpr "f 2 + 3"
         `shouldBe` pure (add (app (var "f") (litInt 2)) (litInt 3))
-    it "parses binary operators (4)" $
+    it "parses binary operators (5)" $
       parseExpr "2 + f 3"
         `shouldBe` pure (add (litInt 2) (app (var "f") (litInt 3)))
+    it "parses binary operators (6)" $
+      parseExpr "2 +=+ f 3"
+        `shouldBe` pure (app (app (var "+=+") (litInt 2)) (app (var "f") (litInt 3)))
     it "parses upcasts" $
       parseExpr "[| |] as Vec %n"
         `shouldBe` pure (upcast (litVec []) (tyPersVec (var "n")))

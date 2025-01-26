@@ -73,29 +73,13 @@ operator :: P (Located Var)
 operator = tries [compOp, addOp] multOp
 
 multOp :: P (Located Var)
-multOp =
-  expectToken
-    ( \case
-        TokOpMult -> Just "*"
-        _ -> Nothing
-    )
+multOp = expectToken (^? #_TokOpMult)
 
 addOp :: P (Located Var)
-addOp =
-  expectToken
-    ( \case
-        TokOpAdd -> Just "+"
-        TokOpSub -> Just "-"
-        _ -> Nothing
-    )
+addOp = expectToken (^? #_TokOpAdd)
 
 compOp :: P (Located Var)
-compOp =
-  expectToken
-    ( \case
-        TokOpLeq -> Just "<="
-        _ -> Nothing
-    )
+compOp = expectToken (^? #_TokOpComp)
 
 makeBinOpApp :: Expr -> Located Var -> Expr -> Expr
 makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
