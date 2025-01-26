@@ -222,9 +222,12 @@ validateExternalName0 = \case
   "gen_mtranspose" -> pure A0BINameGenMtranspose
   "gen_mmult" -> pure A0BINameGenMmult
   "gen_mconcat_vert" -> pure A0BINameGenMconcatVert
-  "gen_tadd" -> pure A0BINameGenTadd
-  "tensor__gen_f" -> pure A0BINameTensorGenF
+  "drop_at" -> pure A0BINameDropAt
   "tensor__gen_zeros" -> pure A0BINameTensorGenZeros
+  "tensor__gen_zero_grad" -> pure A0BINameTensorGenZeroGrad
+  "tensor__gen_sub_update" -> pure A0BINameTensorGenSubUpdate
+  "tensor__gen_argmax" -> pure A0BINameTensorGenArgmax
+  "gen_tadd" -> pure A0BINameGenTadd
   "mnist_helper__image_dim" -> pure A0BINameMnistHelperImageDim
   "mnist_helper__label_count" -> pure A0BINameMnistHelperLabelCount
   _ -> Nothing
@@ -235,5 +238,8 @@ validateExternalName1 = \case
   "int_sub" -> pure A1BINameSub
   "int_mult" -> pure A1BINameMult
   "int_leq" -> pure A1BINameLeq
+  "tensor__f" -> pure A1BINameTensorF
+  "tensor__backward" -> pure A1BINameTensorBackward
+  "tensor__no_grad" -> pure A1BINameTensorNoGrad
   "tensor__float_value" -> pure A1BINameTensorFloatValue
   _ -> Nothing

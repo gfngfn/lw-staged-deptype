@@ -95,12 +95,18 @@ data Ass0BuiltInName
   | A0BINameGenMtranspose
   | A0BINameGenMmult
   | A0BINameGenMconcatVert
-  | A0BINameGenTadd
-  | A0BINameTensorGenF
+  | A0BINameDropAt
   | A0BINameTensorGenZeros
-  | A0BINameTensorFloatValue
+  | A0BINameTensorGenZeroGrad
+  | A0BINameTensorGenSubUpdate
+  | A0BINameTensorGenArgmax
+  | A0BINameGenTadd
   | A0BINameMnistHelperImageDim
   | A0BINameMnistHelperLabelCount
+  | A0BINameTensorF
+  | A0BINameTensorBackward
+  | A0BINameTensorNoGrad
+  | A0BINameTensorFloatValue
   deriving stock (Eq, Show)
 
 data Ass1BuiltInName
@@ -108,6 +114,9 @@ data Ass1BuiltInName
   | A1BINameSub
   | A1BINameMult
   | A1BINameLeq
+  | A1BINameTensorF
+  | A1BINameTensorBackward
+  | A1BINameTensorNoGrad
   | A1BINameTensorFloatValue
   deriving stock (Eq, Show)
 
@@ -117,6 +126,9 @@ unliftBuiltInName = \case
   A1BINameSub -> A0BINameSub
   A1BINameMult -> A0BINameMult
   A1BINameLeq -> A0BINameLeq
+  A1BINameTensorF -> A0BINameTensorF
+  A1BINameTensorBackward -> A0BINameTensorBackward
+  A1BINameTensorNoGrad -> A0BINameTensorNoGrad
   A1BINameTensorFloatValue -> A0BINameTensorFloatValue
 
 data AssLiteral e
