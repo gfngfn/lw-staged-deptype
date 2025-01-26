@@ -71,6 +71,9 @@ spec = do
     it "parses applications (3)" $
       parseExpr "x (y z)"
         `shouldBe` pure (app (var "x") (app (var "y") (var "z")))
+    it "parses applications (4)" $ do
+      parseExpr "Foo.bar (fun(y : Y) -> let z = 1 in y z)"
+        `shouldBe` pure (app (longVar ["Foo"] "bar") (nonrecLam ("y", typ (TyName "Y" [])) (expr (LetIn "z" (litInt 1) (app (var "y") (var "z"))))))
     it "parses applications and integer literals" $
       parseExpr "x 42 z"
         `shouldBe` pure (app (app (var "x") (litInt 42)) (var "z"))
