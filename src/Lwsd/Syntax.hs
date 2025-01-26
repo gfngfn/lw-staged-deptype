@@ -135,6 +135,7 @@ data AssLiteral e
   = ALitInt Int
   | ALitFloat Double
   | ALitBool Bool
+  | ALitUnit
   | ALitList [e]
   | ALitVec Vector
   | ALitMat Matrix
@@ -294,7 +295,9 @@ data Type1Equation
 
 data Type1PrimEquation
   = TyEq1Int
+  | TyEq1Float
   | TyEq1Bool
+  | TyEq1Unit
   | TyEq1TensorByLiteral [(Ass0Expr, Ass0Expr)]
   | TyEq1TensorByWhole Ass0Expr Ass0Expr -- A Pair of ASTs of type `List Nat`
   deriving stock (Eq, Show)
@@ -311,6 +314,7 @@ mapAssLiteral f = \case
   ALitInt n -> ALitInt n
   ALitFloat r -> ALitFloat r
   ALitBool b -> ALitBool b
+  ALitUnit -> ALitUnit
   ALitList es -> ALitList (map f es)
   ALitVec vec -> ALitVec vec
   ALitMat mat -> ALitMat mat
@@ -320,6 +324,7 @@ mapMAssLiteral eval = \case
   ALitInt n -> pure $ ALitInt n
   ALitFloat r -> pure $ ALitFloat r
   ALitBool b -> pure $ ALitBool b
+  ALitUnit -> pure ALitUnit
   ALitList a0es -> ALitList <$> mapM eval a0es
   ALitVec vec -> pure $ ALitVec vec
   ALitMat mat -> pure $ ALitMat mat
@@ -349,7 +354,9 @@ decomposeType1Equation = \case
   TyEq1Prim ty1eqPrim ->
     case ty1eqPrim of
       TyEq1Int -> prims A1TyInt
+      TyEq1Float -> prims A1TyFloat
       TyEq1Bool -> prims A1TyBool
+      TyEq1Unit -> prims A1TyUnit
       TyEq1TensorByLiteral zipped ->
         let a0eList1 = A0Literal (ALitList (map fst zipped))
             a0eList2 = A0Literal (ALitList (map snd zipped))

@@ -119,7 +119,9 @@ makeAssertiveCast trav loc =
             (A0TyNat, A0TyNat) -> nothingOrIdentityLam (A0TyPrim A0TyNat)
             (A0TyNat, A0TyInt) -> nothingOrIdentityLam (A0TyPrim A0TyInt) -- Implicit upcast
             (A0TyInt, A0TyNat) -> pure (Just (ass0exprAssertNat loc), Map.empty) -- Assertive downcast
+            (A0TyFloat, A0TyFloat) -> nothingOrIdentityLam (A0TyPrim A0TyFloat)
             (A0TyBool, A0TyBool) -> nothingOrIdentityLam (A0TyPrim A0TyBool)
+            (A0TyUnit, A0TyUnit) -> nothingOrIdentityLam (A0TyPrim A0TyUnit)
             (A0TyTensor ns1, A0TyTensor ns2) ->
               case zipExactMay ns1 ns2 of
                 Nothing ->
@@ -236,8 +238,12 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
           case (a1tyPrim1, a1tyPrim2) of
             (A1TyInt, A1TyInt) ->
               pure (True, TyEq1Prim TyEq1Int, Map.empty)
+            (A1TyFloat, A1TyFloat) ->
+              pure (True, TyEq1Prim TyEq1Float, Map.empty)
             (A1TyBool, A1TyBool) ->
               pure (True, TyEq1Prim TyEq1Bool, Map.empty)
+            (A1TyUnit, A1TyUnit) ->
+              pure (True, TyEq1Prim TyEq1Unit, Map.empty)
             (A1TyTensor a0eList1, A1TyTensor a0eList2) -> do
               case (a0eList1, a0eList2) of
                 -- Enhancement for the argument inference 1:
@@ -321,8 +327,12 @@ mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 = go1
             <$> case (a1tyePrim1, a1tyePrim2) of
               (A1TyInt, A1TyInt) ->
                 pure A1TyInt
+              (A1TyFloat, A1TyFloat) ->
+                pure A1TyFloat
               (A1TyBool, A1TyBool) ->
                 pure A1TyBool
+              (A1TyUnit, A1TyUnit) ->
+                pure A1TyUnit
               (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
                 case (a0eList1, a0eList2) of
                   -- Slight enhancement for the argument inference:
@@ -506,6 +516,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                   pure (A0TyPrim (if n >= 0 then A0TyNat else A0TyInt), ALitInt n)
                 LitFloat r ->
                   pure (A0TyPrim A0TyFloat, ALitFloat r)
+                LitUnit ->
+                  pure (A0TyPrim A0TyUnit, ALitUnit)
                 LitList es ->
                   case es of
                     [] ->
@@ -702,6 +714,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
                 pure (A1TyPrim A1TyInt, ALitInt n)
               LitFloat r ->
                 pure (A1TyPrim A1TyFloat, ALitFloat r)
+              LitUnit ->
+                pure (A1TyPrim A1TyUnit, ALitUnit)
               LitList es ->
                 case es of
                   [] ->

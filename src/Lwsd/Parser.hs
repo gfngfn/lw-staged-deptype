@@ -105,12 +105,14 @@ exprAtom, expr :: P Expr
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
           located Var <$> longOrShortLower,
-          located (\x -> Var ([], x)) <$> standaloneOp
+          located (\x -> Var ([], x)) <$> standaloneOp,
+          makeLitUnit <$> token TokLeftParen <*> token TokRightParen
         ]
         (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
+        makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
 
     staged :: P Expr
     staged =

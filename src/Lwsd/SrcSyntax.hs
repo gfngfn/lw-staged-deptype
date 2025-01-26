@@ -31,6 +31,7 @@ type Var = Text
 data Literal e
   = LitInt Int
   | LitFloat Double
+  | LitUnit
   | LitList [e]
   | LitVec [Int]
   | LitMat [[Int]]

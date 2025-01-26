@@ -241,6 +241,7 @@ instance (Disp e) => Disp (Literal e) where
   dispGen _ = \case
     LitInt n -> pretty n
     LitFloat r -> pretty r
+    LitUnit -> "()"
     LitList es -> dispListLiteral es
     LitVec ns -> dispVectorLiteral ns
     LitMat nss -> dispMatrixLiteral nss
@@ -352,6 +353,7 @@ instance (Disp e) => Disp (AssLiteral e) where
     ALitFloat r -> pretty r
     ALitBool True -> "true"
     ALitBool False -> "false"
+    ALitUnit -> "()"
     ALitList es -> dispListLiteral es
     ALitVec v -> dispVectorLiteral (Vector.toList v)
     ALitMat m -> dispMatrixLiteral (Matrix.toRows m)
