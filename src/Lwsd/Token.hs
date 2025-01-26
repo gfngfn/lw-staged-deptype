@@ -97,7 +97,7 @@ lowerIdentOrKeyword = do
 
 opRestCharSet :: Set Char
 opRestCharSet =
-  Set.fromList ['+', '-', '*', '=', '<', '>']
+  Set.fromList ['+', '-', '*', '/', '=', '<', '>']
 
 opRestChar :: Tokenizer Char
 opRestChar =
@@ -132,6 +132,7 @@ token =
       TokOpAdd <$> operator '+',
       TokOpAdd <$> operator '-',
       TokOpMult <$> operator '*',
+      TokOpMult <$> operator '/',
       TokOpComp <$> operator '=',
       TokOpComp <$> operator '<',
       TokOpComp <$> operator '>',
