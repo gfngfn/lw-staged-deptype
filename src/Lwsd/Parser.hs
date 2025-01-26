@@ -195,11 +195,17 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      (makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
-        `or` lam
+      tries
+        [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
+          makeLetOpenIn <$> token TokLet <*> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin)
+        ]
+        lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetIn x e1 e2)
+
+        makeLetOpenIn locFirst m e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LetOpenIn m e)
 
 typeExpr :: P TypeExpr
 typeExpr = fun

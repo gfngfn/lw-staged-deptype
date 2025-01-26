@@ -57,6 +57,7 @@ data Token
   | TokSig
   | TokEnd
   | TokExternal
+  | TokOpen
   | TokOpAdd Text
   | TokOpMult Text
   | TokOpComp Text
@@ -83,7 +84,8 @@ keywordMap =
       ("module", TokModule),
       ("sig", TokSig),
       ("end", TokEnd),
-      ("external", TokExternal)
+      ("external", TokExternal),
+      ("open", TokOpen)
     ]
 
 lowerIdentOrKeyword :: Tokenizer Token

@@ -91,6 +91,9 @@ spec = do
       let ty = tyDepFun "n" tyInt tyBool
        in parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
             `shouldBe` pure (expr (LetIn "f" (nonrecLam ("x", ty) (app (var "x") (var "y"))) (var "f")))
+    it "parses let-open-expressions" $
+      parseExpr "let open X in f 42"
+        `shouldBe` pure (expr (LetOpenIn "X" (app (var "f") (litInt 42))))
     it "parses if-expressions" $
       parseExpr "if b then x + 1 else x"
         `shouldBe` pure (expr (IfThenElse (var "b") (add (var "x") (litInt 1)) (var "x")))

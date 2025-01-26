@@ -13,6 +13,7 @@ import Prelude
 
 data TypeError
   = UnboundVar SpanInFile [Var] Var
+  | UnboundModule SpanInFile Var
   | NotAStage0Var SpanInFile Var
   | NotAStage1Var SpanInFile Var
   | UnknownTypeOrInvalidArityAtStage0 SpanInFile TypeName Int

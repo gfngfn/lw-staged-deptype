@@ -633,6 +633,13 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         if ax `occurs0` result2
           then typeError trav $ VarOccursFreelyInAss0Type spanInFile x result2
           else pure (result2, A0LetIn (ax, sa0tye1) a0e1 a0e2)
+      LetOpenIn m e -> do
+        case TypeEnv.findModule m tyEnv of
+          Nothing ->
+            typeError trav $ UnboundModule spanInFile m
+          Just (ModuleEntry sigr) -> do
+            let tyEnv' = TypeEnv.appendSigRecord tyEnv sigr
+            typecheckExpr0 trav tyEnv' appCtx e
       IfThenElse e0 e1 e2 -> do
         (result0, a0e0) <- typecheckExpr0 trav tyEnv [] e0
         a0tye0 <- validateEmptyRetAppContext "stage-0, IfThenElse, condition" result0
@@ -795,6 +802,13 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       if ax `occurs0` result2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x result2
         else pure (result2, A1App (A1Lam Nothing (ax, a1tye1) a1e2) a1e1)
+    LetOpenIn m e -> do
+      case TypeEnv.findModule m tyEnv of
+        Nothing ->
+          typeError trav $ UnboundModule spanInFile m
+        Just (ModuleEntry sigr) -> do
+          let tyEnv' = TypeEnv.appendSigRecord tyEnv sigr
+          typecheckExpr1 trav tyEnv' appCtx e
     IfThenElse e0 e1 e2 -> do
       (result0, a1e0) <- typecheckExpr1 trav tyEnv [] e0
       a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse, condition" result0

@@ -54,6 +54,7 @@ data ExprMainF ann
   | LamOpt (Var, TypeExprF ann) (ExprF ann)
   | AppOptGiven (ExprF ann) (ExprF ann)
   | AppOptOmitted (ExprF ann)
+  | LetOpenIn Var (ExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ExprMainF)
 
