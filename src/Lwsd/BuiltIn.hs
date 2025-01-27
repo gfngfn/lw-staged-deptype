@@ -223,10 +223,15 @@ validateExternalName0 = \case
   "gen_mmult" -> pure A0BINameGenMmult
   "gen_mconcat_vert" -> pure A0BINameGenMconcatVert
   "drop_at" -> pure A0BINameDropAt
+  "gen_broadcasted" -> pure A0BINameGenBroadcasted
   "tensor__gen_zeros" -> pure A0BINameTensorGenZeros
+  "tensor__gen_mult" -> pure A0BINameTensorGenMult
+  "tensor__gen_grad" -> pure A0BINameTensorGenGrad
   "tensor__gen_zero_grad" -> pure A0BINameTensorGenZeroGrad
   "tensor__gen_sub_update" -> pure A0BINameTensorGenSubUpdate
   "tensor__gen_argmax" -> pure A0BINameTensorGenArgmax
+  "tensor__gen_cross_entropy_for_logits" -> pure A0BINameTensorGenCrossEntropyForLogits
+  "tensor__gen_count_equal" -> pure A0BINameTensorGenCountEqual
   "gen_tadd" -> pure A0BINameGenTadd
   "mnist_helper__image_dim" -> pure A0BINameMnistHelperImageDim
   "mnist_helper__label_count" -> pure A0BINameMnistHelperLabelCount
@@ -241,8 +246,16 @@ validateExternalName1 = \case
   "int_leq" -> pure A1BINameLeq
   "float" -> pure A1BINameFloat
   "print_float" -> pure A1BINamePrintFloat
+  "list_append" -> pure A1BINameListAppend
+  "list_iter" -> pure A1BINameListIter
+  "range" -> pure A1BINameRange
   "tensor__f" -> pure A1BINameTensorF
   "tensor__backward" -> pure A1BINameTensorBackward
   "tensor__no_grad" -> pure A1BINameTensorNoGrad
   "tensor__float_value" -> pure A1BINameTensorFloatValue
+  "mnist_helper__train_images" -> pure A1BINameMnistHelperTrainImages
+  "mnist_helper__train_labels" -> pure A1BINameMnistHelperTrainLabels
+  "mnist_helper__num_test_images" -> pure A1BINameMnistHelperNumTestImages
+  "mnist_helper__test_images" -> pure A1BINameMnistHelperTestImages
+  "mnist_helper__test_labels" -> pure A1BINameMnistHelperTestLabels
   _ -> Nothing

@@ -99,17 +99,30 @@ data Ass0BuiltInName
   | A0BINameGenMconcatVert
   | A0BINameDropAt
   | A0BINameTensorGenZeros
+  | A0BINameTensorGenMult
+  | A0BINameTensorGenGrad
   | A0BINameTensorGenZeroGrad
   | A0BINameTensorGenSubUpdate
   | A0BINameTensorGenArgmax
+  | A0BINameTensorGenCrossEntropyForLogits
+  | A0BINameTensorGenCountEqual
   | A0BINameGenTadd
   | A0BINameMnistHelperImageDim
   | A0BINameMnistHelperLabelCount
+  | A0BINameMnistHelperNumTestImages
   | A0BINamePrintFloat
+  | A0BINameListAppend
+  | A0BINameListIter
+  | A0BINameRange
+  | A0BINameGenBroadcasted
   | A0BINameTensorF
   | A0BINameTensorBackward
   | A0BINameTensorNoGrad
   | A0BINameTensorFloatValue
+  | A0BINameMnistHelperTrainImages
+  | A0BINameMnistHelperTrainLabels
+  | A0BINameMnistHelperTestImages
+  | A0BINameMnistHelperTestLabels
   deriving stock (Eq, Show)
 
 data Ass1BuiltInName
@@ -120,10 +133,18 @@ data Ass1BuiltInName
   | A1BINameLeq
   | A1BINameFloat
   | A1BINamePrintFloat
+  | A1BINameListAppend
+  | A1BINameListIter
+  | A1BINameRange
   | A1BINameTensorF
   | A1BINameTensorBackward
   | A1BINameTensorNoGrad
   | A1BINameTensorFloatValue
+  | A1BINameMnistHelperTrainImages
+  | A1BINameMnistHelperTrainLabels
+  | A1BINameMnistHelperNumTestImages
+  | A1BINameMnistHelperTestImages
+  | A1BINameMnistHelperTestLabels
   deriving stock (Eq, Show)
 
 unliftBuiltInName :: Ass1BuiltInName -> Ass0BuiltInName
@@ -135,10 +156,18 @@ unliftBuiltInName = \case
   A1BINameLeq -> A0BINameLeq
   A1BINameFloat -> A0BINameFloat
   A1BINamePrintFloat -> A0BINamePrintFloat
+  A1BINameListAppend -> A0BINameListAppend
+  A1BINameListIter -> A0BINameListIter
+  A1BINameRange -> A0BINameRange
   A1BINameTensorF -> A0BINameTensorF
   A1BINameTensorBackward -> A0BINameTensorBackward
   A1BINameTensorNoGrad -> A0BINameTensorNoGrad
   A1BINameTensorFloatValue -> A0BINameTensorFloatValue
+  A1BINameMnistHelperTrainImages -> A0BINameMnistHelperTrainImages
+  A1BINameMnistHelperTrainLabels -> A0BINameMnistHelperTrainLabels
+  A1BINameMnistHelperNumTestImages -> A0BINameMnistHelperNumTestImages
+  A1BINameMnistHelperTestImages -> A0BINameMnistHelperTestImages
+  A1BINameMnistHelperTestLabels -> A0BINameMnistHelperTestLabels
 
 data AssLiteral e
   = ALitInt Int
