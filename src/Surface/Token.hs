@@ -102,4 +102,4 @@ token =
     ]
 
 lex :: Text -> Either String [Located Token]
-lex = genLex token
+lex = genLex token comment

@@ -89,7 +89,9 @@ data Ass0BuiltInName
   = A0BINameAdd
   | A0BINameSub
   | A0BINameMult
+  | A0BINameFloatDiv
   | A0BINameLeq
+  | A0BINameFloat
   | A0BINameGenVadd
   | A0BINameGenVconcat
   | A0BINameGenMtranspose
@@ -103,6 +105,7 @@ data Ass0BuiltInName
   | A0BINameGenTadd
   | A0BINameMnistHelperImageDim
   | A0BINameMnistHelperLabelCount
+  | A0BINamePrintFloat
   | A0BINameTensorF
   | A0BINameTensorBackward
   | A0BINameTensorNoGrad
@@ -113,7 +116,10 @@ data Ass1BuiltInName
   = A1BINameAdd
   | A1BINameSub
   | A1BINameMult
+  | A1BINameFloatDiv
   | A1BINameLeq
+  | A1BINameFloat
+  | A1BINamePrintFloat
   | A1BINameTensorF
   | A1BINameTensorBackward
   | A1BINameTensorNoGrad
@@ -125,7 +131,10 @@ unliftBuiltInName = \case
   A1BINameAdd -> A0BINameAdd
   A1BINameSub -> A0BINameSub
   A1BINameMult -> A0BINameMult
+  A1BINameFloatDiv -> A0BINameFloatDiv
   A1BINameLeq -> A0BINameLeq
+  A1BINameFloat -> A0BINameFloat
+  A1BINamePrintFloat -> A0BINamePrintFloat
   A1BINameTensorF -> A0BINameTensorF
   A1BINameTensorBackward -> A0BINameTensorBackward
   A1BINameTensorNoGrad -> A0BINameTensorNoGrad

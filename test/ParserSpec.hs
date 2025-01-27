@@ -200,6 +200,15 @@ spec = do
     it "parses code types (4)" $
       parseTypeExpr "&(Int -> Bool)"
         `shouldBe` pure (tyCode (tyNondepFun tyInt tyBool))
+    it "ignores first comments" $
+      parseExpr "(* comment *) 42"
+        `shouldBe` pure (litInt 42)
+    it "ignores first comments that include asterisks" $
+      parseExpr "(* *comment* *) 42"
+        `shouldBe` pure (litInt 42)
+    it "ignores comments between applications" $
+      parseExpr "f (* comment *) 42"
+        `shouldBe` pure (app (var "f") (litInt 42))
   describe "Parser.parseExpr (with code locations)" $ do
     it "parses integer literals" $
       Parser.parseExpr "42"

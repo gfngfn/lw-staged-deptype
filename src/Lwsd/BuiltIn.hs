@@ -237,7 +237,10 @@ validateExternalName1 = \case
   "int_add" -> pure A1BINameAdd
   "int_sub" -> pure A1BINameSub
   "int_mult" -> pure A1BINameMult
+  "float_div" -> pure A1BINameFloatDiv
   "int_leq" -> pure A1BINameLeq
+  "float" -> pure A1BINameFloat
+  "print_float" -> pure A1BINamePrintFloat
   "tensor__f" -> pure A1BINameTensorF
   "tensor__backward" -> pure A1BINameTensorBackward
   "tensor__no_grad" -> pure A1BINameTensorNoGrad
