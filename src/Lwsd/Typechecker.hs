@@ -1107,8 +1107,20 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
                 typeError trav $ UnknownExternalName spanInFile extName
           let aPmetadata = AssPersMetadata {assPbuiltInName, assPsurfaceName = surfaceName}
           pure $ SigRecord.singletonVal x (AssPersEntry aPtye aPmetadata)
-    BindVal _stage _x (BindValNormal _e) -> do
-      error "TODO: typecheckBind, BindValNormal"
+    BindVal stage x (BindValNormal e) ->
+      case stage of
+        Stage0 -> do
+          (result, _a0e) <- typecheckExpr0 trav tyEnv [] e
+          a0tye <- validateEmptyRetAppContext "BindVal, Stage0" result
+          -- TODO: use `a0e`
+          pure $ SigRecord.singletonVal x (Ass0Entry a0tye Nothing)
+        Stage1 -> do
+          (result, _a1e) <- typecheckExpr1 trav tyEnv [] e
+          a1tye <- validateEmptyRetAppContext "BindVal, Stage1" result
+          -- TODO: use `a1e`
+          pure $ SigRecord.singletonVal x (Ass1Entry a1tye Nothing)
+        StagePers ->
+          error "TODO: typecheckBind, BindValNormal, StagePers"
     BindModule m binds -> do
       (_, sigr) <- typecheckBinds trav tyEnv binds
       pure $ SigRecord.singletonModule m (ModuleEntry sigr)
