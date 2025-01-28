@@ -13,8 +13,8 @@ val %float : Int -> Float external "float" "float"
 val print_float : Float -> Unit external "print_float" "print_float"
 
 module List = struct
-  val %append : List Int -> List Int -> List Int external "list_append" "append"
-  val %iter : (Int -> Unit) -> List Int -> Unit external "list_iter" "iter"
+  val %append : List Int -> List Int -> List Int external "list_append" "append" (* TODO: generalize the type *)
+  val %iter : (Int -> Unit) -> List Int -> Unit external "list_iter" "iter" (* TODO: generalize the type *)
 end
 
 val %range : Int -> Int -> List Int external "range" "range"

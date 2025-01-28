@@ -31,6 +31,7 @@ data Bug
   | NotAVector AssVar Ass0Val
   | NotAMatrix AssVar Ass0Val
   | NotABoolean Ass0Val
+  | NotAUnit Ass0Val
   | FoundSymbol AssVar Symbol
   | FoundAss0Val AssVar Ass0Val
   | InconsistentAppBuiltIn BuiltIn
@@ -230,6 +231,20 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         a0vs2 <- findList0 env x2
         pure $ A0ValLiteral (ALitList (dropAt n1 a0vs2))
+      BIListAppend x1 x2 -> do
+        a0vs1 <- findList0 env x1
+        a0vs2 <- findList0 env x2
+        pure $ A0ValLiteral (ALitList (a0vs1 ++ a0vs2))
+      BIListIter f x -> do
+        a0vF <- findVal0 env f
+        a0vsIn <- findList0 env x
+        forM_ a0vsIn (reduceBeta a0vF >=> validateUnitLiteral)
+        pure $ A0ValLiteral ALitUnit
+      BITensorGenArgmax x1 x2 -> do
+        a0vs1 <- findList0 env x1
+        ns1 <- mapM validateIntLiteral a0vs1
+        n2 <- findInt0 env x2
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorArgmax ns1 n2))
       BITensorGenCountEqual x1 -> do
         a0vs <- findList0 env x1
         ns <- mapM validateIntLiteral a0vs
@@ -351,6 +366,11 @@ validateIntLiteral :: Ass0Val -> M Int
 validateIntLiteral = \case
   A0ValLiteral (ALitInt n) -> pure n
   a0v -> bug $ NotAnInteger Nothing a0v
+
+validateUnitLiteral :: Ass0Val -> M ()
+validateUnitLiteral = \case
+  A0ValLiteral ALitUnit -> pure ()
+  a0v -> bug $ NotAUnit a0v
 
 validateListValue :: Ass0Val -> M [Ass0Val]
 validateListValue = \case

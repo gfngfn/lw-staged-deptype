@@ -38,6 +38,9 @@ styInt = SA0TyPrim A0TyInt
 styNat :: StrictAss0TypeExpr
 styNat = SA0TyPrim A0TyNat
 
+styUnit :: StrictAss0TypeExpr
+styUnit = SA0TyPrim A0TyUnit
+
 sty0Vec :: Int -> StrictAss0TypeExpr
 sty0Vec = SA0TyPrim . a0TyVec
 
@@ -115,6 +118,29 @@ getAss0Val = \case
     clo x1 tyValNat $
       lam x2 (styList styNat) $
         A0AppBuiltIn (BIDropAt x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameListAppend ->
+    -- TODO: generalize the type of `List.append`
+    clo x1 (tyValList tyValNat) $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIListAppend x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameListIter ->
+    -- TODO: generalize the type of `List.append`
+    clo x1 (A0TyValArrow (Nothing, tyValNat) styUnit) $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIListIter x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameTensorGenArgmax ->
+    clo x1 (tyValList tyValNat) $
+      lam x2 styNat $
+        A0AppBuiltIn (BITensorGenArgmax x1 x2)
     where
       x1 = AssVar "x1"
       x2 = AssVar "x2"
