@@ -144,6 +144,31 @@ getAss0Val = \case
     where
       x1 = AssVar "x1"
       x2 = AssVar "x2"
+  A0BINameTensorGenZeros ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenZeros x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenMult ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenMult x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenGrad ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenGrad x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenZeroGrad ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenZeroGrad x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenSubUpdate ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenSubUpdate x1)
+    where
+      x1 = AssVar "x1"
   A0BINameTensorGenArgmax ->
     clo x1 (tyValList tyValNat) $
       lam x2 styNat $

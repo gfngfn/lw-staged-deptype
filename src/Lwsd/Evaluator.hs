@@ -246,6 +246,26 @@ evalExpr0 env = \case
         a0vs2 <- findList0 env x2
         ns2 <- mapM validateIntLiteral a0vs2
         pure $ A0ValBracket (A1ValConst (A1ValConstBroadcasted ns1 ns2))
+      BITensorGenZeros x1 -> do
+        a0vs1 <- findList0 env x1
+        ns1 <- mapM validateIntLiteral a0vs1
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeros ns1))
+      BITensorGenMult x1 -> do
+        a0vs1 <- findList0 env x1
+        ns1 <- mapM validateIntLiteral a0vs1
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorMult ns1))
+      BITensorGenGrad x1 -> do
+        a0vs1 <- findList0 env x1
+        ns1 <- mapM validateIntLiteral a0vs1
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorGrad ns1))
+      BITensorGenZeroGrad x1 -> do
+        a0vs1 <- findList0 env x1
+        ns1 <- mapM validateIntLiteral a0vs1
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeroGrad ns1))
+      BITensorGenSubUpdate x1 -> do
+        a0vs1 <- findList0 env x1
+        ns1 <- mapM validateIntLiteral a0vs1
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorSubUpdate ns1))
       BITensorGenArgmax x1 x2 -> do
         a0vs1 <- findList0 env x1
         ns1 <- mapM validateIntLiteral a0vs1

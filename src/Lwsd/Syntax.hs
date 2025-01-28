@@ -88,6 +88,11 @@ data BuiltIn
   | BIListAppend AssVar AssVar
   | BIListIter AssVar AssVar
   | BIGenBroadcasted AssVar AssVar
+  | BITensorGenZeros AssVar
+  | BITensorGenMult AssVar
+  | BITensorGenGrad AssVar
+  | BITensorGenZeroGrad AssVar
+  | BITensorGenSubUpdate AssVar
   | BITensorGenArgmax AssVar AssVar
   | BITensorGenCountEqual AssVar
   | BITadd [Int] AssVar AssVar
@@ -318,6 +323,11 @@ data Ass1ValConst
   | A1ValConstMmult Int Int Int
   | A1ValConstMconcatVert Int Int Int
   | A1ValConstBroadcasted [Int] [Int]
+  | A1ValConstTensorZeros [Int]
+  | A1ValConstTensorMult [Int]
+  | A1ValConstTensorGrad [Int]
+  | A1ValConstTensorZeroGrad [Int]
+  | A1ValConstTensorSubUpdate [Int]
   | A1ValConstTensorArgmax [Int] Int
   | A1ValConstTensorCountEqual [Int]
   | A1ValConstTadd [Int]
