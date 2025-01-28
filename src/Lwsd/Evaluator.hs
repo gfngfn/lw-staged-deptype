@@ -239,8 +239,8 @@ evalExpr0 env = \case
             error "TODO: evalExpr0, BITadd, dimension >= 3"
   A0Var x ->
     findVal0 env x
-  A0BuiltInName builtInName ->
-    case builtInName of
+  A0BuiltInName a0builtInName ->
+    case a0builtInName of
       A0BINameAdd -> pure BuiltIn.ass0valAdd
       A0BINameSub -> pure BuiltIn.ass0valSub
       A0BINameMult -> pure BuiltIn.ass0valMult
@@ -251,7 +251,7 @@ evalExpr0 env = \case
       A0BINameGenMmult -> pure BuiltIn.ass0valGenMmult
       A0BINameGenMconcatVert -> pure BuiltIn.ass0valGenMconcatVert
       A0BINameGenTadd -> pure BuiltIn.ass0valGenTadd
-      _ -> error $ "TODO: evalExpr0, " ++ show builtInName
+      _ -> error $ "TODO: evalExpr0, " ++ show a0builtInName
   A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam Nothing (x, a0tyv1) a0e2 env

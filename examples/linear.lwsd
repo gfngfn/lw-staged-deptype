@@ -10,7 +10,7 @@
     )
   in
 &(
-  list_iter (fun(i : Int) ->
+  List.iter (fun(i : Int) ->
     let loss = ~Tensor.gen_cross_entropy_for_logits (~gen_model Mnist_helper.train_images) Mnist_helper.train_labels in
     let u = Tensor.backward loss in
     let u =
