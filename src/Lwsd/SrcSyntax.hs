@@ -12,9 +12,11 @@ module Lwsd.SrcSyntax
     TypeExprMain,
     ArgForTypeF (..),
     ArgForType,
-    Bind,
     BindF (..),
     BindMainF (..),
+    Bind,
+    BindValF (..),
+    BindVal,
     Stage (..),
     External,
   )
@@ -93,18 +95,25 @@ data ArgForTypeF ann
 
 type ArgForType = ArgForTypeF Span
 
-type Bind = BindF Span
-
 data BindF ann = Bind ann (BindMainF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 BindF)
 
 data BindMainF ann
-  = BindValExternal Stage Var (TypeExprF ann) External Text
-  | BindValNormal Stage Var (ExprF ann)
+  = BindVal Stage Var BindVal
   | BindModule Var [BindF ann]
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 BindMainF)
+
+type Bind = BindF Span
+
+data BindValF ann
+  = BindValExternal (TypeExprF ann) External Text
+  | BindValNormal (ExprF ann)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 BindValF)
+
+type BindVal = BindValF Span
 
 data Stage = Stage0 | Stage1 | StagePers
   deriving stock (Eq, Show)

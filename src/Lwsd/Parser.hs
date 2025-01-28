@@ -277,22 +277,30 @@ typeExpr = fun
 
 bind :: P Bind
 bind =
-  (makeBindValExternal <$> token TokVal <*> valBinder <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external) <*> string)
+  (makeBindVal <$> token TokVal <*> valBinder <*> bindVal)
     `or` (makeBindModule <$> token TokModule <*> noLoc upper <*> (token TokEqual *> token TokStruct *> many bind) <*> token TokEnd)
   where
-    valBinder :: P (Stage, Var)
-    valBinder =
-      tries
-        [ (Stage0,) <$> (token TokEscape *> noLoc boundIdent),
-          (StagePers,) <$> (token TokPersistent *> noLoc boundIdent)
-        ]
-        ((Stage1,) <$> noLoc boundIdent)
-
-    makeBindValExternal locFirst (stage, x) tye ext (Located locLast surf) =
-      Bind (mergeSpan locFirst locLast) (BindValExternal stage x tye ext surf)
+    makeBindVal locFirst (stage, x) (bv, locLast) =
+      Bind (mergeSpan locFirst locLast) (BindVal stage x bv)
 
     makeBindModule locFirst m binds locLast =
       Bind (mergeSpan locFirst locLast) (BindModule m binds)
+
+valBinder :: P (Stage, Var)
+valBinder =
+  tries
+    [ (Stage0,) <$> (token TokEscape *> noLoc boundIdent),
+      (StagePers,) <$> (token TokPersistent *> noLoc boundIdent)
+    ]
+    ((Stage1,) <$> noLoc boundIdent)
+
+bindVal :: P (BindVal, Span)
+bindVal =
+  (makeBindValExternal <$> (token TokColon *> typeExpr) <*> (token TokExternal *> external) <*> string)
+    `or` ((\e@(Expr locLast _) -> (BindValNormal e, locLast)) <$> (token TokEqual *> expr))
+  where
+    makeBindValExternal ty ext (Located locLast surfaceName) =
+      (BindValExternal ty ext surfaceName, locLast)
 
 external :: P External
 external = noLoc string

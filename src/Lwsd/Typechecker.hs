@@ -1071,7 +1071,7 @@ validatePersistentType trav loc a0tye =
 typecheckBind :: trav -> TypeEnv -> Bind -> M trav SigRecord
 typecheckBind trav tyEnv (Bind loc bindMain) =
   case bindMain of
-    BindValExternal stage x tye extName surfaceName ->
+    BindVal stage x (BindValExternal tye extName surfaceName) ->
       case stage of
         Stage0 -> do
           a0tye <- typecheckTypeExpr0 trav tyEnv tye
@@ -1107,7 +1107,7 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
                 typeError trav $ UnknownExternalName spanInFile extName
           let aPmetadata = AssPersMetadata {assPbuiltInName, assPsurfaceName = surfaceName}
           pure $ SigRecord.singletonVal x (AssPersEntry aPtye aPmetadata)
-    BindValNormal _stage _x _e -> do
+    BindVal _stage _x (BindValNormal _e) -> do
       error "TODO: typecheckBind, BindValNormal"
     BindModule m binds -> do
       (_, sigr) <- typecheckBinds trav tyEnv binds
