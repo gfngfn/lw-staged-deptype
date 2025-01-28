@@ -96,7 +96,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
           putStrLn "-------- type error of stub: --------"
           putRenderedLines tyErr
           failure
-        Right (tyEnvStub, sigr, stateAfterTraversingStub) -> do
+        Right (tyEnvStub, sigr, abinds, stateAfterTraversingStub) -> do
           let initialBindingTimeEnv = makeBindingTimeEnvFromStub sigr
           source <- TextIO.readFile inputFilePath
           let sourceSpecOfInput =
@@ -122,7 +122,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
                   putRenderedLines bce
                   putStrLn "-------- result of staging: --------"
                   putRenderedLinesAtStage0 lwe
-                  LwsdMain.typecheckAndEvalInput lwArg stateAfterTraversingStub sourceSpecOfInput tyEnvStub lwe
+                  LwsdMain.typecheckAndEvalInput lwArg stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds lwe
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth

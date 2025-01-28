@@ -39,7 +39,7 @@ success, failure :: IO Bool
 success = return True
 failure = return False
 
-typecheckStub :: Argument -> SourceSpec -> [Bind] -> Either TypeError (TypeEnv, SigRecord, TypecheckState)
+typecheckStub :: Argument -> SourceSpec -> [Bind] -> Either TypeError (TypeEnv, SigRecord, [AssBind], TypecheckState)
 typecheckStub Argument {optimize, distributeIf} sourceSpecOfStub bindsInStub = do
   let typecheckerConfigOfStub =
         TypecheckState
@@ -52,8 +52,8 @@ typecheckStub Argument {optimize, distributeIf} sourceSpecOfStub bindsInStub = d
   case runStateT (Typechecker.typecheckBinds id initialTypeEnv bindsInStub) typecheckerConfigOfStub of
     Left (tyErr, _travMod) ->
       Left tyErr
-    Right ((tyEnvStub, sigr), stateAfterTraversingStub) -> do
-      pure (tyEnvStub, sigr, stateAfterTraversingStub)
+    Right ((tyEnvStub, sigr, abinds), stateAfterTraversingStub) -> do
+      pure (tyEnvStub, sigr, abinds, stateAfterTraversingStub)
 
 typecheckInput :: TypecheckState -> TypeEnv -> Expr -> Either TypeError (Result Ass0TypeExpr, Ass0Expr)
 typecheckInput typecheckerConfigOfInput tyEnvStub e =
@@ -61,8 +61,8 @@ typecheckInput typecheckerConfigOfInput tyEnvStub e =
     Left (tyErr, _travMod) -> Left tyErr
     Right resultAndExpr -> pure resultAndExpr
 
-typecheckAndEvalInput :: Argument -> TypecheckState -> SourceSpec -> TypeEnv -> Expr -> IO Bool
-typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTraversingStub sourceSpecOfInput tyEnvStub e = do
+typecheckAndEvalInput :: Argument -> TypecheckState -> SourceSpec -> TypeEnv -> [AssBind] -> Expr -> IO Bool
+typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds e = do
   let initialEvalState = Evaluator.initialState sourceSpecOfInput
   let typecheckerConfigOfInput = stateAfterTraversingStub {sourceSpec = sourceSpecOfInput}
   case typecheckInput typecheckerConfigOfInput tyEnvStub e of
@@ -70,7 +70,8 @@ typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTravers
       putStrLn "-------- type error: --------"
       putRenderedLines tyErr
       failure
-    Right (result, a0e) -> do
+    Right (result, a0eWithoutStub) -> do
+      let a0e = makeExprFromBinds abinds a0eWithoutStub
       putStrLn "-------- type: --------"
       putRenderedLinesAtStage0 result
       putStrLn "-------- elaborated expression: --------"
@@ -124,8 +125,8 @@ typecheckAndEval arg@Argument {displayWidth} sourceSpecOfStub bindsInStub source
       putStrLn "-------- type error by stub: --------"
       putRenderedLines tyErr
       failure
-    Right (tyEnvStub, _sigr, stateAfterTraversingStub) -> do
-      typecheckAndEvalInput arg stateAfterTraversingStub sourceSpecOfInput tyEnvStub e
+    Right (tyEnvStub, _sigr, abinds, stateAfterTraversingStub) -> do
+      typecheckAndEvalInput arg stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds e
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth

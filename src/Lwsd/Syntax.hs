@@ -9,6 +9,8 @@ module Lwsd.Syntax
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
+    AssBind (..),
+    makeExprFromBinds,
     Type1Equation (..),
     Type1PrimEquation (..),
     Ass0TypeExpr (..),
@@ -107,9 +109,6 @@ data Ass0BuiltInName
   | A0BINameTensorGenCrossEntropyForLogits
   | A0BINameTensorGenCountEqual
   | A0BINameGenTadd
-  | A0BINameMnistHelperImageDim
-  | A0BINameMnistHelperLabelCount
-  | A0BINameMnistHelperNumTestImages
   | A0BINamePrintFloat
   | A0BINameListAppend
   | A0BINameListIter
@@ -142,7 +141,6 @@ data Ass1BuiltInName
   | A1BINameTensorFloatValue
   | A1BINameMnistHelperTrainImages
   | A1BINameMnistHelperTrainLabels
-  | A1BINameMnistHelperNumTestImages
   | A1BINameMnistHelperTestImages
   | A1BINameMnistHelperTestLabels
   deriving stock (Eq, Show)
@@ -165,7 +163,6 @@ unliftBuiltInName = \case
   A1BINameTensorFloatValue -> A0BINameTensorFloatValue
   A1BINameMnistHelperTrainImages -> A0BINameMnistHelperTrainImages
   A1BINameMnistHelperTrainLabels -> A0BINameMnistHelperTrainLabels
-  A1BINameMnistHelperNumTestImages -> A0BINameMnistHelperNumTestImages
   A1BINameMnistHelperTestImages -> A0BINameMnistHelperTestImages
   A1BINameMnistHelperTestLabels -> A0BINameMnistHelperTestLabels
 
@@ -201,6 +198,29 @@ data Ass1Expr
   | A1IfThenElse Ass1Expr Ass1Expr Ass1Expr
   | A1Escape Ass0Expr
   deriving stock (Eq, Show)
+
+a1LetIn :: (AssVar, Ass1TypeExpr) -> Ass1Expr -> Ass1Expr -> Ass1Expr
+a1LetIn (x, a1tye) a1e1 a1e2 =
+  A1App (A1Lam Nothing (x, a1tye) a1e2) a1e1
+
+data AssBind
+  = ABind0 (AssVar, StrictAss0TypeExpr) Ass0Expr
+  | ABind1 (AssVar, Ass1TypeExpr) Ass1Expr
+
+makeExprFromBinds :: [AssBind] -> Ass0Expr -> Ass0Expr
+makeExprFromBinds abinds' a0eFinal = go0 abinds'
+  where
+    go0 :: [AssBind] -> Ass0Expr
+    go0 = \case
+      [] -> a0eFinal
+      ABind0 xsty a0e : abinds -> A0LetIn xsty a0e (go0 abinds)
+      ABind1 xty a1e : abinds -> A0Bracket (a1LetIn xty a1e (go1 abinds))
+
+    go1 :: [AssBind] -> Ass1Expr
+    go1 = \case
+      [] -> A1Escape a0eFinal
+      ABind1 xty a1e : abinds -> a1LetIn xty a1e (go1 abinds)
+      ABind0 xsty a0e : abinds -> A1Escape (A0LetIn xsty a0e (go0 abinds))
 
 -- For type-checking.
 data Ass0TypeExpr
