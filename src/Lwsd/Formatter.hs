@@ -568,8 +568,8 @@ instance Disp TypeError where
         <> hardline
         <+> "application context:"
         <> nest 2 (hardline <> disps appCtx)
-    DeclarationOverwritten spanInFile x ->
-      "Declaration of a value " <+> disp x <+> "is overwritten" <+> disp spanInFile
+    BindingOverwritten spanInFile x ->
+      "value " <+> disp x <+> "is overwritten by another binding" <+> disp spanInFile
     UnknownExternalName spanInFile extName ->
       "Unknown external name" <+> disp extName <+> disp spanInFile
     InvalidPersistentType spanInFile a0tye ->

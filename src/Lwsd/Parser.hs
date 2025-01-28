@@ -1,7 +1,7 @@
 module Lwsd.Parser
   ( parseExpr,
     parseTypeExpr, -- Made public for tests
-    parseDecls,
+    parseBinds,
   )
 where
 
@@ -275,24 +275,24 @@ typeExpr = fun
         makeFunDom isMandatory locFirst x tyeDom =
           (Just (isMandatory, locFirst, x), tyeDom)
 
-decl :: P Decl
-decl =
-  (makeDeclVal <$> token TokVal <*> valBinder <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external) <*> string)
-    `or` (makeDeclModule <$> token TokModule <*> noLoc upper <*> (token TokColon *> token TokSig *> many decl) <*> token TokEnd)
+bind :: P Bind
+bind =
+  (makeBindValExternal <$> token TokVal <*> valBinder <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external) <*> string)
+    `or` (makeBindModule <$> token TokModule <*> noLoc upper <*> (token TokColon *> token TokSig *> many bind) <*> token TokEnd)
   where
-    valBinder :: P (TypeExpr -> External -> Text -> DeclMainF Span)
+    valBinder :: P (Stage, Var)
     valBinder =
       tries
-        [ DeclVal0 <$> (token TokEscape *> noLoc boundIdent),
-          DeclValPers <$> (token TokPersistent *> noLoc boundIdent)
+        [ (Stage0,) <$> (token TokEscape *> noLoc boundIdent),
+          (StagePers,) <$> (token TokPersistent *> noLoc boundIdent)
         ]
-        (DeclVal1 <$> noLoc boundIdent)
+        ((Stage1,) <$> noLoc boundIdent)
 
-    makeDeclVal locFirst ctor tye ext (Located locLast surf) =
-      Decl (mergeSpan locFirst locLast) (ctor tye ext surf)
+    makeBindValExternal locFirst (stage, x) tye ext (Located locLast surf) =
+      Bind (mergeSpan locFirst locLast) (BindValExternal stage x tye ext surf)
 
-    makeDeclModule locFirst m decls locLast =
-      Decl (mergeSpan locFirst locLast) (DeclModule m decls)
+    makeBindModule locFirst m binds locLast =
+      Bind (mergeSpan locFirst locLast) (BindModule m binds)
 
 external :: P External
 external = noLoc string
@@ -308,5 +308,5 @@ parseExpr = parse (expr <* eof)
 parseTypeExpr :: Text -> Either String TypeExpr
 parseTypeExpr = parse (typeExpr <* eof)
 
-parseDecls :: Text -> Either String [Decl]
-parseDecls = parse (manyNoTry decl <* eof)
+parseBinds :: Text -> Either String [Bind]
+parseBinds = parse (manyNoTry bind <* eof)

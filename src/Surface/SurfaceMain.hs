@@ -80,7 +80,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
             LwsdMain.compileTimeOnly = compileTimeOnly
           }
   stub <- TextIO.readFile stubFilePath
-  case LwsdParser.parseDecls stub of
+  case LwsdParser.parseBinds stub of
     Left err -> do
       putStrLn "-------- parse error of stub: --------"
       putStrLn err
