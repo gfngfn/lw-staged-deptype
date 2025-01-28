@@ -84,6 +84,8 @@ data BuiltIn
   | BIMtranspose Int Int AssVar
   | BIMmult Int Int Int AssVar AssVar
   | BIMconcatVert Int Int Int AssVar AssVar
+  | BIDropAt AssVar AssVar
+  | BITensorGenCountEqual AssVar
   | BITadd [Int] AssVar AssVar
   deriving stock (Eq, Show)
 
@@ -311,6 +313,7 @@ data Ass1ValConst
   | A1ValConstMtranspose Int Int
   | A1ValConstMmult Int Int Int
   | A1ValConstMconcatVert Int Int Int
+  | A1ValConstCountEqual [Int]
   | A1ValConstTadd [Int]
   | A1ValConstBuiltInName Ass1BuiltInName -- TODO: consider merging `Ass1BuiltInName` and `Ass1ValConst`
   deriving stock (Eq, Show)

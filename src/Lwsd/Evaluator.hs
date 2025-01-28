@@ -131,6 +131,11 @@ reduceBeta a0v1 a0v2 =
     _ ->
       bug $ NotAClosure a0v1
 
+-- The implementation of the built-in function `drop_at`.
+dropAt :: Int -> [a] -> [a]
+dropAt _ [] = []
+dropAt n (v : vs) = if n <= 0 then vs else v : dropAt (n - 1) vs
+
 evalExpr0 :: EvalEnv -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
@@ -221,6 +226,14 @@ evalExpr0 env = \case
         case Matrix.concatVert m1 m2 n mat1 mat2 of
           Just mat -> pure $ A0ValLiteral (ALitMat mat)
           Nothing -> bug $ InconsistentAppBuiltIn bi
+      BIDropAt x1 x2 -> do
+        n1 <- findInt0 env x1
+        a0vs2 <- findList0 env x2
+        pure $ A0ValLiteral (ALitList (dropAt n1 a0vs2))
+      BITensorGenCountEqual x1 -> do
+        a0vs <- findList0 env x1
+        ns <- mapM validateIntLiteral a0vs
+        pure $ A0ValBracket (A1ValConst (A1ValConstCountEqual ns))
       BITadd ns x1 x2 ->
         case ns of
           [n] -> do
@@ -250,6 +263,8 @@ evalExpr0 env = \case
       A0BINameGenMtranspose -> pure BuiltIn.ass0valGenMtranspose
       A0BINameGenMmult -> pure BuiltIn.ass0valGenMmult
       A0BINameGenMconcatVert -> pure BuiltIn.ass0valGenMconcatVert
+      A0BINameDropAt -> pure BuiltIn.ass0valDropAt
+      A0BINameTensorGenCountEqual -> pure BuiltIn.ass0valTensorGenCountEqual
       A0BINameGenTadd -> pure BuiltIn.ass0valGenTadd
       _ -> error $ "TODO: evalExpr0, " ++ show a0builtInName
   A0Lam Nothing (x, a0tye1) a0e2 -> do

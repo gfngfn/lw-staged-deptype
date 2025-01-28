@@ -301,6 +301,8 @@ instance Disp BuiltIn where
     BIMtranspose m n x1 -> "MTRANSPOSE@{" <> disps [m, n] <> "}(" <> disp x1 <> ")"
     BIMmult k m n x1 x2 -> "MMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
     BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
+    BIDropAt x1 x2 -> "DROP_AT(" <> disps [x1, x2] <> ")"
+    BITensorGenCountEqual x1 -> "TENSOR.GEN_COUNT_EQUAL(" <> disp x1 <> ")"
     BITadd ns x1 x2 -> "TADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
 
 instance Disp Ass0BuiltInName where
@@ -612,7 +614,8 @@ instance Disp Ass1ValConst where
     A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
     A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
     A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
-    A1ValConstTadd ns -> "tadd@{" <> dispListLiteral ns <> "}"
+    A1ValConstCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
+    A1ValConstTadd ns -> "Tensor.tadd@{" <> dispListLiteral ns <> "}"
     A1ValConstBuiltInName a1builtInName -> disp a1builtInName
 
 instance Disp Ass1Val where

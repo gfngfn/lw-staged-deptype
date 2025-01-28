@@ -20,6 +20,8 @@ module Lwsd.BuiltIn
     ass0valGenMtranspose,
     ass0valGenMmult,
     ass0valGenMconcatVert,
+    ass0valDropAt,
+    ass0valTensorGenCountEqual,
     ass0valGenTadd,
     validateExternalName0,
     validateExternalName1,
@@ -38,6 +40,9 @@ tyValInt = A0TyValPrim A0TyValInt
 tyValNat :: Ass0TypeVal
 tyValNat = A0TyValPrim A0TyValNat
 
+tyValList :: Ass0TypeVal -> Ass0TypeVal
+tyValList = A0TyValList
+
 styInt :: StrictAss0TypeExpr
 styInt = SA0TyPrim A0TyInt
 
@@ -52,6 +57,9 @@ sty0Mat m n = SA0TyPrim (a0TyMat m n)
 
 sty0Tensor :: [Int] -> StrictAss0TypeExpr
 sty0Tensor = SA0TyPrim . A0TyTensor
+
+styList :: StrictAss0TypeExpr -> StrictAss0TypeExpr
+styList = SA0TyList
 
 -- Makes a closure equipped with the empty runtime environment.
 clo :: AssVar -> Ass0TypeVal -> Ass0Expr -> Ass0Val
@@ -203,6 +211,22 @@ ass0valGenMconcatVert =
     x1 = AssVar "x1"
     x2 = AssVar "x2"
     x3 = AssVar "x3"
+
+ass0valDropAt :: Ass0Val
+ass0valDropAt =
+  clo x1 tyValNat $
+    lam x2 (styList styNat) $
+      A0AppBuiltIn (BIDropAt x1 x2)
+  where
+    x1 = AssVar "x1"
+    x2 = AssVar "x2"
+
+ass0valTensorGenCountEqual :: Ass0Val
+ass0valTensorGenCountEqual =
+  clo x1 (tyValList tyValNat) $
+    A0AppBuiltIn (BITensorGenCountEqual x1)
+  where
+    x1 = AssVar "x1"
 
 ass0valGenTadd :: Ass0Val
 ass0valGenTadd =
