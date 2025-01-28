@@ -136,6 +136,11 @@ dispLetInWithAnnot req x tye e1 e2 =
   deepenParenWhen (req <= FunDomain) $
     group ("let" <+> disp x <+> ":" <+> disp tye <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
 
+dispLetOpenIn :: (Disp var, Disp expr) => Associativity -> var -> expr -> Doc Ann
+dispLetOpenIn req m e =
+  deepenParenWhen (req <= FunDomain) $
+    group ("let open" <+> disp m <+> "in" <> line <> disp e)
+
 dispIfThenElse :: (Disp expr) => Associativity -> expr -> expr -> expr -> Doc Ann
 dispIfThenElse req e0 e1 e2 =
   deepenParenWhen (req <= FunDomain) $
@@ -236,6 +241,7 @@ instance (Disp e) => Disp (Literal e) where
   dispGen _ = \case
     LitInt n -> pretty n
     LitFloat r -> pretty r
+    LitUnit -> "()"
     LitList es -> dispListLiteral es
     LitVec ns -> dispVectorLiteral ns
     LitMat nss -> dispMatrixLiteral nss
@@ -254,6 +260,7 @@ instance Disp (ExprMainF ann) where
     AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
     AppOptOmitted e1 -> dispAppOptOmitted req e1
     LetIn x e1 e2 -> dispLetIn req x e1 e2
+    LetOpenIn m e -> dispLetOpenIn req m e
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2
     Bracket e1 -> dispBracket e1
@@ -346,6 +353,7 @@ instance (Disp e) => Disp (AssLiteral e) where
     ALitFloat r -> pretty r
     ALitBool True -> "true"
     ALitBool False -> "false"
+    ALitUnit -> "()"
     ALitList es -> dispListLiteral es
     ALitVec v -> dispVectorLiteral (Vector.toList v)
     ALitMat m -> dispMatrixLiteral (Matrix.toRows m)
@@ -437,6 +445,8 @@ instance Disp TypeError where
   dispGen _ = \case
     UnboundVar spanInFile ms x ->
       "Unbound variable" <+> dispLongName ms x <+> disp spanInFile
+    UnboundModule spanInFile m ->
+      "Unbound module" <+> disp m <+> disp spanInFile
     NotAStage0Var spanInFile x ->
       "Not a stage-0 variable:" <+> disp x <+> disp spanInFile
     NotAStage1Var spanInFile x ->

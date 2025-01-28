@@ -89,20 +89,62 @@ data Ass0BuiltInName
   = A0BINameAdd
   | A0BINameSub
   | A0BINameMult
+  | A0BINameFloatDiv
   | A0BINameLeq
+  | A0BINameFloat
   | A0BINameGenVadd
   | A0BINameGenVconcat
   | A0BINameGenMtranspose
   | A0BINameGenMmult
   | A0BINameGenMconcatVert
+  | A0BINameDropAt
+  | A0BINameTensorGenZeros
+  | A0BINameTensorGenMult
+  | A0BINameTensorGenGrad
+  | A0BINameTensorGenZeroGrad
+  | A0BINameTensorGenSubUpdate
+  | A0BINameTensorGenArgmax
+  | A0BINameTensorGenCrossEntropyForLogits
+  | A0BINameTensorGenCountEqual
   | A0BINameGenTadd
+  | A0BINameMnistHelperImageDim
+  | A0BINameMnistHelperLabelCount
+  | A0BINameMnistHelperNumTestImages
+  | A0BINamePrintFloat
+  | A0BINameListAppend
+  | A0BINameListIter
+  | A0BINameRange
+  | A0BINameGenBroadcasted
+  | A0BINameTensorF
+  | A0BINameTensorBackward
+  | A0BINameTensorNoGrad
+  | A0BINameTensorFloatValue
+  | A0BINameMnistHelperTrainImages
+  | A0BINameMnistHelperTrainLabels
+  | A0BINameMnistHelperTestImages
+  | A0BINameMnistHelperTestLabels
   deriving stock (Eq, Show)
 
 data Ass1BuiltInName
   = A1BINameAdd
   | A1BINameSub
   | A1BINameMult
+  | A1BINameFloatDiv
   | A1BINameLeq
+  | A1BINameFloat
+  | A1BINamePrintFloat
+  | A1BINameListAppend
+  | A1BINameListIter
+  | A1BINameRange
+  | A1BINameTensorF
+  | A1BINameTensorBackward
+  | A1BINameTensorNoGrad
+  | A1BINameTensorFloatValue
+  | A1BINameMnistHelperTrainImages
+  | A1BINameMnistHelperTrainLabels
+  | A1BINameMnistHelperNumTestImages
+  | A1BINameMnistHelperTestImages
+  | A1BINameMnistHelperTestLabels
   deriving stock (Eq, Show)
 
 unliftBuiltInName :: Ass1BuiltInName -> Ass0BuiltInName
@@ -110,12 +152,28 @@ unliftBuiltInName = \case
   A1BINameAdd -> A0BINameAdd
   A1BINameSub -> A0BINameSub
   A1BINameMult -> A0BINameMult
+  A1BINameFloatDiv -> A0BINameFloatDiv
   A1BINameLeq -> A0BINameLeq
+  A1BINameFloat -> A0BINameFloat
+  A1BINamePrintFloat -> A0BINamePrintFloat
+  A1BINameListAppend -> A0BINameListAppend
+  A1BINameListIter -> A0BINameListIter
+  A1BINameRange -> A0BINameRange
+  A1BINameTensorF -> A0BINameTensorF
+  A1BINameTensorBackward -> A0BINameTensorBackward
+  A1BINameTensorNoGrad -> A0BINameTensorNoGrad
+  A1BINameTensorFloatValue -> A0BINameTensorFloatValue
+  A1BINameMnistHelperTrainImages -> A0BINameMnistHelperTrainImages
+  A1BINameMnistHelperTrainLabels -> A0BINameMnistHelperTrainLabels
+  A1BINameMnistHelperNumTestImages -> A0BINameMnistHelperNumTestImages
+  A1BINameMnistHelperTestImages -> A0BINameMnistHelperTestImages
+  A1BINameMnistHelperTestLabels -> A0BINameMnistHelperTestLabels
 
 data AssLiteral e
   = ALitInt Int
   | ALitFloat Double
   | ALitBool Bool
+  | ALitUnit
   | ALitList [e]
   | ALitVec Vector
   | ALitMat Matrix
@@ -275,7 +333,9 @@ data Type1Equation
 
 data Type1PrimEquation
   = TyEq1Int
+  | TyEq1Float
   | TyEq1Bool
+  | TyEq1Unit
   | TyEq1TensorByLiteral [(Ass0Expr, Ass0Expr)]
   | TyEq1TensorByWhole Ass0Expr Ass0Expr -- A Pair of ASTs of type `List Nat`
   deriving stock (Eq, Show)
@@ -292,6 +352,7 @@ mapAssLiteral f = \case
   ALitInt n -> ALitInt n
   ALitFloat r -> ALitFloat r
   ALitBool b -> ALitBool b
+  ALitUnit -> ALitUnit
   ALitList es -> ALitList (map f es)
   ALitVec vec -> ALitVec vec
   ALitMat mat -> ALitMat mat
@@ -301,6 +362,7 @@ mapMAssLiteral eval = \case
   ALitInt n -> pure $ ALitInt n
   ALitFloat r -> pure $ ALitFloat r
   ALitBool b -> pure $ ALitBool b
+  ALitUnit -> pure ALitUnit
   ALitList a0es -> ALitList <$> mapM eval a0es
   ALitVec vec -> pure $ ALitVec vec
   ALitMat mat -> pure $ ALitMat mat
@@ -330,7 +392,9 @@ decomposeType1Equation = \case
   TyEq1Prim ty1eqPrim ->
     case ty1eqPrim of
       TyEq1Int -> prims A1TyInt
+      TyEq1Float -> prims A1TyFloat
       TyEq1Bool -> prims A1TyBool
+      TyEq1Unit -> prims A1TyUnit
       TyEq1TensorByLiteral zipped ->
         let a0eList1 = A0Literal (ALitList (map fst zipped))
             a0eList2 = A0Literal (ALitList (map snd zipped))

@@ -46,6 +46,7 @@ instance (HasVar e) => HasVar (AssLiteral e) where
     ALitInt _ -> (Set.empty, Set.empty)
     ALitFloat _ -> (Set.empty, Set.empty)
     ALitBool _ -> (Set.empty, Set.empty)
+    ALitUnit -> (Set.empty, Set.empty)
     ALitList es -> unionPairs (map frees es)
     ALitVec _ -> (Set.empty, Set.empty)
     ALitMat _ -> (Set.empty, Set.empty)
@@ -54,6 +55,7 @@ instance (HasVar e) => HasVar (AssLiteral e) where
     ALitInt n -> ALitInt n
     ALitFloat r -> ALitFloat r
     ALitBool b -> ALitBool b
+    ALitUnit -> ALitUnit
     ALitList es -> ALitList (map (subst s) es)
     ALitVec vec -> ALitVec vec
     ALitMat mat -> ALitMat mat
@@ -433,7 +435,9 @@ instance HasVar Type1Equation where
     TyEq1Prim ty1eqPrim ->
       case ty1eqPrim of
         TyEq1Int -> (Set.empty, Set.empty)
+        TyEq1Float -> (Set.empty, Set.empty)
         TyEq1Bool -> (Set.empty, Set.empty)
+        TyEq1Unit -> (Set.empty, Set.empty)
         TyEq1TensorByLiteral zipped -> unionPairs (concatMap (\(a0e1, a0e2) -> [frees a0e1, frees a0e2]) zipped)
         TyEq1TensorByWhole a0eList1 a0eList2 -> unionPairs [frees a0eList1, frees a0eList2]
     TyEq1List ty1eqElem ->
@@ -446,7 +450,9 @@ instance HasVar Type1Equation where
       TyEq1Prim $
         case ty1eqPrim of
           TyEq1Int -> TyEq1Int
+          TyEq1Float -> TyEq1Float
           TyEq1Bool -> TyEq1Bool
+          TyEq1Unit -> TyEq1Unit
           TyEq1TensorByLiteral zipped -> TyEq1TensorByLiteral (map (both go) zipped)
           TyEq1TensorByWhole a0eList1 a0eList2 -> TyEq1TensorByWhole (go a0eList1) (go a0eList2)
     TyEq1List ty1eqElem ->

@@ -73,29 +73,13 @@ operator :: P (Located Var)
 operator = tries [compOp, addOp] multOp
 
 multOp :: P (Located Var)
-multOp =
-  expectToken
-    ( \case
-        TokOpMult -> Just "*"
-        _ -> Nothing
-    )
+multOp = expectToken (^? #_TokOpMult)
 
 addOp :: P (Located Var)
-addOp =
-  expectToken
-    ( \case
-        TokOpAdd -> Just "+"
-        TokOpSub -> Just "-"
-        _ -> Nothing
-    )
+addOp = expectToken (^? #_TokOpAdd)
 
 compOp :: P (Located Var)
-compOp =
-  expectToken
-    ( \case
-        TokOpLeq -> Just "<="
-        _ -> Nothing
-    )
+compOp = expectToken (^? #_TokOpComp)
 
 makeBinOpApp :: Expr -> Located Var -> Expr -> Expr
 makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
@@ -121,12 +105,14 @@ exprAtom, expr :: P Expr
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
           located Var <$> longOrShortLower,
-          located (\x -> Var ([], x)) <$> standaloneOp
+          located (\x -> Var ([], x)) <$> standaloneOp,
+          makeLitUnit <$> token TokLeftParen <*> token TokRightParen
         ]
         (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
+        makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
 
     staged :: P Expr
     staged =
@@ -211,11 +197,17 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      (makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
-        `or` lam
+      tries
+        [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
+          makeLetOpenIn <$> token TokLet <*> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin)
+        ]
+        lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetIn x e1 e2)
+
+        makeLetOpenIn locFirst m e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LetOpenIn m e)
 
 typeExpr :: P TypeExpr
 typeExpr = fun

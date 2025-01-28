@@ -119,7 +119,9 @@ makeAssertiveCast trav loc =
             (A0TyNat, A0TyNat) -> nothingOrIdentityLam (A0TyPrim A0TyNat)
             (A0TyNat, A0TyInt) -> nothingOrIdentityLam (A0TyPrim A0TyInt) -- Implicit upcast
             (A0TyInt, A0TyNat) -> pure (Just (ass0exprAssertNat loc), Map.empty) -- Assertive downcast
+            (A0TyFloat, A0TyFloat) -> nothingOrIdentityLam (A0TyPrim A0TyFloat)
             (A0TyBool, A0TyBool) -> nothingOrIdentityLam (A0TyPrim A0TyBool)
+            (A0TyUnit, A0TyUnit) -> nothingOrIdentityLam (A0TyPrim A0TyUnit)
             (A0TyTensor ns1, A0TyTensor ns2) ->
               case zipExactMay ns1 ns2 of
                 Nothing ->
@@ -236,8 +238,12 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
           case (a1tyPrim1, a1tyPrim2) of
             (A1TyInt, A1TyInt) ->
               pure (True, TyEq1Prim TyEq1Int, Map.empty)
+            (A1TyFloat, A1TyFloat) ->
+              pure (True, TyEq1Prim TyEq1Float, Map.empty)
             (A1TyBool, A1TyBool) ->
               pure (True, TyEq1Prim TyEq1Bool, Map.empty)
+            (A1TyUnit, A1TyUnit) ->
+              pure (True, TyEq1Prim TyEq1Unit, Map.empty)
             (A1TyTensor a0eList1, A1TyTensor a0eList2) -> do
               case (a0eList1, a0eList2) of
                 -- Enhancement for the argument inference 1:
@@ -321,8 +327,12 @@ mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 = go1
             <$> case (a1tyePrim1, a1tyePrim2) of
               (A1TyInt, A1TyInt) ->
                 pure A1TyInt
+              (A1TyFloat, A1TyFloat) ->
+                pure A1TyFloat
               (A1TyBool, A1TyBool) ->
                 pure A1TyBool
+              (A1TyUnit, A1TyUnit) ->
+                pure A1TyUnit
               (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
                 case (a0eList1, a0eList2) of
                   -- Slight enhancement for the argument inference:
@@ -506,6 +516,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                   pure (A0TyPrim (if n >= 0 then A0TyNat else A0TyInt), ALitInt n)
                 LitFloat r ->
                   pure (A0TyPrim A0TyFloat, ALitFloat r)
+                LitUnit ->
+                  pure (A0TyPrim A0TyUnit, ALitUnit)
                 LitList es ->
                   case es of
                     [] ->
@@ -633,6 +645,13 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         if ax `occurs0` result2
           then typeError trav $ VarOccursFreelyInAss0Type spanInFile x result2
           else pure (result2, A0LetIn (ax, sa0tye1) a0e1 a0e2)
+      LetOpenIn m e -> do
+        case TypeEnv.findModule m tyEnv of
+          Nothing ->
+            typeError trav $ UnboundModule spanInFile m
+          Just (ModuleEntry sigr) -> do
+            let tyEnv' = TypeEnv.appendSigRecord tyEnv sigr
+            typecheckExpr0 trav tyEnv' appCtx e
       IfThenElse e0 e1 e2 -> do
         (result0, a0e0) <- typecheckExpr0 trav tyEnv [] e0
         a0tye0 <- validateEmptyRetAppContext "stage-0, IfThenElse, condition" result0
@@ -646,17 +665,28 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             let Expr loc0 _ = e0
             spanInFile0 <- askSpanInFile loc0
             typeError trav $ NotABoolTypeForStage0 spanInFile0 a0tye0
-      As e1 tye2 -> do
-        -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
-        (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
-        a0tye1 <- validateEmptyRetAppContext "stage-0, As, 1" result1
-        a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
-        result' <- instantiateGuidedByAppContext0 trav loc (AppArg0 a0e1 a0tye1 : appCtx) a0tye2
-        case result' of
-          Cast0 cast _a0tye' result ->
-            pure (result, applyCast cast a0e1)
-          _ ->
-            bug "stage-0, As"
+      As e1 tye2 ->
+        -- The following is a very ad-hoc branching.
+        -- TODO: fix this with "truly" bidirectional type-checking
+        case e1 of
+          Expr _loc1 (Literal (LitList [])) ->
+            case appCtx of
+              [] -> do
+                a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
+                pure (Pure a0tye2, A0Literal (ALitList []))
+              _ : _ ->
+                typeError trav $ CannotApplyLiteral spanInFile
+          _ -> do
+            -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
+            (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
+            a0tye1 <- validateEmptyRetAppContext "stage-0, As, 1" result1
+            a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
+            result' <- instantiateGuidedByAppContext0 trav loc (AppArg0 a0e1 a0tye1 : appCtx) a0tye2
+            case result' of
+              Cast0 cast _a0tye' result ->
+                pure (result, applyCast cast a0e1)
+              _ ->
+                bug "stage-0, As"
       Bracket e1 -> do
         (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
         result <- mapMPure (pure . A0TyCode) result1
@@ -684,6 +714,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
                 pure (A1TyPrim A1TyInt, ALitInt n)
               LitFloat r ->
                 pure (A1TyPrim A1TyFloat, ALitFloat r)
+              LitUnit ->
+                pure (A1TyPrim A1TyUnit, ALitUnit)
               LitList es ->
                 case es of
                   [] ->
@@ -784,6 +816,13 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       if ax `occurs0` result2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x result2
         else pure (result2, A1App (A1Lam Nothing (ax, a1tye1) a1e2) a1e1)
+    LetOpenIn m e -> do
+      case TypeEnv.findModule m tyEnv of
+        Nothing ->
+          typeError trav $ UnboundModule spanInFile m
+        Just (ModuleEntry sigr) -> do
+          let tyEnv' = TypeEnv.appendSigRecord tyEnv sigr
+          typecheckExpr1 trav tyEnv' appCtx e
     IfThenElse e0 e1 e2 -> do
       (result0, a1e0) <- typecheckExpr1 trav tyEnv [] e0
       a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse, condition" result0
@@ -803,17 +842,28 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           let Expr loc0 _ = e0
           spanInFile0 <- askSpanInFile loc0
           typeError trav $ NotABoolTypeForStage1 spanInFile0 a1tye0
-    As e1 tye2 -> do
-      -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
-      (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
-      a1tye1 <- validateEmptyRetAppContext "stage-1, As" result1
-      a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
-      (result', _) <- instantiateGuidedByAppContext1 trav loc Set.empty (AppArg1 a1tye1 : appCtx) a1tye2
-      case result' of
-        Cast1 cast _a1tye' result -> do
-          pure (result, applyCast1 cast a1e1)
-        _ ->
-          bug "stage-1, As"
+    As e1 tye2 ->
+      -- The following is a very ad-hoc branching.
+      -- TODO: fix this with "truly" bidirectional type-checking
+      case e1 of
+        Expr _loc1 (Literal (LitList [])) ->
+          case appCtx of
+            [] -> do
+              a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
+              pure (Pure a1tye2, A1Literal (ALitList []))
+            _ : _ ->
+              typeError trav $ CannotApplyLiteral spanInFile
+        _ -> do
+          -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
+          (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
+          a1tye1 <- validateEmptyRetAppContext "stage-1, As" result1
+          a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
+          (result', _) <- instantiateGuidedByAppContext1 trav loc Set.empty (AppArg1 a1tye1 : appCtx) a1tye2
+          case result' of
+            Cast1 cast _a1tye' result -> do
+              pure (result, applyCast1 cast a1e1)
+            _ ->
+              bug "stage-1, As"
     Bracket _ ->
       typeError trav $ CannotUseBracketAtStage1 spanInFile
     Escape e1 -> do

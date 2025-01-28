@@ -10,6 +10,7 @@ module Util.TokenUtil
     integerLiteral,
     floatLiteral,
     stringLiteral,
+    comment,
     genLex,
   )
 where
@@ -102,15 +103,28 @@ charInStringLiteral =
       Mp.satisfy (\c -> c /= '"' && c /= '\\')
     ]
 
-tokenWithOffsets :: Tokenizer token -> Tokenizer (Located token)
-tokenWithOffsets getToken = do
+comment :: Tokenizer Text
+comment =
+  Text.pack . concat <$> (Mp.chunk "(*" *> Mp.many (p1 <|> p2) <* Mp.chunk "*)")
+  where
+    p1 = (: []) <$> Mp.satisfy (/= '*')
+    p2 = Mp.try ((\c1 c2 -> [c1, c2]) <$> Mp.single '*' <*> Mp.satisfy (/= ')'))
+
+tokenSep :: Tokenizer comment -> Tokenizer ()
+tokenSep getComment = do
+  () <- space
+  _ <- Mp.many ((,) <$> getComment <*> space)
+  pure ()
+
+tokenWithOffsets :: Tokenizer token -> Tokenizer comment -> Tokenizer (Located token)
+tokenWithOffsets getToken getComment = do
   start <- Mp.getOffset
   t <- getToken
   end <- Mp.getOffset
-  _ <- space
+  () <- tokenSep getComment
   pure $ Located (Span start end) t
 
-genLex :: Tokenizer token -> Text -> Either String [Located token]
-genLex getToken source =
+genLex :: Tokenizer token -> Tokenizer comment -> Text -> Either String [Located token]
+genLex getToken getComment source =
   Either.mapLeft Mp.errorBundlePretty $
-    Mp.parse (space *> manyTill (tokenWithOffsets getToken) Mp.eof) "input" source
+    Mp.parse (tokenSep getComment *> manyTill (tokenWithOffsets getToken getComment) Mp.eof) "input" source

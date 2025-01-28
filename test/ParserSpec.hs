@@ -71,6 +71,9 @@ spec = do
     it "parses applications (3)" $
       parseExpr "x (y z)"
         `shouldBe` pure (app (var "x") (app (var "y") (var "z")))
+    it "parses applications (4)" $ do
+      parseExpr "Foo.bar (fun(y : Y) -> let z = 1 in y z)"
+        `shouldBe` pure (app (longVar ["Foo"] "bar") (nonrecLam ("y", typ (TyName "Y" [])) (expr (LetIn "z" (litInt 1) (app (var "y") (var "z"))))))
     it "parses applications and integer literals" $
       parseExpr "x 42 z"
         `shouldBe` pure (app (app (var "x") (litInt 42)) (var "z"))
@@ -91,6 +94,9 @@ spec = do
       let ty = tyDepFun "n" tyInt tyBool
        in parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
             `shouldBe` pure (expr (LetIn "f" (nonrecLam ("x", ty) (app (var "x") (var "y"))) (var "f")))
+    it "parses let-open-expressions" $
+      parseExpr "let open X in f 42"
+        `shouldBe` pure (expr (LetOpenIn "X" (app (var "f") (litInt 42))))
     it "parses if-expressions" $
       parseExpr "if b then x + 1 else x"
         `shouldBe` pure (expr (IfThenElse (var "b") (add (var "x") (litInt 1)) (var "x")))
@@ -115,12 +121,15 @@ spec = do
     it "parses binary operators (3)" $
       parseExpr "2 + 3 * 4"
         `shouldBe` pure (add (litInt 2) (mult (litInt 3) (litInt 4)))
-    it "parses binary operators (3)" $
+    it "parses binary operators (4)" $
       parseExpr "f 2 + 3"
         `shouldBe` pure (add (app (var "f") (litInt 2)) (litInt 3))
-    it "parses binary operators (4)" $
+    it "parses binary operators (5)" $
       parseExpr "2 + f 3"
         `shouldBe` pure (add (litInt 2) (app (var "f") (litInt 3)))
+    it "parses binary operators (6)" $
+      parseExpr "2 +=+ f 3"
+        `shouldBe` pure (app (app (var "+=+") (litInt 2)) (app (var "f") (litInt 3)))
     it "parses upcasts" $
       parseExpr "[| |] as Vec %n"
         `shouldBe` pure (upcast (litVec []) (tyPersVec (var "n")))
@@ -191,6 +200,15 @@ spec = do
     it "parses code types (4)" $
       parseTypeExpr "&(Int -> Bool)"
         `shouldBe` pure (tyCode (tyNondepFun tyInt tyBool))
+    it "ignores first comments" $
+      parseExpr "(* comment *) 42"
+        `shouldBe` pure (litInt 42)
+    it "ignores first comments that include asterisks" $
+      parseExpr "(* *comment* *) 42"
+        `shouldBe` pure (litInt 42)
+    it "ignores comments between applications" $
+      parseExpr "f (* comment *) 42"
+        `shouldBe` pure (app (var "f") (litInt 42))
   describe "Parser.parseExpr (with code locations)" $ do
     it "parses integer literals" $
       Parser.parseExpr "42"

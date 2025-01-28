@@ -1,12 +1,48 @@
 val %( + ) : Int -> Int -> Int external "int_add" "+"
 val %( - ) : Int -> Int -> Int external "int_sub" "-"
 val %( * ) : Int -> Int -> Int external "int_mult" "*"
+val %( / ) : Float -> Float -> Float external "float_div" "/"
 val %( <= ) : Int -> Int -> Bool external "int_leq" "<="
 val ~gen_vadd : {a : Nat} -> &(Vec %a -> Vec %a -> Vec %a) external "gen_vadd" "vadd"
 val ~gen_vconcat : {a : Nat} -> {b : Nat} -> &(Vec %a -> Vec %b -> Vec %(a + b)) external "gen_vconcat" "vconcat"
 val ~gen_mtranspose : {a : Nat} -> {b : Nat} -> &(Mat %a %b -> Mat %b %a) external "gen_mtranspose" "mtranspose"
 val ~gen_mmult : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %b -> Mat %b %c -> Mat %a %c) external "gen_mmult" "mmult"
 val ~gen_mconcat_vert : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %c -> Mat %b %c -> Mat %(a + b) %c) external "gen_mconcat_vert" "mconcat_vert"
+val ~drop_at : List Nat -> Nat -> List Nat external "drop_at" "drop_at"
+val %float : Int -> Float external "float" "float"
+val print_float : Float -> Unit external "print_float" "print_float"
+
+module List : sig
+  val %append : List Int -> List Int -> List Int external "list_append" "append"
+  val %iter : (Int -> Unit) -> List Int -> Unit external "list_iter" "iter"
+end
+
+val %range : Int -> Int -> List Int external "range" "range"
+val ~gen_broadcasted : {shape : List Nat} -> (added : List Nat) -> &(Tensor %shape -> Tensor %(List.append added shape)) external "gen_broadcasted" "gen_broadcasted"
+
 module Tensor : sig
+  val ~gen_zeros : (shape : List Nat) -> &(Tensor %shape) external "tensor__gen_zeros" "zeros"
+  val ~gen_mult : {shape : List Nat} -> &(Tensor %shape -> Tensor %([] as List Nat) -> Tensor %shape) external "tensor__gen_mult" "*"
+  val ~gen_grad : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape) external "tensor__gen_grad" "grad"
+  val ~gen_zero_grad : {shape : List Nat} -> &(Tensor %shape -> Unit) external "tensor__gen_zero_grad" "zero_grad"
+  val ~gen_mm : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %b -> Mat %b %c -> Mat %a %c) external "gen_mmult" "mm"
+  val ~gen_sub_update : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Unit) external "tensor__gen_sub_update" "-="
+  val ~gen_argmax : {shape : List Nat} -> (dim : Nat) -> &(Tensor %shape -> Tensor %(drop_at shape dim)) external "tensor__gen_argmax" "argmax"
+  val ~gen_cross_entropy_for_logits : {m : Nat} -> {n : Nat} -> &(Tensor %[m, n] -> Tensor %[m] -> Tensor %([] as List Nat)) external "tensor__gen_cross_entropy_for_logits" "cross_entropy_for_logits"
+  val ~gen_count_equal : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Int) external "tensor__gen_count_equal" "count_equal"
+  val f : Float -> Tensor %([] as List Nat) external "tensor__f" "f"
+  val backward : Tensor %([] as List Nat) -> Unit external "tensor__backward" "backward"
+  val no_grad : (Unit -> Unit) -> Unit external "tensor__no_grad" "no_grad"
+  val float_value : Tensor %([] as List Nat) -> Float external "tensor__float_value" "float_value"
   val ~gen_tadd : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Tensor %shape) external "gen_tadd" "tadd"
+end
+
+module Mnist_helper : sig
+  val ~image_dim : Nat external "mnist_helper__image_dim" "image_dim" (* = 28 * 28 *)
+  val ~label_count : Nat external "mnist_helper__label_count" "label_count" (* = 10 *)
+  val train_images : Tensor %[60000, image_dim] external "mnist_helper__train_images" "train_images"
+  val train_labels : Tensor %[60000] external "mnist_helper__train_labels" "train_labels"
+  val num_test_images : Int external "mnist_helper__num_test_images" "num_test_images" (* = 10000 *)
+  val test_images : Tensor %[10000, image_dim] external "mnist_helper__test_images" "test_images"
+  val test_labels : Tensor %[10000] external "mnist_helper__test_labels" "test_labels"
 end
