@@ -614,7 +614,7 @@ instance Disp Ass1ValConst where
     A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
     A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
     A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
-    A1ValConstCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
+    A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
     A1ValConstTadd ns -> "Tensor.tadd@{" <> dispListLiteral ns <> "}"
     A1ValConstBuiltInName a1builtInName -> disp a1builtInName
 

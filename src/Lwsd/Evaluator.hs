@@ -233,7 +233,7 @@ evalExpr0 env = \case
       BITensorGenCountEqual x1 -> do
         a0vs <- findList0 env x1
         ns <- mapM validateIntLiteral a0vs
-        pure $ A0ValBracket (A1ValConst (A1ValConstCountEqual ns))
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorCountEqual ns))
       BITadd ns x1 x2 ->
         case ns of
           [n] -> do
@@ -253,20 +253,7 @@ evalExpr0 env = \case
   A0Var x ->
     findVal0 env x
   A0BuiltInName a0builtInName ->
-    case a0builtInName of
-      A0BINameAdd -> pure BuiltIn.ass0valAdd
-      A0BINameSub -> pure BuiltIn.ass0valSub
-      A0BINameMult -> pure BuiltIn.ass0valMult
-      A0BINameLeq -> pure BuiltIn.ass0valLeq
-      A0BINameGenVadd -> pure BuiltIn.ass0valGenVadd
-      A0BINameGenVconcat -> pure BuiltIn.ass0valGenVconcat
-      A0BINameGenMtranspose -> pure BuiltIn.ass0valGenMtranspose
-      A0BINameGenMmult -> pure BuiltIn.ass0valGenMmult
-      A0BINameGenMconcatVert -> pure BuiltIn.ass0valGenMconcatVert
-      A0BINameDropAt -> pure BuiltIn.ass0valDropAt
-      A0BINameTensorGenCountEqual -> pure BuiltIn.ass0valTensorGenCountEqual
-      A0BINameGenTadd -> pure BuiltIn.ass0valGenTadd
-      _ -> error $ "TODO: evalExpr0, " ++ show a0builtInName
+    pure $ BuiltIn.getAss0Val a0builtInName
   A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam Nothing (x, a0tyv1) a0e2 env
@@ -405,6 +392,7 @@ unliftVal = \case
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
       A1ValConstTadd ns -> BuiltIn.ass0exprTadd ns
       A1ValConstBuiltInName a1builtInName -> A0BuiltInName (unliftBuiltInName a1builtInName)
+      _ -> error $ "TODO: unliftVal, " ++ show c
   A1ValVar symbX ->
     A0Var (symbolToVar symbX)
   A1ValLam Nothing (symbX, a1tyv1) a1v2 ->
