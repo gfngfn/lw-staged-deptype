@@ -39,8 +39,8 @@ success, failure :: IO Bool
 success = return True
 failure = return False
 
-typecheckStub :: Argument -> SourceSpec -> [Decl] -> Either TypeError (TypeEnv, SigRecord, TypecheckState)
-typecheckStub Argument {optimize, distributeIf} sourceSpecOfStub declsInStub = do
+typecheckStub :: Argument -> SourceSpec -> [Bind] -> Either TypeError (TypeEnv, SigRecord, [AssBind], TypecheckState)
+typecheckStub Argument {optimize, distributeIf} sourceSpecOfStub bindsInStub = do
   let typecheckerConfigOfStub =
         TypecheckState
           { optimizeTrivialAssertion = optimize,
@@ -49,11 +49,11 @@ typecheckStub Argument {optimize, distributeIf} sourceSpecOfStub declsInStub = d
             nextVarIndex = 0
           }
       initialTypeEnv = TypeEnv.empty
-  case runStateT (Typechecker.typecheckDecls id initialTypeEnv declsInStub) typecheckerConfigOfStub of
+  case runStateT (Typechecker.typecheckBinds id initialTypeEnv bindsInStub) typecheckerConfigOfStub of
     Left (tyErr, _travMod) ->
       Left tyErr
-    Right ((tyEnvStub, sigr), stateAfterTraversingStub) -> do
-      pure (tyEnvStub, sigr, stateAfterTraversingStub)
+    Right ((tyEnvStub, sigr, abinds), stateAfterTraversingStub) -> do
+      pure (tyEnvStub, sigr, abinds, stateAfterTraversingStub)
 
 typecheckInput :: TypecheckState -> TypeEnv -> Expr -> Either TypeError (Result Ass0TypeExpr, Ass0Expr)
 typecheckInput typecheckerConfigOfInput tyEnvStub e =
@@ -61,8 +61,8 @@ typecheckInput typecheckerConfigOfInput tyEnvStub e =
     Left (tyErr, _travMod) -> Left tyErr
     Right resultAndExpr -> pure resultAndExpr
 
-typecheckAndEvalInput :: Argument -> TypecheckState -> SourceSpec -> TypeEnv -> Expr -> IO Bool
-typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTraversingStub sourceSpecOfInput tyEnvStub e = do
+typecheckAndEvalInput :: Argument -> TypecheckState -> SourceSpec -> TypeEnv -> [AssBind] -> Expr -> IO Bool
+typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds e = do
   let initialEvalState = Evaluator.initialState sourceSpecOfInput
   let typecheckerConfigOfInput = stateAfterTraversingStub {sourceSpec = sourceSpecOfInput}
   case typecheckInput typecheckerConfigOfInput tyEnvStub e of
@@ -70,7 +70,8 @@ typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTravers
       putStrLn "-------- type error: --------"
       putRenderedLines tyErr
       failure
-    Right (result, a0e) -> do
+    Right (result, a0eWithoutStub) -> do
+      let a0e = makeExprFromBinds abinds a0eWithoutStub
       putStrLn "-------- type: --------"
       putRenderedLinesAtStage0 result
       putStrLn "-------- elaborated expression: --------"
@@ -117,15 +118,15 @@ typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTravers
     putRenderedLinesAtStage1 :: (Disp a) => a -> IO ()
     putRenderedLinesAtStage1 = Formatter.putRenderedLinesAtStage1 displayWidth
 
-typecheckAndEval :: Argument -> SourceSpec -> [Decl] -> SourceSpec -> Expr -> IO Bool
-typecheckAndEval arg@Argument {displayWidth} sourceSpecOfStub declsInStub sourceSpecOfInput e = do
-  case typecheckStub arg sourceSpecOfStub declsInStub of
+typecheckAndEval :: Argument -> SourceSpec -> [Bind] -> SourceSpec -> Expr -> IO Bool
+typecheckAndEval arg@Argument {displayWidth} sourceSpecOfStub bindsInStub sourceSpecOfInput e = do
+  case typecheckStub arg sourceSpecOfStub bindsInStub of
     Left tyErr -> do
       putStrLn "-------- type error by stub: --------"
       putRenderedLines tyErr
       failure
-    Right (tyEnvStub, _sigr, stateAfterTraversingStub) -> do
-      typecheckAndEvalInput arg stateAfterTraversingStub sourceSpecOfInput tyEnvStub e
+    Right (tyEnvStub, _sigr, abinds, stateAfterTraversingStub) -> do
+      typecheckAndEvalInput arg stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds e
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth
@@ -135,12 +136,12 @@ handle :: Argument -> IO Bool
 handle arg@Argument {inputFilePath, stubFilePath, displayWidth} = do
   putStrLn "Lightweight Dependent Types via Staging"
   stub <- TextIO.readFile stubFilePath
-  case Parser.parseDecls stub of
+  case Parser.parseBinds stub of
     Left err -> do
       putStrLn "-------- parse error of stub: --------"
       putStrLn err
       failure
-    Right declsInStub -> do
+    Right bindsInStub -> do
       source <- TextIO.readFile inputFilePath
       case Parser.parseExpr source of
         Left err -> do
@@ -160,7 +161,7 @@ handle arg@Argument {inputFilePath, stubFilePath, displayWidth} = do
                   { LocationInFile.source = stub,
                     LocationInFile.inputFilePath = stubFilePath
                   }
-          typecheckAndEval arg sourceSpecOfStub declsInStub sourceSpecOfInput e
+          typecheckAndEval arg sourceSpecOfStub bindsInStub sourceSpecOfInput e
   where
     putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
     putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth

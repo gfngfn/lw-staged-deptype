@@ -233,8 +233,6 @@ validateExternalName0 = \case
   "tensor__gen_cross_entropy_for_logits" -> pure A0BINameTensorGenCrossEntropyForLogits
   "tensor__gen_count_equal" -> pure A0BINameTensorGenCountEqual
   "gen_tadd" -> pure A0BINameGenTadd
-  "mnist_helper__image_dim" -> pure A0BINameMnistHelperImageDim
-  "mnist_helper__label_count" -> pure A0BINameMnistHelperLabelCount
   _ -> Nothing
 
 validateExternalName1 :: Text -> Maybe Ass1BuiltInName
@@ -255,7 +253,6 @@ validateExternalName1 = \case
   "tensor__float_value" -> pure A1BINameTensorFloatValue
   "mnist_helper__train_images" -> pure A1BINameMnistHelperTrainImages
   "mnist_helper__train_labels" -> pure A1BINameMnistHelperTrainLabels
-  "mnist_helper__num_test_images" -> pure A1BINameMnistHelperNumTestImages
   "mnist_helper__test_images" -> pure A1BINameMnistHelperTestImages
   "mnist_helper__test_labels" -> pure A1BINameMnistHelperTestLabels
   _ -> Nothing

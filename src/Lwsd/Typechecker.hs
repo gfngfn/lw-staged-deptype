@@ -3,8 +3,8 @@ module Lwsd.Typechecker
     typecheckExpr1,
     typecheckTypeExpr0,
     typecheckTypeExpr1,
-    typecheckDecl,
-    typecheckDecls,
+    typecheckBind,
+    typecheckBinds,
     TypecheckState (..),
     M,
   )
@@ -1068,60 +1068,77 @@ validatePersistentType trav loc a0tye =
       A0TyCode _ ->
         Nothing
 
-typecheckDecl :: trav -> TypeEnv -> Decl -> M trav SigRecord
-typecheckDecl trav tyEnv (Decl loc declMain) =
-  case declMain of
-    DeclVal0 x tye extName ass0surfaceName -> do
-      a0tye <- typecheckTypeExpr0 trav tyEnv tye
-      ass0builtInName <-
-        case validateExternalName0 extName of
-          Just a0builtInName' ->
-            pure a0builtInName'
-          Nothing -> do
-            spanInFile <- askSpanInFile loc
-            typeError trav $ UnknownExternalName spanInFile extName
-      let a0metadata = Ass0Metadata {ass0builtInName, ass0surfaceName}
-      pure $ SigRecord.singletonVal x (Ass0Entry a0tye (Just a0metadata))
-    DeclVal1 x tye extName ass1surfaceName -> do
-      ass1builtInName <-
-        case validateExternalName1 extName of
-          Just ass1builtInName' ->
-            pure ass1builtInName'
-          Nothing -> do
-            spanInFile <- askSpanInFile loc
-            typeError trav $ UnknownExternalName spanInFile extName
-      a1tye <- typecheckTypeExpr1 trav tyEnv tye
-      let a1metadata = Ass1Metadata {ass1builtInName, ass1surfaceName}
-      pure $ SigRecord.singletonVal x (Ass1Entry a1tye (Just a1metadata))
-    DeclValPers x tye extName assPsurfaceName -> do
-      a0tye <- typecheckTypeExpr0 trav tyEnv tye
-      aPtye <- validatePersistentType trav loc a0tye
-      assPbuiltInName <-
-        case validateExternalName1 extName of
-          Just a1builtInName' ->
-            pure a1builtInName'
-          Nothing -> do
-            spanInFile <- askSpanInFile loc
-            typeError trav $ UnknownExternalName spanInFile extName
-      let aPmetadata = AssPersMetadata {assPbuiltInName, assPsurfaceName}
-      pure $ SigRecord.singletonVal x (AssPersEntry aPtye aPmetadata)
-    DeclModule m decls -> do
-      (_, sigr) <- typecheckDecls trav tyEnv decls
-      pure $ SigRecord.singletonModule m (ModuleEntry sigr)
+typecheckBind :: trav -> TypeEnv -> Bind -> M trav (SigRecord, [AssBind])
+typecheckBind trav tyEnv (Bind loc bindMain) =
+  case bindMain of
+    BindVal stage x (BindValExternal tye extName surfaceName) ->
+      case stage of
+        Stage0 -> do
+          a0tye <- typecheckTypeExpr0 trav tyEnv tye
+          ass0builtInName <-
+            case validateExternalName0 extName of
+              Just a0builtInName' ->
+                pure a0builtInName'
+              Nothing -> do
+                spanInFile <- askSpanInFile loc
+                typeError trav $ UnknownExternalName spanInFile extName
+          let a0metadata = Ass0Metadata {ass0builtInName, ass0surfaceName = surfaceName}
+          pure (SigRecord.singletonVal x (Ass0Entry a0tye (Just a0metadata)), [])
+        Stage1 -> do
+          ass1builtInName <-
+            case validateExternalName1 extName of
+              Just ass1builtInName' ->
+                pure ass1builtInName'
+              Nothing -> do
+                spanInFile <- askSpanInFile loc
+                typeError trav $ UnknownExternalName spanInFile extName
+          a1tye <- typecheckTypeExpr1 trav tyEnv tye
+          let a1metadata = Ass1Metadata {ass1builtInName, ass1surfaceName = surfaceName}
+          pure (SigRecord.singletonVal x (Ass1Entry a1tye (Just a1metadata)), [])
+        StagePers -> do
+          a0tye <- typecheckTypeExpr0 trav tyEnv tye
+          aPtye <- validatePersistentType trav loc a0tye
+          assPbuiltInName <-
+            case validateExternalName1 extName of
+              Just a1builtInName' ->
+                pure a1builtInName'
+              Nothing -> do
+                spanInFile <- askSpanInFile loc
+                typeError trav $ UnknownExternalName spanInFile extName
+          let aPmetadata = AssPersMetadata {assPbuiltInName, assPsurfaceName = surfaceName}
+          pure (SigRecord.singletonVal x (AssPersEntry aPtye aPmetadata), [])
+    BindVal stage x (BindValNormal e) ->
+      case stage of
+        Stage0 -> do
+          (result, a0e) <- typecheckExpr0 trav tyEnv [] e
+          a0tye <- validateEmptyRetAppContext "BindVal, Stage0" result
+          let sa0tye = strictify a0tye
+          let ax = AssVar x
+          pure (SigRecord.singletonVal x (Ass0Entry a0tye Nothing), [ABind0 (ax, sa0tye) a0e])
+        Stage1 -> do
+          (result, a1e) <- typecheckExpr1 trav tyEnv [] e
+          a1tye <- validateEmptyRetAppContext "BindVal, Stage1" result
+          let ax = AssVar x
+          pure (SigRecord.singletonVal x (Ass1Entry a1tye Nothing), [ABind1 (ax, a1tye) a1e])
+        StagePers ->
+          error "TODO: typecheckBind, BindValNormal, StagePers"
+    BindModule m binds -> do
+      (_, sigr, abinds) <- typecheckBinds trav tyEnv binds
+      pure (SigRecord.singletonModule m (ModuleEntry sigr), abinds)
 
-typecheckDecls :: trav -> TypeEnv -> [Decl] -> M trav (TypeEnv, SigRecord)
-typecheckDecls trav tyEnv =
+typecheckBinds :: trav -> TypeEnv -> [Bind] -> M trav (TypeEnv, SigRecord, [AssBind])
+typecheckBinds trav tyEnv =
   foldM
-    ( \(tyEnv', sigr') decl@(Decl loc _) -> do
-        sigr <- typecheckDecl trav tyEnv' decl
+    ( \(tyEnv', sigr', abinds') bind@(Bind loc _) -> do
+        (sigr, abinds) <- typecheckBind trav tyEnv' bind
         case SigRecord.intersection sigr' sigr of
           ([], []) ->
-            pure (TypeEnv.appendSigRecord tyEnv' sigr, SigRecord.union sigr' sigr)
+            pure (TypeEnv.appendSigRecord tyEnv' sigr, SigRecord.union sigr' sigr, abinds' ++ abinds)
           (x : _, _) -> do
             spanInFile <- askSpanInFile loc
-            typeError trav $ DeclarationOverwritten spanInFile x
+            typeError trav $ BindingOverwritten spanInFile x
           (_, m : _) -> do
             spanInFile <- askSpanInFile loc
-            typeError trav $ DeclarationOverwritten spanInFile m
+            typeError trav $ BindingOverwritten spanInFile m
     )
-    (tyEnv, SigRecord.empty)
+    (tyEnv, SigRecord.empty, [])

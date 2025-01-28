@@ -46,7 +46,7 @@ data TypeError
   | CannotInstantiateGuidedByAppContext1 SpanInFile AppContext Ass1TypeExpr
   | CannotInferOptional SpanInFile AssVar
   | Stage1IfThenElseRestrictedToEmptyContext SpanInFile AppContext
-  | DeclarationOverwritten SpanInFile Var
+  | BindingOverwritten SpanInFile Var
   | UnknownExternalName SpanInFile Text
   | InvalidPersistentType SpanInFile Ass0TypeExpr
   deriving stock (Eq, Show)
