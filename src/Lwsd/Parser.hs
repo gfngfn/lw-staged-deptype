@@ -278,7 +278,7 @@ typeExpr = fun
 bind :: P Bind
 bind =
   (makeBindValExternal <$> token TokVal <*> valBinder <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external) <*> string)
-    `or` (makeBindModule <$> token TokModule <*> noLoc upper <*> (token TokColon *> token TokSig *> many bind) <*> token TokEnd)
+    `or` (makeBindModule <$> token TokModule <*> noLoc upper <*> (token TokEqual *> token TokStruct *> many bind) <*> token TokEnd)
   where
     valBinder :: P (Stage, Var)
     valBinder =

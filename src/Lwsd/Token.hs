@@ -54,7 +54,7 @@ data Token
   | TokAs
   | TokVal
   | TokModule
-  | TokSig
+  | TokStruct
   | TokEnd
   | TokExternal
   | TokOpen
@@ -82,7 +82,7 @@ keywordMap =
       ("as", TokAs),
       ("val", TokVal),
       ("module", TokModule),
-      ("sig", TokSig),
+      ("struct", TokStruct),
       ("end", TokEnd),
       ("external", TokExternal),
       ("open", TokOpen)
