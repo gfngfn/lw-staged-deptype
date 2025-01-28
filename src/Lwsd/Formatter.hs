@@ -311,6 +311,7 @@ instance Disp BuiltIn where
     BITensorGenZeroGrad x1 -> "TENSOR.GEN_ZERO_GRAD(" <> disp x1 <> ")"
     BITensorGenSubUpdate x1 -> "TENSOR.GEN_SUB_UPDATE(" <> disp x1 <> ")"
     BITensorGenArgmax x1 x2 -> "TENSOR.GEN_ARGMAX(" <> disps [x1, x2] <> ")"
+    BITensorGenCrossEntropyForLogits x1 x2 -> "TENSOR.GEN_CROSS_ENTROPY_FOR_LOGITS(" <> disps [x1, x2] <> ")"
     BITensorGenCountEqual x1 -> "TENSOR.GEN_COUNT_EQUAL(" <> disp x1 <> ")"
     BITadd ns x1 x2 -> "TADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
 
@@ -630,6 +631,7 @@ instance Disp Ass1ValConst where
     A1ValConstTensorZeroGrad ns1 -> "Tensor.zero_grad@{" <> dispListLiteral ns1 <> "}"
     A1ValConstTensorSubUpdate ns1 -> "Tensor.sub_update@{" <> dispListLiteral ns1 <> "}"
     A1ValConstTensorArgmax ns1 n2 -> "Tensor.argmax@{" <> dispListLiteral ns1 <> "," <+> disp n2 <> "}"
+    A1ValConstTensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits@{" <> disps [n1, n2] <> "}"
     A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
     A1ValConstTadd ns -> "Tensor.tadd@{" <> dispListLiteral ns <> "}"
     A1ValConstBuiltInName a1builtInName -> disp a1builtInName

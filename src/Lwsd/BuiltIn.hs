@@ -176,6 +176,13 @@ getAss0Val = \case
     where
       x1 = AssVar "x1"
       x2 = AssVar "x2"
+  A0BINameTensorGenCrossEntropyForLogits ->
+    clo x1 tyValNat $
+      lam x2 styNat $
+        A0AppBuiltIn (BITensorGenCrossEntropyForLogits x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
   A0BINameTensorGenCountEqual ->
     clo x1 (tyValList tyValNat) $
       A0AppBuiltIn (BITensorGenCountEqual x1)
@@ -187,7 +194,7 @@ getAss0Val = \case
     where
       x1 = AssVar "x1"
   a0builtInName ->
-    error $ "TODO: evalExpr0, " ++ show a0builtInName
+    error $ "TODO: getAss0Val, " ++ show a0builtInName
 
 ass0exprBinaryInt :: (AssVar -> AssVar -> BuiltIn) -> Ass0Expr
 ass0exprBinaryInt f =

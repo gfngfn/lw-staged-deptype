@@ -271,6 +271,10 @@ evalExpr0 env = \case
         ns1 <- mapM validateIntLiteral a0vs1
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorArgmax ns1 n2))
+      BITensorGenCrossEntropyForLogits x1 x2 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorCrossEntropyForLogits n1 n2))
       BITensorGenCountEqual x1 -> do
         a0vs <- findList0 env x1
         ns <- mapM validateIntLiteral a0vs

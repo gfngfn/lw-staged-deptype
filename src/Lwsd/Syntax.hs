@@ -93,6 +93,7 @@ data BuiltIn
   | BITensorGenGrad AssVar
   | BITensorGenZeroGrad AssVar
   | BITensorGenSubUpdate AssVar
+  | BITensorGenCrossEntropyForLogits AssVar AssVar
   | BITensorGenArgmax AssVar AssVar
   | BITensorGenCountEqual AssVar
   | BITadd [Int] AssVar AssVar
@@ -329,6 +330,7 @@ data Ass1ValConst
   | A1ValConstTensorZeroGrad [Int]
   | A1ValConstTensorSubUpdate [Int]
   | A1ValConstTensorArgmax [Int] Int
+  | A1ValConstTensorCrossEntropyForLogits Int Int
   | A1ValConstTensorCountEqual [Int]
   | A1ValConstTadd [Int]
   | A1ValConstBuiltInName Ass1BuiltInName -- TODO: consider merging `Ass1BuiltInName` and `Ass1ValConst`
