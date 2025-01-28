@@ -87,6 +87,7 @@ data BuiltIn
   | BIDropAt AssVar AssVar
   | BIListAppend AssVar AssVar
   | BIListIter AssVar AssVar
+  | BIGenBroadcasted AssVar AssVar
   | BITensorGenArgmax AssVar AssVar
   | BITensorGenCountEqual AssVar
   | BITadd [Int] AssVar AssVar
@@ -316,6 +317,7 @@ data Ass1ValConst
   | A1ValConstMtranspose Int Int
   | A1ValConstMmult Int Int Int
   | A1ValConstMconcatVert Int Int Int
+  | A1ValConstBroadcasted [Int] [Int]
   | A1ValConstTensorArgmax [Int] Int
   | A1ValConstTensorCountEqual [Int]
   | A1ValConstTadd [Int]

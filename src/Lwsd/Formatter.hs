@@ -304,6 +304,7 @@ instance Disp BuiltIn where
     BIDropAt x1 x2 -> "DROP_AT(" <> disps [x1, x2] <> ")"
     BIListAppend x1 x2 -> "LIST.APPEND(" <> disps [x1, x2] <> ")"
     BIListIter x1 x2 -> "LIST.ITER(" <> disps [x1, x2] <> ")"
+    BIGenBroadcasted x1 x2 -> "GEN_BROADCASTED(" <> disps [x1, x2] <> ")"
     BITensorGenArgmax x1 x2 -> "TENSOR.GEN_ARGMAX(" <> disps [x1, x2] <> ")"
     BITensorGenCountEqual x1 -> "TENSOR.GEN_COUNT_EQUAL(" <> disp x1 <> ")"
     BITadd ns x1 x2 -> "TADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
@@ -617,7 +618,8 @@ instance Disp Ass1ValConst where
     A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
     A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
     A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
-    A1ValConstTensorArgmax ns1 n2 -> "Tensor.argmax@{" <> dispListLiteral ns1 <> "," <> disp n2 <> "}"
+    A1ValConstBroadcasted ns1 ns2 -> "broadcasted@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
+    A1ValConstTensorArgmax ns1 n2 -> "Tensor.argmax@{" <> dispListLiteral ns1 <> "," <+> disp n2 <> "}"
     A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
     A1ValConstTadd ns -> "Tensor.tadd@{" <> dispListLiteral ns <> "}"
     A1ValConstBuiltInName a1builtInName -> disp a1builtInName

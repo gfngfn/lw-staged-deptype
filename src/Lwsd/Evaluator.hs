@@ -240,6 +240,12 @@ evalExpr0 env = \case
         a0vsIn <- findList0 env x
         forM_ a0vsIn (reduceBeta a0vF >=> validateUnitLiteral)
         pure $ A0ValLiteral ALitUnit
+      BIGenBroadcasted x1 x2 -> do
+        a0vs1 <- findList0 env x1
+        ns1 <- mapM validateIntLiteral a0vs1
+        a0vs2 <- findList0 env x2
+        ns2 <- mapM validateIntLiteral a0vs2
+        pure $ A0ValBracket (A1ValConst (A1ValConstBroadcasted ns1 ns2))
       BITensorGenArgmax x1 x2 -> do
         a0vs1 <- findList0 env x1
         ns1 <- mapM validateIntLiteral a0vs1

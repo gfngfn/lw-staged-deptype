@@ -137,6 +137,13 @@ getAss0Val = \case
     where
       x1 = AssVar "x1"
       x2 = AssVar "x2"
+  A0BINameGenBroadcasted ->
+    clo x1 (tyValList tyValNat) $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIGenBroadcasted x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
   A0BINameTensorGenArgmax ->
     clo x1 (tyValList tyValNat) $
       lam x2 styNat $
