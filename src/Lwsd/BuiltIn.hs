@@ -10,7 +10,7 @@ module Lwsd.BuiltIn
     ass0exprMtranspose,
     ass0exprMmult,
     ass0exprMconcatVert,
-    ass0exprTadd,
+    ass0exprTensorAdd,
     getAss0Val,
     validateExternalName0,
     validateExternalName1,
@@ -149,6 +149,11 @@ getAss0Val = \case
       A0AppBuiltIn (BITensorGenZeros x1)
     where
       x1 = AssVar "x1"
+  A0BINameTensorGenAdd ->
+    clo x1 tyValNat $
+      A0AppBuiltIn (BITensorGenAdd x1)
+    where
+      x1 = AssVar "x1"
   A0BINameTensorGenMult ->
     clo x1 (tyValList tyValNat) $
       A0AppBuiltIn (BITensorGenMult x1)
@@ -186,11 +191,6 @@ getAss0Val = \case
   A0BINameTensorGenCountEqual ->
     clo x1 (tyValList tyValNat) $
       A0AppBuiltIn (BITensorGenCountEqual x1)
-    where
-      x1 = AssVar "x1"
-  A0BINameGenTadd ->
-    clo x1 tyValNat $
-      A0AppBuiltIn (BIGenTadd x1)
     where
       x1 = AssVar "x1"
   a0builtInName ->
@@ -269,11 +269,11 @@ ass0exprMmult k m n =
     x1 = AssVar "mat1"
     x2 = AssVar "mat2"
 
-ass0exprTadd :: [Int] -> Ass0Expr
-ass0exprTadd ns =
+ass0exprTensorAdd :: [Int] -> Ass0Expr
+ass0exprTensorAdd ns =
   lam x1 (sty0Tensor ns) $
     lam x2 (sty0Tensor ns) $
-      A0AppBuiltIn (BITadd ns x1 x2)
+      A0AppBuiltIn (BITensorAdd ns x1 x2)
   where
     x1 = AssVar "v1"
     x2 = AssVar "v2"
@@ -292,6 +292,7 @@ validateExternalName0 = \case
   "drop_at" -> pure A0BINameDropAt
   "gen_broadcasted" -> pure A0BINameGenBroadcasted
   "tensor__gen_zeros" -> pure A0BINameTensorGenZeros
+  "tensor__gen_add" -> pure A0BINameTensorGenAdd
   "tensor__gen_mult" -> pure A0BINameTensorGenMult
   "tensor__gen_grad" -> pure A0BINameTensorGenGrad
   "tensor__gen_zero_grad" -> pure A0BINameTensorGenZeroGrad
@@ -299,7 +300,6 @@ validateExternalName0 = \case
   "tensor__gen_argmax" -> pure A0BINameTensorGenArgmax
   "tensor__gen_cross_entropy_for_logits" -> pure A0BINameTensorGenCrossEntropyForLogits
   "tensor__gen_count_equal" -> pure A0BINameTensorGenCountEqual
-  "gen_tadd" -> pure A0BINameGenTadd
   _ -> Nothing
 
 validateExternalName1 :: Text -> Maybe Ass1BuiltInName

@@ -7,6 +7,7 @@ module Util.TokenUtil
     lowerIdent,
     upperIdent,
     longLowerIdent,
+    operator,
     integerLiteral,
     floatLiteral,
     stringLiteral,
@@ -18,6 +19,8 @@ where
 import Control.Monad.Combinators
 import Data.Char qualified as Char
 import Data.Either.Extra qualified as Either
+import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
@@ -70,6 +73,18 @@ longLowerIdent =
     p1 = Mp.satisfy Char.isUpper
     p2 = Mp.many (Mp.satisfy isRestChar)
     buildModuleName c cs = Text.pack (c : cs)
+
+opRestCharSet :: Set Char
+opRestCharSet =
+  Set.fromList ['+', '-', '*', '/', '=', '<', '>']
+
+opRestChar :: Tokenizer Char
+opRestChar =
+  Mp.satisfy (`elem` opRestCharSet)
+
+operator :: Char -> Tokenizer Text
+operator firstChar =
+  Text.pack <$> ((:) <$> Mp.single firstChar <*> (Mp.many opRestChar <* Mp.notFollowedBy opRestChar))
 
 nonzeroDigit :: Tokenizer Char
 nonzeroDigit = Mp.satisfy (\c -> Char.isDigit c && c /= '0')

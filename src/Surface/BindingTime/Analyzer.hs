@@ -59,6 +59,13 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         be1 <- assignBindingTimeVarToExpr e1
         be2 <- assignBindingTimeVarToExpr e2
         pure $ LetIn x be1 be2
+      LetOpenIn m e -> do
+        be <- assignBindingTimeVarToExpr e
+        pure $ LetOpenIn m be
+      Sequential e1 e2 -> do
+        be1 <- assignBindingTimeVarToExpr e1
+        be2 <- assignBindingTimeVarToExpr e2
+        pure $ Sequential be1 be2
       IfThenElse e0 e1 e2 -> do
         be0 <- assignBindingTimeVarToExpr e0
         be1 <- assignBindingTimeVarToExpr e1
@@ -130,6 +137,10 @@ extractConstraintsFromLiteral :: BindingTimeEnv -> (BindingTime, Span) -> Litera
 extractConstraintsFromLiteral btenv (btLit, annLit) = \case
   LitInt n ->
     pure (LitInt n, [], [])
+  LitFloat r ->
+    pure (LitFloat r, [], [])
+  LitUnit ->
+    pure (LitUnit, [], [])
   LitList es ->
     case es of
       [] ->
@@ -165,6 +176,14 @@ findVal btenv ms x =
           findVal btenv' ms' x
         _ ->
           error "TODO (error): Surface.BindingTime.Analyzer.findVal"
+
+openModule :: Var -> BindingTimeEnv -> M BindingTimeEnv
+openModule m btenv =
+  case Map.lookup m btenv of
+    Just (EntryModule btenv') ->
+      pure $ Map.union btenv' btenv
+    _ ->
+      error "TODO (error): Surface.BindingTime.Analyzer.openModule"
 
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BExpr, BIType, [Constraint Span])
 extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
@@ -229,6 +248,23 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
         extractConstraintsFromExpr (Map.insert x (EntryLocallyBound bt bity1) btenv) e2
       let e' = Expr (bt, ann) (LetIn x e1' e2')
       pure (e', bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
+    LetOpenIn m e1 -> do
+      (e1', bity1@(BIType bt1 _), constraints) <- do
+        btenv' <- openModule m btenv
+        extractConstraintsFromExpr btenv' e1
+      pure (Expr (bt, ann) (LetOpenIn m e1'), bity1, constraints ++ [CEqual ann bt bt1])
+    Sequential e1 e2 -> do
+      -- Not confident. TODO: check the validity of the following
+      (e1', bity1@(BIType bt1 bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
+      (e2', bity2@(BIType bt2 _), constraints2) <- extractConstraintsFromExpr btenv e2
+      case bityMain1 of
+        BITyBase [] -> do
+          let e' = Expr (bt, ann) (Sequential e1' e2')
+          pure (e', bity2, constraints1 ++ constraints2 ++ [CEqual ann bt bt1, CLeq ann bt bt2])
+        _ -> do
+          let Expr (_, ann1) _ = e1
+          spanInFile1 <- askSpanInFile ann1
+          analysisError $ NotABase spanInFile1 bity1
     IfThenElse e0 e1 e2 -> do
       (e0', bity0@(BIType bt0 bityMain0), constraints0) <- extractConstraintsFromExpr btenv e0
       case bityMain0 of
@@ -339,7 +375,9 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
         case (tyName, args) of
           ("Nat", []) -> pure ([], [], [CEqual ann bt (BTConst BT0)])
           ("Int", []) -> pure ([], [], [])
+          ("Float", []) -> pure ([], [], [])
           ("Bool", []) -> pure ([], [], [])
+          ("Unit", []) -> pure ([], [], [])
           ("List", [TypeArg tye]) -> do
             (tyeElem, bity@(BIType btElem _), cs) <- extractConstraintsFromTypeExpr btenv tye
             pure ([TypeArg tyeElem], [bity], cs ++ [CLeq ann bt btElem])

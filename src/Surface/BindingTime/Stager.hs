@@ -43,6 +43,10 @@ stageExpr0Main = \case
     Lwsd.App (stageExpr0 e1) (stageExpr0 e2)
   LetIn x e1 e2 ->
     Lwsd.LetIn x (stageExpr0 e1) (stageExpr0 e2)
+  LetOpenIn m e ->
+    Lwsd.LetOpenIn m (stageExpr0 e)
+  Sequential e1 e2 ->
+    Lwsd.Sequential (stageExpr0 e1) (stageExpr0 e2)
   IfThenElse e0 e1 e2 ->
     Lwsd.IfThenElse (stageExpr0 e0) (stageExpr0 e1) (stageExpr0 e2)
   As e1 tye2 ->
@@ -74,6 +78,10 @@ stageExpr1Main = \case
     Lwsd.App (stageExpr1 e1) (stageExpr1 e2)
   LetIn x e1 e2 ->
     Lwsd.LetIn x (stageExpr1 e1) (stageExpr1 e2)
+  LetOpenIn m e ->
+    Lwsd.LetOpenIn m (stageExpr1 e)
+  Sequential e1 e2 ->
+    Lwsd.Sequential (stageExpr1 e1) (stageExpr1 e2)
   IfThenElse e0 e1 e2 ->
     Lwsd.IfThenElse (stageExpr1 e0) (stageExpr1 e1) (stageExpr1 e2)
   As e1 tye2 ->
@@ -122,6 +130,8 @@ stageArgForType1 = \case
 convertLiteral :: (se -> le) -> Literal se -> Lwsd.Literal le
 convertLiteral conv = \case
   LitInt n -> Lwsd.LitInt n
+  LitFloat r -> Lwsd.LitFloat r
+  LitUnit -> Lwsd.LitUnit
   LitList es -> Lwsd.LitList (map conv es)
   LitVec ns -> Lwsd.LitVec ns
   LitMat nss -> Lwsd.LitMat nss

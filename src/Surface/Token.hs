@@ -20,6 +20,8 @@ data Token
   | TokRightParen
   | TokLeftBrace
   | TokRightBrace
+  | TokLeftSquare
+  | TokRightSquare
   | TokArrow
   | TokEqual
   | TokColon
@@ -34,6 +36,8 @@ data Token
   | TokUpper Text
   | TokLongLower ([Text], Text)
   | TokInt Int
+  | TokFloat Double
+  | TokString Text
   | TokFun
   | TokRec
   | TokLet
@@ -42,10 +46,10 @@ data Token
   | TokThen
   | TokElse
   | TokAs
-  | TokOpAdd
-  | TokOpSub
-  | TokOpMult
-  | TokOpLeq
+  | TokOpen
+  | TokOpAdd Text
+  | TokOpMult Text
+  | TokOpComp Text
   deriving stock (Ord, Eq, Show, Generic)
 
 instance Mp.VisualStream [Located Token] where
@@ -64,7 +68,8 @@ keywordMap =
       ("if", TokIf),
       ("then", TokThen),
       ("else", TokElse),
-      ("as", TokAs)
+      ("as", TokAs),
+      ("open", TokOpen)
     ]
 
 lowerIdentOrKeyword :: Tokenizer Token
@@ -91,14 +96,21 @@ token =
       TokVecRight <$ Mp.chunk "|]",
       TokMatLeft <$ Mp.chunk "[#",
       TokMatRight <$ Mp.chunk "#]",
-      TokOpAdd <$ Mp.single '+',
-      TokOpSub <$ Mp.single '-',
-      TokOpMult <$ Mp.single '*',
-      TokOpLeq <$ Mp.chunk "<=",
+      TokLeftSquare <$ Mp.single '[',
+      TokRightSquare <$ Mp.single ']',
+      TokOpAdd <$> operator '+',
+      TokOpAdd <$> operator '-',
+      TokOpMult <$> operator '*',
+      TokOpMult <$> operator '/',
+      TokOpComp <$> operator '=',
+      TokOpComp <$> operator '<',
+      TokOpComp <$> operator '>',
       lowerIdentOrKeyword,
       Mp.try (TokLongLower <$> longLowerIdent),
       TokUpper <$> upperIdent,
-      TokInt <$> integerLiteral
+      Mp.try (TokFloat <$> floatLiteral),
+      TokInt <$> integerLiteral,
+      TokString <$> stringLiteral
     ]
 
 lex :: Text -> Either String [Located Token]

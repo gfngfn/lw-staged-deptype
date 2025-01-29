@@ -32,36 +32,36 @@ data Argument = Argument
 makeBindingTimeEnvFromStub :: SigRecord -> BindingTimeEnv
 makeBindingTimeEnvFromStub =
   SigRecord.fold
-    ( \var entry bindingTimeEnv ->
+    ( \varVal entry bindingTimeEnv ->
         case entry of
           Ass0Entry a0tye a0metadataOpt ->
-            case a0metadataOpt of
-              Just Ass0Metadata {ass0surfaceName = x} ->
-                Map.insert
+            let x =
+                  case a0metadataOpt of
+                    Just Ass0Metadata {ass0surfaceName} -> ass0surfaceName
+                    Nothing -> varVal -- Uses the same name
+             in Map.insert
                   x
-                  (EntryBuiltInFixed var BT0 (fromStaged0 a0tye))
+                  (EntryBuiltInFixed varVal BT0 (fromStaged0 a0tye))
                   bindingTimeEnv
-              Nothing ->
-                bindingTimeEnv
           Ass1Entry a1tye a1metadataOpt ->
-            case a1metadataOpt of
-              Just Ass1Metadata {ass1surfaceName = x} ->
-                Map.insert
+            let x =
+                  case a1metadataOpt of
+                    Just Ass1Metadata {ass1surfaceName} -> ass1surfaceName
+                    Nothing -> varVal -- Uses the same name
+             in Map.insert
                   x
-                  (EntryBuiltInFixed var BT1 (fromStaged1 a1tye))
+                  (EntryBuiltInFixed varVal BT1 (fromStaged1 a1tye))
                   bindingTimeEnv
-              Nothing ->
-                bindingTimeEnv
           AssPersEntry aPtye AssPersMetadata {assPsurfaceName = x} ->
             Map.insert
               x
-              (EntryBuiltInPersistent var (fromStagedPers aPtye))
+              (EntryBuiltInPersistent varVal (fromStagedPers aPtye))
               bindingTimeEnv
     )
-    ( \varM (ModuleEntry sigr) bindingTimeEnv ->
+    ( \varMod (ModuleEntry sigr) bindingTimeEnv ->
         -- Reuses the module name `varM` in the core language for the surface language.
         Map.insert
-          varM
+          varMod
           (EntryModule (makeBindingTimeEnvFromStub sigr))
           bindingTimeEnv
     )

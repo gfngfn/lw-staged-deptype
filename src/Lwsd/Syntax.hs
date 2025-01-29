@@ -78,7 +78,6 @@ data BuiltIn
   | BIGenMtranspose AssVar AssVar
   | BIGenMmult AssVar AssVar AssVar
   | BIGenMconcatVert AssVar AssVar AssVar
-  | BIGenTadd AssVar
   | BIVadd Int AssVar AssVar
   | BIVconcat Int Int AssVar AssVar
   | BIMtranspose Int Int AssVar
@@ -96,7 +95,8 @@ data BuiltIn
   | BITensorGenCrossEntropyForLogits AssVar AssVar
   | BITensorGenArgmax AssVar AssVar
   | BITensorGenCountEqual AssVar
-  | BITadd [Int] AssVar AssVar
+  | BITensorGenAdd AssVar
+  | BITensorAdd [Int] AssVar AssVar
   deriving stock (Eq, Show)
 
 data Ass0BuiltInName
@@ -113,6 +113,7 @@ data Ass0BuiltInName
   | A0BINameGenMconcatVert
   | A0BINameDropAt
   | A0BINameTensorGenZeros
+  | A0BINameTensorGenAdd
   | A0BINameTensorGenMult
   | A0BINameTensorGenGrad
   | A0BINameTensorGenZeroGrad
@@ -120,7 +121,6 @@ data Ass0BuiltInName
   | A0BINameTensorGenArgmax
   | A0BINameTensorGenCrossEntropyForLogits
   | A0BINameTensorGenCountEqual
-  | A0BINameGenTadd
   | A0BINamePrintFloat
   | A0BINameListAppend
   | A0BINameListIter
@@ -335,7 +335,7 @@ data Ass1ValConst
   | A1ValConstTensorArgmax [Int] Int
   | A1ValConstTensorCrossEntropyForLogits Int Int
   | A1ValConstTensorCountEqual [Int]
-  | A1ValConstTadd [Int]
+  | A1ValConstTensorAdd [Int]
   | A1ValConstBuiltInName Ass1BuiltInName -- TODO: consider merging `Ass1BuiltInName` and `Ass1ValConst`
   deriving stock (Eq, Show)
 
