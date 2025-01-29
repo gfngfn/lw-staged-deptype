@@ -141,6 +141,11 @@ dispLetOpenIn req m e =
   deepenParenWhen (req <= FunDomain) $
     group ("let open" <+> disp m <+> "in" <> line <> disp e)
 
+dispSequential :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
+dispSequential req e1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group (disp e1 <> ";" <> line <> disp e2)
+
 dispIfThenElse :: (Disp expr) => Associativity -> expr -> expr -> expr -> Doc Ann
 dispIfThenElse req e0 e1 e2 =
   deepenParenWhen (req <= FunDomain) $
@@ -261,6 +266,7 @@ instance Disp (ExprMainF ann) where
     AppOptOmitted e1 -> dispAppOptOmitted req e1
     LetIn x e1 e2 -> dispLetIn req x e1 e2
     LetOpenIn m e -> dispLetOpenIn req m e
+    Sequential e1 e2 -> dispSequential req e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2
     Bracket e1 -> dispBracket e1
@@ -380,6 +386,7 @@ instance Disp Ass0Expr where
     A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 -> dispRecLam req f a0tyeRec y a0tye1 a0e2
     A0App a0e1 a0e2 -> dispApp req a0e1 a0e2
     A0LetIn (y, a0tye1) a0e1 a0e2 -> dispLetInWithAnnot req y a0tye1 a0e1 a0e2
+    A0Sequential a0e1 a0e2 -> dispSequential req a0e1 a0e2
     A0Bracket a1e1 -> dispBracket a1e1
     A0IfThenElse a0e0 a0e1 a0e2 -> dispIfThenElse req a0e0 a0e1 a0e2
     A0TyEqAssert _loc ty1eq ->
@@ -394,6 +401,7 @@ instance Disp Ass1Expr where
     A1Lam Nothing (x, a1tye1) a1e2 -> dispNonrecLam req x a1tye1 a1e2
     A1Lam (Just (f, a1tyeRec)) (x, a1tye1) a1e2 -> dispRecLam req f a1tyeRec x a1tye1 a1e2
     A1App a1e1 a1e2 -> dispApp req a1e1 a1e2
+    A1Sequential a1e1 a1e2 -> dispSequential req a1e1 a1e2
     A1IfThenElse a1e0 a1e1 a1e2 -> dispIfThenElse req a1e0 a1e1 a1e2
     A1Escape a0e1 -> dispEscape a0e1
 
@@ -493,6 +501,10 @@ instance Disp TypeError where
       "Not bool (at stage 0):" <+> stage1Style (disp a0tye) <+> disp spanInFile
     NotABoolTypeForStage1 spanInFile a1tye ->
       "Not bool (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
+    NotAUnitTypeForStage0 spanInFile a0tye ->
+      "Not unit (at stage 0):" <+> stage1Style (disp a0tye) <+> disp spanInFile
+    NotAUnitTypeForStage1 spanInFile a1tye ->
+      "Not unit (at stage 1):" <+> stage1Style (disp a1tye) <+> disp spanInFile
     NotACodeType spanInFile a0tye ->
       "Not a code type:" <+> stage0Style (disp a0tye) <+> disp spanInFile
     CannotUseEscapeAtStage0 spanInFile ->
@@ -647,6 +659,8 @@ instance Disp Ass1Val where
       dispRecLam req symbF a1tyvRec symbX a1tyv1 a1v2
     A1ValApp a1v1 a1v2 ->
       dispApp req a1v1 a1v2
+    A1ValSequential a1v1 a1v2 ->
+      dispSequential req a1v1 a1v2
     A1ValIfThenElse a1v0 a1v1 a1v2 ->
       dispIfThenElse req a1v0 a1v1 a1v2
 

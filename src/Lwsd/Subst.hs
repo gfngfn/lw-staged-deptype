@@ -97,6 +97,8 @@ instance HasVar Ass0Expr where
       unionPairs [frees a0e1, frees a0e2]
     A0LetIn (y, a0tye1) a0e1 a0e2 ->
       frees (A0App (A0Lam Nothing (y, a0tye1) a0e2) a0e1)
+    A0Sequential a0e1 a0e2 ->
+      unionPairs [frees a0e1, frees a0e2]
     A0IfThenElse a0e0 a0e1 a0e2 ->
       unionPairs [frees a0e0, frees a0e1, frees a0e2]
     A0Bracket a1e1 ->
@@ -132,6 +134,8 @@ instance HasVar Ass0Expr where
         case s of
           Subst0 x _ -> if y == x then a0e2 else go a0e2
           Subst1 _ _ -> go a0e2
+    A0Sequential a0e1 a0e2 ->
+      A0Sequential (go a0e1) (go a0e2)
     A0IfThenElse a0e0 a0e1 a0e2 ->
       A0IfThenElse (go a0e0) (go a0e1) (go a0e2)
     A0Bracket a1e1 ->
@@ -196,6 +200,8 @@ instance HasVar Ass1Expr where
        in (var0set, var1set)
     A1App a1e1 a1e2 ->
       unionPairs [frees a1e1, frees a1e2]
+    A1Sequential a1e1 a1e2 ->
+      unionPairs [frees a1e1, frees a1e2]
     A1IfThenElse a1e0 a1e1 a1e2 ->
       unionPairs [frees a1e0, frees a1e1, frees a1e2]
     A1Escape a0e1 ->
@@ -222,6 +228,8 @@ instance HasVar Ass1Expr where
           Subst1 _ _ -> go a1e2
     A1App a1e1 a1e2 ->
       A1App (go a1e1) (go a1e2)
+    A1Sequential a1e1 a1e2 ->
+      A1Sequential (go a1e1) (go a1e2)
     A1IfThenElse a1e0 a1e1 a1e2 ->
       A1IfThenElse (go a1e0) (go a1e1) (go a1e2)
     A1Escape a0e1 ->

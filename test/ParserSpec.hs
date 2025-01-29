@@ -142,6 +142,12 @@ spec = do
     it "parses optional applications (3)" $
       parseExpr "x {y + 1} {z}"
         `shouldBe` pure (appOptGiven (appOptGiven (var "x") (add (var "y") (litInt 1))) (var "z"))
+    it "parses sequentials (1)" $
+      parseExpr "x += 1; f x"
+        `shouldBe` pure (expr (Sequential (app (app (var "+=") (var "x")) (litInt 1)) (app (var "f") (var "x"))))
+    it "parses sequentials (2)" $
+      parseExpr "x; y; z"
+        `shouldBe` pure (expr (Sequential (var "x") (expr (Sequential (var "y") (var "z")))))
   describe "Parser.parseTypeExpr" $ do
     it "parses dependent function types (1)" $
       parseTypeExpr "(n : Int) -> Bool"

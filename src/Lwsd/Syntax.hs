@@ -196,6 +196,7 @@ data Ass0Expr
   | A0Lam (Maybe (AssVar, StrictAss0TypeExpr)) (AssVar, StrictAss0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0LetIn (AssVar, StrictAss0TypeExpr) Ass0Expr Ass0Expr
+  | A0Sequential Ass0Expr Ass0Expr
   | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
   | A0TyEqAssert Span Type1Equation
@@ -207,6 +208,7 @@ data Ass1Expr
   | A1BuiltInName Ass1BuiltInName
   | A1Lam (Maybe (AssVar, Ass1TypeExpr)) (AssVar, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
+  | A1Sequential Ass1Expr Ass1Expr
   | A1IfThenElse Ass1Expr Ass1Expr Ass1Expr
   | A1Escape Ass0Expr
   deriving stock (Eq, Show)
@@ -314,6 +316,7 @@ data Ass1Val
   | A1ValVar Symbol
   | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) Ass1Val
   | A1ValApp Ass1Val Ass1Val
+  | A1ValSequential Ass1Val Ass1Val
   | A1ValIfThenElse Ass1Val Ass1Val Ass1Val
   deriving stock (Eq, Show)
 
