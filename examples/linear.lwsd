@@ -14,17 +14,14 @@
         (~gen_model Mnist_helper.train_images)
         Mnist_helper.train_labels
     in
-    let u = Tensor.backward loss in
-    let u =
-      Tensor.no_grad (fun(u : Unit) ->
-        let open Tensor in
-        let u = ~gen_sub_update ws (~gen_mult (~gen_grad ws) learning_rate) in
-        let u = ~gen_sub_update bs (~gen_mult (~gen_grad bs) learning_rate) in
-        ()
-      )
-    in
-    let u = ~Tensor.gen_zero_grad ws in
-    let u = ~Tensor.gen_zero_grad bs in
+    Tensor.backward loss;
+    Tensor.no_grad (fun(u : Unit) ->
+      let open Tensor in
+      ~gen_sub_update ws (~gen_mult (~gen_grad ws) learning_rate);
+      ~gen_sub_update bs (~gen_mult (~gen_grad bs) learning_rate)
+    );
+    ~Tensor.gen_zero_grad ws;
+    ~Tensor.gen_zero_grad bs;
     let got = ~gen_model Mnist_helper.test_images in
     let estimated = ~(Tensor.gen_argmax 1) got in
     let test_accuracy =
