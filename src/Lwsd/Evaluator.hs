@@ -312,6 +312,10 @@ evalExpr0 env = \case
     reduceBeta a0v1 a0v2
   A0LetIn (x, a0tye1) a0e1 a0e2 ->
     evalExpr0 env (A0App (A0Lam Nothing (x, a0tye1) a0e2) a0e1)
+  A0Sequential a0e1 a0e2 -> do
+    a0v1 <- evalExpr0 env a0e1
+    () <- validateUnitLiteral a0v1
+    evalExpr0 env a0e2
   A0IfThenElse a0e0 a0e1 a0e2 -> do
     a0v0 <- evalExpr0 env a0e0
     case a0v0 of
@@ -360,6 +364,10 @@ evalExpr1 env = \case
     a1v1 <- evalExpr1 env a1e1
     a1v2 <- evalExpr1 env a1e2
     pure $ A1ValApp a1v1 a1v2
+  A1Sequential a1e1 a1e2 -> do
+    a1v1 <- evalExpr1 env a1e1
+    a1v2 <- evalExpr1 env a1e2
+    pure $ A1ValSequential a1v1 a1v2
   A1IfThenElse a1e0 a1e1 a1e2 -> do
     a1v0 <- evalExpr1 env a1e0
     a1v1 <- evalExpr1 env a1e1
@@ -451,6 +459,8 @@ unliftVal = \case
     A0Lam (Just (symbolToVar symbF, unliftTypeVal a1tyvRec)) (symbolToVar symbX, unliftTypeVal a1tyv1) (unliftVal a1v2)
   A1ValApp a1v1 a1v2 ->
     A0App (unliftVal a1v1) (unliftVal a1v2)
+  A1ValSequential a1v1 a1v2 ->
+    A0Sequential (unliftVal a1v1) (unliftVal a1v2)
   A1ValIfThenElse a1v0 a1v1 a1v2 ->
     A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
 

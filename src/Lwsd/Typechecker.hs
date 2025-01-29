@@ -652,6 +652,17 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
           Just (ModuleEntry sigr) -> do
             let tyEnv' = TypeEnv.appendSigRecord tyEnv sigr
             typecheckExpr0 trav tyEnv' appCtx e
+      Sequential e1 e2 -> do
+        (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
+        a0tye1 <- validateEmptyRetAppContext "stage-0, Sequential" result1
+        case a0tye1 of
+          A0TyPrim A0TyUnit -> do
+            (result2, a0e2) <- typecheckExpr0 trav tyEnv appCtx e2
+            pure (result2, A0Sequential a0e1 a0e2)
+          _ -> do
+            let Expr loc1 _ = e1
+            spanInFile1 <- askSpanInFile loc1
+            typeError trav $ NotAUnitTypeForStage0 spanInFile1 a0tye1
       IfThenElse e0 e1 e2 -> do
         (result0, a0e0) <- typecheckExpr0 trav tyEnv [] e0
         a0tye0 <- validateEmptyRetAppContext "stage-0, IfThenElse, condition" result0
@@ -823,6 +834,17 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
         Just (ModuleEntry sigr) -> do
           let tyEnv' = TypeEnv.appendSigRecord tyEnv sigr
           typecheckExpr1 trav tyEnv' appCtx e
+    Sequential e1 e2 -> do
+      (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
+      a1tye1 <- validateEmptyRetAppContext "stage-1, Sequential" result1
+      case a1tye1 of
+        A1TyPrim A1TyUnit -> do
+          (result2, a1e2) <- typecheckExpr1 trav tyEnv appCtx e2
+          pure (result2, A1Sequential a1e1 a1e2)
+        _ -> do
+          let Expr loc1 _ = e1
+          spanInFile1 <- askSpanInFile loc1
+          typeError trav $ NotAUnitTypeForStage1 spanInFile1 a1tye1
     IfThenElse e0 e1 e2 -> do
       (result0, a1e0) <- typecheckExpr1 trav tyEnv [] e0
       a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse, condition" result0
