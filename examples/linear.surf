@@ -16,8 +16,8 @@ List.iter (fun(i : Int) ->
   Tensor.backward loss;
   Tensor.no_grad (fun(u : Unit) ->
     let open Tensor in
-    ws -= mult (grad ws) learning_rate;
-    bs -= mult (grad bs) learning_rate
+    ws -= grad ws * learning_rate;
+    bs -= grad bs * learning_rate
   );
   Tensor.zero_grad ws;
   Tensor.zero_grad bs;

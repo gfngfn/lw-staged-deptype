@@ -248,11 +248,11 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
         extractConstraintsFromExpr (Map.insert x (EntryLocallyBound bt bity1) btenv) e2
       let e' = Expr (bt, ann) (LetIn x e1' e2')
       pure (e', bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
-    LetOpenIn m e -> do
-      (e', bity, constraints) <- do
+    LetOpenIn m e1 -> do
+      (e1', bity1@(BIType bt1 _), constraints) <- do
         btenv' <- openModule m btenv
-        extractConstraintsFromExpr btenv' e
-      pure (Expr (bt, ann) (LetOpenIn m e'), bity, constraints)
+        extractConstraintsFromExpr btenv' e1
+      pure (Expr (bt, ann) (LetOpenIn m e1'), bity1, constraints ++ [CEqual ann bt bt1])
     Sequential e1 e2 -> do
       -- Not confident. TODO: check the validity of the following
       (e1', bity1@(BIType bt1 bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
@@ -375,7 +375,9 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
         case (tyName, args) of
           ("Nat", []) -> pure ([], [], [CEqual ann bt (BTConst BT0)])
           ("Int", []) -> pure ([], [], [])
+          ("Float", []) -> pure ([], [], [])
           ("Bool", []) -> pure ([], [], [])
+          ("Unit", []) -> pure ([], [], [])
           ("List", [TypeArg tye]) -> do
             (tyeElem, bity@(BIType btElem _), cs) <- extractConstraintsFromTypeExpr btenv tye
             pure ([TypeArg tyeElem], [bity], cs ++ [CLeq ann bt btElem])
