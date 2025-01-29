@@ -260,7 +260,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       case bityMain1 of
         BITyBase [] -> do
           let e' = Expr (bt, ann) (Sequential e1' e2')
-          pure (e', bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
+          pure (e', bity2, constraints1 ++ constraints2 ++ [CEqual ann bt bt1, CLeq ann bt bt2])
         _ -> do
           let Expr (_, ann1) _ = e1
           spanInFile1 <- askSpanInFile ann1
