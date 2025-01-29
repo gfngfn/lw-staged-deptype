@@ -22,6 +22,7 @@ val ~gen_broadcasted : {shape : List Nat} -> (added : List Nat) -> &(Tensor %sha
 
 module Tensor = struct
   val ~gen_zeros : (shape : List Nat) -> &(Tensor %shape) external "tensor__gen_zeros" "zeros"
+  val ~gen_add : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Tensor %shape) external "tensor__gen_add" "+"
   val ~gen_mult : {shape : List Nat} -> &(Tensor %shape -> Tensor %([] as List Nat) -> Tensor %shape) external "tensor__gen_mult" "*"
   val ~gen_grad : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape) external "tensor__gen_grad" "grad"
   val ~gen_zero_grad : {shape : List Nat} -> &(Tensor %shape -> Unit) external "tensor__gen_zero_grad" "zero_grad"
@@ -34,7 +35,6 @@ module Tensor = struct
   val backward : Tensor %([] as List Nat) -> Unit external "tensor__backward" "backward"
   val no_grad : (Unit -> Unit) -> Unit external "tensor__no_grad" "no_grad"
   val float_value : Tensor %([] as List Nat) -> Float external "tensor__float_value" "float_value"
-  val ~gen_tadd : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Tensor %shape) external "gen_tadd" "tadd"
 end
 
 module Mnist_helper = struct

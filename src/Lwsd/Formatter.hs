@@ -301,7 +301,6 @@ instance Disp BuiltIn where
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
     BIGenMmult x1 x2 x3 -> "GEN_MMULT(" <> disps [x1, x2, x3] <> ")"
     BIGenMconcatVert x1 x2 x3 -> "GEN_MCONCAT_VERT(" <> disps [x1, x2, x3] <> ")"
-    BIGenTadd x -> "GEN_TADD(" <> disp x <> ")"
     BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
     BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
     BIMtranspose m n x1 -> "MTRANSPOSE@{" <> disps [m, n] <> "}(" <> disp x1 <> ")"
@@ -312,6 +311,7 @@ instance Disp BuiltIn where
     BIListIter x1 x2 -> "LIST.ITER(" <> disps [x1, x2] <> ")"
     BIGenBroadcasted x1 x2 -> "GEN_BROADCASTED(" <> disps [x1, x2] <> ")"
     BITensorGenZeros x1 -> "TENSOR.GEN_ZEROS(" <> disp x1 <> ")"
+    BITensorGenAdd x -> "TENSOR.GEN_ADD(" <> disp x <> ")"
     BITensorGenMult x1 -> "TENSOR.GEN_MULT(" <> disp x1 <> ")"
     BITensorGenGrad x1 -> "TENSOR.GEN_GRAD(" <> disp x1 <> ")"
     BITensorGenZeroGrad x1 -> "TENSOR.GEN_ZERO_GRAD(" <> disp x1 <> ")"
@@ -319,7 +319,7 @@ instance Disp BuiltIn where
     BITensorGenArgmax x1 x2 -> "TENSOR.GEN_ARGMAX(" <> disps [x1, x2] <> ")"
     BITensorGenCrossEntropyForLogits x1 x2 -> "TENSOR.GEN_CROSS_ENTROPY_FOR_LOGITS(" <> disps [x1, x2] <> ")"
     BITensorGenCountEqual x1 -> "TENSOR.GEN_COUNT_EQUAL(" <> disp x1 <> ")"
-    BITadd ns x1 x2 -> "TADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
+    BITensorAdd ns x1 x2 -> "TENSOR.ADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
 
 instance Disp Ass0BuiltInName where
   dispGen _ a0builtInName = "<" <> disp (show a0builtInName) <> ">"
@@ -649,7 +649,7 @@ instance Disp Ass1ValConst where
     A1ValConstTensorArgmax ns1 n2 -> "Tensor.argmax@{" <> dispListLiteral ns1 <> "," <+> disp n2 <> "}"
     A1ValConstTensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits@{" <> disps [n1, n2] <> "}"
     A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
-    A1ValConstTadd ns -> "Tensor.tadd@{" <> dispListLiteral ns <> "}"
+    A1ValConstTensorAdd ns -> "Tensor.add@{" <> dispListLiteral ns <> "}"
     A1ValConstBuiltInName a1builtInName -> disp a1builtInName
 
 instance Disp Ass1Val where

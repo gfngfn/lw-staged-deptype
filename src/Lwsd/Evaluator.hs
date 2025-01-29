@@ -194,10 +194,10 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         n3 <- findInt0 env x3
         pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
-      BIGenTadd x1 -> do
+      BITensorGenAdd x1 -> do
         a0vs <- findList0 env x1
         ns <- mapM validateIntLiteral a0vs
-        pure $ A0ValBracket (A1ValConst (A1ValConstTadd ns))
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorAdd ns))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
@@ -279,7 +279,7 @@ evalExpr0 env = \case
         a0vs <- findList0 env x1
         ns <- mapM validateIntLiteral a0vs
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorCountEqual ns))
-      BITadd ns x1 x2 ->
+      BITensorAdd ns x1 x2 ->
         case ns of
           [n] -> do
             v1 <- findVec0 env x1
@@ -448,7 +448,7 @@ unliftVal = \case
       A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
-      A1ValConstTadd ns -> BuiltIn.ass0exprTadd ns
+      A1ValConstTensorAdd ns -> BuiltIn.ass0exprTensorAdd ns
       A1ValConstBuiltInName a1builtInName -> A0BuiltInName (unliftBuiltInName a1builtInName)
       _ -> error $ "TODO: unliftVal, " ++ show c
   A1ValVar symbX ->

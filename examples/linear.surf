@@ -4,8 +4,8 @@ let bs = Tensor.zeros (let open Mnist_helper in [label_count]) in
 let model =
   fun{n : Nat} -> fun(xs : Tensor [n, Mnist_helper.image_dim]) ->
     let open Tensor in
-    tadd (mm xs ws) (broadcasted [n] bs)
-    (* TODO: broadcast: `tadd (mm xs ws) bs` *)
+    mm xs ws + broadcasted [n] bs
+    (* TODO: broadcast: `mm xs ws + bs` *)
 in
 List.iter (fun(i : Int) ->
   let loss =
