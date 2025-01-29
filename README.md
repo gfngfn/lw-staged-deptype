@@ -16,8 +16,8 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Prove Soundness of assertion insertion
 - [x] Prove Preservation
 - [x] Prove Progress
-- [ ] A surface language
-- [ ] Infer some obvious stage-0 annotations
+- [x] A surface language
+- [x] Infer some obvious stage-0 annotations
 
 
 ## TODO (implementation)
@@ -26,7 +26,7 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Command-line options
 - [x] Handle code positions
 - [x] Add `Mat m n` and operations on it
-- [ ] Add realistic examples
+- [x] Add realistic examples
 
 
 ## Memo
