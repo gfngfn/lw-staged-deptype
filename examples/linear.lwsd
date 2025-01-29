@@ -1,4 +1,3 @@
-
 &(let learning_rate = Tensor.f 1.0 in
   let ws = ~(Tensor.gen_zeros (let open Mnist_helper in [image_dim, label_count])) in
   let bs = ~(Tensor.gen_zeros (let open Mnist_helper in [label_count])) in
@@ -9,13 +8,16 @@
       (* TODO: broadcast: `~gen_tadd (~gen_mm xs ws) bs` *)
     )
   in
-&(
-  List.iter (fun(i : Int) ->
-    let loss = ~Tensor.gen_cross_entropy_for_logits (~gen_model Mnist_helper.train_images) Mnist_helper.train_labels in
+&(List.iter (fun(i : Int) ->
+    let loss =
+      ~Tensor.gen_cross_entropy_for_logits
+        (~gen_model Mnist_helper.train_images)
+        Mnist_helper.train_labels
+    in
     let u = Tensor.backward loss in
     let u =
-      let open Tensor in
-      no_grad (fun(u : Unit) ->
+      Tensor.no_grad (fun(u : Unit) ->
+        let open Tensor in
         let u = ~gen_sub_update ws (~gen_mult (~gen_grad ws) learning_rate) in
         let u = ~gen_sub_update bs (~gen_mult (~gen_grad bs) learning_rate) in
         ()

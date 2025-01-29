@@ -11,16 +11,7 @@ module Lwsd.BuiltIn
     ass0exprMmult,
     ass0exprMconcatVert,
     ass0exprTadd,
-    ass0valAdd,
-    ass0valSub,
-    ass0valMult,
-    ass0valLeq,
-    ass0valGenVadd,
-    ass0valGenVconcat,
-    ass0valGenMtranspose,
-    ass0valGenMmult,
-    ass0valGenMconcatVert,
-    ass0valGenTadd,
+    getAss0Val,
     validateExternalName0,
     validateExternalName1,
   )
@@ -38,11 +29,17 @@ tyValInt = A0TyValPrim A0TyValInt
 tyValNat :: Ass0TypeVal
 tyValNat = A0TyValPrim A0TyValNat
 
+tyValList :: Ass0TypeVal -> Ass0TypeVal
+tyValList = A0TyValList
+
 styInt :: StrictAss0TypeExpr
 styInt = SA0TyPrim A0TyInt
 
 styNat :: StrictAss0TypeExpr
 styNat = SA0TyPrim A0TyNat
+
+styUnit :: StrictAss0TypeExpr
+styUnit = SA0TyPrim A0TyUnit
 
 sty0Vec :: Int -> StrictAss0TypeExpr
 sty0Vec = SA0TyPrim . a0TyVec
@@ -53,6 +50,9 @@ sty0Mat m n = SA0TyPrim (a0TyMat m n)
 sty0Tensor :: [Int] -> StrictAss0TypeExpr
 sty0Tensor = SA0TyPrim . A0TyTensor
 
+styList :: StrictAss0TypeExpr -> StrictAss0TypeExpr
+styList = SA0TyList
+
 -- Makes a closure equipped with the empty runtime environment.
 clo :: AssVar -> Ass0TypeVal -> Ass0Expr -> Ass0Val
 clo x a0tyv1 a0tye2 =
@@ -62,9 +62,145 @@ lam :: AssVar -> StrictAss0TypeExpr -> Ass0Expr -> Ass0Expr
 lam x sa0tye1 =
   A0Lam Nothing (x, sa0tye1)
 
+ass0valBinaryInt :: (AssVar -> AssVar -> BuiltIn) -> Ass0Val
+ass0valBinaryInt f =
+  clo x1 tyValInt $
+    lam x2 styInt $
+      A0AppBuiltIn (f x1 x2)
+  where
+    x1 = AssVar "x1"
+    x2 = AssVar "x2"
+
+getAss0Val :: Ass0BuiltInName -> Ass0Val
+getAss0Val = \case
+  A0BINameAdd -> ass0valBinaryInt BIAdd
+  A0BINameSub -> ass0valBinaryInt BISub
+  A0BINameMult -> ass0valBinaryInt BIMult
+  A0BINameLeq -> ass0valBinaryInt BILeq
+  A0BINameGenVadd ->
+    clo x1 tyValNat $
+      A0AppBuiltIn (BIGenVadd x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameGenVconcat ->
+    clo x1 tyValNat $
+      lam x2 styNat $
+        A0AppBuiltIn (BIGenVconcat x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameGenMtranspose ->
+    clo x1 tyValNat $
+      lam x2 styNat $
+        A0AppBuiltIn (BIGenMtranspose x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameGenMmult ->
+    clo x1 tyValNat $
+      lam x2 styNat $
+        lam x3 styNat $
+          A0AppBuiltIn (BIGenMmult x1 x2 x3)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+      x3 = AssVar "x3"
+  A0BINameGenMconcatVert ->
+    clo x1 tyValNat $
+      lam x2 styNat $
+        lam x3 styNat $
+          A0AppBuiltIn (BIGenMconcatVert x1 x2 x3)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+      x3 = AssVar "x3"
+  A0BINameDropAt ->
+    clo x1 tyValNat $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIDropAt x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameListAppend ->
+    -- TODO: generalize the type of `List.append`
+    clo x1 (tyValList tyValNat) $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIListAppend x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameListIter ->
+    -- TODO: generalize the type of `List.append`
+    clo x1 (A0TyValArrow (Nothing, tyValNat) styUnit) $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIListIter x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameGenBroadcasted ->
+    clo x1 (tyValList tyValNat) $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIGenBroadcasted x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameTensorGenZeros ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenZeros x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenMult ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenMult x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenGrad ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenGrad x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenZeroGrad ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenZeroGrad x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenSubUpdate ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenSubUpdate x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameTensorGenArgmax ->
+    clo x1 (tyValList tyValNat) $
+      lam x2 styNat $
+        A0AppBuiltIn (BITensorGenArgmax x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameTensorGenCrossEntropyForLogits ->
+    clo x1 tyValNat $
+      lam x2 styNat $
+        A0AppBuiltIn (BITensorGenCrossEntropyForLogits x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameTensorGenCountEqual ->
+    clo x1 (tyValList tyValNat) $
+      A0AppBuiltIn (BITensorGenCountEqual x1)
+    where
+      x1 = AssVar "x1"
+  A0BINameGenTadd ->
+    clo x1 tyValNat $
+      A0AppBuiltIn (BIGenTadd x1)
+    where
+      x1 = AssVar "x1"
+  a0builtInName ->
+    error $ "TODO: getAss0Val, " ++ show a0builtInName
+
 ass0exprBinaryInt :: (AssVar -> AssVar -> BuiltIn) -> Ass0Expr
 ass0exprBinaryInt f =
-  lam x1 styInt $ lam x2 styInt $ A0AppBuiltIn (f x1 x2)
+  lam x1 styInt $
+    lam x2 styInt $
+      A0AppBuiltIn (f x1 x2)
   where
     x1 = AssVar "x1"
     x2 = AssVar "x2"
@@ -133,15 +269,6 @@ ass0exprMmult k m n =
     x1 = AssVar "mat1"
     x2 = AssVar "mat2"
 
-ass0valBinaryInt :: (AssVar -> AssVar -> BuiltIn) -> Ass0Val
-ass0valBinaryInt f =
-  clo x1 tyValInt $
-    lam x2 styInt $
-      A0AppBuiltIn (f x1 x2)
-  where
-    x1 = AssVar "x1"
-    x2 = AssVar "x2"
-
 ass0exprTadd :: [Int] -> Ass0Expr
 ass0exprTadd ns =
   lam x1 (sty0Tensor ns) $
@@ -150,66 +277,6 @@ ass0exprTadd ns =
   where
     x1 = AssVar "v1"
     x2 = AssVar "v2"
-
-ass0valAdd, ass0valSub, ass0valMult, ass0valLeq :: Ass0Val
-ass0valAdd = ass0valBinaryInt BIAdd
-ass0valSub = ass0valBinaryInt BISub
-ass0valMult = ass0valBinaryInt BIMult
-ass0valLeq = ass0valBinaryInt BILeq
-
-ass0valGenVadd :: Ass0Val
-ass0valGenVadd =
-  clo x1 tyValNat $
-    A0AppBuiltIn (BIGenVadd x1)
-  where
-    x1 = AssVar "x1"
-
-ass0valGenVconcat :: Ass0Val
-ass0valGenVconcat =
-  clo x1 tyValNat $
-    lam x2 styNat $
-      A0AppBuiltIn (BIGenVconcat x1 x2)
-  where
-    x1 = AssVar "x1"
-    x2 = AssVar "x2"
-
-ass0valGenMtranspose :: Ass0Val
-ass0valGenMtranspose =
-  clo x1 tyValNat $
-    lam x2 styNat $
-      A0AppBuiltIn (BIGenMtranspose x1 x2)
-  where
-    x1 = AssVar "x1"
-    x2 = AssVar "x2"
-
-ass0valGenMmult :: Ass0Val
-ass0valGenMmult =
-  clo x1 tyValNat $
-    lam x2 styNat $
-      lam x3 styNat $
-        A0AppBuiltIn (BIGenMmult x1 x2 x3)
-  where
-    x1 = AssVar "x1"
-    x2 = AssVar "x2"
-    x3 = AssVar "x3"
-
-ass0valGenMconcatVert :: Ass0Val
-ass0valGenMconcatVert =
-  clo x1 tyValNat $
-    lam x2 styNat $
-      lam x3 styNat $
-        A0AppBuiltIn (BIGenMconcatVert x1 x2 x3)
-  where
-    x1 = AssVar "x1"
-    x2 = AssVar "x2"
-    x3 = AssVar "x3"
-
-ass0valGenTadd :: Ass0Val
-ass0valGenTadd =
-  clo x1 tyValNat $
-    A0AppBuiltIn (BIGenTadd x1)
-  where
-    x1 = AssVar "x1"
 
 validateExternalName0 :: Text -> Maybe Ass0BuiltInName
 validateExternalName0 = \case
