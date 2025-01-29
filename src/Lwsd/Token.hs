@@ -8,10 +8,7 @@ import Control.Monad.Combinators
 import Data.Either.Extra
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text qualified as Text
 import GHC.Base
 import GHC.Generics
 import Text.Megaparsec qualified as Mp
@@ -94,18 +91,6 @@ lowerIdentOrKeyword = do
   pure $ case Map.lookup t keywordMap of
     Just tok -> tok
     Nothing -> TokLower t
-
-opRestCharSet :: Set Char
-opRestCharSet =
-  Set.fromList ['+', '-', '*', '/', '=', '<', '>']
-
-opRestChar :: Tokenizer Char
-opRestChar =
-  Mp.satisfy (`elem` opRestCharSet)
-
-operator :: Char -> Tokenizer Text
-operator firstChar =
-  Text.pack <$> ((:) <$> Mp.single firstChar <*> (Mp.many opRestChar <* Mp.notFollowedBy opRestChar))
 
 token :: Tokenizer Token
 token =

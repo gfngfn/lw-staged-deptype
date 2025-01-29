@@ -16,7 +16,7 @@ import Surface.Syntax
 import Surface.Token (Token (..))
 import Surface.Token qualified as Token
 import Util.ParserUtil
-import Util.TokenUtil
+import Util.TokenUtil (Located (..), Span, mergeSpan)
 import Prelude hiding (or)
 
 type P a = GenP Token a
@@ -53,6 +53,12 @@ boundIdent = lower `or` standaloneOp
 int :: P (Located Int)
 int = expectToken (^? #_TokInt)
 
+float :: P (Located Double)
+float = expectToken (^? #_TokFloat)
+
+list :: P a -> P (Located [a])
+list = genVec TokLeftSquare TokRightSquare TokComma
+
 vec :: P (Located [Int])
 vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 
@@ -63,29 +69,13 @@ operator :: P (Located Var)
 operator = tries [compOp, addOp] multOp
 
 multOp :: P (Located Var)
-multOp =
-  expectToken
-    ( \case
-        TokOpMult -> Just "*"
-        _ -> Nothing
-    )
+multOp = expectToken (^? #_TokOpMult)
 
 addOp :: P (Located Var)
-addOp =
-  expectToken
-    ( \case
-        TokOpAdd -> Just "+"
-        TokOpSub -> Just "-"
-        _ -> Nothing
-    )
+addOp = expectToken (^? #_TokOpAdd)
 
 compOp :: P (Located Var)
-compOp =
-  expectToken
-    ( \case
-        TokOpLeq -> Just "<="
-        _ -> Nothing
-    )
+compOp = expectToken (^? #_TokOpComp)
 
 makeBinOpApp :: Expr -> Located Var -> Expr -> Expr
 makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
@@ -106,15 +96,19 @@ exprAtom, expr :: P Expr
     atom =
       tries
         [ located (Literal . LitInt) <$> int,
+          located (Literal . LitFloat) <$> float,
+          located (Literal . LitList) <$> list letin,
           located (Literal . LitVec) <$> vec,
           located (Literal . LitMat) <$> mat,
           located Var <$> longOrShortLower,
-          located (\x -> Var ([], x)) <$> standaloneOp
+          located (\x -> Var ([], x)) <$> standaloneOp,
+          makeLitUnit <$> token TokLeftParen <*> token TokRightParen
         ]
         (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
+        makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
 
     app :: P Expr
     app =
@@ -189,11 +183,21 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      (makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
-        `or` lam
+      tries
+        [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
+          makeLetOpenIn <$> token TokLet <*> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin),
+          makeSequential <$> (comp <* token TokSemicolon) <*> letin
+        ]
+        lam
       where
         makeLetIn locFirst x e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetIn x e1 e2)
+
+        makeLetOpenIn locFirst m e@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LetOpenIn m e)
+
+        makeSequential e1@(Expr locFirst _) e2@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (Sequential e1 e2)
 
 typeExpr :: P TypeExpr
 typeExpr = fun
@@ -256,7 +260,7 @@ parse p source = do
   runParser p locatedTokens
 
 parseExpr :: Text -> Either String Expr
-parseExpr = parse expr
+parseExpr = parse (expr <* eof)
 
 parseTypeExpr :: Text -> Either String TypeExpr
-parseTypeExpr = parse typeExpr
+parseTypeExpr = parse (typeExpr <* eof)

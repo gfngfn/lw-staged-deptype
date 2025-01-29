@@ -24,6 +24,8 @@ type Var = Text
 
 data Literal e
   = LitInt Int
+  | LitFloat Double
+  | LitUnit
   | LitList [e]
   | LitVec [Int]
   | LitMat [[Int]]
@@ -38,6 +40,8 @@ data ExprMainF ann
   | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)
   | LetIn Var (ExprF ann) (ExprF ann)
+  | LetOpenIn Var (ExprF ann)
+  | Sequential (ExprF ann) (ExprF ann)
   | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)
   | As (ExprF ann) (TypeExprF ann)
   | LamOpt (Var, TypeExprF ann) (ExprF ann)
@@ -74,6 +78,8 @@ type ArgForType = ArgForTypeF Span
 mapMLiteral :: (Monad m) => (a -> m b) -> Literal a -> m (Literal b)
 mapMLiteral f = \case
   LitInt n -> pure $ LitInt n
+  LitFloat r -> pure $ LitFloat r
+  LitUnit -> pure LitUnit
   LitList es -> LitList <$> mapM f es
   LitVec ns -> pure $ LitVec ns
   LitMat nss -> pure $ LitMat nss

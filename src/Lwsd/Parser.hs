@@ -17,7 +17,7 @@ import Lwsd.SrcSyntax
 import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
 import Util.ParserUtil
-import Util.TokenUtil
+import Util.TokenUtil (Located (..), Span, mergeSpan)
 import Prelude hiding (or)
 
 type P a = GenP Token a
@@ -60,11 +60,11 @@ float = expectToken (^? #_TokFloat)
 string :: P (Located Text)
 string = expectToken (^? #_TokString)
 
-vec :: P (Located [Int])
-vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
-
 list :: P a -> P (Located [a])
 list = genVec TokLeftSquare TokRightSquare TokComma
+
+vec :: P (Located [Int])
+vec = genVec TokVecLeft TokVecRight TokSemicolon (noLoc int)
 
 mat :: P (Located [[Int]])
 mat = genMat TokMatLeft TokMatRight TokSemicolon TokComma (noLoc int)
@@ -153,6 +153,7 @@ exprAtom, expr :: P Expr
       (makeAs <$> app <*> (token TokAs *> typeExpr))
         `or` app
       where
+        makeAs :: Expr -> TypeExpr -> Expr
         makeAs e1@(Expr loc1 _) tye2@(TypeExpr loc2 _) =
           Expr (mergeSpan loc1 loc2) (As e1 tye2)
 

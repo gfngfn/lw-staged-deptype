@@ -330,6 +330,8 @@ instance Disp Ass1BuiltInName where
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
     Surface.LitInt n -> pretty n
+    Surface.LitFloat r -> pretty r
+    Surface.LitUnit -> "()"
     Surface.LitList es -> dispListLiteral es
     Surface.LitVec ns -> dispVectorLiteral ns
     Surface.LitMat nss -> dispMatrixLiteral nss
@@ -345,6 +347,8 @@ instance Disp Surface.ExprMain where
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
+    Surface.LetOpenIn m e -> dispLetOpenIn req m e
+    Surface.Sequential e1 e2 -> dispSequential req e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
     Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
@@ -806,6 +810,8 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
     Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
+    Surface.LetOpenIn m e -> dispLetOpenIn req m e
+    Surface.Sequential e1 e2 -> dispSequential req e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
     Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
