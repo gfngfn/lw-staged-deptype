@@ -59,7 +59,7 @@ makeBindingTimeEnvFromStub =
               bindingTimeEnv
     )
     ( \varMod (ModuleEntry sigr) bindingTimeEnv ->
-        -- Reuses the module name `varM` in the core language for the surface language.
+        -- Reuses the module name `varMod` in the core language for the surface language.
         Map.insert
           varMod
           (EntryModule (makeBindingTimeEnvFromStub sigr))
@@ -96,7 +96,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
           putStrLn "-------- type error of stub: --------"
           putRenderedLines tyErr
           failure
-        Right (tyEnvStub, sigr, abinds, stateAfterTraversingStub) -> do
+        Right ((tyEnvStub, sigr, abinds), stateAfterTraversingStub) -> do
           let initialBindingTimeEnv = makeBindingTimeEnvFromStub sigr
           source <- TextIO.readFile inputFilePath
           let sourceSpecOfInput =

@@ -7,6 +7,7 @@ module Lwsd.Typechecker
     typecheckBinds,
     TypecheckState (..),
     M,
+    run,
   )
 where
 
@@ -1164,3 +1165,6 @@ typecheckBinds trav tyEnv =
             typeError trav $ BindingOverwritten spanInFile m
     )
     (tyEnv, SigRecord.empty, [])
+
+run :: M trav a -> TypecheckState -> Either (TypeError, trav) (a, TypecheckState)
+run = runStateT
