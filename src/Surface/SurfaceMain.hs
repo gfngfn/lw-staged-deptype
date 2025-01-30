@@ -7,9 +7,9 @@ where
 import Control.Monad.Trans.Reader
 import Data.Map qualified as Map
 import Data.Text.IO qualified as TextIO
+import Lwsd.Entrypoint qualified
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
-import Lwsd.LibMain qualified as LwsdMain
 import Lwsd.Parser qualified as LwsdParser
 import Lwsd.Scope.SigRecord (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), ModuleEntry (..), SigRecord, ValEntry (..))
 import Lwsd.Scope.SigRecord qualified as SigRecord
@@ -72,13 +72,13 @@ handle :: Argument -> IO Bool
 handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWidth, compileTimeOnly, fallBackToBindingTime0} = do
   putStrLn "Lightweight Dependent Types via Staging (Surface Language)"
   let lwArg =
-        LwsdMain.Argument
-          { LwsdMain.inputFilePath = inputFilePath,
-            LwsdMain.stubFilePath = stubFilePath,
-            LwsdMain.optimize = optimize,
-            LwsdMain.distributeIf = distributeIf,
-            LwsdMain.displayWidth = displayWidth,
-            LwsdMain.compileTimeOnly = compileTimeOnly
+        Lwsd.Entrypoint.Argument
+          { Lwsd.Entrypoint.inputFilePath = inputFilePath,
+            Lwsd.Entrypoint.stubFilePath = stubFilePath,
+            Lwsd.Entrypoint.optimize = optimize,
+            Lwsd.Entrypoint.distributeIf = distributeIf,
+            Lwsd.Entrypoint.displayWidth = displayWidth,
+            Lwsd.Entrypoint.compileTimeOnly = compileTimeOnly
           }
   stub <- TextIO.readFile stubFilePath
   case LwsdParser.parseBinds stub of
@@ -92,7 +92,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
               { LocationInFile.source = stub,
                 LocationInFile.inputFilePath = stubFilePath
               }
-      r <- runReaderT (LwsdMain.typecheckStub sourceSpecOfStub declsInStub) lwArg
+      r <- runReaderT (Lwsd.Entrypoint.typecheckStub sourceSpecOfStub declsInStub) lwArg
       case r of
         Left tyErr -> do
           putSectionLine "type error of stub:"
@@ -124,7 +124,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
                   putRenderedLines bce
                   putSectionLine "result of staging:"
                   putRenderedLinesAtStage0 lwe
-                  runReaderT (LwsdMain.typecheckAndEvalInput stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds lwe) lwArg
+                  runReaderT (Lwsd.Entrypoint.typecheckAndEvalInput stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds lwe) lwArg
   where
     putSectionLine :: String -> IO ()
     putSectionLine s = putStrLn ("-------- " ++ s ++ " --------")

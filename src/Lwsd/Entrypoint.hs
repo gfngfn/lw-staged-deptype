@@ -1,4 +1,4 @@
-module Lwsd.LibMain
+module Lwsd.Entrypoint
   ( Argument (..),
     typecheckStub,
     typecheckAndEvalInput,

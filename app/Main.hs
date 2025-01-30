@@ -1,6 +1,6 @@
 module Main where
 
-import Lwsd.LibMain qualified as LwsdMain
+import Lwsd.Entrypoint qualified
 import Options.Applicative
 import Surface.SurfaceMain qualified as SurfaceMain
 import System.Exit
@@ -16,7 +16,7 @@ helpDistributeIf = "Distributes if-expressions under list literals for tensor sh
 helpCompileTimeOnly = "Stops after the compile-time evaluation"
 
 data Argument
-  = LwsdArgument LwsdMain.Argument
+  = LwsdArgument Lwsd.Entrypoint.Argument
   | SurfaceArgument SurfaceMain.Argument
 
 argumentParser :: Parser Argument
@@ -26,9 +26,9 @@ argumentParser =
         <> command "surface" (info (SurfaceArgument <$> surfaceArgumentParser <**> helper) (progDesc "Handles non-staged programs"))
     )
 
-lwsdArgumentParser :: Parser LwsdMain.Argument
+lwsdArgumentParser :: Parser Lwsd.Entrypoint.Argument
 lwsdArgumentParser =
-  LwsdMain.Argument
+  Lwsd.Entrypoint.Argument
     <$> strArgument (metavar "INPUT-FILE-PATH")
     <*> option auto (short 's' <> long "stub" <> value "stub.lwsdi" <> help helpStub)
     <*> switch (short 'O' <> long "optimize" <> help helpOptimize)
@@ -52,7 +52,7 @@ main = do
   arg <- execParser (info (argumentParser <**> helper) briefDesc)
   wasSuccess <-
     case arg of
-      LwsdArgument lwsdArg -> LwsdMain.handle lwsdArg
+      LwsdArgument lwsdArg -> Lwsd.Entrypoint.handle lwsdArg
       SurfaceArgument surfaceArg -> SurfaceMain.handle surfaceArg
   if wasSuccess
     then exitSuccess

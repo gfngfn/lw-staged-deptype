@@ -62,7 +62,7 @@ library
       Lwsd.BuiltIn,
       Lwsd.Evaluator,
       Lwsd.Formatter,
-      Lwsd.LibMain,
+      Lwsd.Entrypoint,
       Lwsd.Parser,
       Lwsd.Scope.TypeEnv,
       Lwsd.Scope.SigRecord,
