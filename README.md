@@ -18,6 +18,7 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Prove Progress
 - [x] A surface language
 - [x] Infer some obvious stage-0 annotations
+- [ ] Prove the validity of the binding-time analysis in some sense
 
 
 ## TODO (implementation)
@@ -26,7 +27,11 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Command-line options
 - [x] Handle code positions
 - [x] Add `Mat m n` and operations on it
-- [x] Add realistic examples
+- [x] Add realistic examples (specifically, ones using PyTorch or ocaml-torch)
+- [ ] Full-fledged refinement types `( x : τ | φ )`
+  * This is beneficial for handling *broadcasting* of tensors in PyTorch, for example
+- [ ] Support binding of type names like `type Nat = ( n : Int | n >= 0 )`
+- [ ] Transpilation to Python or OCaml
 
 
 ## Memo
