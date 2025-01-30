@@ -2,7 +2,7 @@ module Main where
 
 import Lwsd.Entrypoint qualified
 import Options.Applicative
-import Surface.SurfaceMain qualified as SurfaceMain
+import Surface.Entrypoint qualified
 import System.Exit
 
 defaultDisplayWidth :: Int
@@ -17,7 +17,7 @@ helpCompileTimeOnly = "Stops after the compile-time evaluation"
 
 data Argument
   = LwsdArgument Lwsd.Entrypoint.Argument
-  | SurfaceArgument SurfaceMain.Argument
+  | SurfaceArgument Surface.Entrypoint.Argument
 
 argumentParser :: Parser Argument
 argumentParser =
@@ -36,9 +36,9 @@ lwsdArgumentParser =
     <*> option auto (short 'w' <> long "display-width" <> value defaultDisplayWidth <> help helpDisplayWidth)
     <*> switch (short 'c' <> long "compile-time-only" <> help helpCompileTimeOnly)
 
-surfaceArgumentParser :: Parser SurfaceMain.Argument
+surfaceArgumentParser :: Parser Surface.Entrypoint.Argument
 surfaceArgumentParser =
-  SurfaceMain.Argument
+  Surface.Entrypoint.Argument
     <$> strArgument (metavar "INPUT-FILE-PATH")
     <*> option auto (short 's' <> long "stub" <> value "stub.lwsdi" <> help helpStub)
     <*> switch (short 'O' <> long "optimize" <> help helpOptimize)
@@ -53,7 +53,7 @@ main = do
   wasSuccess <-
     case arg of
       LwsdArgument lwsdArg -> Lwsd.Entrypoint.handle lwsdArg
-      SurfaceArgument surfaceArg -> SurfaceMain.handle surfaceArg
+      SurfaceArgument surfaceArg -> Surface.Entrypoint.handle surfaceArg
   if wasSuccess
     then exitSuccess
     else exitFailure

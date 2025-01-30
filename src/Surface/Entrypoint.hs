@@ -1,4 +1,4 @@
-module Surface.SurfaceMain
+module Surface.Entrypoint
   ( Argument (..),
     handle,
   )
