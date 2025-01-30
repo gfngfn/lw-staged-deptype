@@ -83,7 +83,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
   stub <- TextIO.readFile stubFilePath
   case LwsdParser.parseBinds stub of
     Left err -> do
-      putStrLn "-------- parse error of stub: --------"
+      putSectionLine "parse error of stub:"
       putStrLn err
       failure
     Right declsInStub -> do
@@ -95,7 +95,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
       r <- runReaderT (LwsdMain.typecheckStub sourceSpecOfStub declsInStub) lwArg
       case r of
         Left tyErr -> do
-          putStrLn "-------- type error of stub: --------"
+          putSectionLine "type error of stub:"
           putRenderedLines tyErr
           failure
         Right ((tyEnvStub, sigr, abinds), stateAfterTraversingStub) -> do
@@ -108,24 +108,27 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
                   }
           case Parser.parseExpr source of
             Left err -> do
-              putStrLn "-------- parse error: --------"
+              putSectionLine "parse error:"
               putStrLn err
               failure
             Right e -> do
-              putStrLn "-------- parsed expression: --------"
+              putSectionLine "parsed expression:"
               putRenderedLines e
               case BindingTime.analyze sourceSpecOfInput fallBackToBindingTime0 initialBindingTimeEnv e of
                 Left analyErr -> do
-                  putStrLn "-------- binding-time analysis error: --------"
+                  putSectionLine "binding-time analysis error:"
                   putRenderedLines analyErr
                   failure
                 Right (bce, lwe) -> do
-                  putStrLn "-------- result of binding-time analysis: --------"
+                  putSectionLine "result of binding-time analysis:"
                   putRenderedLines bce
-                  putStrLn "-------- result of staging: --------"
+                  putSectionLine "result of staging:"
                   putRenderedLinesAtStage0 lwe
                   runReaderT (LwsdMain.typecheckAndEvalInput stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds lwe) lwArg
   where
+    putSectionLine :: String -> IO ()
+    putSectionLine s = putStrLn ("-------- " ++ s ++ " --------")
+
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth
 
