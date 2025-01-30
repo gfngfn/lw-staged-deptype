@@ -60,9 +60,9 @@ library
     -- Modules exported by the library.
     exposed-modules:
       Lwsd.BuiltIn,
+      Lwsd.Entrypoint,
       Lwsd.Evaluator,
       Lwsd.Formatter,
-      Lwsd.LibMain,
       Lwsd.Parser,
       Lwsd.Scope.TypeEnv,
       Lwsd.Scope.SigRecord,
@@ -78,9 +78,9 @@ library
       Surface.BindingTime.Constraint,
       Surface.BindingTime.Core,
       Surface.BindingTime.Stager,
+      Surface.Entrypoint,
       Surface.Parser,
       Surface.Syntax,
-      Surface.SurfaceMain,
       Surface.Token,
       Util.LocationInFile,
       Util.Matrix,
