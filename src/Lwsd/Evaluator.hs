@@ -2,6 +2,7 @@ module Lwsd.Evaluator
   ( evalExpr0,
     evalExpr1,
     initialState,
+    run,
     unliftVal,
     Bug (..),
     EvalError (..),
@@ -131,6 +132,21 @@ reduceBeta a0v1 a0v2 =
         a0e12
     _ ->
       bug $ NotAClosure a0v1
+
+validateIntLiteral :: Ass0Val -> M Int
+validateIntLiteral = \case
+  A0ValLiteral (ALitInt n) -> pure n
+  a0v -> bug $ NotAnInteger Nothing a0v
+
+validateUnitLiteral :: Ass0Val -> M ()
+validateUnitLiteral = \case
+  A0ValLiteral ALitUnit -> pure ()
+  a0v -> bug $ NotAUnit a0v
+
+validateListValue :: Ass0Val -> M [Ass0Val]
+validateListValue = \case
+  A0ValLiteral (ALitList a0vs) -> pure a0vs
+  a0v -> bug $ NotAList Nothing a0v
 
 -- The implementation of the built-in function `drop_at`.
 dropAt :: Int -> [a] -> [a]
@@ -400,21 +416,6 @@ evalTypeExpr0 env = \case
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1
 
-validateIntLiteral :: Ass0Val -> M Int
-validateIntLiteral = \case
-  A0ValLiteral (ALitInt n) -> pure n
-  a0v -> bug $ NotAnInteger Nothing a0v
-
-validateUnitLiteral :: Ass0Val -> M ()
-validateUnitLiteral = \case
-  A0ValLiteral ALitUnit -> pure ()
-  a0v -> bug $ NotAUnit a0v
-
-validateListValue :: Ass0Val -> M [Ass0Val]
-validateListValue = \case
-  A0ValLiteral (ALitList a0vs) -> pure a0vs
-  a0v -> bug $ NotAList Nothing a0v
-
 evalTypeExpr1 :: EvalEnv -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case
   A1TyPrim a1tyPrim ->
@@ -436,6 +437,9 @@ evalTypeExpr1 env = \case
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
     pure $ A1TyValArrow a1tyv1 a1tyv2
+
+run :: M a -> EvalState -> Either EvalError a
+run = evalStateT
 
 unliftVal :: Ass1Val -> Ass0Expr
 unliftVal = \case

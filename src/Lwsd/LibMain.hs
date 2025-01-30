@@ -8,7 +8,6 @@ where
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
-import Control.Monad.Trans.State
 import Data.Either.Extra (mapLeft)
 import Data.Map qualified as Map
 import Data.Text.IO qualified as TextIO
@@ -104,7 +103,7 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
       putRenderedLinesAtStage0 result
       putSectionLine "elaborated expression:"
       putRenderedLinesAtStage0 a0e
-      case evalStateT (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of
+      case Evaluator.run (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of
         Left err -> do
           putSectionLine "error during compile-time code generation:"
           putRenderedLines err
@@ -118,7 +117,7 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
               let a0eRuntime = Evaluator.unliftVal a1v
               if compileTimeOnly
                 then success
-                else case evalStateT (Evaluator.evalExpr0 initialEnv a0eRuntime) initialEvalState of
+                else case Evaluator.run (Evaluator.evalExpr0 initialEnv a0eRuntime) initialEvalState of
                   Left err -> do
                     putSectionLine "eval error:"
                     putRenderedLines err
