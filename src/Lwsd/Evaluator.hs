@@ -91,12 +91,23 @@ findSymbol env x = do
     Ass0ValEntry a0v -> bug $ FoundAss0Val x a0v
     SymbolEntry symb -> pure symb
 
+validateIntLiteral :: Maybe AssVar -> Ass0Val -> M Int
+validateIntLiteral info = \case
+  A0ValLiteral (ALitInt n) -> pure n
+  a0v -> bug $ NotAnInteger info a0v
+
+validateUnitLiteral :: Ass0Val -> M ()
+validateUnitLiteral = \case
+  A0ValLiteral ALitUnit -> pure ()
+  a0v -> bug $ NotAUnit a0v
+
+validateListValue :: Ass0Val -> M [Ass0Val]
+validateListValue = \case
+  A0ValLiteral (ALitList a0vs) -> pure a0vs
+  a0v -> bug $ NotAList Nothing a0v
+
 findInt0 :: EvalEnv -> AssVar -> M Int
-findInt0 env x = do
-  a0v <- findVal0 env x
-  case a0v of
-    A0ValLiteral (ALitInt n) -> pure n
-    _ -> bug $ NotAnInteger (Just x) a0v
+findInt0 env x = findVal0 env x >>= validateIntLiteral (Just x)
 
 findList0 :: EvalEnv -> AssVar -> M [Ass0Val]
 findList0 env x = do
@@ -104,6 +115,11 @@ findList0 env x = do
   case a0v of
     A0ValLiteral (ALitList a0es) -> pure a0es
     _ -> bug $ NotAList (Just x) a0v
+
+findIntList0 :: EvalEnv -> AssVar -> M [Int]
+findIntList0 env x = do
+  a0vs <- findList0 env x
+  mapM (validateIntLiteral Nothing) a0vs
 
 findVec0 :: EvalEnv -> AssVar -> M Vector
 findVec0 env x = do
@@ -132,21 +148,6 @@ reduceBeta a0v1 a0v2 =
         a0e12
     _ ->
       bug $ NotAClosure a0v1
-
-validateIntLiteral :: Ass0Val -> M Int
-validateIntLiteral = \case
-  A0ValLiteral (ALitInt n) -> pure n
-  a0v -> bug $ NotAnInteger Nothing a0v
-
-validateUnitLiteral :: Ass0Val -> M ()
-validateUnitLiteral = \case
-  A0ValLiteral ALitUnit -> pure ()
-  a0v -> bug $ NotAUnit a0v
-
-validateListValue :: Ass0Val -> M [Ass0Val]
-validateListValue = \case
-  A0ValLiteral (ALitList a0vs) -> pure a0vs
-  a0v -> bug $ NotAList Nothing a0v
 
 -- The implementation of the built-in function `drop_at`.
 dropAt :: Int -> [a] -> [a]
@@ -211,8 +212,7 @@ evalExpr0 env = \case
         n3 <- findInt0 env x3
         pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
       BITensorGenAdd x1 -> do
-        a0vs <- findList0 env x1
-        ns <- mapM validateIntLiteral a0vs
+        ns <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorAdd ns))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
@@ -257,34 +257,26 @@ evalExpr0 env = \case
         forM_ a0vsIn (reduceBeta a0vF >=> validateUnitLiteral)
         pure $ A0ValLiteral ALitUnit
       BIGenBroadcasted x1 x2 -> do
-        a0vs1 <- findList0 env x1
-        ns1 <- mapM validateIntLiteral a0vs1
-        a0vs2 <- findList0 env x2
-        ns2 <- mapM validateIntLiteral a0vs2
+        ns1 <- findIntList0 env x1
+        ns2 <- findIntList0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstBroadcasted ns1 ns2))
       BITensorGenZeros x1 -> do
-        a0vs1 <- findList0 env x1
-        ns1 <- mapM validateIntLiteral a0vs1
+        ns1 <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeros ns1))
       BITensorGenMult x1 -> do
-        a0vs1 <- findList0 env x1
-        ns1 <- mapM validateIntLiteral a0vs1
+        ns1 <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorMult ns1))
       BITensorGenGrad x1 -> do
-        a0vs1 <- findList0 env x1
-        ns1 <- mapM validateIntLiteral a0vs1
+        ns1 <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorGrad ns1))
       BITensorGenZeroGrad x1 -> do
-        a0vs1 <- findList0 env x1
-        ns1 <- mapM validateIntLiteral a0vs1
+        ns1 <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeroGrad ns1))
       BITensorGenSubUpdate x1 -> do
-        a0vs1 <- findList0 env x1
-        ns1 <- mapM validateIntLiteral a0vs1
+        ns1 <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorSubUpdate ns1))
       BITensorGenArgmax x1 x2 -> do
-        a0vs1 <- findList0 env x1
-        ns1 <- mapM validateIntLiteral a0vs1
+        ns1 <- findIntList0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorArgmax ns1 n2))
       BITensorGenCrossEntropyForLogits x1 x2 -> do
@@ -292,9 +284,8 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorCrossEntropyForLogits n1 n2))
       BITensorGenCountEqual x1 -> do
-        a0vs <- findList0 env x1
-        ns <- mapM validateIntLiteral a0vs
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorCountEqual ns))
+        ns1 <- findIntList0 env x1
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorCountEqual ns1))
       BITensorAdd ns x1 x2 ->
         case ns of
           [n] -> do
@@ -428,7 +419,7 @@ evalTypeExpr1 env = \case
         A1TyTensor a0eList -> do
           a0v <- evalExpr0 env a0eList
           a0vs <- validateListValue a0v
-          ns <- mapM validateIntLiteral a0vs
+          ns <- mapM (validateIntLiteral Nothing) a0vs
           pure $ A1TyValTensor ns
   A1TyList a1tye -> do
     a1tyv <- evalTypeExpr1 env a1tye
