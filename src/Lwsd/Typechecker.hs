@@ -5,6 +5,7 @@ module Lwsd.Typechecker
     typecheckTypeExpr1,
     typecheckBind,
     typecheckBinds,
+    TypecheckConfig (..),
     TypecheckState (..),
     M,
     run,
@@ -13,6 +14,7 @@ where
 
 import Control.Monad
 import Control.Monad.Trans.Class
+import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Either.Extra
 import Data.Function
@@ -39,30 +41,39 @@ import Util.TokenUtil (Span)
 import Util.Vector qualified as Vector
 import Prelude
 
-data TypecheckState = TypecheckState
+data TypecheckConfig = TypecheckConfig
   { optimizeTrivialAssertion :: Bool,
     distributeIfUnderTensorShape :: Bool,
-    sourceSpec :: SourceSpec,
-    nextVarIndex :: Int
+    sourceSpec :: SourceSpec
   }
 
-type M trav a = StateT TypecheckState (Either (TypeError, trav)) a
+data TypecheckState = TypecheckState
+  { nextVarIndex :: Int
+  }
+
+type M trav a = StateT TypecheckState (ReaderT TypecheckConfig (Either (TypeError, trav))) a
 
 typeError :: trav -> TypeError -> M trav b
-typeError trav e = lift $ Left (e, trav)
+typeError trav e = lift $ lift $ Left (e, trav)
 
 bug :: String -> a
 bug msg = error $ "bug: " ++ msg
 
+askConfig :: M trav TypecheckConfig
+askConfig = lift ask
+
 askSpanInFile :: Span -> M trav SpanInFile
 askSpanInFile loc = do
-  TypecheckState {sourceSpec} <- get
+  TypecheckConfig {sourceSpec} <- askConfig
   pure $ getSpanInFile sourceSpec loc
+
+liftEither :: Either (TypeError, trav) a -> M trav a
+liftEither = lift . lift
 
 findValVar :: trav -> Span -> [Var] -> Var -> TypeEnv -> M trav ValEntry
 findValVar trav loc ms x tyEnv = do
   spanInFile <- askSpanInFile loc
-  lift $ maybeToEither (UnboundVar spanInFile ms x, trav) $ do
+  lift $ lift $ maybeToEither (UnboundVar spanInFile ms x, trav) $ do
     case ms of
       [] ->
         TypeEnv.findVal x tyEnv
@@ -208,7 +219,7 @@ makeAssertiveCast trav loc =
 
     nothingOrIdentityLam :: Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
     nothingOrIdentityLam a0tye = do
-      TypecheckState {optimizeTrivialAssertion} <- get
+      TypecheckConfig {optimizeTrivialAssertion} <- askConfig
       if optimizeTrivialAssertion
         then pure (Nothing, Map.empty)
         else (\a0e -> (Just a0e, Map.empty)) <$> makeIdentityLam a0tye
@@ -216,7 +227,7 @@ makeAssertiveCast trav loc =
 -- The core part of the cast insertion for stage 1.
 makeEquation1 :: forall trav. trav -> Span -> Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> M trav (Maybe Type1Equation, InferenceSolution)
 makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
-  TypecheckState {optimizeTrivialAssertion} <- get
+  TypecheckConfig {optimizeTrivialAssertion} <- askConfig
   spanInFile <- askSpanInFile loc
   case go varsToInfer' a1tye1' a1tye2' of
     Right (trivial, ty1eq, solution) ->
@@ -385,7 +396,7 @@ mergeResultsByConditional0 trav loc a0e0 = go
 
     mergeTypes0 :: Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0TypeExpr
     mergeTypes0 a0tye1 a0tye2 = do
-      TypecheckState {distributeIfUnderTensorShape} <- get
+      TypecheckConfig {distributeIfUnderTensorShape} <- askConfig
       case mergeTypesByConditional0 distributeIfUnderTensorShape a0e0 a0tye1 a0tye2 of
         Left condErr -> do
           spanInFile <- askSpanInFile loc
@@ -395,7 +406,7 @@ mergeResultsByConditional0 trav loc a0e0 = go
 
     mergeTypes1 :: Ass1TypeExpr -> Ass1TypeExpr -> M trav Ass1TypeExpr
     mergeTypes1 a1tye1 a1tye2 = do
-      TypecheckState {distributeIfUnderTensorShape} <- get
+      TypecheckConfig {distributeIfUnderTensorShape} <- askConfig
       case mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 a1tye1 a1tye2 of
         Left condErr -> do
           spanInFile <- askSpanInFile loc
@@ -540,7 +551,9 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                   let vec = Vector.fromList ns
                   pure (A0TyPrim (a0TyVec (Vector.length vec)), ALitVec vec)
                 LitMat nss -> do
-                  mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral spanInFile e, trav)) $ Matrix.fromRows nss
+                  mat <-
+                    liftEither . mapLeft (\e -> (InvalidMatrixLiteral spanInFile e, trav)) $
+                      Matrix.fromRows nss
                   pure (A0TyPrim (uncurry a0TyMat (Matrix.size mat)), ALitMat mat)
             pure (Pure a0tye, A0Literal alit)
           _ : _ ->
@@ -749,7 +762,9 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
                 let vec = Vector.fromList ns
                 pure (A1TyPrim (a1TyVec (A0Literal (ALitInt (Vector.length vec)))), ALitVec vec)
               LitMat nss -> do
-                mat <- lift . mapLeft (\e -> (InvalidMatrixLiteral spanInFile e, trav)) $ Matrix.fromRows nss
+                mat <-
+                  liftEither . mapLeft (\e -> (InvalidMatrixLiteral spanInFile e, trav)) $
+                    Matrix.fromRows nss
                 pure (A1TyPrim (uncurry a1TyMat (both (A0Literal . ALitInt) (Matrix.size mat))), ALitMat mat)
           pure (Pure a1tye, A1Literal alit)
         _ : _ ->
@@ -1166,5 +1181,5 @@ typecheckBinds trav tyEnv =
     )
     (tyEnv, SigRecord.empty, [])
 
-run :: M trav a -> TypecheckState -> Either (TypeError, trav) (a, TypecheckState)
-run = runStateT
+run :: M trav a -> TypecheckConfig -> TypecheckState -> Either (TypeError, trav) (a, TypecheckState)
+run checker config st = runReaderT (runStateT checker st) config

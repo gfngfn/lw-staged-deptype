@@ -6,6 +6,8 @@ module Lwsd.LibMain
   )
 where
 
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Either.Extra (mapLeft)
 import Data.Map qualified as Map
@@ -20,7 +22,7 @@ import Lwsd.Scope.TypeEnv qualified as TypeEnv
 import Lwsd.SrcSyntax
 import Lwsd.Syntax
 import Lwsd.TypeError (TypeError)
-import Lwsd.Typechecker (TypecheckState (..))
+import Lwsd.Typechecker (TypecheckConfig (..), TypecheckState (..))
 import Lwsd.Typechecker qualified as Typechecker
 import Util.LocationInFile (SourceSpec (SourceSpec))
 import Util.LocationInFile qualified as LocationInFile
@@ -36,70 +38,98 @@ data Argument = Argument
   }
   deriving (Read, Show)
 
-success, failure :: IO Bool
-success = return True
-failure = return False
+type M a = ReaderT Argument IO a
 
-typecheckStub :: Argument -> SourceSpec -> [Bind] -> Either TypeError ((TypeEnv, SigRecord, [AssBind]), TypecheckState)
-typecheckStub Argument {optimize, distributeIf} sourceSpecOfStub bindsInStub = do
-  let typecheckerConfigOfStub =
-        TypecheckState
-          { optimizeTrivialAssertion = optimize,
-            distributeIfUnderTensorShape = distributeIf,
-            sourceSpec = sourceSpecOfStub,
-            nextVarIndex = 0
-          }
+makeConfig :: SourceSpec -> M TypecheckConfig
+makeConfig sourceSpec = do
+  Argument {optimize, distributeIf} <- ask
+  pure $
+    TypecheckConfig
+      { optimizeTrivialAssertion = optimize,
+        distributeIfUnderTensorShape = distributeIf,
+        sourceSpec = sourceSpec
+      }
+
+success, failure :: M Bool
+success = pure True
+failure = pure False
+
+putSectionLine :: String -> M ()
+putSectionLine s =
+  lift $ putStrLn ("-------- " ++ s ++ " --------")
+
+putRenderedLines :: (Disp a) => a -> M ()
+putRenderedLines v = do
+  Argument {displayWidth} <- ask
+  lift $ Formatter.putRenderedLines displayWidth v
+
+putRenderedLinesAtStage0 :: (Disp a) => a -> M ()
+putRenderedLinesAtStage0 v = do
+  Argument {displayWidth} <- ask
+  lift $ Formatter.putRenderedLinesAtStage0 displayWidth v
+
+putRenderedLinesAtStage1 :: (Disp a) => a -> M ()
+putRenderedLinesAtStage1 v = do
+  Argument {displayWidth} <- ask
+  lift $ Formatter.putRenderedLinesAtStage1 displayWidth v
+
+typecheckStub :: SourceSpec -> [Bind] -> M (Either TypeError ((TypeEnv, SigRecord, [AssBind]), TypecheckState))
+typecheckStub sourceSpecOfStub bindsInStub = do
+  tcConfig <- makeConfig sourceSpecOfStub
+  let tcState = TypecheckState {nextVarIndex = 0}
       initialTypeEnv = TypeEnv.empty
-  mapLeft fst $
-    Typechecker.run (Typechecker.typecheckBinds () initialTypeEnv bindsInStub) typecheckerConfigOfStub
-
-typecheckInput :: TypecheckState -> TypeEnv -> Expr -> Either TypeError (Result Ass0TypeExpr, Ass0Expr)
-typecheckInput typecheckerConfigOfInput tyEnvStub e = do
-  ((result, a0e), _) <-
+  pure $
     mapLeft fst $
-      Typechecker.run (Typechecker.typecheckExpr0 () tyEnvStub [] e) typecheckerConfigOfInput
-  pure (result, a0e)
+      Typechecker.run (Typechecker.typecheckBinds () initialTypeEnv bindsInStub) tcConfig tcState
 
-typecheckAndEvalInput :: Argument -> TypecheckState -> SourceSpec -> TypeEnv -> [AssBind] -> Expr -> IO Bool
-typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds e = do
+typecheckInput :: SourceSpec -> TypecheckState -> TypeEnv -> Expr -> M (Either TypeError (Result Ass0TypeExpr, Ass0Expr))
+typecheckInput sourceSpecOfInput tcState tyEnvStub e = do
+  tcConfig <- makeConfig sourceSpecOfInput
+  pure $
+    mapLeft fst $
+      fst <$> Typechecker.run (Typechecker.typecheckExpr0 () tyEnvStub [] e) tcConfig tcState
+
+typecheckAndEvalInput :: TypecheckState -> SourceSpec -> TypeEnv -> [AssBind] -> Expr -> M Bool
+typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
   let initialEvalState = Evaluator.initialState sourceSpecOfInput
-  let typecheckerConfigOfInput = stateAfterTraversingStub {sourceSpec = sourceSpecOfInput}
-  case typecheckInput typecheckerConfigOfInput tyEnvStub e of
+  r <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
+  case r of
     Left tyErr -> do
-      putStrLn "-------- type error: --------"
+      putSectionLine "type error:"
       putRenderedLines tyErr
       failure
     Right (result, a0eWithoutStub) -> do
       let a0e = makeExprFromBinds abinds a0eWithoutStub
-      putStrLn "-------- type: --------"
+      putSectionLine "type:"
       putRenderedLinesAtStage0 result
-      putStrLn "-------- elaborated expression: --------"
+      putSectionLine "elaborated expression:"
       putRenderedLinesAtStage0 a0e
       case evalStateT (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of
         Left err -> do
-          putStrLn "-------- error during compile-time code generation: --------"
+          putSectionLine "error during compile-time code generation:"
           putRenderedLines err
           failure
         Right a0v -> do
+          Argument {compileTimeOnly} <- ask
           case a0v of
             A0ValBracket a1v -> do
-              putStrLn "-------- generated code: --------"
+              putSectionLine "generated code:"
               putRenderedLinesAtStage1 a1v
               let a0eRuntime = Evaluator.unliftVal a1v
               if compileTimeOnly
                 then success
                 else case evalStateT (Evaluator.evalExpr0 initialEnv a0eRuntime) initialEvalState of
                   Left err -> do
-                    putStrLn "-------- eval error: --------"
+                    putSectionLine "eval error:"
                     putRenderedLines err
                     failure
                   Right a0vRuntime -> do
-                    putStrLn "-------- result of runtime evaluation: --------"
+                    putSectionLine "result of runtime evaluation:"
                     putRenderedLinesAtStage0 a0vRuntime
                     success
             _ -> do
-              putStrLn "-------- stage-0 result: --------"
-              putStrLn "(The stage-0 result was not a code value)"
+              putSectionLine "stage-0 result:"
+              lift $ putStrLn "(The stage-0 result was not a code value)"
               putRenderedLinesAtStage0 a0v
               if compileTimeOnly
                 then success
@@ -108,47 +138,36 @@ typecheckAndEvalInput Argument {compileTimeOnly, displayWidth} stateAfterTravers
     initialEnv :: EvalEnv
     initialEnv = Map.empty
 
-    putRenderedLines :: (Disp a) => a -> IO ()
-    putRenderedLines = Formatter.putRenderedLines displayWidth
-
-    putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
-    putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth
-
-    putRenderedLinesAtStage1 :: (Disp a) => a -> IO ()
-    putRenderedLinesAtStage1 = Formatter.putRenderedLinesAtStage1 displayWidth
-
-typecheckAndEval :: Argument -> SourceSpec -> [Bind] -> SourceSpec -> Expr -> IO Bool
-typecheckAndEval arg@Argument {displayWidth} sourceSpecOfStub bindsInStub sourceSpecOfInput e = do
-  case typecheckStub arg sourceSpecOfStub bindsInStub of
+typecheckAndEval :: SourceSpec -> [Bind] -> SourceSpec -> Expr -> M Bool
+typecheckAndEval sourceSpecOfStub bindsInStub sourceSpecOfInput e = do
+  r <- typecheckStub sourceSpecOfStub bindsInStub
+  case r of
     Left tyErr -> do
-      putStrLn "-------- type error by stub: --------"
+      putSectionLine "type error by stub"
       putRenderedLines tyErr
       failure
-    Right ((tyEnvStub, _sigr, abinds), stateAfterTraversingStub) -> do
-      typecheckAndEvalInput arg stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds e
-  where
-    putRenderedLines :: (Disp a) => a -> IO ()
-    putRenderedLines = Formatter.putRenderedLines displayWidth
+    Right ((tyEnvStub, _sigr, abinds), tcState) -> do
+      typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e
 
--- Returns a boolean that represents success or failure
-handle :: Argument -> IO Bool
-handle arg@Argument {inputFilePath, stubFilePath, displayWidth} = do
-  putStrLn "Lightweight Dependent Types via Staging"
-  stub <- TextIO.readFile stubFilePath
+handle' :: M Bool
+handle' = do
+  Argument {inputFilePath, stubFilePath} <- ask
+  lift $ putStrLn "Lightweight Dependent Types via Staging"
+  stub <- lift $ TextIO.readFile stubFilePath
   case Parser.parseBinds stub of
     Left err -> do
-      putStrLn "-------- parse error of stub: --------"
-      putStrLn err
+      putSectionLine "parse error of stub:"
+      lift $ putStrLn err
       failure
     Right bindsInStub -> do
-      source <- TextIO.readFile inputFilePath
+      source <- lift $ TextIO.readFile inputFilePath
       case Parser.parseExpr source of
         Left err -> do
-          putStrLn "-------- parse error of source: --------"
-          putStrLn err
+          putSectionLine "parse error of source:"
+          lift $ putStrLn err
           failure
         Right e -> do
-          putStrLn "-------- parsed expression: --------"
+          putSectionLine "parsed expression:"
           putRenderedLinesAtStage0 e
           let sourceSpecOfInput =
                 SourceSpec
@@ -160,7 +179,8 @@ handle arg@Argument {inputFilePath, stubFilePath, displayWidth} = do
                   { LocationInFile.source = stub,
                     LocationInFile.inputFilePath = stubFilePath
                   }
-          typecheckAndEval arg sourceSpecOfStub bindsInStub sourceSpecOfInput e
-  where
-    putRenderedLinesAtStage0 :: (Disp a) => a -> IO ()
-    putRenderedLinesAtStage0 = Formatter.putRenderedLinesAtStage0 displayWidth
+          typecheckAndEval sourceSpecOfStub bindsInStub sourceSpecOfInput e
+
+-- Returns a boolean that represents success or failure
+handle :: Argument -> IO Bool
+handle = runReaderT handle'

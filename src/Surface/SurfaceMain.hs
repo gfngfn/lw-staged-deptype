@@ -4,6 +4,7 @@ module Surface.SurfaceMain
   )
 where
 
+import Control.Monad.Trans.Reader
 import Data.Map qualified as Map
 import Data.Text.IO qualified as TextIO
 import Lwsd.Formatter (Disp)
@@ -91,7 +92,8 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
               { LocationInFile.source = stub,
                 LocationInFile.inputFilePath = stubFilePath
               }
-      case LwsdMain.typecheckStub lwArg sourceSpecOfStub declsInStub of
+      r <- runReaderT (LwsdMain.typecheckStub sourceSpecOfStub declsInStub) lwArg
+      case r of
         Left tyErr -> do
           putStrLn "-------- type error of stub: --------"
           putRenderedLines tyErr
@@ -122,7 +124,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
                   putRenderedLines bce
                   putStrLn "-------- result of staging: --------"
                   putRenderedLinesAtStage0 lwe
-                  LwsdMain.typecheckAndEvalInput lwArg stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds lwe
+                  runReaderT (LwsdMain.typecheckAndEvalInput stateAfterTraversingStub sourceSpecOfInput tyEnvStub abinds lwe) lwArg
   where
     putRenderedLines :: (Disp a) => a -> IO ()
     putRenderedLines = Formatter.putRenderedLines displayWidth
