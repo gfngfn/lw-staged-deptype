@@ -71,7 +71,6 @@ data BuiltIn
   | BISub AssVar AssVar
   | BIMult AssVar AssVar
   | BILeq AssVar AssVar
-  | BIAssertNat Span AssVar
   | BIListMap AssVar AssVar
   | BIGenVadd AssVar
   | BIGenVconcat AssVar AssVar
@@ -200,6 +199,7 @@ data Ass0Expr
   | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
   | A0TyEqAssert Span Type1Equation
+  | A0RefinementAssert Span Ass0Expr Ass0Expr -- A predicate and a target.
   deriving stock (Eq, Show)
 
 data Ass1Expr

@@ -295,7 +295,6 @@ instance Disp BuiltIn where
     BISub x1 x2 -> "SUB(" <> disps [x1, x2] <> ")"
     BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
     BILeq x1 x2 -> "LEQ(" <> disps [x1, x2] <> ")"
-    BIAssertNat _loc x1 -> "ASSERT_NAT(" <> disp x1 <> ")"
     BIListMap f x -> "LIST_MAP(" <> disps [f, x] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
@@ -397,6 +396,9 @@ instance Disp Ass0Expr where
     A0TyEqAssert _loc ty1eq ->
       let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
        in group (assertionStyle ("{" <> dispBracket a1tye1 <+> "=>" <+> dispBracket a1tye2 <> "}"))
+    A0RefinementAssert _loc a0ePred a0eTarget ->
+      deepenParenWhen (req <= Atomic) $
+        "ASSERT" <+> disp a0ePred <+> "FOR" <+> disp a0eTarget
 
 instance Disp Ass1Expr where
   dispGen req = \case
@@ -768,12 +770,12 @@ instance Disp Evaluator.EvalError where
         <> hardline
         <> "expected:"
         <> nest 2 (hardline <> disp a1tyv2)
-    Evaluator.NatAssertionFailure spanInFile n ->
-      "Assertion failure of downcasting Int to Nat"
+    Evaluator.RefinementAssertionFailure spanInFile a0v ->
+      "Assertion failure of downcast"
         <+> disp spanInFile
         <> hardline
         <> "got:"
-        <+> disp n
+        <+> stage0Style (disp a0v)
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case

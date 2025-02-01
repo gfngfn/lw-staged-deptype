@@ -105,6 +105,8 @@ instance HasVar Ass0Expr where
       frees a1e1
     A0TyEqAssert _ ty0eq ->
       frees ty0eq
+    A0RefinementAssert _ a0ePred a0eTarget ->
+      unionPairs [frees a0ePred, frees a0eTarget]
 
   subst s = \case
     A0Literal alit ->
@@ -142,6 +144,8 @@ instance HasVar Ass0Expr where
       A0Bracket (go a1e1)
     A0TyEqAssert loc ty0eq ->
       A0TyEqAssert loc (go ty0eq)
+    A0RefinementAssert loc a0ePred a0eTarget ->
+      A0RefinementAssert loc (go a0ePred) (go a0eTarget)
     where
       go :: forall a. (HasVar a) => a -> a
       go = subst s
@@ -151,9 +155,7 @@ instance HasVar Ass0Expr where
       (A0Literal alit1, A0Literal alit2) ->
         alphaEquivalent alit1 alit2
       (A0AppBuiltIn builtIn1, A0AppBuiltIn builtIn2) ->
-        case (builtIn1, builtIn2) of
-          (BIAssertNat _loc1 x1, BIAssertNat _loc2 x2) -> x1 == x2 -- Ignores the difference of `Span`
-          (_, _) -> builtIn1 == builtIn2
+        builtIn1 == builtIn2
       (A0Var x1, A0Var x2) ->
         x1 == x2
       (A0BuiltInName builtInName1, A0BuiltInName builtInName2) ->
@@ -176,6 +178,8 @@ instance HasVar Ass0Expr where
         alphaEquivalent a1e1 a1e2
       (A0TyEqAssert _ ty0eq1, A0TyEqAssert _ ty0eq2) ->
         alphaEquivalent ty0eq1 ty0eq2
+      (A0RefinementAssert _ a0ePred1 a0eTarget1, A0RefinementAssert _ a0ePred2 a0eTarget2) ->
+        alphaEquivalent a0ePred1 a0ePred2 && alphaEquivalent a0eTarget1 a0eTarget2
       (_, _) ->
         False
 

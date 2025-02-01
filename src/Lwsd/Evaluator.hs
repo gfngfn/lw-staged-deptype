@@ -41,7 +41,7 @@ data Bug
 data EvalError
   = Bug Bug
   | AssertionFailure SpanInFile Ass1TypeVal Ass1TypeVal
-  | NatAssertionFailure SpanInFile Int
+  | RefinementAssertionFailure SpanInFile Ass0Val
 
 data EvalState = EvalState
   { nextSymbolIndex :: Int,
@@ -95,6 +95,11 @@ validateIntLiteral :: Maybe AssVar -> Ass0Val -> M Int
 validateIntLiteral info = \case
   A0ValLiteral (ALitInt n) -> pure n
   a0v -> bug $ NotAnInteger info a0v
+
+validateBoolLiteral :: Ass0Val -> M Bool
+validateBoolLiteral = \case
+  A0ValLiteral (ALitBool b) -> pure b
+  a0v -> bug $ NotABoolean a0v
 
 validateUnitLiteral :: Ass0Val -> M ()
 validateUnitLiteral = \case
@@ -176,15 +181,6 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValLiteral (ALitBool (n1 <= n2))
-      BIAssertNat loc x1 -> do
-        n1 <- findInt0 env x1
-        if n1 >= 0
-          then
-            pure $ A0ValLiteral (ALitInt n1)
-          else do
-            EvalState {sourceSpec} <- get
-            let spanInFile = getSpanInFile sourceSpec loc
-            evalError $ NatAssertionFailure spanInFile n1
       BIListMap f x -> do
         a0vF <- findVal0 env f
         a0vsIn <- findList0 env x
@@ -325,13 +321,10 @@ evalExpr0 env = \case
     evalExpr0 env a0e2
   A0IfThenElse a0e0 a0e1 a0e2 -> do
     a0v0 <- evalExpr0 env a0e0
-    case a0v0 of
-      A0ValLiteral (ALitBool b) ->
-        if b
-          then evalExpr0 env a0e1
-          else evalExpr0 env a0e2
-      _ ->
-        bug $ NotABoolean a0v0
+    b <- validateBoolLiteral a0v0
+    if b
+      then evalExpr0 env a0e1
+      else evalExpr0 env a0e2
   A0Bracket a1e1 -> do
     a1v1 <- evalExpr1 env a1e1
     pure $ A0ValBracket a1v1
@@ -340,11 +333,23 @@ evalExpr0 env = \case
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
     if a1tyv1 == a1tyv2 -- We can use `==` for stage-1 types
-      then generateIdentityFunction env (A0TyValCode a1tyv1)
+      then
+        generateIdentityFunction env (A0TyValCode a1tyv1)
       else do
         EvalState {sourceSpec} <- get
         let spanInFile = getSpanInFile sourceSpec loc
         evalError $ AssertionFailure spanInFile a1tyv1 a1tyv2
+  A0RefinementAssert loc a0ePred a0eTarget -> do
+    a0vPred <- evalExpr0 env a0ePred
+    a0vTarget <- evalExpr0 env a0eTarget
+    b <- validateBoolLiteral =<< reduceBeta a0vPred a0vTarget
+    if b
+      then
+        pure a0vTarget
+      else do
+        EvalState {sourceSpec} <- get
+        let spanInFile = getSpanInFile sourceSpec loc
+        evalError $ RefinementAssertionFailure spanInFile a0vTarget
 
 evalExpr1 :: EvalEnv -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case

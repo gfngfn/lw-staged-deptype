@@ -4,7 +4,6 @@ module Lwsd.BuiltIn
     ass0exprSub,
     ass0exprMult,
     ass0exprLeq,
-    ass0exprAssertNat,
     ass0exprListMap,
     ass0exprVadd,
     ass0exprVconcat,
@@ -21,7 +20,6 @@ where
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Lwsd.Syntax
-import Util.TokenUtil (Span)
 import Prelude
 
 tyValInt :: Ass0TypeVal
@@ -223,13 +221,6 @@ ass0exprAdd = ass0exprBinaryInt BIAdd
 ass0exprSub = ass0exprBinaryInt BISub
 ass0exprMult = ass0exprBinaryInt BIMult
 ass0exprLeq = ass0exprBinaryInt BILeq
-
-ass0exprAssertNat :: Span -> Ass0Expr
-ass0exprAssertNat loc =
-  lam x1 styInt $
-    A0AppBuiltIn (BIAssertNat loc x1)
-  where
-    x1 = AssVar "n1"
 
 ass0exprListMap :: StrictAss0TypeExpr -> StrictAss0TypeExpr -> Ass0Expr
 ass0exprListMap styDom styCod =

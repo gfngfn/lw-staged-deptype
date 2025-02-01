@@ -217,12 +217,16 @@ makeAssertiveCast trav loc =
                   A0App (A0Lam Nothing (x', strictify a0tye11) (fCod (A0App (A0Var f) (A0Var x')))) (fDom (A0Var x))
 
     castOrIdentityLam :: Maybe Ass0Expr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr)
-    castOrIdentityLam _maybePred2 a0tye1 = do
-      -- TODO: use `maybePred2`
+    castOrIdentityLam maybePred2 a0tye1 = do
       TypecheckConfig {optimizeTrivialAssertion} <- askConfig
-      if optimizeTrivialAssertion
-        then pure Nothing
-        else Just <$> makeIdentityLam a0tye1
+      case maybePred2 of
+        Nothing ->
+          if optimizeTrivialAssertion
+            then pure Nothing
+            else Just <$> makeIdentityLam a0tye1
+        Just a0ePred2 -> do
+          x <- generateFreshVar
+          pure $ Just (A0Lam Nothing (x, strictify a0tye1) (A0RefinementAssert loc a0ePred2 (A0Var x)))
 
 -- The core part of the cast insertion for stage 1.
 makeEquation1 :: forall trav. trav -> Span -> Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> M trav (Maybe Type1Equation, InferenceSolution)
