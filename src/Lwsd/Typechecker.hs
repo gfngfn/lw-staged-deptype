@@ -51,10 +51,15 @@ data TypecheckState = TypecheckState
   { nextVarIndex :: Int
   }
 
-type M trav a = StateT TypecheckState (ReaderT TypecheckConfig (Either (TypeError, trav))) a
+type M' err trav a = StateT TypecheckState (ReaderT TypecheckConfig (Either (err, trav))) a
 
-typeError :: trav -> TypeError -> M trav b
+type M trav a = M' TypeError trav a
+
+typeError :: trav -> err -> M' err trav a
 typeError trav e = lift $ lift $ Left (e, trav)
+
+mapTypeError :: (err1 -> err2) -> M' err1 trav a -> M' err2 trav a
+mapTypeError f = mapStateT (mapReaderT (mapLeft (first f)))
 
 bug :: String -> a
 bug msg = error $ "bug: " ++ msg
@@ -88,7 +93,7 @@ findValVar trav loc ms x tyEnv = do
       ModuleEntry sigr' <- SigRecord.findModule m sigr
       go sigr' ms'
 
-generateFreshVar :: M trav AssVar
+generateFreshVar :: M' err trav AssVar
 generateFreshVar = do
   currentState@TypecheckState {nextVarIndex} <- get
   put $ currentState {nextVarIndex = nextVarIndex + 1}
@@ -304,17 +309,19 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
         (_, _) ->
           Left ()
 
-mergeTypesByConditional0 :: Bool -> Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
-mergeTypesByConditional0 distributeIfUnderTensorShape a0e0 = go0
+mergeTypesByConditional0 :: forall trav. trav -> Bool -> Ass0Expr -> Ass0TypeExpr -> Ass0TypeExpr -> M' ConditionalMergeError trav Ass0TypeExpr
+mergeTypesByConditional0 trav distributeIfUnderTensorShape a0e0 = go0
   where
-    go0 :: Ass0TypeExpr -> Ass0TypeExpr -> Either ConditionalMergeError Ass0TypeExpr
+    go0 :: Ass0TypeExpr -> Ass0TypeExpr -> M' ConditionalMergeError trav Ass0TypeExpr
     go0 a0tye1 a0tye2 =
       case (a0tye1, a0tye2) of
-        (A0TyPrim a0tyePrim1 _maybePred1, A0TyPrim a0tyePrim2 _maybePred2) ->
-          -- TODO: merge predicates by OR
+        (A0TyPrim a0tyePrim1 maybePred1, A0TyPrim a0tyePrim2 maybePred2) ->
           if a0tyePrim1 == a0tyePrim2
-            then pure a0tye1
-            else Left $ CannotMerge0 a0tye1 a0tye2
+            then do
+              maybePred <- mergeRefinementPredicates a0tyePrim1 maybePred1 maybePred2
+              pure $ A0TyPrim a0tyePrim1 maybePred
+            else
+              typeError trav $ CannotMerge0 a0tye1 a0tye2
         (A0TyList a0tye1', A0TyList a0tye2') ->
           A0TyList <$> go0 a0tye1' a0tye2'
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
@@ -333,15 +340,27 @@ mergeTypesByConditional0 distributeIfUnderTensorShape a0e0 = go0
           a0tye2u <- go0 a0tye12 (subst0 (A0Var x1) x2 a0tye22)
           pure $ A0TyOptArrow (x1, a0tye1u) a0tye2u
         _ ->
-          Left $ CannotMerge0 a0tye1 a0tye2
+          typeError trav $ CannotMerge0 a0tye1 a0tye2
 
-    go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
-    go1 = mergeTypesByConditional1 distributeIfUnderTensorShape a0e0
+    mergeRefinementPredicates :: Ass0PrimType -> Maybe Ass0Expr -> Maybe Ass0Expr -> M' ConditionalMergeError trav (Maybe Ass0Expr)
+    mergeRefinementPredicates a0tyePrim maybePred1 maybePred2 =
+      case (maybePred1, maybePred2) of
+        (Nothing, Nothing) -> pure Nothing
+        (Just a0ePred1, Nothing) -> makeIf (A0App a0ePred1 . A0Var) (\_ -> A0Literal (ALitBool True))
+        (Nothing, Just a0ePred2) -> makeIf (\_ -> A0Literal (ALitBool True)) (A0App a0ePred2 . A0Var)
+        (Just a0ePred1, Just a0ePred2) -> makeIf (A0App a0ePred1 . A0Var) (A0App a0ePred2 . A0Var)
+      where
+        makeIf f1 f2 = do
+          ax <- generateFreshVar
+          pure $ Just (A0Lam Nothing (ax, SA0TyPrim a0tyePrim Nothing) (A0IfThenElse a0e0 (f1 ax) (f2 ax)))
 
-mergeTypesByConditional1 :: Bool -> Ass0Expr -> Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
-mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 = go1
+    go1 :: Ass1TypeExpr -> Ass1TypeExpr -> M' ConditionalMergeError trav Ass1TypeExpr
+    go1 = mergeTypesByConditional1 trav distributeIfUnderTensorShape a0e0
+
+mergeTypesByConditional1 :: forall trav. trav -> Bool -> Ass0Expr -> Ass1TypeExpr -> Ass1TypeExpr -> M' ConditionalMergeError trav Ass1TypeExpr
+mergeTypesByConditional1 trav distributeIfUnderTensorShape a0e0 = go1
   where
-    go1 :: Ass1TypeExpr -> Ass1TypeExpr -> Either ConditionalMergeError Ass1TypeExpr
+    go1 :: Ass1TypeExpr -> Ass1TypeExpr -> M' ConditionalMergeError trav Ass1TypeExpr
     go1 a1tye1 a1tye2 =
       case (a1tye1, a1tye2) of
         (A1TyPrim a1tyePrim1, A1TyPrim a1tyePrim2) ->
@@ -360,17 +379,17 @@ mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 = go1
                   -- Slight enhancement for the argument inference:
                   (A0Literal (ALitList a0es1), A0Literal (ALitList a0es2)) | distributeIfUnderTensorShape ->
                     case zipExactMay a0es1 a0es2 of
-                      Nothing -> Left $ CannotMerge1 a1tye1 a1tye2
+                      Nothing -> typeError trav $ CannotMerge1 a1tye1 a1tye2
                       Just zipped -> pure $ A1TyTensor (A0Literal (ALitList (map (uncurry a0branch) zipped)))
                   -- General rule:
                   (_, _) ->
                     pure $ A1TyTensor (a0branch a0eList1 a0eList2)
               _ ->
-                Left $ CannotMerge1 a1tye1 a1tye2
+                typeError trav $ CannotMerge1 a1tye1 a1tye2
         (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
           A1TyArrow <$> go1 a1tye11 a1tye21 <*> go1 a1tye12 a1tye22
         _ ->
-          Left $ CannotMerge1 a1tye1 a1tye2
+          typeError trav $ CannotMerge1 a1tye1 a1tye2
 
     a0branch = A0IfThenElse a0e0
 
@@ -407,22 +426,16 @@ mergeResultsByConditional0 trav loc a0e0 = go
     mergeTypes0 :: Ass0TypeExpr -> Ass0TypeExpr -> M trav Ass0TypeExpr
     mergeTypes0 a0tye1 a0tye2 = do
       TypecheckConfig {distributeIfUnderTensorShape} <- askConfig
-      case mergeTypesByConditional0 distributeIfUnderTensorShape a0e0 a0tye1 a0tye2 of
-        Left condErr -> do
-          spanInFile <- askSpanInFile loc
-          typeError trav $ CannotMergeTypesByConditional0 spanInFile a0tye1 a0tye2 condErr
-        Right a0tye ->
-          pure a0tye
+      spanInFile <- askSpanInFile loc
+      mapTypeError (CannotMergeTypesByConditional0 spanInFile a0tye1 a0tye2) $
+        mergeTypesByConditional0 trav distributeIfUnderTensorShape a0e0 a0tye1 a0tye2
 
     mergeTypes1 :: Ass1TypeExpr -> Ass1TypeExpr -> M trav Ass1TypeExpr
     mergeTypes1 a1tye1 a1tye2 = do
       TypecheckConfig {distributeIfUnderTensorShape} <- askConfig
-      case mergeTypesByConditional1 distributeIfUnderTensorShape a0e0 a1tye1 a1tye2 of
-        Left condErr -> do
-          spanInFile <- askSpanInFile loc
-          typeError trav $ CannotMergeTypesByConditional1 spanInFile a1tye1 a1tye2 condErr
-        Right a0tye ->
-          pure a0tye
+      spanInFile <- askSpanInFile loc
+      mapTypeError (CannotMergeTypesByConditional1 spanInFile a1tye1 a1tye2) $
+        mergeTypesByConditional1 trav distributeIfUnderTensorShape a0e0 a1tye1 a1tye2
 
     mergeCasts cast1 a0tye1 cast2 a0tye2 =
       case (cast1, cast2) of
