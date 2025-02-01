@@ -148,6 +148,15 @@ spec = do
     it "parses sequentials (2)" $
       parseExpr "x; y; z"
         `shouldBe` pure (expr (Sequential (var "x") (expr (Sequential (var "y") (var "z")))))
+    it "ignores first comments" $
+      parseExpr "(* comment *) 42"
+        `shouldBe` pure (litInt 42)
+    it "ignores first comments that include asterisks" $
+      parseExpr "(* *comment* *) 42"
+        `shouldBe` pure (litInt 42)
+    it "ignores comments between applications" $
+      parseExpr "f (* comment *) 42"
+        `shouldBe` pure (app (var "f") (litInt 42))
   describe "Parser.parseTypeExpr" $ do
     it "parses dependent function types (1)" $
       parseTypeExpr "(n : Int) -> Bool"
@@ -206,15 +215,9 @@ spec = do
     it "parses code types (4)" $
       parseTypeExpr "&(Int -> Bool)"
         `shouldBe` pure (tyCode (tyNondepFun tyInt tyBool))
-    it "ignores first comments" $
-      parseExpr "(* comment *) 42"
-        `shouldBe` pure (litInt 42)
-    it "ignores first comments that include asterisks" $
-      parseExpr "(* *comment* *) 42"
-        `shouldBe` pure (litInt 42)
-    it "ignores comments between applications" $
-      parseExpr "f (* comment *) 42"
-        `shouldBe` pure (app (var "f") (litInt 42))
+    it "parses refinement types" $
+      parseTypeExpr "(n : Int | 0 <= n)"
+        `shouldBe` pure (tyRefinement "n" tyInt (app (app (var "<=") (litInt 0)) (var "n")))
   describe "Parser.parseExpr (with code locations)" $ do
     it "parses integer literals" $
       Parser.parseExpr "42"
