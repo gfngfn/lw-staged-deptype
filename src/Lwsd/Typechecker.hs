@@ -154,6 +154,7 @@ makeAssertiveCast trav loc =
           pure (cast, Map.empty)
         (A0TyList a0tye1' maybePred1, A0TyList a0tye2' maybePred2') -> do
           (castForElem, solution) <- go varsToInfer a0tye1' a0tye2'
+          -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
                 if alphaEquivalent maybePred2' maybePred1
                   then Nothing
@@ -533,7 +534,8 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x
-              (cast', _solution'') <- makeAssertiveCast trav loc Set.empty a0tyeInferred a0tye1
+              (cast', _solution'') <-
+                makeAssertiveCast trav loc Set.empty a0tyeInferred (applySolution solution' a0tye1)
               pure (InsertInferred0 (applyCast cast' a0eInferred) result', solution')
         (_, A0TyCode a1tye) -> do
           (result', solution) <- instantiateGuidedByAppContext1 trav loc varsToInfer appCtx a1tye

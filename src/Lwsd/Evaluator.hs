@@ -14,6 +14,7 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
+import Data.Maybe (isJust)
 import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.Syntax
 import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
@@ -36,6 +37,7 @@ data Bug
   | FoundSymbol AssVar Symbol
   | FoundAss0Val AssVar Ass0Val
   | InconsistentAppBuiltIn BuiltIn
+  | BroadcastFailed [Int] [Int]
   deriving stock (Eq, Show)
 
 data EvalError
@@ -159,6 +161,18 @@ dropAt :: Int -> [a] -> [a]
 dropAt _ [] = []
 dropAt n (v : vs) = if n <= 0 then vs else v : dropAt (n - 1) vs
 
+-- The implementation of the built-in function `drop_at`.
+broadcast :: [Int] -> [Int] -> Maybe [Int]
+broadcast ns1' ns2' = reverse <$> go (reverse ns1', reverse ns2')
+  where
+    go = \case
+      ([], ns2) -> pure ns2
+      (ns1, []) -> pure ns1
+      (n1 : ns1, 1 : ns2) -> (n1 :) <$> broadcast ns1 ns2
+      (1 : ns1, n2 : ns2) -> (n2 :) <$> broadcast ns1 ns2
+      (n1 : ns1, n2 : ns2) | n1 == n2 -> (n1 :) <$> broadcast ns1 ns2
+      _ -> Nothing
+
 evalExpr0 :: EvalEnv -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
@@ -248,6 +262,19 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         a0vs2 <- findList0 env x2
         pure $ A0ValLiteral (ALitList (dropAt n1 a0vs2))
+      BIBroadcastable x1 x2 -> do
+        ns1 <- findIntList0 env x1
+        ns2 <- findIntList0 env x2
+        let b = isJust (broadcast ns1 ns2)
+        pure $ A0ValLiteral (ALitBool b)
+      BIBroadcast x1 x2 -> do
+        ns1 <- findIntList0 env x1
+        ns2 <- findIntList0 env x2
+        ns <-
+          case broadcast ns1 ns2 of
+            Just ns' -> pure ns'
+            Nothing -> bug $ BroadcastFailed ns1 ns2
+        pure $ A0ValLiteral (ALitList (map (A0ValLiteral . ALitInt) ns))
       BIListAppend x1 x2 -> do
         a0vs1 <- findList0 env x1
         a0vs2 <- findList0 env x2

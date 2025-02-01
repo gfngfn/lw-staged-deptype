@@ -4,13 +4,12 @@
 ~(let gen_model =
     fun{n : Nat} -> &(fun(xs : Tensor %[n, Mnist_helper.image_dim]) ->
       let open Tensor in
-      ~gen_add (~gen_mm xs ws) (~(gen_broadcasted [n]) bs)
-      (* TODO: broadcast: `~gen_tadd (~gen_mm xs ws) bs` *)
+      ~gen_add (~gen_mm xs ws) bs
     )
   in
 &(List.iter (fun(i : Int) ->
     let loss =
-      ~Tensor.gen_cross_entropy_for_logits
+      ~(Tensor.gen_cross_entropy_for_logits _ {Mnist_helper.label_count})
         (~gen_model Mnist_helper.train_images)
         Mnist_helper.train_labels
     in

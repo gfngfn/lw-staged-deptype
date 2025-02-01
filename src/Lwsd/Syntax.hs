@@ -84,6 +84,8 @@ data BuiltIn
   | BIMmult Int Int Int AssVar AssVar
   | BIMconcatVert Int Int Int AssVar AssVar
   | BIDropAt AssVar AssVar
+  | BIBroadcastable AssVar AssVar
+  | BIBroadcast AssVar AssVar
   | BIListAppend AssVar AssVar
   | BIListIter AssVar AssVar
   | BIGenBroadcasted AssVar AssVar

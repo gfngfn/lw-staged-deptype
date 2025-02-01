@@ -145,6 +145,20 @@ getAss0Val = \case
     where
       x1 = AssVar "x1"
       x2 = AssVar "x2"
+  A0BINameBroadcastable ->
+    clo x1 (tyValList tyValNat) $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIBroadcastable x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
+  A0BINameBroadcast ->
+    clo x1 (tyValList tyValNat) $
+      lam x2 (styList styNat) $
+        A0AppBuiltIn (BIBroadcast x1 x2)
+    where
+      x1 = AssVar "x1"
+      x2 = AssVar "x2"
   A0BINameListAppend ->
     -- TODO: generalize the type of `List.append`
     clo x1 (tyValList tyValNat) $

@@ -316,6 +316,8 @@ instance Disp BuiltIn where
     BIMmult k m n x1 x2 -> "MMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
     BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
     BIDropAt x1 x2 -> "DROP_AT(" <> disps [x1, x2] <> ")"
+    BIBroadcastable x1 x2 -> "BROADCASTABLE(" <> disps [x1, x2] <> ")"
+    BIBroadcast x1 x2 -> "BROADCAST(" <> disps [x1, x2] <> ")"
     BIListAppend x1 x2 -> "LIST.APPEND(" <> disps [x1, x2] <> ")"
     BIListIter x1 x2 -> "LIST.ITER(" <> disps [x1, x2] <> ")"
     BIGenBroadcasted x1 x2 -> "GEN_BROADCASTED(" <> disps [x1, x2] <> ")"
@@ -770,6 +772,8 @@ instance Disp Evaluator.Bug where
       "Expected a symbol, but found a stage-0 value:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.InconsistentAppBuiltIn builtin ->
       "Inconsistent application of a built-in function:" <+> disp (Text.pack (show builtin))
+    Evaluator.BroadcastFailed ns1 ns2 ->
+      "Broadcast failed:" <+> dispListLiteral ns1 <> "," <+> dispListLiteral ns2
 
 instance Disp Evaluator.EvalError where
   dispGen _ = \case
