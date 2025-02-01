@@ -320,7 +320,7 @@ instance Disp BuiltIn where
     BIListIter x1 x2 -> "LIST.ITER(" <> disps [x1, x2] <> ")"
     BIGenBroadcasted x1 x2 -> "GEN_BROADCASTED(" <> disps [x1, x2] <> ")"
     BITensorGenZeros x1 -> "TENSOR.GEN_ZEROS(" <> disp x1 <> ")"
-    BITensorGenAdd x -> "TENSOR.GEN_ADD(" <> disp x <> ")"
+    BITensorGenAdd x1 x2 -> "TENSOR.GEN_ADD(" <> disps [x1, x2] <> ")"
     BITensorGenMult x1 -> "TENSOR.GEN_MULT(" <> disp x1 <> ")"
     BITensorGenGrad x1 -> "TENSOR.GEN_GRAD(" <> disp x1 <> ")"
     BITensorGenZeroGrad x1 -> "TENSOR.GEN_ZERO_GRAD(" <> disp x1 <> ")"
@@ -668,7 +668,7 @@ instance Disp Ass1ValConst where
     A1ValConstTensorArgmax ns1 n2 -> "Tensor.argmax@{" <> dispListLiteral ns1 <> "," <+> disp n2 <> "}"
     A1ValConstTensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits@{" <> disps [n1, n2] <> "}"
     A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
-    A1ValConstTensorAdd ns -> "Tensor.add@{" <> dispListLiteral ns <> "}"
+    A1ValConstTensorAdd ns1 ns2 -> "Tensor.add@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
     A1ValConstBuiltInName a1builtInName -> disp a1builtInName
 
 instance Disp Ass1Val where

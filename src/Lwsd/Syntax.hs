@@ -95,7 +95,7 @@ data BuiltIn
   | BITensorGenCrossEntropyForLogits AssVar AssVar
   | BITensorGenArgmax AssVar AssVar
   | BITensorGenCountEqual AssVar
-  | BITensorGenAdd AssVar
+  | BITensorGenAdd AssVar AssVar
   | BITensorAdd [Int] AssVar AssVar
   deriving stock (Eq, Show)
 
@@ -112,6 +112,8 @@ data Ass0BuiltInName
   | A0BINameGenMmult
   | A0BINameGenMconcatVert
   | A0BINameDropAt
+  | A0BINameBroadcastable
+  | A0BINameBroadcast
   | A0BINameTensorGenZeros
   | A0BINameTensorGenAdd
   | A0BINameTensorGenMult
@@ -327,6 +329,7 @@ data Ass1ValConst
   | A1ValConstMconcatVert Int Int Int
   | A1ValConstBroadcasted [Int] [Int]
   | A1ValConstTensorZeros [Int]
+  | A1ValConstTensorAdd [Int] [Int]
   | A1ValConstTensorMult [Int]
   | A1ValConstTensorGrad [Int]
   | A1ValConstTensorZeroGrad [Int]
@@ -334,7 +337,6 @@ data Ass1ValConst
   | A1ValConstTensorArgmax [Int] Int
   | A1ValConstTensorCrossEntropyForLogits Int Int
   | A1ValConstTensorCountEqual [Int]
-  | A1ValConstTensorAdd [Int]
   | A1ValConstBuiltInName Ass1BuiltInName -- TODO: consider merging `Ass1BuiltInName` and `Ass1ValConst`
   deriving stock (Eq, Show)
 

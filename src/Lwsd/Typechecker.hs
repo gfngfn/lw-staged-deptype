@@ -272,10 +272,10 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
     Left () ->
       typeError trav $ TypeContradictionAtStage1 spanInFile a1tye1' a1tye2'
   where
-    checkExprArgs :: Set AssVar -> Ass0Expr -> Ass0Expr -> (Bool, Ass0Expr, InferenceSolution)
-    checkExprArgs varsToInfer a0e1 a0e2 =
+    checkExprArgs :: Set AssVar -> (Ass0Expr, Ass0TypeExpr) -> Ass0Expr -> (Bool, Ass0Expr, InferenceSolution)
+    checkExprArgs varsToInfer (a0e1, a0tye1) a0e2 =
       case a0e2 of
-        A0Var x | x `elem` varsToInfer -> (True, a0e1, Map.singleton x a0e1)
+        A0Var x | x `elem` varsToInfer -> (True, a0e1, Map.singleton x (a0e1, a0tye1))
         _ -> (alphaEquivalent a0e1 a0e2, a0e2, Map.empty)
 
     go :: Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> Either () (Bool, Type1Equation, InferenceSolution)
@@ -304,7 +304,8 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
                               ( \(trivialAcc, equationAcc, varsToInferAcc, solutionAcc) (a0e1, a0e2) ->
                                   let a0e1sub = applySolution solutionAcc a0e1
                                       a0e2sub = applySolution solutionAcc a0e2
-                                      (trivial', a0e2', solution') = checkExprArgs varsToInferAcc a0e1sub a0e2sub
+                                      (trivial', a0e2', solution') =
+                                        checkExprArgs varsToInferAcc (a0e1sub, BuiltIn.tyNat) a0e2sub
                                    in (trivialAcc && trivial', (a0e1sub, a0e2') : equationAcc, varsToInferAcc \\ Map.keysSet solution', Map.union solution' solutionAcc)
                               )
                               (True, [], varsToInfer, Map.empty)
@@ -312,8 +313,9 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
                       pure (trivial, TyEq1Prim (TyEq1TensorByLiteral (reverse equationAccResult)), solution)
                 -- Enhancement for the argument inference 2:
                 (_, A0Var x2)
-                  | x2 `elem` varsToInfer ->
-                      pure (True, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList1), Map.singleton x2 a0eList1)
+                  | x2 `elem` varsToInfer -> do
+                      let solution = Map.singleton x2 (a0eList1, A0TyList BuiltIn.tyNat Nothing)
+                      pure (True, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList1), solution)
                 -- General rule:
                 (_, _) -> do
                   let trivial = alphaEquivalent a0eList1 a0eList2
@@ -473,11 +475,11 @@ mergeResultsByConditional0 trav loc a0e0 = go
         (Just a0e1, Just a0e2) -> do
           pure $ Just (a0branch a0e1 a0e2)
 
-type InferenceSolution = Map AssVar Ass0Expr
+type InferenceSolution = Map AssVar (Ass0Expr, Ass0TypeExpr)
 
 applySolution :: forall a. (HasVar a) => InferenceSolution -> a -> a
 applySolution solution entity =
-  Map.foldrWithKey (flip subst0) entity solution
+  Map.foldrWithKey (flip subst0) entity (Map.map fst solution)
 
 instantiateGuidedByAppContext0 :: forall trav. trav -> Span -> AppContext -> Ass0TypeExpr -> M trav (Result Ass0TypeExpr)
 instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
@@ -512,24 +514,27 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
               pure (CastGiven0 (fmap (applySolution solution') cast) a0tye1s result', solution)
             AppArgOptOmitted0 -> do
               (result', solution') <- go (Set.insert x varsToInfer) appCtx' a0tye2
-              a0eInferred <-
+              (a0eInferred, a0tyeInferred) <-
                 case Map.lookup x solution' of
-                  Just a0eInferred' ->
-                    pure a0eInferred'
+                  Just entry ->
+                    pure entry
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x
-              pure (FillInferred0 a0eInferred result', solution')
+              (cast', _solution'') <-
+                makeAssertiveCast trav loc Set.empty a0tyeInferred (applySolution solution' a0tye1)
+              pure (FillInferred0 (applyCast cast' a0eInferred) result', solution')
             _ -> do
               (result', solution') <- go (Set.insert x varsToInfer) appCtx a0tye2
-              a0eInferred <-
+              (a0eInferred, a0tyeInferred) <-
                 case Map.lookup x solution' of
-                  Just a0eInferred' ->
-                    pure a0eInferred'
+                  Just entry ->
+                    pure entry
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x
-              pure (InsertInferred0 a0eInferred result', solution')
+              (cast', _solution'') <- makeAssertiveCast trav loc Set.empty a0tyeInferred a0tye1
+              pure (InsertInferred0 (applyCast cast' a0eInferred) result', solution')
         (_, A0TyCode a1tye) -> do
           (result', solution) <- instantiateGuidedByAppContext1 trav loc varsToInfer appCtx a1tye
           result <- mapMPure (pure . A0TyCode) result'

@@ -211,9 +211,10 @@ evalExpr0 env = \case
         n2 <- findInt0 env x2
         n3 <- findInt0 env x3
         pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
-      BITensorGenAdd x1 -> do
-        ns <- findIntList0 env x1
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorAdd ns))
+      BITensorGenAdd x1 x2 -> do
+        ns1 <- findIntList0 env x1
+        ns2 <- findIntList0 env x2
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorAdd ns1 ns2))
       BIVadd n x1 x2 -> do
         v1 <- findVec0 env x1
         v2 <- findVec0 env x2
@@ -454,7 +455,10 @@ unliftVal = \case
       A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
       A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
-      A1ValConstTensorAdd ns -> BuiltIn.ass0exprTensorAdd ns
+      A1ValConstTensorAdd ns1 ns2 ->
+        if ns1 == ns2
+          then BuiltIn.ass0exprTensorAdd ns1
+          else error $ "TODO: unliftVal, A1ValConstTensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
       A1ValConstBuiltInName a1builtInName -> A0BuiltInName (unliftBuiltInName a1builtInName)
       _ -> error $ "TODO: unliftVal, " ++ show c
   A1ValVar symbX ->

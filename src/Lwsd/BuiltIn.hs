@@ -175,9 +175,11 @@ getAss0Val = \case
       x1 = AssVar "x1"
   A0BINameTensorGenAdd ->
     clo x1 tyValNat $
-      A0AppBuiltIn (BITensorGenAdd x1)
+      lam x2 styNat $
+        A0AppBuiltIn (BITensorGenAdd x1 x2)
     where
       x1 = AssVar "x1"
+      x2 = AssVar "x2"
   A0BINameTensorGenMult ->
     clo x1 (tyValList tyValNat) $
       A0AppBuiltIn (BITensorGenMult x1)
@@ -316,6 +318,8 @@ validateExternalName0 = \case
   "gen_mmult" -> pure A0BINameGenMmult
   "gen_mconcat_vert" -> pure A0BINameGenMconcatVert
   "drop_at" -> pure A0BINameDropAt
+  "broadcastable" -> pure A0BINameBroadcastable
+  "broadcast" -> pure A0BINameBroadcast
   "gen_broadcasted" -> pure A0BINameGenBroadcasted
   "tensor__gen_zeros" -> pure A0BINameTensorGenZeros
   "tensor__gen_add" -> pure A0BINameTensorGenAdd
