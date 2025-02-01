@@ -1,5 +1,6 @@
 module Lwsd.BuiltIn
-  ( ass0exprAdd,
+  ( tyNat,
+    ass0exprAdd,
     ass0exprSub,
     ass0exprMult,
     ass0exprLeq,
@@ -26,29 +27,41 @@ import Prelude
 tyValInt :: Ass0TypeVal
 tyValInt = A0TyValPrim A0TyValInt
 
-tyValNat :: Ass0TypeVal
-tyValNat = A0TyValPrim A0TyValNat
-
 tyValList :: Ass0TypeVal -> Ass0TypeVal
 tyValList = A0TyValList
 
 styInt :: StrictAss0TypeExpr
-styInt = SA0TyPrim A0TyInt
+styInt = SA0TyPrim A0TyInt Nothing
+
+ass0exprIsNonnegative :: Ass0Expr
+ass0exprIsNonnegative =
+  lam n styInt $
+    A0LetIn (zero, styInt) (A0Literal (ALitInt 0)) $
+      A0AppBuiltIn (BILeq zero n)
+  where
+    n = AssVar "n"
+    zero = AssVar "zero"
+
+tyNat :: Ass0TypeExpr
+tyNat = A0TyPrim A0TyInt (Just ass0exprIsNonnegative)
+
+tyValNat :: Ass0TypeVal
+tyValNat = A0TyValPrim A0TyValNat
 
 styNat :: StrictAss0TypeExpr
-styNat = SA0TyPrim A0TyNat
+styNat = SA0TyPrim A0TyInt (Just ass0exprIsNonnegative)
 
 styUnit :: StrictAss0TypeExpr
-styUnit = SA0TyPrim A0TyUnit
+styUnit = SA0TyPrim A0TyUnit Nothing
 
 sty0Vec :: Int -> StrictAss0TypeExpr
-sty0Vec = SA0TyPrim . a0TyVec
+sty0Vec n = SA0TyPrim (a0TyVec n) Nothing
 
 sty0Mat :: Int -> Int -> StrictAss0TypeExpr
-sty0Mat m n = SA0TyPrim (a0TyMat m n)
+sty0Mat m n = SA0TyPrim (a0TyMat m n) Nothing
 
 sty0Tensor :: [Int] -> StrictAss0TypeExpr
-sty0Tensor = SA0TyPrim . A0TyTensor
+sty0Tensor ns = SA0TyPrim (A0TyTensor ns) Nothing
 
 styList :: StrictAss0TypeExpr -> StrictAss0TypeExpr
 styList = SA0TyList

@@ -107,7 +107,7 @@ a0bracket :: Ass1Expr -> Ass0Expr
 a0bracket = A0Bracket
 
 sa0tyInt :: StrictAss0TypeExpr
-sa0tyInt = SA0TyPrim A0TyInt
+sa0tyInt = SA0TyPrim A0TyInt Nothing
 
 sa0nondepTyArrow :: StrictAss0TypeExpr -> StrictAss0TypeExpr -> StrictAss0TypeExpr
 sa0nondepTyArrow sa0tye1 = SA0TyArrow (Nothing, sa0tye1)

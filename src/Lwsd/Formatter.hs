@@ -413,7 +413,6 @@ instance Disp Ass1Expr where
 instance Disp Ass0PrimType where
   dispGen req = \case
     A0TyInt -> "Int"
-    A0TyNat -> "Nat"
     A0TyFloat -> "Float"
     A0TyBool -> "Bool"
     A0TyUnit -> "Unit"
@@ -423,7 +422,8 @@ instance Disp Ass0PrimType where
 
 instance Disp Ass0TypeExpr where
   dispGen req = \case
-    A0TyPrim a0tyPrim -> disp a0tyPrim
+    A0TyPrim a0tyPrim Nothing -> disp a0tyPrim
+    A0TyPrim a0tyPrim (Just a0ePred) -> "(" <> disp a0tyPrim <+> "|" <+> disp a0ePred <> ")"
     A0TyList a0tye -> dispListType req a0tye
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
@@ -431,7 +431,8 @@ instance Disp Ass0TypeExpr where
 
 instance Disp StrictAss0TypeExpr where
   dispGen req = \case
-    SA0TyPrim a0tyPrim -> disp a0tyPrim
+    SA0TyPrim a0tyPrim Nothing -> disp a0tyPrim
+    SA0TyPrim a0tyPrim (Just a0ePred) -> "(" <> disp a0tyPrim <+> "|" <+> disp a0ePred <> ")"
     SA0TyList sa0tye -> dispListType req sa0tye
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1

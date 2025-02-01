@@ -388,11 +388,11 @@ evalExpr1 env = \case
 
 evalTypeExpr0 :: EvalEnv -> StrictAss0TypeExpr -> M Ass0TypeVal
 evalTypeExpr0 env = \case
-  SA0TyPrim a0tyPrim ->
+  SA0TyPrim a0tyPrim _maybePred ->
+    -- TODO: evaluate `maybePred`
     pure . A0TyValPrim $
       case a0tyPrim of
         A0TyInt -> A0TyValInt
-        A0TyNat -> A0TyValNat
         A0TyFloat -> A0TyValFloat
         A0TyBool -> A0TyValBool
         A0TyUnit -> A0TyValUnit
@@ -462,13 +462,15 @@ unliftVal = \case
 unliftTypeVal :: Ass1TypeVal -> StrictAss0TypeExpr
 unliftTypeVal = \case
   A1TyValPrim a1tyvPrim ->
-    SA0TyPrim $
-      case a1tyvPrim of
-        A1TyValInt -> A0TyInt
-        A1TyValFloat -> A0TyFloat
-        A1TyValBool -> A0TyBool
-        A1TyValUnit -> A0TyUnit
-        A1TyValTensor ns -> A0TyTensor ns
+    -- TODO: `maybePred`
+    let a0tyPrim =
+          case a1tyvPrim of
+            A1TyValInt -> A0TyInt
+            A1TyValFloat -> A0TyFloat
+            A1TyValBool -> A0TyBool
+            A1TyValUnit -> A0TyUnit
+            A1TyValTensor ns -> A0TyTensor ns
+     in SA0TyPrim a0tyPrim Nothing -- TODO: `maybePred`
   A1TyValList a1tyv ->
     SA0TyList (unliftTypeVal a1tyv)
   A1TyValArrow a1tyv1 a1tyv2 ->
