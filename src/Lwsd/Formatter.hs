@@ -201,6 +201,10 @@ dispOptArrowType req x tye1 tye2 =
   where
     docDom = "{" <> disp x <+> ":" <+> disp tye1 <> "}"
 
+dispInternalRefinementType :: (Disp ty, Disp expr) => Associativity -> ty -> expr -> Doc Ann
+dispInternalRefinementType _req tye ePred =
+  "(" <> disp tye <+> "|" <+> disp ePred <> ")"
+
 dispListLiteral :: (Disp e) => [e] -> Doc Ann
 dispListLiteral es =
   "[" <> disps es <> "]"
@@ -425,7 +429,7 @@ instance Disp Ass0PrimType where
 instance Disp Ass0TypeExpr where
   dispGen req = \case
     A0TyPrim a0tyPrim Nothing -> disp a0tyPrim
-    A0TyPrim a0tyPrim (Just a0ePred) -> "(" <> disp a0tyPrim <+> "|" <+> disp a0ePred <> ")"
+    A0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
     A0TyList a0tye -> dispListType req a0tye
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
@@ -434,7 +438,7 @@ instance Disp Ass0TypeExpr where
 instance Disp StrictAss0TypeExpr where
   dispGen req = \case
     SA0TyPrim a0tyPrim Nothing -> disp a0tyPrim
-    SA0TyPrim a0tyPrim (Just a0ePred) -> "(" <> disp a0tyPrim <+> "|" <+> disp a0ePred <> ")"
+    SA0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
     SA0TyList sa0tye -> dispListType req sa0tye
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
@@ -676,7 +680,8 @@ instance Disp Ass1Val where
 
 instance Disp Ass0TypeVal where
   dispGen req = \case
-    A0TyValPrim a0tyvPrim -> dispGen req a0tyvPrim
+    A0TyValPrim a0tyvPrim Nothing -> dispGen req a0tyvPrim
+    A0TyValPrim a0tyvPrim (Just a0vPred) -> dispInternalRefinementType req a0tyvPrim a0vPred
     A0TyValList a0tyv1 -> dispListType req a0tyv1
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
@@ -684,7 +689,6 @@ instance Disp Ass0TypeVal where
 instance Disp Ass0PrimTypeVal where
   dispGen req = \case
     A0TyValInt -> "Int"
-    A0TyValNat -> "Nat"
     A0TyValFloat -> "Float"
     A0TyValBool -> "Bool"
     A0TyValUnit -> "Unit"

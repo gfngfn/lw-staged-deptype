@@ -338,7 +338,7 @@ data Ass1ValConst
   deriving stock (Eq, Show)
 
 data Ass0TypeVal
-  = A0TyValPrim Ass0PrimTypeVal
+  = A0TyValPrim Ass0PrimTypeVal (Maybe Ass0Val) -- Possibly equipped with a refinement predicate.
   | A0TyValList Ass0TypeVal
   | A0TyValArrow (Maybe AssVar, Ass0TypeVal) StrictAss0TypeExpr
   | A0TyValCode Ass1TypeVal
@@ -346,7 +346,6 @@ data Ass0TypeVal
 
 data Ass0PrimTypeVal
   = A0TyValInt
-  | A0TyValNat -- TODO: remove this
   | A0TyValFloat
   | A0TyValBool
   | A0TyValUnit

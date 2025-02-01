@@ -23,7 +23,7 @@ import Lwsd.Syntax
 import Prelude
 
 tyValInt :: Ass0TypeVal
-tyValInt = A0TyValPrim A0TyValInt
+tyValInt = A0TyValPrim A0TyValInt Nothing
 
 tyValList :: Ass0TypeVal -> Ass0TypeVal
 tyValList = A0TyValList
@@ -40,11 +40,20 @@ ass0exprIsNonnegative =
     n = AssVar "n"
     zero = AssVar "zero"
 
+ass0valIsNonnegative :: Ass0Val
+ass0valIsNonnegative =
+  clo n tyValInt $
+    A0LetIn (zero, styInt) (A0Literal (ALitInt 0)) $
+      A0AppBuiltIn (BILeq zero n)
+  where
+    n = AssVar "n"
+    zero = AssVar "zero"
+
 tyNat :: Ass0TypeExpr
 tyNat = A0TyPrim A0TyInt (Just ass0exprIsNonnegative)
 
 tyValNat :: Ass0TypeVal
-tyValNat = A0TyValPrim A0TyValNat
+tyValNat = A0TyValPrim A0TyValInt (Just ass0valIsNonnegative)
 
 styNat :: StrictAss0TypeExpr
 styNat = SA0TyPrim A0TyInt (Just ass0exprIsNonnegative)

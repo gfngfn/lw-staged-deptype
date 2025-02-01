@@ -393,15 +393,16 @@ evalExpr1 env = \case
 
 evalTypeExpr0 :: EvalEnv -> StrictAss0TypeExpr -> M Ass0TypeVal
 evalTypeExpr0 env = \case
-  SA0TyPrim a0tyPrim _maybePred ->
-    -- TODO: evaluate `maybePred`
-    pure . A0TyValPrim $
-      case a0tyPrim of
-        A0TyInt -> A0TyValInt
-        A0TyFloat -> A0TyValFloat
-        A0TyBool -> A0TyValBool
-        A0TyUnit -> A0TyValUnit
-        A0TyTensor n -> A0TyValTensor n
+  SA0TyPrim a0tyPrim maybePred -> do
+    maybeVPred <- mapM (evalExpr0 env) maybePred
+    let a0tyValPrim =
+          case a0tyPrim of
+            A0TyInt -> A0TyValInt
+            A0TyFloat -> A0TyValFloat
+            A0TyBool -> A0TyValBool
+            A0TyUnit -> A0TyValUnit
+            A0TyTensor n -> A0TyValTensor n
+    pure $ A0TyValPrim a0tyValPrim maybeVPred
   SA0TyList sa0tye1 -> do
     a0tyv1 <- evalTypeExpr0 env sa0tye1
     pure $ A0TyValList a0tyv1
