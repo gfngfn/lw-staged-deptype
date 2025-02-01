@@ -472,7 +472,6 @@ unliftVal = \case
 unliftTypeVal :: Ass1TypeVal -> StrictAss0TypeExpr
 unliftTypeVal = \case
   A1TyValPrim a1tyvPrim ->
-    -- TODO: `maybePred`
     let a0tyPrim =
           case a1tyvPrim of
             A1TyValInt -> A0TyInt
@@ -480,7 +479,7 @@ unliftTypeVal = \case
             A1TyValBool -> A0TyBool
             A1TyValUnit -> A0TyUnit
             A1TyValTensor ns -> A0TyTensor ns
-     in SA0TyPrim a0tyPrim Nothing -- TODO: `maybePred`
+     in SA0TyPrim a0tyPrim Nothing
   A1TyValList a1tyv ->
     SA0TyList (unliftTypeVal a1tyv)
   A1TyValArrow a1tyv1 a1tyv2 ->
