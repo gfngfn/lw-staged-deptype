@@ -35,6 +35,7 @@ data TypeError
   | FunctionTypeCannotBeDependentAtStage1 SpanInFile Var
   | CannotUseCodeTypeAtStage1 SpanInFile
   | CannotUseOptArrowTypeAtStage1 SpanInFile
+  | CannotUseRefinementTypeAtStage1 SpanInFile
   | CannotUsePersistentArgAtStage0 SpanInFile
   | CannotUseNormalArgAtStage1 SpanInFile
   | VarOccursFreelyInAss0Type SpanInFile Var (Result Ass0TypeExpr)

@@ -1025,6 +1025,8 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
         typecheckTypeExpr0 trav tyEnv' tye2
       let ax = AssVar x
       pure $ A0TyOptArrow (ax, a0tye1) a0tye2
+    TyRefinement _x _tye1 _e2 -> do
+      error "TODO: typecheckTypeExpr0, TyRefinement"
 
 data IntermediateArgForAss1Type
   = IA1ExprArg Ass0Expr Ass0TypeExpr
@@ -1080,6 +1082,8 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       typeError trav $ CannotUseOptArrowTypeAtStage1 spanInFile
     TyCode _ -> do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile
+    TyRefinement _ _ _ -> do
+      typeError trav $ CannotUseRefinementTypeAtStage1 spanInFile
 
 validatePersistentType :: trav -> Span -> Ass0TypeExpr -> M trav AssPersTypeExpr
 validatePersistentType trav loc a0tye =

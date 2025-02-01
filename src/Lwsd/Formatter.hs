@@ -281,6 +281,7 @@ instance Disp (TypeExprMainF ann) where
     TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     TyCode tye1 -> dispBracket tye1
     TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
+    TyRefinement x tye1 e2 -> "(" <> disp x <+> ":" <+> disp tye1 <+> "|" <+> disp e2 <+> ")"
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
@@ -527,6 +528,8 @@ instance Disp TypeError where
       "Cannot use code types at stage 1" <+> disp spanInFile
     CannotUseOptArrowTypeAtStage1 spanInFile ->
       "Cannot use optional function types at stage 1" <+> disp spanInFile
+    CannotUseRefinementTypeAtStage1 spanInFile ->
+      "Cannot use refinement types at stage 1" <+> disp spanInFile
     CannotUsePersistentArgAtStage0 spanInFile ->
       "Cannot use persistent arguments at stage 0" <+> disp spanInFile
     CannotUseNormalArgAtStage1 spanInFile ->
