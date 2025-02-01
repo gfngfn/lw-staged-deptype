@@ -205,6 +205,10 @@ dispInternalRefinementType :: (Disp ty, Disp expr) => Associativity -> ty -> exp
 dispInternalRefinementType _req tye ePred =
   "(" <> disp tye <+> "|" <+> disp ePred <> ")"
 
+dispInternalRefinementListType :: (Disp ty, Disp expr) => Associativity -> ty -> expr -> Doc Ann
+dispInternalRefinementListType _req tye ePred =
+  "(" <> dispListType Outermost tye <+> "|" <+> disp ePred <> ")"
+
 dispListLiteral :: (Disp e) => [e] -> Doc Ann
 dispListLiteral es =
   "[" <> disps es <> "]"
@@ -304,20 +308,21 @@ instance Disp BuiltIn where
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
-    BIGenMmult x1 x2 x3 -> "GEN_MMULT(" <> disps [x1, x2, x3] <> ")"
     BIGenMconcatVert x1 x2 x3 -> "GEN_MCONCAT_VERT(" <> disps [x1, x2, x3] <> ")"
     BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
     BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
     BIMtranspose m n x1 -> "MTRANSPOSE@{" <> disps [m, n] <> "}(" <> disp x1 <> ")"
-    BIMmult k m n x1 x2 -> "MMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
     BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
     BIDropAt x1 x2 -> "DROP_AT(" <> disps [x1, x2] <> ")"
+    BIBroadcastable x1 x2 -> "BROADCASTABLE(" <> disps [x1, x2] <> ")"
+    BIBroadcast x1 x2 -> "BROADCAST(" <> disps [x1, x2] <> ")"
     BIListAppend x1 x2 -> "LIST.APPEND(" <> disps [x1, x2] <> ")"
     BIListIter x1 x2 -> "LIST.ITER(" <> disps [x1, x2] <> ")"
     BIGenBroadcasted x1 x2 -> "GEN_BROADCASTED(" <> disps [x1, x2] <> ")"
     BITensorGenZeros x1 -> "TENSOR.GEN_ZEROS(" <> disp x1 <> ")"
-    BITensorGenAdd x -> "TENSOR.GEN_ADD(" <> disp x <> ")"
-    BITensorGenMult x1 -> "TENSOR.GEN_MULT(" <> disp x1 <> ")"
+    BITensorGenAdd x1 x2 -> "TENSOR.GEN_ADD(" <> disps [x1, x2] <> ")"
+    BITensorGenMult x1 x2 -> "TENSOR.GEN_MULT(" <> disps [x1, x2] <> ")"
+    BITensorGenMm x1 x2 x3 -> "TENSOR.GEN_MM(" <> disps [x1, x2, x3] <> ")"
     BITensorGenGrad x1 -> "TENSOR.GEN_GRAD(" <> disp x1 <> ")"
     BITensorGenZeroGrad x1 -> "TENSOR.GEN_ZERO_GRAD(" <> disp x1 <> ")"
     BITensorGenSubUpdate x1 -> "TENSOR.GEN_SUB_UPDATE(" <> disp x1 <> ")"
@@ -325,6 +330,7 @@ instance Disp BuiltIn where
     BITensorGenCrossEntropyForLogits x1 x2 -> "TENSOR.GEN_CROSS_ENTROPY_FOR_LOGITS(" <> disps [x1, x2] <> ")"
     BITensorGenCountEqual x1 -> "TENSOR.GEN_COUNT_EQUAL(" <> disp x1 <> ")"
     BITensorAdd ns x1 x2 -> "TENSOR.ADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
+    BITensorMm k m n x1 x2 -> "TENSOR.MM@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
 
 instance Disp Ass0BuiltInName where
   dispGen _ a0builtInName = "<" <> disp (show a0builtInName) <> ">"
@@ -431,7 +437,8 @@ instance Disp Ass0TypeExpr where
   dispGen req = \case
     A0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     A0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
-    A0TyList a0tye -> dispListType req a0tye
+    A0TyList a0tye Nothing -> dispListType req a0tye
+    A0TyList a0tye (Just a0ePred) -> dispInternalRefinementListType req a0tye a0ePred
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
@@ -440,7 +447,8 @@ instance Disp StrictAss0TypeExpr where
   dispGen req = \case
     SA0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     SA0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
-    SA0TyList sa0tye -> dispListType req sa0tye
+    SA0TyList sa0tye Nothing -> dispListType req sa0tye
+    SA0TyList sa0tye (Just a0ePred) -> dispInternalRefinementListType req sa0tye a0ePred
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
 
@@ -651,18 +659,18 @@ instance Disp Ass1ValConst where
     A1ValConstVadd n -> "vadd@{" <> disp n <> "}"
     A1ValConstVconcat m n -> "vconcat@{" <> disps [m, n] <> "}"
     A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
-    A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
     A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
     A1ValConstBroadcasted ns1 ns2 -> "broadcasted@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
     A1ValConstTensorZeros ns1 -> "Tensor.zeros@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorMult ns1 -> "Tensor.mult@{" <> dispListLiteral ns1 <> "}"
+    A1ValConstTensorMult ns1 ns2 -> "Tensor.mult@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
     A1ValConstTensorGrad ns1 -> "Tensor.grad@{" <> dispListLiteral ns1 <> "}"
     A1ValConstTensorZeroGrad ns1 -> "Tensor.zero_grad@{" <> dispListLiteral ns1 <> "}"
     A1ValConstTensorSubUpdate ns1 -> "Tensor.sub_update@{" <> dispListLiteral ns1 <> "}"
     A1ValConstTensorArgmax ns1 n2 -> "Tensor.argmax@{" <> dispListLiteral ns1 <> "," <+> disp n2 <> "}"
     A1ValConstTensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits@{" <> disps [n1, n2] <> "}"
     A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
-    A1ValConstTensorAdd ns -> "Tensor.add@{" <> dispListLiteral ns <> "}"
+    A1ValConstTensorAdd ns1 ns2 -> "Tensor.add@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
+    A1ValConstTensorMm k m n -> "Tensor.mm@{" <> disps [k, m, n] <> "}"
     A1ValConstBuiltInName a1builtInName -> disp a1builtInName
 
 instance Disp Ass1Val where
@@ -685,7 +693,8 @@ instance Disp Ass0TypeVal where
   dispGen req = \case
     A0TyValPrim a0tyvPrim Nothing -> dispGen req a0tyvPrim
     A0TyValPrim a0tyvPrim (Just a0vPred) -> dispInternalRefinementType req a0tyvPrim a0vPred
-    A0TyValList a0tyv1 -> dispListType req a0tyv1
+    A0TyValList a0tyv1 Nothing -> dispListType req a0tyv1
+    A0TyValList a0tyv1 (Just a0vPred) -> dispInternalRefinementListType req a0tyv1 a0vPred
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
 
@@ -763,6 +772,8 @@ instance Disp Evaluator.Bug where
       "Expected a symbol, but found a stage-0 value:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     Evaluator.InconsistentAppBuiltIn builtin ->
       "Inconsistent application of a built-in function:" <+> disp (Text.pack (show builtin))
+    Evaluator.BroadcastFailed ns1 ns2 ->
+      "Broadcast failed:" <+> dispListLiteral ns1 <> "," <+> dispListLiteral ns2
 
 instance Disp Evaluator.EvalError where
   dispGen _ = \case

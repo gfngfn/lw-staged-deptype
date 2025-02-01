@@ -4,12 +4,11 @@ let bs = Tensor.zeros (let open Mnist_helper in [label_count]) in
 let model =
   fun{n : Nat} -> fun(xs : Tensor [n, Mnist_helper.image_dim]) ->
     let open Tensor in
-    mm xs ws + broadcasted [n] bs
-    (* TODO: broadcast: `mm xs ws + bs` *)
+    mm xs ws + bs
 in
 List.iter (fun(i : Int) ->
   let loss =
-    Tensor.cross_entropy_for_logits
+    Tensor.cross_entropy_for_logits _ {Mnist_helper.label_count}
       (model Mnist_helper.train_images)
       Mnist_helper.train_labels
   in
