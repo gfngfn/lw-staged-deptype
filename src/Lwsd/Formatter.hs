@@ -299,6 +299,7 @@ instance Disp BuiltIn where
     BISub x1 x2 -> "SUB(" <> disps [x1, x2] <> ")"
     BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
     BILeq x1 x2 -> "LEQ(" <> disps [x1, x2] <> ")"
+    BIAnd x1 x2 -> "AND(" <> disps [x1, x2] <> ")"
     BIListMap f x -> "LIST_MAP(" <> disps [f, x] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
@@ -612,6 +613,8 @@ instance Disp TypeError where
       "Unknown external name" <+> disp extName <+> disp spanInFile
     InvalidPersistentType spanInFile a0tye ->
       "Invalid persistent type:" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    InvalidTypeForRefinement spanInFile a0tye ->
+      "Invalid type for refinement:" <+> stage0Style (disp a0tye) <+> disp spanInFile
 
 instance Disp ConditionalMergeError where
   dispGen _ = \case

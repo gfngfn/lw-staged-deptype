@@ -181,6 +181,10 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValLiteral (ALitBool (n1 <= n2))
+      BIAnd x1 x2 -> do
+        b1 <- validateBoolLiteral =<< findVal0 env x1
+        b2 <- validateBoolLiteral =<< findVal0 env x2
+        pure $ A0ValLiteral (ALitBool (b1 && b2))
       BIListMap f x -> do
         a0vF <- findVal0 env f
         a0vsIn <- findList0 env x

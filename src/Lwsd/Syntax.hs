@@ -71,6 +71,7 @@ data BuiltIn
   | BISub AssVar AssVar
   | BIMult AssVar AssVar
   | BILeq AssVar AssVar
+  | BIAnd AssVar AssVar
   | BIListMap AssVar AssVar
   | BIGenVadd AssVar
   | BIGenVconcat AssVar AssVar

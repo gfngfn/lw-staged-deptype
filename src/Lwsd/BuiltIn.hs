@@ -11,6 +11,7 @@ module Lwsd.BuiltIn
     ass0exprMmult,
     ass0exprMconcatVert,
     ass0exprTensorAdd,
+    ass0exprAnd,
     getAss0Val,
     validateExternalName0,
     validateExternalName1,
@@ -30,6 +31,9 @@ tyValList = A0TyValList
 
 styInt :: StrictAss0TypeExpr
 styInt = SA0TyPrim A0TyInt Nothing
+
+styBool :: StrictAss0TypeExpr
+styBool = SA0TyPrim A0TyBool Nothing
 
 ass0exprIsNonnegative :: Ass0Expr
 ass0exprIsNonnegative =
@@ -290,6 +294,15 @@ ass0exprTensorAdd ns =
   where
     x1 = AssVar "v1"
     x2 = AssVar "v2"
+
+ass0exprAnd :: Ass0Expr
+ass0exprAnd =
+  lam x1 styBool $
+    lam x2 styBool $
+      A0AppBuiltIn (BIAnd x1 x2)
+  where
+    x1 = AssVar "x1"
+    x2 = AssVar "x2"
 
 validateExternalName0 :: Text -> Maybe Ass0BuiltInName
 validateExternalName0 = \case

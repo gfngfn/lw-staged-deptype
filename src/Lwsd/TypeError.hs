@@ -52,6 +52,7 @@ data TypeError
   | BindingOverwritten SpanInFile Var
   | UnknownExternalName SpanInFile Text
   | InvalidPersistentType SpanInFile Ass0TypeExpr
+  | InvalidTypeForRefinement SpanInFile Ass0TypeExpr
   deriving stock (Eq, Show)
 
 data ConditionalMergeError

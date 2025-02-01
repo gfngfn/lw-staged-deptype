@@ -1036,8 +1036,33 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
         typecheckTypeExpr0 trav tyEnv' tye2
       let ax = AssVar x
       pure $ A0TyOptArrow (ax, a0tye1) a0tye2
-    TyRefinement _x _tye1 _e2 -> do
-      error "TODO: typecheckTypeExpr0, TyRefinement"
+    TyRefinement x tye1 e2 -> do
+      a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
+      case a0tye1 of
+        A0TyPrim tyPrim maybePredForBase -> do
+          (result2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVal x (Ass0Entry a0tye1 Nothing) tyEnv) [] e2
+          a0tye2 <- validateEmptyRetAppContext "TyRefinement" result2
+          case a0tye2 of
+            A0TyPrim A0TyBool _maybePredForBool -> do
+              let ax = AssVar x
+              case maybePredForBase of
+                Nothing ->
+                  pure $
+                    A0TyPrim tyPrim . Just $
+                      A0Lam Nothing (ax, strictify a0tye1) a0e2
+                Just a0ePredForBase -> do
+                  pure $
+                    A0TyPrim tyPrim . Just $
+                      A0Lam Nothing (ax, strictify a0tye1) $
+                        A0App (A0App BuiltIn.ass0exprAnd (A0App a0ePredForBase (A0Var ax))) a0e2
+            _ -> do
+              let Expr loc2 _ = e2
+              spanInFile2 <- askSpanInFile loc2
+              typeError trav $ NotABoolTypeForStage0 spanInFile2 a0tye2
+        _ -> do
+          let TypeExpr loc1 _ = tye1
+          spanInFile1 <- askSpanInFile loc1
+          typeError trav $ InvalidTypeForRefinement spanInFile1 a0tye1
 
 data IntermediateArgForAss1Type
   = IA1ExprArg Ass0Expr Ass0TypeExpr
