@@ -170,6 +170,12 @@ instance HasVar Ass0Expr where
       (A0App a0e11 a0e12, A0App a0e21 a0e22) ->
         alphaEquivalent a0e11 a0e21
           && alphaEquivalent a0e12 a0e22
+      (A0LetIn (x1, a0tye1) a0e11 a0e12, A0LetIn (x2, a0tye2) a0e21 a0e22) ->
+        alphaEquivalent a0tye1 a0tye2
+          && alphaEquivalent a0e11 a0e21
+          && alphaEquivalent a0e12 (subst0 (A0Var x1) x2 a0e22)
+      (A0Sequential a0e11 a0e12, A0Sequential a0e21 a0e22) ->
+        alphaEquivalent a0e11 a0e21 && alphaEquivalent a0e12 a0e22
       (A0IfThenElse a0e10 a0e11 a0e12, A0IfThenElse a0e20 a0e21 a0e22) ->
         alphaEquivalent a0e10 a0e20
           && alphaEquivalent a0e11 a0e21

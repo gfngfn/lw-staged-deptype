@@ -125,7 +125,12 @@ makeAssertiveCast trav loc =
     go varsToInfer a0tye1 a0tye2 = do
       spanInFile <- askSpanInFile loc
       case (a0tye1, a0tye2) of
-        (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2) -> do
+        (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2') -> do
+          -- Ad hoc optimization of refinement cast insertion:
+          let maybePred2 =
+                if alphaEquivalent maybePred2' maybePred1
+                  then Nothing
+                  else maybePred2'
           maybeCast <-
             case (a0tyPrim1, a0tyPrim2) of
               (A0TyInt, A0TyInt) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyInt maybePred1)
