@@ -4,7 +4,7 @@
 ~(let gen_model =
     fun{n : Nat} -> &(fun(xs : Tensor %[n, Mnist_helper.image_dim]) ->
       let open Tensor in
-      ~gen_tadd (~gen_mm xs ws) (~(gen_broadcasted [n]) bs)
+      ~gen_add (~gen_mm xs ws) (~(gen_broadcasted [n]) bs)
       (* TODO: broadcast: `~gen_tadd (~gen_mm xs ws) bs` *)
     )
   in
