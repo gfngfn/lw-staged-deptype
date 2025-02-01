@@ -291,9 +291,10 @@ evalExpr0 env = \case
       BITensorGenZeros x1 -> do
         ns1 <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeros ns1))
-      BITensorGenMult x1 -> do
+      BITensorGenMult x1 x2 -> do
         ns1 <- findIntList0 env x1
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorMult ns1))
+        ns2 <- findIntList0 env x2
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorMult ns1 ns2))
       BITensorGenGrad x1 -> do
         ns1 <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorGrad ns1))

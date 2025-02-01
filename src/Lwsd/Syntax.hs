@@ -90,14 +90,14 @@ data BuiltIn
   | BIListIter AssVar AssVar
   | BIGenBroadcasted AssVar AssVar
   | BITensorGenZeros AssVar
-  | BITensorGenMult AssVar
+  | BITensorGenAdd AssVar AssVar
+  | BITensorGenMult AssVar AssVar
   | BITensorGenGrad AssVar
   | BITensorGenZeroGrad AssVar
   | BITensorGenSubUpdate AssVar
   | BITensorGenCrossEntropyForLogits AssVar AssVar
   | BITensorGenArgmax AssVar AssVar
   | BITensorGenCountEqual AssVar
-  | BITensorGenAdd AssVar AssVar
   | BITensorAdd [Int] AssVar AssVar
   deriving stock (Eq, Show)
 
@@ -332,7 +332,7 @@ data Ass1ValConst
   | A1ValConstBroadcasted [Int] [Int]
   | A1ValConstTensorZeros [Int]
   | A1ValConstTensorAdd [Int] [Int]
-  | A1ValConstTensorMult [Int]
+  | A1ValConstTensorMult [Int] [Int]
   | A1ValConstTensorGrad [Int]
   | A1ValConstTensorZeroGrad [Int]
   | A1ValConstTensorSubUpdate [Int]
