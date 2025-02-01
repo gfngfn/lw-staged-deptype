@@ -308,12 +308,10 @@ instance Disp BuiltIn where
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
     BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
-    BIGenMmult x1 x2 x3 -> "GEN_MMULT(" <> disps [x1, x2, x3] <> ")"
     BIGenMconcatVert x1 x2 x3 -> "GEN_MCONCAT_VERT(" <> disps [x1, x2, x3] <> ")"
     BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
     BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
     BIMtranspose m n x1 -> "MTRANSPOSE@{" <> disps [m, n] <> "}(" <> disp x1 <> ")"
-    BIMmult k m n x1 x2 -> "MMULT@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
     BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
     BIDropAt x1 x2 -> "DROP_AT(" <> disps [x1, x2] <> ")"
     BIBroadcastable x1 x2 -> "BROADCASTABLE(" <> disps [x1, x2] <> ")"
@@ -324,6 +322,7 @@ instance Disp BuiltIn where
     BITensorGenZeros x1 -> "TENSOR.GEN_ZEROS(" <> disp x1 <> ")"
     BITensorGenAdd x1 x2 -> "TENSOR.GEN_ADD(" <> disps [x1, x2] <> ")"
     BITensorGenMult x1 x2 -> "TENSOR.GEN_MULT(" <> disps [x1, x2] <> ")"
+    BITensorGenMm x1 x2 x3 -> "TENSOR.GEN_MM(" <> disps [x1, x2, x3] <> ")"
     BITensorGenGrad x1 -> "TENSOR.GEN_GRAD(" <> disp x1 <> ")"
     BITensorGenZeroGrad x1 -> "TENSOR.GEN_ZERO_GRAD(" <> disp x1 <> ")"
     BITensorGenSubUpdate x1 -> "TENSOR.GEN_SUB_UPDATE(" <> disp x1 <> ")"
@@ -331,6 +330,7 @@ instance Disp BuiltIn where
     BITensorGenCrossEntropyForLogits x1 x2 -> "TENSOR.GEN_CROSS_ENTROPY_FOR_LOGITS(" <> disps [x1, x2] <> ")"
     BITensorGenCountEqual x1 -> "TENSOR.GEN_COUNT_EQUAL(" <> disp x1 <> ")"
     BITensorAdd ns x1 x2 -> "TENSOR.ADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
+    BITensorMm k m n x1 x2 -> "TENSOR.MM@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
 
 instance Disp Ass0BuiltInName where
   dispGen _ a0builtInName = "<" <> disp (show a0builtInName) <> ">"
@@ -659,7 +659,6 @@ instance Disp Ass1ValConst where
     A1ValConstVadd n -> "vadd@{" <> disp n <> "}"
     A1ValConstVconcat m n -> "vconcat@{" <> disps [m, n] <> "}"
     A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
-    A1ValConstMmult k m n -> "mmult@{" <> disps [k, m, n] <> "}"
     A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
     A1ValConstBroadcasted ns1 ns2 -> "broadcasted@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
     A1ValConstTensorZeros ns1 -> "Tensor.zeros@{" <> dispListLiteral ns1 <> "}"
@@ -671,6 +670,7 @@ instance Disp Ass1ValConst where
     A1ValConstTensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits@{" <> disps [n1, n2] <> "}"
     A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
     A1ValConstTensorAdd ns1 ns2 -> "Tensor.add@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
+    A1ValConstTensorMm k m n -> "Tensor.mm@{" <> disps [k, m, n] <> "}"
     A1ValConstBuiltInName a1builtInName -> disp a1builtInName
 
 instance Disp Ass1Val where

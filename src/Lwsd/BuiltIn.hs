@@ -8,9 +8,9 @@ module Lwsd.BuiltIn
     ass0exprVadd,
     ass0exprVconcat,
     ass0exprMtranspose,
-    ass0exprMmult,
     ass0exprMconcatVert,
     ass0exprTensorAdd,
+    ass0exprTensorMm,
     ass0exprAnd,
     getAss0Val,
     validateExternalName0,
@@ -120,11 +120,11 @@ getAss0Val = \case
     where
       x1 = AssVar "x1"
       x2 = AssVar "x2"
-  A0BINameGenMmult ->
+  A0BINameTensorGenMm ->
     clo x1 tyValNat $
       lam x2 styNat $
         lam x3 styNat $
-          A0AppBuiltIn (BIGenMmult x1 x2 x3)
+          A0AppBuiltIn (BITensorGenMm x1 x2 x3)
     where
       x1 = AssVar "x1"
       x2 = AssVar "x2"
@@ -295,15 +295,6 @@ ass0exprMconcatVert m1 m2 n =
     x1 = AssVar "mat1"
     x2 = AssVar "mat2"
 
-ass0exprMmult :: Int -> Int -> Int -> Ass0Expr
-ass0exprMmult k m n =
-  lam x1 (sty0Mat k m) $
-    lam x2 (sty0Mat m n) $
-      A0AppBuiltIn (BIMmult k m n x1 x2)
-  where
-    x1 = AssVar "mat1"
-    x2 = AssVar "mat2"
-
 ass0exprTensorAdd :: [Int] -> Ass0Expr
 ass0exprTensorAdd ns =
   lam x1 (sty0Tensor ns) $
@@ -312,6 +303,15 @@ ass0exprTensorAdd ns =
   where
     x1 = AssVar "v1"
     x2 = AssVar "v2"
+
+ass0exprTensorMm :: Int -> Int -> Int -> Ass0Expr
+ass0exprTensorMm k m n =
+  lam x1 (sty0Mat k m) $
+    lam x2 (sty0Mat m n) $
+      A0AppBuiltIn (BITensorMm k m n x1 x2)
+  where
+    x1 = AssVar "mat1"
+    x2 = AssVar "mat2"
 
 ass0exprAnd :: Ass0Expr
 ass0exprAnd =
@@ -331,7 +331,6 @@ validateExternalName0 = \case
   "gen_vadd" -> pure A0BINameGenVadd
   "gen_vconcat" -> pure A0BINameGenVconcat
   "gen_mtranspose" -> pure A0BINameGenMtranspose
-  "gen_mmult" -> pure A0BINameGenMmult
   "gen_mconcat_vert" -> pure A0BINameGenMconcatVert
   "drop_at" -> pure A0BINameDropAt
   "broadcastable" -> pure A0BINameBroadcastable
@@ -340,6 +339,7 @@ validateExternalName0 = \case
   "tensor__gen_zeros" -> pure A0BINameTensorGenZeros
   "tensor__gen_add" -> pure A0BINameTensorGenAdd
   "tensor__gen_mult" -> pure A0BINameTensorGenMult
+  "tensor__gen_mm" -> pure A0BINameTensorGenMm
   "tensor__gen_grad" -> pure A0BINameTensorGenGrad
   "tensor__gen_zero_grad" -> pure A0BINameTensorGenZeroGrad
   "tensor__gen_sub_update" -> pure A0BINameTensorGenSubUpdate

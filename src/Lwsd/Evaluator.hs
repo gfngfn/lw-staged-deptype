@@ -215,11 +215,6 @@ evalExpr0 env = \case
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstMtranspose n1 n2))
-      BIGenMmult x1 x2 x3 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        n3 <- findInt0 env x3
-        pure $ A0ValBracket (A1ValConst (A1ValConstMmult n1 n2 n3))
       BIGenMconcatVert x1 x2 x3 -> do
         n1 <- findInt0 env x1
         n2 <- findInt0 env x2
@@ -244,12 +239,6 @@ evalExpr0 env = \case
       BIMtranspose m n x1 -> do
         mat1 <- findMat0 env x1
         case Matrix.transpose m n mat1 of
-          Just mat -> pure $ A0ValLiteral (ALitMat mat)
-          Nothing -> bug $ InconsistentAppBuiltIn bi
-      BIMmult k m n x1 x2 -> do
-        mat1 <- findMat0 env x1
-        mat2 <- findMat0 env x2
-        case Matrix.mult k m n mat1 mat2 of
           Just mat -> pure $ A0ValLiteral (ALitMat mat)
           Nothing -> bug $ InconsistentAppBuiltIn bi
       BIMconcatVert m1 m2 n x1 x2 -> do
@@ -295,6 +284,11 @@ evalExpr0 env = \case
         ns1 <- findIntList0 env x1
         ns2 <- findIntList0 env x2
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorMult ns1 ns2))
+      BITensorGenMm x1 x2 x3 -> do
+        n1 <- findInt0 env x1
+        n2 <- findInt0 env x2
+        n3 <- findInt0 env x3
+        pure $ A0ValBracket (A1ValConst (A1ValConstTensorMm n1 n2 n3))
       BITensorGenGrad x1 -> do
         ns1 <- findIntList0 env x1
         pure $ A0ValBracket (A1ValConst (A1ValConstTensorGrad ns1))
@@ -331,6 +325,12 @@ evalExpr0 env = \case
               Nothing -> bug $ InconsistentAppBuiltIn bi
           _ ->
             error "TODO: evalExpr0, BITadd, dimension >= 3"
+      BITensorMm k m n x1 x2 -> do
+        mat1 <- findMat0 env x1
+        mat2 <- findMat0 env x2
+        case Matrix.mult k m n mat1 mat2 of
+          Just mat -> pure $ A0ValLiteral (ALitMat mat)
+          Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
     findVal0 env x
   A0BuiltInName a0builtInName ->
@@ -481,12 +481,12 @@ unliftVal = \case
       A1ValConstVadd n -> BuiltIn.ass0exprVadd n
       A1ValConstVconcat m n -> BuiltIn.ass0exprVconcat m n
       A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
-      A1ValConstMmult k m n -> BuiltIn.ass0exprMmult k m n
       A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
       A1ValConstTensorAdd ns1 ns2 ->
         if ns1 == ns2
           then BuiltIn.ass0exprTensorAdd ns1
           else error $ "TODO: unliftVal, A1ValConstTensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
+      A1ValConstTensorMm k m n -> BuiltIn.ass0exprTensorMm k m n
       A1ValConstBuiltInName a1builtInName -> A0BuiltInName (unliftBuiltInName a1builtInName)
       _ -> error $ "TODO: unliftVal, " ++ show c
   A1ValVar symbX ->

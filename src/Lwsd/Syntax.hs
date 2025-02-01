@@ -76,12 +76,10 @@ data BuiltIn
   | BIGenVadd AssVar
   | BIGenVconcat AssVar AssVar
   | BIGenMtranspose AssVar AssVar
-  | BIGenMmult AssVar AssVar AssVar
   | BIGenMconcatVert AssVar AssVar AssVar
   | BIVadd Int AssVar AssVar
   | BIVconcat Int Int AssVar AssVar
   | BIMtranspose Int Int AssVar
-  | BIMmult Int Int Int AssVar AssVar
   | BIMconcatVert Int Int Int AssVar AssVar
   | BIDropAt AssVar AssVar
   | BIBroadcastable AssVar AssVar
@@ -92,6 +90,7 @@ data BuiltIn
   | BITensorGenZeros AssVar
   | BITensorGenAdd AssVar AssVar
   | BITensorGenMult AssVar AssVar
+  | BITensorGenMm AssVar AssVar AssVar
   | BITensorGenGrad AssVar
   | BITensorGenZeroGrad AssVar
   | BITensorGenSubUpdate AssVar
@@ -99,6 +98,7 @@ data BuiltIn
   | BITensorGenArgmax AssVar AssVar
   | BITensorGenCountEqual AssVar
   | BITensorAdd [Int] AssVar AssVar
+  | BITensorMm Int Int Int AssVar AssVar
   deriving stock (Eq, Show)
 
 data Ass0BuiltInName
@@ -111,7 +111,6 @@ data Ass0BuiltInName
   | A0BINameGenVadd
   | A0BINameGenVconcat
   | A0BINameGenMtranspose
-  | A0BINameGenMmult
   | A0BINameGenMconcatVert
   | A0BINameDropAt
   | A0BINameBroadcastable
@@ -119,6 +118,7 @@ data Ass0BuiltInName
   | A0BINameTensorGenZeros
   | A0BINameTensorGenAdd
   | A0BINameTensorGenMult
+  | A0BINameTensorGenMm
   | A0BINameTensorGenGrad
   | A0BINameTensorGenZeroGrad
   | A0BINameTensorGenSubUpdate
@@ -327,12 +327,12 @@ data Ass1ValConst
   = A1ValConstVadd Int
   | A1ValConstVconcat Int Int
   | A1ValConstMtranspose Int Int
-  | A1ValConstMmult Int Int Int
   | A1ValConstMconcatVert Int Int Int
   | A1ValConstBroadcasted [Int] [Int]
   | A1ValConstTensorZeros [Int]
   | A1ValConstTensorAdd [Int] [Int]
   | A1ValConstTensorMult [Int] [Int]
+  | A1ValConstTensorMm Int Int Int
   | A1ValConstTensorGrad [Int]
   | A1ValConstTensorZeroGrad [Int]
   | A1ValConstTensorSubUpdate [Int]
