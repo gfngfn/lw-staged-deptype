@@ -32,6 +32,9 @@ tyDepFun x tye1 tye2 = typ (TyArrow (Just x, tye1) tye2)
 tyNondepFun :: TypeExprVoid -> TypeExprVoid -> TypeExprVoid
 tyNondepFun tye1 tye2 = typ (TyArrow (Nothing, tye1) tye2)
 
+tyRefinement :: Var -> TypeExprVoid -> ExprVoid -> TypeExprVoid
+tyRefinement x tye1 e2 = typ (TyRefinement x tye1 e2)
+
 expr :: ExprMainF () -> ExprVoid
 expr = Expr ()
 
@@ -107,7 +110,7 @@ a0bracket :: Ass1Expr -> Ass0Expr
 a0bracket = A0Bracket
 
 sa0tyInt :: StrictAss0TypeExpr
-sa0tyInt = SA0TyPrim A0TyInt
+sa0tyInt = SA0TyPrim A0TyInt Nothing
 
 sa0nondepTyArrow :: StrictAss0TypeExpr -> StrictAss0TypeExpr -> StrictAss0TypeExpr
 sa0nondepTyArrow sa0tye1 = SA0TyArrow (Nothing, sa0tye1)

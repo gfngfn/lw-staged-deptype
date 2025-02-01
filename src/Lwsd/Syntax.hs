@@ -71,7 +71,7 @@ data BuiltIn
   | BISub AssVar AssVar
   | BIMult AssVar AssVar
   | BILeq AssVar AssVar
-  | BIAssertNat Span AssVar
+  | BIAnd AssVar AssVar
   | BIListMap AssVar AssVar
   | BIGenVadd AssVar
   | BIGenVconcat AssVar AssVar
@@ -200,6 +200,7 @@ data Ass0Expr
   | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
   | A0Bracket Ass1Expr
   | A0TyEqAssert Span Type1Equation
+  | A0RefinementAssert Span Ass0Expr Ass0Expr -- A predicate and a target.
   deriving stock (Eq, Show)
 
 data Ass1Expr
@@ -238,7 +239,7 @@ makeExprFromBinds abinds' a0eFinal = go0 abinds'
 
 -- For type-checking.
 data Ass0TypeExpr
-  = A0TyPrim Ass0PrimType
+  = A0TyPrim Ass0PrimType (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
   | A0TyList Ass0TypeExpr
   | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyOptArrow (AssVar, Ass0TypeExpr) Ass0TypeExpr
@@ -247,7 +248,7 @@ data Ass0TypeExpr
 
 -- For type annotations in target terms.
 data StrictAss0TypeExpr
-  = SA0TyPrim Ass0PrimType
+  = SA0TyPrim Ass0PrimType (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
   | SA0TyList StrictAss0TypeExpr
   | SA0TyArrow (Maybe AssVar, StrictAss0TypeExpr) StrictAss0TypeExpr
   | SA0TyCode Ass1TypeExpr
@@ -255,7 +256,6 @@ data StrictAss0TypeExpr
 
 data Ass0PrimType
   = A0TyInt
-  | A0TyNat
   | A0TyFloat
   | A0TyBool
   | A0TyUnit
@@ -285,7 +285,7 @@ data AssPersTypeExpr
 
 persistentTypeTo0 :: AssPersTypeExpr -> Ass0TypeExpr
 persistentTypeTo0 = \case
-  APersTyPrim a0tyPrim -> A0TyPrim a0tyPrim
+  APersTyPrim a0tyPrim -> A0TyPrim a0tyPrim Nothing
   APersTyList aPtye -> A0TyList (persistentTypeTo0 aPtye)
   APersTyArrow aPtye1 aPtye2 -> A0TyArrow (Nothing, persistentTypeTo0 aPtye1) (persistentTypeTo0 aPtye2)
 
@@ -298,7 +298,6 @@ persistentTypeTo1 = \case
 liftPrimType :: Ass0PrimType -> Ass1PrimType
 liftPrimType = \case
   A0TyInt -> A1TyInt
-  A0TyNat -> A1TyInt
   A0TyFloat -> A1TyFloat
   A0TyBool -> A1TyBool
   A0TyUnit -> A1TyUnit
@@ -340,7 +339,7 @@ data Ass1ValConst
   deriving stock (Eq, Show)
 
 data Ass0TypeVal
-  = A0TyValPrim Ass0PrimTypeVal
+  = A0TyValPrim Ass0PrimTypeVal (Maybe Ass0Val) -- Possibly equipped with a refinement predicate.
   | A0TyValList Ass0TypeVal
   | A0TyValArrow (Maybe AssVar, Ass0TypeVal) StrictAss0TypeExpr
   | A0TyValCode Ass1TypeVal
@@ -348,7 +347,6 @@ data Ass0TypeVal
 
 data Ass0PrimTypeVal
   = A0TyValInt
-  | A0TyValNat
   | A0TyValFloat
   | A0TyValBool
   | A0TyValUnit
@@ -413,7 +411,7 @@ mapMAssLiteral eval = \case
 
 strictify :: Ass0TypeExpr -> StrictAss0TypeExpr
 strictify = \case
-  A0TyPrim a0tyPrim -> SA0TyPrim a0tyPrim
+  A0TyPrim a0tyPrim maybePred -> SA0TyPrim a0tyPrim maybePred
   A0TyList a0tye -> SA0TyList (strictify a0tye)
   A0TyArrow (x1opt, a0tye1) a0tye2 -> SA0TyArrow (x1opt, strictify a0tye1) (strictify a0tye2)
   A0TyCode a1tye1 -> SA0TyCode a1tye1

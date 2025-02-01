@@ -1,9 +1,9 @@
 module Lwsd.BuiltIn
-  ( ass0exprAdd,
+  ( tyNat,
+    ass0exprAdd,
     ass0exprSub,
     ass0exprMult,
     ass0exprLeq,
-    ass0exprAssertNat,
     ass0exprListMap,
     ass0exprVadd,
     ass0exprVconcat,
@@ -11,6 +11,7 @@ module Lwsd.BuiltIn
     ass0exprMmult,
     ass0exprMconcatVert,
     ass0exprTensorAdd,
+    ass0exprAnd,
     getAss0Val,
     validateExternalName0,
     validateExternalName1,
@@ -20,35 +21,58 @@ where
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Lwsd.Syntax
-import Util.TokenUtil (Span)
 import Prelude
 
 tyValInt :: Ass0TypeVal
-tyValInt = A0TyValPrim A0TyValInt
-
-tyValNat :: Ass0TypeVal
-tyValNat = A0TyValPrim A0TyValNat
+tyValInt = A0TyValPrim A0TyValInt Nothing
 
 tyValList :: Ass0TypeVal -> Ass0TypeVal
 tyValList = A0TyValList
 
 styInt :: StrictAss0TypeExpr
-styInt = SA0TyPrim A0TyInt
+styInt = SA0TyPrim A0TyInt Nothing
+
+styBool :: StrictAss0TypeExpr
+styBool = SA0TyPrim A0TyBool Nothing
+
+ass0exprIsNonnegative :: Ass0Expr
+ass0exprIsNonnegative =
+  lam n styInt $
+    A0LetIn (zero, styInt) (A0Literal (ALitInt 0)) $
+      A0AppBuiltIn (BILeq zero n)
+  where
+    n = AssVar "n"
+    zero = AssVar "zero"
+
+ass0valIsNonnegative :: Ass0Val
+ass0valIsNonnegative =
+  clo n tyValInt $
+    A0LetIn (zero, styInt) (A0Literal (ALitInt 0)) $
+      A0AppBuiltIn (BILeq zero n)
+  where
+    n = AssVar "n"
+    zero = AssVar "zero"
+
+tyNat :: Ass0TypeExpr
+tyNat = A0TyPrim A0TyInt (Just ass0exprIsNonnegative)
+
+tyValNat :: Ass0TypeVal
+tyValNat = A0TyValPrim A0TyValInt (Just ass0valIsNonnegative)
 
 styNat :: StrictAss0TypeExpr
-styNat = SA0TyPrim A0TyNat
+styNat = SA0TyPrim A0TyInt (Just ass0exprIsNonnegative)
 
 styUnit :: StrictAss0TypeExpr
-styUnit = SA0TyPrim A0TyUnit
+styUnit = SA0TyPrim A0TyUnit Nothing
 
 sty0Vec :: Int -> StrictAss0TypeExpr
-sty0Vec = SA0TyPrim . a0TyVec
+sty0Vec n = SA0TyPrim (a0TyVec n) Nothing
 
 sty0Mat :: Int -> Int -> StrictAss0TypeExpr
-sty0Mat m n = SA0TyPrim (a0TyMat m n)
+sty0Mat m n = SA0TyPrim (a0TyMat m n) Nothing
 
 sty0Tensor :: [Int] -> StrictAss0TypeExpr
-sty0Tensor = SA0TyPrim . A0TyTensor
+sty0Tensor ns = SA0TyPrim (A0TyTensor ns) Nothing
 
 styList :: StrictAss0TypeExpr -> StrictAss0TypeExpr
 styList = SA0TyList
@@ -211,13 +235,6 @@ ass0exprSub = ass0exprBinaryInt BISub
 ass0exprMult = ass0exprBinaryInt BIMult
 ass0exprLeq = ass0exprBinaryInt BILeq
 
-ass0exprAssertNat :: Span -> Ass0Expr
-ass0exprAssertNat loc =
-  lam x1 styInt $
-    A0AppBuiltIn (BIAssertNat loc x1)
-  where
-    x1 = AssVar "n1"
-
 ass0exprListMap :: StrictAss0TypeExpr -> StrictAss0TypeExpr -> Ass0Expr
 ass0exprListMap styDom styCod =
   lam f (SA0TyArrow (Nothing, styDom) styCod) $
@@ -277,6 +294,15 @@ ass0exprTensorAdd ns =
   where
     x1 = AssVar "v1"
     x2 = AssVar "v2"
+
+ass0exprAnd :: Ass0Expr
+ass0exprAnd =
+  lam x1 styBool $
+    lam x2 styBool $
+      A0AppBuiltIn (BIAnd x1 x2)
+  where
+    x1 = AssVar "x1"
+    x2 = AssVar "x2"
 
 validateExternalName0 :: Text -> Maybe Ass0BuiltInName
 validateExternalName0 = \case

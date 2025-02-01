@@ -11,6 +11,13 @@ for FILE in integration_tests/success/*.lwsd; do
         ERRORS+=("$FILE (should pass)")
     fi
 done
+for FILE in integration_tests/success_compile/*.lwsd; do
+    echo "======== $FILE (should pass, compile-time only) ========"
+    cabal run lw-staged-deptype -- lwsd --optimize --distribute-if --compile-time-only "$FILE"
+    if [ $? -ne 0 ]; then
+        ERRORS+=("$FILE (should pass, compile-time only)")
+    fi
+done
 for FILE in integration_tests/failure/*.lwsd; do
     echo "======== $FILE (should be rejected) ========"
     cabal run lw-staged-deptype -- lwsd --optimize --distribute-if "$FILE"
@@ -24,6 +31,13 @@ for FILE in integration_tests/success/*.surf; do
     cabal run lw-staged-deptype -- surface --optimize --distribute-if "$FILE"
     if [ $? -ne 0 ]; then
         ERRORS+=("$FILE (should pass)")
+    fi
+done
+for FILE in integration_tests/success_compile/*.surf; do
+    echo "======== $FILE (should pass, compile-time only) ========"
+    cabal run lw-staged-deptype -- surface --optimize --distribute-if --compile-time-only "$FILE"
+    if [ $? -ne 0 ]; then
+        ERRORS+=("$FILE (should pass, compile-time only)")
     fi
 done
 for FILE in integration_tests/failure/*.surf; do

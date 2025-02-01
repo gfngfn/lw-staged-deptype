@@ -105,6 +105,8 @@ instance HasVar Ass0Expr where
       frees a1e1
     A0TyEqAssert _ ty0eq ->
       frees ty0eq
+    A0RefinementAssert _ a0ePred a0eTarget ->
+      unionPairs [frees a0ePred, frees a0eTarget]
 
   subst s = \case
     A0Literal alit ->
@@ -142,6 +144,8 @@ instance HasVar Ass0Expr where
       A0Bracket (go a1e1)
     A0TyEqAssert loc ty0eq ->
       A0TyEqAssert loc (go ty0eq)
+    A0RefinementAssert loc a0ePred a0eTarget ->
+      A0RefinementAssert loc (go a0ePred) (go a0eTarget)
     where
       go :: forall a. (HasVar a) => a -> a
       go = subst s
@@ -151,9 +155,7 @@ instance HasVar Ass0Expr where
       (A0Literal alit1, A0Literal alit2) ->
         alphaEquivalent alit1 alit2
       (A0AppBuiltIn builtIn1, A0AppBuiltIn builtIn2) ->
-        case (builtIn1, builtIn2) of
-          (BIAssertNat _loc1 x1, BIAssertNat _loc2 x2) -> x1 == x2 -- Ignores the difference of `Span`
-          (_, _) -> builtIn1 == builtIn2
+        builtIn1 == builtIn2
       (A0Var x1, A0Var x2) ->
         x1 == x2
       (A0BuiltInName builtInName1, A0BuiltInName builtInName2) ->
@@ -168,6 +170,12 @@ instance HasVar Ass0Expr where
       (A0App a0e11 a0e12, A0App a0e21 a0e22) ->
         alphaEquivalent a0e11 a0e21
           && alphaEquivalent a0e12 a0e22
+      (A0LetIn (x1, a0tye1) a0e11 a0e12, A0LetIn (x2, a0tye2) a0e21 a0e22) ->
+        alphaEquivalent a0tye1 a0tye2
+          && alphaEquivalent a0e11 a0e21
+          && alphaEquivalent a0e12 (subst0 (A0Var x1) x2 a0e22)
+      (A0Sequential a0e11 a0e12, A0Sequential a0e21 a0e22) ->
+        alphaEquivalent a0e11 a0e21 && alphaEquivalent a0e12 a0e22
       (A0IfThenElse a0e10 a0e11 a0e12, A0IfThenElse a0e20 a0e21 a0e22) ->
         alphaEquivalent a0e10 a0e20
           && alphaEquivalent a0e11 a0e21
@@ -176,6 +184,8 @@ instance HasVar Ass0Expr where
         alphaEquivalent a1e1 a1e2
       (A0TyEqAssert _ ty0eq1, A0TyEqAssert _ ty0eq2) ->
         alphaEquivalent ty0eq1 ty0eq2
+      (A0RefinementAssert _ a0ePred1 a0eTarget1, A0RefinementAssert _ a0ePred2 a0eTarget2) ->
+        alphaEquivalent a0ePred1 a0ePred2 && alphaEquivalent a0eTarget1 a0eTarget2
       (_, _) ->
         False
 
@@ -265,8 +275,8 @@ instance HasVar Ass1Expr where
 
 instance HasVar Ass0TypeExpr where
   frees = \case
-    A0TyPrim _ ->
-      (Set.empty, Set.empty)
+    A0TyPrim _ maybePred ->
+      frees maybePred
     A0TyList a0tye ->
       frees a0tye
     A0TyArrow (yOpt, a0tye1) a0tye2 ->
@@ -289,8 +299,8 @@ instance HasVar Ass0TypeExpr where
        in (var0set, var1set)
 
   subst s = \case
-    A0TyPrim a0tyPrim ->
-      A0TyPrim a0tyPrim
+    A0TyPrim a0tyPrim maybePred ->
+      A0TyPrim a0tyPrim (go maybePred)
     A0TyList a0tye ->
       A0TyList (go a0tye)
     A0TyArrow (yOpt, a0tye1) a0tye2 ->
@@ -311,8 +321,9 @@ instance HasVar Ass0TypeExpr where
 
   alphaEquivalent a0tye1 a0tye2 =
     case (a0tye1, a0tye2) of
-      (A0TyPrim a0tyPrim1, A0TyPrim a0tyPrim2) ->
-        a0tyPrim1 == a0tyPrim2 -- Exact match
+      (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2) ->
+        -- Exact match
+        a0tyPrim1 == a0tyPrim2 && alphaEquivalent maybePred1 maybePred2
       (A0TyList a0tye1', A0TyList a0tye2') ->
         alphaEquivalent a0tye1' a0tye2'
       (A0TyArrow (y1opt, a0tye11) a0tye12, A0TyArrow (y2opt, a0tye21) a0tye22) ->
@@ -384,8 +395,8 @@ instance HasVar Ass1TypeExpr where
 
 instance HasVar StrictAss0TypeExpr where
   frees = \case
-    SA0TyPrim _ ->
-      (Set.empty, Set.empty)
+    SA0TyPrim _ maybePred ->
+      frees maybePred
     SA0TyList a0tye ->
       frees a0tye
     SA0TyArrow (yOpt, a0tye1) a0tye2 ->
@@ -402,8 +413,8 @@ instance HasVar StrictAss0TypeExpr where
       frees a1tye1
 
   subst s = \case
-    SA0TyPrim a0tyPrim ->
-      SA0TyPrim a0tyPrim
+    SA0TyPrim a0tyPrim maybePred ->
+      SA0TyPrim a0tyPrim (go maybePred)
     SA0TyList a0tye ->
       SA0TyList (go a0tye)
     SA0TyArrow (yOpt, sa0tye1) sa0tye2 ->
@@ -420,8 +431,9 @@ instance HasVar StrictAss0TypeExpr where
 
   alphaEquivalent sa0tye1 sa0tye2 =
     case (sa0tye1, sa0tye2) of
-      (SA0TyPrim a0tyPrim1, SA0TyPrim a0tyPrim2) ->
-        a0tyPrim1 == a0tyPrim2 -- Exact match
+      (SA0TyPrim a0tyPrim1 maybePred1, SA0TyPrim a0tyPrim2 maybePred2) ->
+        -- Exact match
+        a0tyPrim1 == a0tyPrim2 && alphaEquivalent maybePred1 maybePred2
       (SA0TyArrow (y1opt, sa0tye11) sa0tye12, SA0TyArrow (y2opt, sa0tye21) sa0tye22) ->
         (alphaEquivalent sa0tye11 sa0tye21 &&) $
           case (y1opt, y2opt) of

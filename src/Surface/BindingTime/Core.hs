@@ -67,7 +67,7 @@ type BITypeVoid = BITypeF BindingTimeConst
 
 fromStaged0 :: Lwsd.Ass0TypeExpr -> BITypeVoid
 fromStaged0 = \case
-  Lwsd.A0TyPrim _a0tyPrim ->
+  Lwsd.A0TyPrim _a0tyPrim _maybePred ->
     wrap0 $ BITyBase []
   Lwsd.A0TyList a0tye' ->
     wrap0 $ BITyBase [fromStaged0 a0tye']

@@ -201,6 +201,10 @@ dispOptArrowType req x tye1 tye2 =
   where
     docDom = "{" <> disp x <+> ":" <+> disp tye1 <> "}"
 
+dispInternalRefinementType :: (Disp ty, Disp expr) => Associativity -> ty -> expr -> Doc Ann
+dispInternalRefinementType _req tye ePred =
+  "(" <> disp tye <+> "|" <+> disp ePred <> ")"
+
 dispListLiteral :: (Disp e) => [e] -> Doc Ann
 dispListLiteral es =
   "[" <> disps es <> "]"
@@ -281,6 +285,7 @@ instance Disp (TypeExprMainF ann) where
     TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     TyCode tye1 -> dispBracket tye1
     TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
+    TyRefinement x tye1 e2 -> "(" <> disp x <+> ":" <+> disp tye1 <+> "|" <+> disp e2 <+> ")"
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
@@ -294,7 +299,7 @@ instance Disp BuiltIn where
     BISub x1 x2 -> "SUB(" <> disps [x1, x2] <> ")"
     BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
     BILeq x1 x2 -> "LEQ(" <> disps [x1, x2] <> ")"
-    BIAssertNat _loc x1 -> "ASSERT_NAT(" <> disp x1 <> ")"
+    BIAnd x1 x2 -> "AND(" <> disps [x1, x2] <> ")"
     BIListMap f x -> "LIST_MAP(" <> disps [f, x] <> ")"
     BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
     BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
@@ -396,6 +401,9 @@ instance Disp Ass0Expr where
     A0TyEqAssert _loc ty1eq ->
       let (a1tye1, a1tye2) = decomposeType1Equation ty1eq
        in group (assertionStyle ("{" <> dispBracket a1tye1 <+> "=>" <+> dispBracket a1tye2 <> "}"))
+    A0RefinementAssert _loc a0ePred a0eTarget ->
+      deepenParenWhen (req <= Atomic) $
+        "ASSERT" <+> disp a0ePred <+> "FOR" <+> disp a0eTarget
 
 instance Disp Ass1Expr where
   dispGen req = \case
@@ -412,7 +420,6 @@ instance Disp Ass1Expr where
 instance Disp Ass0PrimType where
   dispGen req = \case
     A0TyInt -> "Int"
-    A0TyNat -> "Nat"
     A0TyFloat -> "Float"
     A0TyBool -> "Bool"
     A0TyUnit -> "Unit"
@@ -422,7 +429,8 @@ instance Disp Ass0PrimType where
 
 instance Disp Ass0TypeExpr where
   dispGen req = \case
-    A0TyPrim a0tyPrim -> disp a0tyPrim
+    A0TyPrim a0tyPrim Nothing -> disp a0tyPrim
+    A0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
     A0TyList a0tye -> dispListType req a0tye
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
@@ -430,7 +438,8 @@ instance Disp Ass0TypeExpr where
 
 instance Disp StrictAss0TypeExpr where
   dispGen req = \case
-    SA0TyPrim a0tyPrim -> disp a0tyPrim
+    SA0TyPrim a0tyPrim Nothing -> disp a0tyPrim
+    SA0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
     SA0TyList sa0tye -> dispListType req sa0tye
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
@@ -527,6 +536,8 @@ instance Disp TypeError where
       "Cannot use code types at stage 1" <+> disp spanInFile
     CannotUseOptArrowTypeAtStage1 spanInFile ->
       "Cannot use optional function types at stage 1" <+> disp spanInFile
+    CannotUseRefinementTypeAtStage1 spanInFile ->
+      "Cannot use refinement types at stage 1" <+> disp spanInFile
     CannotUsePersistentArgAtStage0 spanInFile ->
       "Cannot use persistent arguments at stage 0" <+> disp spanInFile
     CannotUseNormalArgAtStage1 spanInFile ->
@@ -602,6 +613,8 @@ instance Disp TypeError where
       "Unknown external name" <+> disp extName <+> disp spanInFile
     InvalidPersistentType spanInFile a0tye ->
       "Invalid persistent type:" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    InvalidTypeForRefinement spanInFile a0tye ->
+      "Invalid type for refinement:" <+> stage0Style (disp a0tye) <+> disp spanInFile
 
 instance Disp ConditionalMergeError where
   dispGen _ = \case
@@ -670,7 +683,8 @@ instance Disp Ass1Val where
 
 instance Disp Ass0TypeVal where
   dispGen req = \case
-    A0TyValPrim a0tyvPrim -> dispGen req a0tyvPrim
+    A0TyValPrim a0tyvPrim Nothing -> dispGen req a0tyvPrim
+    A0TyValPrim a0tyvPrim (Just a0vPred) -> dispInternalRefinementType req a0tyvPrim a0vPred
     A0TyValList a0tyv1 -> dispListType req a0tyv1
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
@@ -678,7 +692,6 @@ instance Disp Ass0TypeVal where
 instance Disp Ass0PrimTypeVal where
   dispGen req = \case
     A0TyValInt -> "Int"
-    A0TyValNat -> "Nat"
     A0TyValFloat -> "Float"
     A0TyValBool -> "Bool"
     A0TyValUnit -> "Unit"
@@ -764,12 +777,12 @@ instance Disp Evaluator.EvalError where
         <> hardline
         <> "expected:"
         <> nest 2 (hardline <> disp a1tyv2)
-    Evaluator.NatAssertionFailure spanInFile n ->
-      "Assertion failure of downcasting Int to Nat"
+    Evaluator.RefinementAssertionFailure spanInFile a0v ->
+      "Assertion failure of downcast"
         <+> disp spanInFile
         <> hardline
         <> "got:"
-        <+> disp n
+        <+> stage0Style (disp a0v)
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case

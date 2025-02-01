@@ -31,6 +31,7 @@ data Token
   | TokPersistent
   | TokSemicolon
   | TokUnderscore
+  | TokBar
   | TokVecLeft
   | TokVecRight
   | TokMatLeft
@@ -114,6 +115,7 @@ token =
       TokMatRight <$ Mp.chunk "#]",
       TokLeftSquare <$ Mp.single '[',
       TokRightSquare <$ Mp.single ']',
+      TokBar <$ Mp.single '|',
       TokOpAdd <$> operator '+',
       TokOpAdd <$> operator '-',
       TokOpMult <$> operator '*',

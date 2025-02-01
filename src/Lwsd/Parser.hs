@@ -219,9 +219,18 @@ typeExpr = fun
   where
     atom :: P TypeExpr
     atom =
-      ((\(Located loc t) -> TypeExpr loc (TyName t [])) <$> upper)
-        `or` (makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen)
+      tries
+        [ makeNamed <$> upper,
+          makeRefinement <$> token TokLeftParen <*> (noLoc boundIdent <* token TokColon) <*> (fun <* token TokBar) <*> expr <*> token TokRightParen
+        ]
+        (makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen)
       where
+        makeNamed (Located loc t) =
+          TypeExpr loc (TyName t [])
+
+        makeRefinement loc1 x tye e loc2 =
+          TypeExpr (mergeSpan loc1 loc2) (TyRefinement x tye e)
+
         makeEnclosed loc1 (TypeExpr _ tyeMain) loc2 =
           TypeExpr (mergeSpan loc1 loc2) tyeMain
 
