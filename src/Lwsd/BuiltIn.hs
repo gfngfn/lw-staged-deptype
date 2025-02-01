@@ -27,7 +27,7 @@ tyValInt :: Ass0TypeVal
 tyValInt = A0TyValPrim A0TyValInt Nothing
 
 tyValList :: Ass0TypeVal -> Ass0TypeVal
-tyValList = A0TyValList
+tyValList a0tyv = A0TyValList a0tyv Nothing
 
 styInt :: StrictAss0TypeExpr
 styInt = SA0TyPrim A0TyInt Nothing
@@ -75,7 +75,7 @@ sty0Tensor :: [Int] -> StrictAss0TypeExpr
 sty0Tensor ns = SA0TyPrim (A0TyTensor ns) Nothing
 
 styList :: StrictAss0TypeExpr -> StrictAss0TypeExpr
-styList = SA0TyList
+styList sa0tye = SA0TyList sa0tye Nothing
 
 -- Makes a closure equipped with the empty runtime environment.
 clo :: AssVar -> Ass0TypeVal -> Ass0Expr -> Ass0Val

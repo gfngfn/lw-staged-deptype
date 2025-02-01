@@ -240,7 +240,7 @@ makeExprFromBinds abinds' a0eFinal = go0 abinds'
 -- For type-checking.
 data Ass0TypeExpr
   = A0TyPrim Ass0PrimType (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
-  | A0TyList Ass0TypeExpr
+  | A0TyList Ass0TypeExpr (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
   | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyOptArrow (AssVar, Ass0TypeExpr) Ass0TypeExpr
   | A0TyCode Ass1TypeExpr
@@ -249,7 +249,7 @@ data Ass0TypeExpr
 -- For type annotations in target terms.
 data StrictAss0TypeExpr
   = SA0TyPrim Ass0PrimType (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
-  | SA0TyList StrictAss0TypeExpr
+  | SA0TyList StrictAss0TypeExpr (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
   | SA0TyArrow (Maybe AssVar, StrictAss0TypeExpr) StrictAss0TypeExpr
   | SA0TyCode Ass1TypeExpr
   deriving stock (Eq, Show)
@@ -286,7 +286,7 @@ data AssPersTypeExpr
 persistentTypeTo0 :: AssPersTypeExpr -> Ass0TypeExpr
 persistentTypeTo0 = \case
   APersTyPrim a0tyPrim -> A0TyPrim a0tyPrim Nothing
-  APersTyList aPtye -> A0TyList (persistentTypeTo0 aPtye)
+  APersTyList aPtye -> A0TyList (persistentTypeTo0 aPtye) Nothing
   APersTyArrow aPtye1 aPtye2 -> A0TyArrow (Nothing, persistentTypeTo0 aPtye1) (persistentTypeTo0 aPtye2)
 
 persistentTypeTo1 :: AssPersTypeExpr -> Ass1TypeExpr
@@ -340,7 +340,7 @@ data Ass1ValConst
 
 data Ass0TypeVal
   = A0TyValPrim Ass0PrimTypeVal (Maybe Ass0Val) -- Possibly equipped with a refinement predicate.
-  | A0TyValList Ass0TypeVal
+  | A0TyValList Ass0TypeVal (Maybe Ass0Val) -- Possibly equipped with a refinement predicate.
   | A0TyValArrow (Maybe AssVar, Ass0TypeVal) StrictAss0TypeExpr
   | A0TyValCode Ass1TypeVal
   deriving stock (Eq, Show)
@@ -412,7 +412,7 @@ mapMAssLiteral eval = \case
 strictify :: Ass0TypeExpr -> StrictAss0TypeExpr
 strictify = \case
   A0TyPrim a0tyPrim maybePred -> SA0TyPrim a0tyPrim maybePred
-  A0TyList a0tye -> SA0TyList (strictify a0tye)
+  A0TyList a0tye maybePred -> SA0TyList (strictify a0tye) maybePred
   A0TyArrow (x1opt, a0tye1) a0tye2 -> SA0TyArrow (x1opt, strictify a0tye1) (strictify a0tye2)
   A0TyCode a1tye1 -> SA0TyCode a1tye1
   A0TyOptArrow (x1, a0tye1) a0tye2 -> SA0TyArrow (Just x1, strictify a0tye1) (strictify a0tye2)

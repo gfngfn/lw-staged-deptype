@@ -398,7 +398,6 @@ evalExpr1 env = \case
 evalTypeExpr0 :: EvalEnv -> StrictAss0TypeExpr -> M Ass0TypeVal
 evalTypeExpr0 env = \case
   SA0TyPrim a0tyPrim maybePred -> do
-    maybeVPred <- mapM (evalExpr0 env) maybePred
     let a0tyValPrim =
           case a0tyPrim of
             A0TyInt -> A0TyValInt
@@ -406,10 +405,12 @@ evalTypeExpr0 env = \case
             A0TyBool -> A0TyValBool
             A0TyUnit -> A0TyValUnit
             A0TyTensor n -> A0TyValTensor n
+    maybeVPred <- mapM (evalExpr0 env) maybePred
     pure $ A0TyValPrim a0tyValPrim maybeVPred
-  SA0TyList sa0tye1 -> do
+  SA0TyList sa0tye1 maybePred -> do
     a0tyv1 <- evalTypeExpr0 env sa0tye1
-    pure $ A0TyValList a0tyv1
+    maybeVPred <- mapM (evalExpr0 env) maybePred
+    pure $ A0TyValList a0tyv1 maybeVPred
   SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> do
     a0tyv1 <- evalTypeExpr0 env sa0tye1
     pure $ A0TyValArrow (xOpt, a0tyv1) sa0tye2
@@ -481,6 +482,6 @@ unliftTypeVal = \case
             A1TyValTensor ns -> A0TyTensor ns
      in SA0TyPrim a0tyPrim Nothing
   A1TyValList a1tyv ->
-    SA0TyList (unliftTypeVal a1tyv)
+    SA0TyList (unliftTypeVal a1tyv) Nothing
   A1TyValArrow a1tyv1 a1tyv2 ->
     SA0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)

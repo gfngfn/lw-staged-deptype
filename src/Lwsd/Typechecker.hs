@@ -136,7 +136,7 @@ makeAssertiveCast trav loc =
                 if alphaEquivalent maybePred2' maybePred1
                   then Nothing
                   else maybePred2'
-          maybeCast <-
+          cast <-
             case (a0tyPrim1, a0tyPrim2) of
               (A0TyInt, A0TyInt) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyInt maybePred1)
               (A0TyFloat, A0TyFloat) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyFloat maybePred1)
@@ -151,16 +151,37 @@ makeAssertiveCast trav loc =
                       then castOrIdentityLam maybePred2 (A0TyPrim (A0TyTensor ns1) maybePred1)
                       else typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
               _ -> typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
-          pure (maybeCast, Map.empty)
-        (A0TyList a0tye1', A0TyList a0tye2') -> do
-          (cast', solution) <- go varsToInfer a0tye1' a0tye2'
-          case cast' of
-            Nothing ->
-              pure (Nothing, solution)
-            Just a0eCast -> do
-              let sa0tye1' = strictify (applySolution solution a0tye1')
-              let sa0tye2' = strictify (applySolution solution a0tye2')
-              pure (Just (A0App (BuiltIn.ass0exprListMap sa0tye1' sa0tye2') a0eCast), solution)
+          pure (cast, Map.empty)
+        (A0TyList a0tye1' maybePred1, A0TyList a0tye2' maybePred2') -> do
+          (castForElem, solution) <- go varsToInfer a0tye1' a0tye2'
+          let maybePred2 =
+                if alphaEquivalent maybePred2' maybePred1
+                  then Nothing
+                  else maybePred2'
+          let castForListByElemPred =
+                case castForElem of
+                  Nothing ->
+                    Nothing
+                  Just a0eCastForElem ->
+                    let sa0tye1' = strictify (applySolution solution a0tye1')
+                        sa0tye2' = strictify (applySolution solution a0tye2')
+                     in Just (A0App (BuiltIn.ass0exprListMap sa0tye1' sa0tye2') a0eCastForElem)
+          castForListByWholePred <- castOrIdentityLam maybePred2 a0tye1
+          castForList <-
+            case (castForListByElemPred, castForListByWholePred) of
+              (Nothing, Nothing) ->
+                pure Nothing
+              (Just a0eCast1, Nothing) ->
+                pure $ Just a0eCast1
+              (Nothing, Just a0eCast2) ->
+                pure $ Just a0eCast2
+              (Just a0eCast1, Just a0eCast2) -> do
+                ax <- generateFreshVar
+                pure $
+                  Just $
+                    A0Lam Nothing (ax, strictify a0tye1) $
+                      A0App (A0App BuiltIn.ass0exprAnd (A0App a0eCast1 (A0Var ax))) (A0App a0eCast2 (A0Var ax))
+          pure (castForList, solution)
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22withX2opt) -> do
           (castDom, solutionDom) <- go varsToInfer a0tye11 a0tye21
           (x, a0tye22) <-
@@ -318,12 +339,14 @@ mergeTypesByConditional0 trav distributeIfUnderTensorShape a0e0 = go0
         (A0TyPrim a0tyePrim1 maybePred1, A0TyPrim a0tyePrim2 maybePred2) ->
           if a0tyePrim1 == a0tyePrim2
             then do
-              maybePred <- mergeRefinementPredicates a0tyePrim1 maybePred1 maybePred2
+              maybePred <- mergeRefinementPredicates (SA0TyPrim a0tyePrim1) maybePred1 maybePred2
               pure $ A0TyPrim a0tyePrim1 maybePred
             else
               typeError trav $ CannotMerge0 a0tye1 a0tye2
-        (A0TyList a0tye1', A0TyList a0tye2') ->
-          A0TyList <$> go0 a0tye1' a0tye2'
+        (A0TyList a0tye1' maybePred1, A0TyList a0tye2' maybePred2) -> do
+          a0tye <- go0 a0tye1' a0tye2'
+          maybePred <- mergeRefinementPredicates (SA0TyList (strictify a0tye1')) maybePred1 maybePred2
+          pure $ A0TyList a0tye maybePred
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22) -> do
           a0tye1u <- go0 a0tye11 a0tye21
           (xu, a0tye2u) <-
@@ -342,8 +365,8 @@ mergeTypesByConditional0 trav distributeIfUnderTensorShape a0e0 = go0
         _ ->
           typeError trav $ CannotMerge0 a0tye1 a0tye2
 
-    mergeRefinementPredicates :: Ass0PrimType -> Maybe Ass0Expr -> Maybe Ass0Expr -> M' ConditionalMergeError trav (Maybe Ass0Expr)
-    mergeRefinementPredicates a0tyePrim maybePred1 maybePred2 =
+    mergeRefinementPredicates :: (Maybe Ass0Expr -> StrictAss0TypeExpr) -> Maybe Ass0Expr -> Maybe Ass0Expr -> M' ConditionalMergeError trav (Maybe Ass0Expr)
+    mergeRefinementPredicates sa0tyef maybePred1 maybePred2 =
       case (maybePred1, maybePred2) of
         (Nothing, Nothing) -> pure Nothing
         (Just a0ePred1, Nothing) -> makeIf (A0App a0ePred1 . A0Var) (\_ -> A0Literal (ALitBool True))
@@ -352,7 +375,7 @@ mergeTypesByConditional0 trav distributeIfUnderTensorShape a0e0 = go0
       where
         makeIf f1 f2 = do
           ax <- generateFreshVar
-          pure $ Just (A0Lam Nothing (ax, SA0TyPrim a0tyePrim Nothing) (A0IfThenElse a0e0 (f1 ax) (f2 ax)))
+          pure $ Just (A0Lam Nothing (ax, sa0tyef Nothing) (A0IfThenElse a0e0 (f1 ax) (f2 ax)))
 
     go1 :: Ass1TypeExpr -> Ass1TypeExpr -> M' ConditionalMergeError trav Ass1TypeExpr
     go1 = mergeTypesByConditional1 trav distributeIfUnderTensorShape a0e0
@@ -570,7 +593,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                               pure $ applyCast cast a0e
                           )
                           esTail
-                      pure (A0TyList a0tyeFirst, ALitList (a0eFirst : a0esTail))
+                      pure (A0TyList a0tyeFirst Nothing, ALitList (a0eFirst : a0esTail))
                 LitVec ns -> do
                   let vec = Vector.fromList ns
                   pure (A0TyPrim (a0TyVec (Vector.length vec)) Nothing, ALitVec vec)
@@ -1016,7 +1039,7 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
         ("Unit", []) -> pure $ A0TyPrim A0TyUnit Nothing
         ("List", [arg]) -> do
           case arg of
-            (IA0TypeArg a0tye, _) -> pure $ A0TyList a0tye
+            (IA0TypeArg a0tye, _) -> pure $ A0TyList a0tye Nothing
             (IA0ExprArg _a0e, _loc) -> error "TODO (error): typecheckTypeExpr0, TyName, List, IA0ExprArg"
         ("Vec", [arg]) -> do
           n <- validateIntLiteral trav arg
@@ -1051,31 +1074,38 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       pure $ A0TyOptArrow (ax, a0tye1) a0tye2
     TyRefinement x tye1 e2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
-      case a0tye1 of
-        A0TyPrim tyPrim maybePredForBase -> do
-          (result2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVal x (Ass0Entry a0tye1 Nothing) tyEnv) [] e2
-          a0tye2 <- validateEmptyRetAppContext "TyRefinement" result2
-          case a0tye2 of
-            A0TyPrim A0TyBool _maybePredForBool -> do
-              let ax = AssVar x
-              case maybePredForBase of
-                Nothing ->
-                  pure $
-                    A0TyPrim tyPrim . Just $
-                      A0Lam Nothing (ax, strictify a0tye1) a0e2
-                Just a0ePredForBase -> do
-                  pure $
-                    A0TyPrim tyPrim . Just $
-                      A0Lam Nothing (ax, strictify a0tye1) $
-                        A0App (A0App BuiltIn.ass0exprAnd (A0App a0ePredForBase (A0Var ax))) a0e2
+      (result2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVal x (Ass0Entry a0tye1 Nothing) tyEnv) [] e2
+      a0tye2 <- validateEmptyRetAppContext "TyRefinement" result2
+      case a0tye2 of
+        A0TyPrim A0TyBool _maybePredForBool -> do
+          let ax = AssVar x
+          case a0tye1 of
+            A0TyPrim a0tyPrim Nothing -> do
+              pure $
+                A0TyPrim a0tyPrim . Just $
+                  A0Lam Nothing (ax, strictify a0tye1) a0e2
+            A0TyPrim a0tyPrim (Just a0ePredForBase) -> do
+              pure $
+                A0TyPrim a0tyPrim . Just $
+                  A0Lam Nothing (ax, strictify a0tye1) $
+                    A0App (A0App BuiltIn.ass0exprAnd (A0App a0ePredForBase (A0Var ax))) a0e2
+            A0TyList a0tyeElem Nothing -> do
+              pure $
+                A0TyList a0tyeElem . Just $
+                  A0Lam Nothing (ax, strictify a0tye1) a0e2
+            A0TyList a0tyeElem (Just a0ePredForBase) -> do
+              pure $
+                A0TyList a0tyeElem . Just $
+                  A0Lam Nothing (ax, strictify a0tye1) $
+                    A0App (A0App BuiltIn.ass0exprAnd (A0App a0ePredForBase (A0Var ax))) a0e2
             _ -> do
-              let Expr loc2 _ = e2
-              spanInFile2 <- askSpanInFile loc2
-              typeError trav $ NotABoolTypeForStage0 spanInFile2 a0tye2
+              let TypeExpr loc1 _ = tye1
+              spanInFile1 <- askSpanInFile loc1
+              typeError trav $ InvalidTypeForRefinement spanInFile1 a0tye1
         _ -> do
-          let TypeExpr loc1 _ = tye1
-          spanInFile1 <- askSpanInFile loc1
-          typeError trav $ InvalidTypeForRefinement spanInFile1 a0tye1
+          let Expr loc2 _ = e2
+          spanInFile2 <- askSpanInFile loc2
+          typeError trav $ NotABoolTypeForStage0 spanInFile2 a0tye2
 
 data IntermediateArgForAss1Type
   = IA1ExprArg Ass0Expr Ass0TypeExpr
@@ -1116,7 +1146,7 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
           a0e2 <- insertCastForExprArg trav (a0tye2, a0e2', loc2) BuiltIn.tyNat
           pure $ A1TyPrim (a1TyMat a0e1 a0e2)
         ("Tensor", [(IA1ExprArg a0e' a0tye, loc')]) -> do
-          a0eList <- insertCastForExprArg trav (a0tye, a0e', loc') (A0TyList BuiltIn.tyNat)
+          a0eList <- insertCastForExprArg trav (a0tye, a0e', loc') (A0TyList BuiltIn.tyNat Nothing)
           pure $ A1TyPrim (A1TyTensor a0eList)
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
     TyArrow (xOpt, tye1) tye2 -> do
@@ -1148,8 +1178,10 @@ validatePersistentType trav loc a0tye =
         case maybePred of
           Nothing -> pure $ APersTyPrim a0tyPrim
           Just _ -> Nothing
-      A0TyList a0tye' ->
-        APersTyList <$> go a0tye'
+      A0TyList a0tye' maybePred ->
+        case maybePred of
+          Nothing -> APersTyList <$> go a0tye'
+          Just _ -> Nothing
       A0TyArrow (Nothing, a0tye1) a0tye2 -> do
         aPtye1 <- go a0tye1
         aPtye2 <- go a0tye2

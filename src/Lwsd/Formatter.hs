@@ -205,6 +205,10 @@ dispInternalRefinementType :: (Disp ty, Disp expr) => Associativity -> ty -> exp
 dispInternalRefinementType _req tye ePred =
   "(" <> disp tye <+> "|" <+> disp ePred <> ")"
 
+dispInternalRefinementListType :: (Disp ty, Disp expr) => Associativity -> ty -> expr -> Doc Ann
+dispInternalRefinementListType _req tye ePred =
+  "(" <> dispListType Outermost tye <+> "|" <+> disp ePred <> ")"
+
 dispListLiteral :: (Disp e) => [e] -> Doc Ann
 dispListLiteral es =
   "[" <> disps es <> "]"
@@ -431,7 +435,8 @@ instance Disp Ass0TypeExpr where
   dispGen req = \case
     A0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     A0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
-    A0TyList a0tye -> dispListType req a0tye
+    A0TyList a0tye Nothing -> dispListType req a0tye
+    A0TyList a0tye (Just a0ePred) -> dispInternalRefinementListType req a0tye a0ePred
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
@@ -440,7 +445,8 @@ instance Disp StrictAss0TypeExpr where
   dispGen req = \case
     SA0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     SA0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
-    SA0TyList sa0tye -> dispListType req sa0tye
+    SA0TyList sa0tye Nothing -> dispListType req sa0tye
+    SA0TyList sa0tye (Just a0ePred) -> dispInternalRefinementListType req sa0tye a0ePred
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
 
@@ -685,7 +691,8 @@ instance Disp Ass0TypeVal where
   dispGen req = \case
     A0TyValPrim a0tyvPrim Nothing -> dispGen req a0tyvPrim
     A0TyValPrim a0tyvPrim (Just a0vPred) -> dispInternalRefinementType req a0tyvPrim a0vPred
-    A0TyValList a0tyv1 -> dispListType req a0tyv1
+    A0TyValList a0tyv1 Nothing -> dispListType req a0tyv1
+    A0TyValList a0tyv1 (Just a0vPred) -> dispInternalRefinementListType req a0tyv1 a0vPred
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
 
