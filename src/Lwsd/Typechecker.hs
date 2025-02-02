@@ -954,7 +954,6 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
             _ : _ ->
               typeError trav $ CannotApplyLiteral spanInFile
         _ -> do
-          -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
           (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
           a1tye1 <- validateEmptyRetAppContext "stage-1, As" result1
           a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
