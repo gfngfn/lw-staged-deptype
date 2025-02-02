@@ -1244,7 +1244,7 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
         Stage0 -> do
           a0tye <- typecheckTypeExpr0 trav tyEnv tye
           ass0builtInName <-
-            case BuiltIn.validateExternalName0 extName of
+            case validateExternalName0 extName of
               Just a0builtInName' ->
                 pure a0builtInName'
               Nothing -> do
@@ -1254,7 +1254,7 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
           pure (SigRecord.singletonVal x (Ass0Entry a0tye (Just a0metadata)), [])
         Stage1 -> do
           ass1builtInName <-
-            case BuiltIn.validateExternalName1 extName of
+            case validateExternalName1 extName of
               Just ass1builtInName' ->
                 pure ass1builtInName'
               Nothing -> do
@@ -1267,7 +1267,7 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
           a0tye <- typecheckTypeExpr0 trav tyEnv tye
           aPtye <- validatePersistentType trav loc a0tye
           assPbuiltInName <-
-            case BuiltIn.validateExternalName1 extName of
+            case validateExternalName1 extName of
               Just a1builtInName' ->
                 pure a1builtInName'
               Nothing -> do

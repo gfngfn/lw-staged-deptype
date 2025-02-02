@@ -2,9 +2,7 @@ module Lwsd.Syntax
   ( AssVar (..),
     Symbol (..),
     symbolToVar,
-    Ass1BuiltInName (..),
     Ass0PartialBuiltInApp (..),
-    unliftBuiltInName,
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
@@ -74,39 +72,6 @@ data Ass0PartialBuiltInApp
   | A0PartialBuiltInApp3With1 BuiltInArity3 Ass0Val
   | A0PartialBuiltInApp3With2 BuiltInArity3 Ass0Val Ass0Val
   deriving stock (Eq, Show)
-
-data Ass1BuiltInName
-  = A1BINameAdd
-  | A1BINameSub
-  | A1BINameMult
-  | A1BINameFloatDiv
-  | A1BINameLeq
-  | A1BINameFloat
-  | A1BINamePrintFloat
-  | A1BINameListAppend
-  | A1BINameListIter
-  | A1BINameRange
-  | A1BINameTensorF
-  | A1BINameTensorBackward
-  | A1BINameTensorNoGrad
-  | A1BINameTensorFloatValue
-  | A1BINameMnistHelperTrainImages
-  | A1BINameMnistHelperTrainLabels
-  | A1BINameMnistHelperTestImages
-  | A1BINameMnistHelperTestLabels
-  deriving stock (Eq, Show)
-
-unliftBuiltInName :: Ass1BuiltInName -> BuiltIn
-unliftBuiltInName = \case
-  A1BINameAdd -> arity2 BIAdd
-  A1BINameSub -> arity2 BISub
-  A1BINameMult -> arity2 BIMult
-  A1BINameLeq -> arity2 BILeq
-  A1BINameListAppend -> arity2 BIListAppend
-  A1BINameListIter -> arity2 BIListIter
-  a1builtInName -> error $ "TODO: unliftBuiltInName, " ++ show a1builtInName
-  where
-    arity2 = BuiltInArity2
 
 data AssLiteral e
   = ALitInt Int
