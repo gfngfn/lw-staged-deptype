@@ -47,7 +47,6 @@ data BuiltInArity2
   | BIBroadcast
   | BIListAppend
   | BIListIter
-  | BIGenBroadcasted
   | BITensorGenAdd
   | BITensorGenMult
   | BITensorGenCrossEntropyForLogits
@@ -75,7 +74,6 @@ data Ass1BuiltIn
   | A1BIVconcat Int Int
   | A1BIMtranspose Int Int
   | A1BIMconcatVert Int Int Int
-  | A1BIBroadcasted [Int] [Int]
   | A1BITensorZeros [Int]
   | A1BITensorAdd [Int] [Int]
   | A1BITensorMult [Int] [Int]
@@ -93,9 +91,9 @@ data Ass1BuiltIn
   | A1BILeq
   | A1BIFloat
   | A1BIPrintFloat
+  | A1BIRange
   | A1BIListAppend
   | A1BIListIter
-  | A1BIRange
   | A1BITensorF
   | A1BITensorBackward
   | A1BITensorNoGrad
@@ -143,7 +141,6 @@ validateExternalName0 = \case
   "broadcast" -> arity2 BIBroadcast
   "list__append" -> arity2 BIListAppend
   "list__iter" -> arity2 BIListIter
-  "gen_broadcasted" -> arity2 BIGenBroadcasted
   "tensor__gen_zeros" -> arity1 BITensorGenZeros
   "tensor__gen_add" -> arity2 BITensorGenAdd
   "tensor__gen_mult" -> arity2 BITensorGenMult
@@ -169,9 +166,9 @@ validateExternalName1 = \case
   "int_leq" -> pure A1BILeq
   "float" -> pure A1BIFloat
   "print_float" -> pure A1BIPrintFloat
+  "range" -> pure A1BIRange
   "list__append" -> pure A1BIListAppend
   "list__iter" -> pure A1BIListIter
-  "range" -> pure A1BIRange
   "tensor__f" -> pure A1BITensorF
   "tensor__backward" -> pure A1BITensorBackward
   "tensor__no_grad" -> pure A1BITensorNoGrad

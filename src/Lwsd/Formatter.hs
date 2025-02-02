@@ -333,7 +333,6 @@ instance Disp BuiltInArity2 where
     BIBroadcast -> "BROADCAST"
     BIListAppend -> "LIST.APPEND"
     BIListIter -> "LIST.ITER"
-    BIGenBroadcasted -> "GEN_BROADCASTED"
     BITensorGenAdd -> "TENSOR.GEN_ADD"
     BITensorGenMult -> "TENSOR.GEN_MULT"
     BITensorGenArgmax -> "TENSOR.GEN_ARGMAX"
@@ -690,7 +689,6 @@ instance Disp Ass1BuiltIn where
     A1BIVconcat m n -> "vconcat" <> param (disps [m, n])
     A1BIMtranspose m n -> "mtranspose" <> param (disps [m, n])
     A1BIMconcatVert m1 m2 n -> "mconcat_vert" <> param (disps [m1, m2, n])
-    A1BIBroadcasted ns1 ns2 -> "broadcasted" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
     A1BITensorZeros ns1 -> "Tensor.zeros" <> param (dispListLiteral ns1)
     A1BITensorMult ns1 ns2 -> "Tensor.mult" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
     A1BITensorGrad ns1 -> "Tensor.grad" <> param (dispListLiteral ns1)

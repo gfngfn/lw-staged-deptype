@@ -218,10 +218,6 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
       a0vsIn <- validateListValue a0v2
       forM_ a0vsIn (reduceBeta a0v1 >=> validateUnitLiteral)
       pure $ A0ValLiteral ALitUnit
-    BIGenBroadcasted -> do
-      ns1 <- validateIntListLiteral a0v1
-      ns2 <- validateIntListLiteral a0v2
-      pure $ A0ValBracket (A1ValConst (A1BIBroadcasted ns1 ns2))
     BITensorGenMult -> do
       ns1 <- validateIntListLiteral a0v1
       ns2 <- validateIntListLiteral a0v2
