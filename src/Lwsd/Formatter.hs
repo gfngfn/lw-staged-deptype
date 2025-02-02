@@ -11,7 +11,8 @@ where
 import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Lwsd.Evaluator qualified as Evaluator
+import Lwsd.BuiltIn.Core
+import Lwsd.EvalError
 import Lwsd.SrcSyntax
 import Lwsd.Syntax
 import Lwsd.TypeError
@@ -304,46 +305,51 @@ instance Disp (ArgForTypeF ann) where
     ExprArgNormal e -> dispGen req e
     TypeArg tye -> dispGen req tye
 
-instance Disp BuiltIn where
+instance Disp BuiltInArity1 where
   dispGen _ = \case
-    BIAdd x1 x2 -> "ADD(" <> disps [x1, x2] <> ")"
-    BISub x1 x2 -> "SUB(" <> disps [x1, x2] <> ")"
-    BIMult x1 x2 -> "MULT(" <> disps [x1, x2] <> ")"
-    BILeq x1 x2 -> "LEQ(" <> disps [x1, x2] <> ")"
-    BIAnd x1 x2 -> "AND(" <> disps [x1, x2] <> ")"
-    BIListMap f x -> "LIST_MAP(" <> disps [f, x] <> ")"
-    BIGenVadd x -> "GEN_VADD(" <> disp x <> ")"
-    BIGenVconcat x1 x2 -> "GEN_VCONCAT(" <> disps [x1, x2] <> ")"
-    BIGenMtranspose x1 x2 -> "GEN_MTRANSPOSE(" <> disps [x1, x2] <> ")"
-    BIGenMconcatVert x1 x2 x3 -> "GEN_MCONCAT_VERT(" <> disps [x1, x2, x3] <> ")"
-    BIVadd n x1 x2 -> "VADD@{" <> disp n <> "}(" <> disps [x1, x2] <> ")"
-    BIVconcat m n x1 x2 -> "VCONCAT@{" <> disps [m, n] <> "}(" <> disps [x1, x2] <> ")"
-    BIMtranspose m n x1 -> "MTRANSPOSE@{" <> disps [m, n] <> "}(" <> disp x1 <> ")"
-    BIMconcatVert m1 m2 n x1 x2 -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}(" <> disps [x1, x2] <> ")"
-    BIDropAt x1 x2 -> "DROP_AT(" <> disps [x1, x2] <> ")"
-    BIBroadcastable x1 x2 -> "BROADCASTABLE(" <> disps [x1, x2] <> ")"
-    BIBroadcast x1 x2 -> "BROADCAST(" <> disps [x1, x2] <> ")"
-    BIListAppend x1 x2 -> "LIST.APPEND(" <> disps [x1, x2] <> ")"
-    BIListIter x1 x2 -> "LIST.ITER(" <> disps [x1, x2] <> ")"
-    BIGenBroadcasted x1 x2 -> "GEN_BROADCASTED(" <> disps [x1, x2] <> ")"
-    BITensorGenZeros x1 -> "TENSOR.GEN_ZEROS(" <> disp x1 <> ")"
-    BITensorGenAdd x1 x2 -> "TENSOR.GEN_ADD(" <> disps [x1, x2] <> ")"
-    BITensorGenMult x1 x2 -> "TENSOR.GEN_MULT(" <> disps [x1, x2] <> ")"
-    BITensorGenMm x1 x2 x3 -> "TENSOR.GEN_MM(" <> disps [x1, x2, x3] <> ")"
-    BITensorGenGrad x1 -> "TENSOR.GEN_GRAD(" <> disp x1 <> ")"
-    BITensorGenZeroGrad x1 -> "TENSOR.GEN_ZERO_GRAD(" <> disp x1 <> ")"
-    BITensorGenSubUpdate x1 -> "TENSOR.GEN_SUB_UPDATE(" <> disp x1 <> ")"
-    BITensorGenArgmax x1 x2 -> "TENSOR.GEN_ARGMAX(" <> disps [x1, x2] <> ")"
-    BITensorGenCrossEntropyForLogits x1 x2 -> "TENSOR.GEN_CROSS_ENTROPY_FOR_LOGITS(" <> disps [x1, x2] <> ")"
-    BITensorGenCountEqual x1 -> "TENSOR.GEN_COUNT_EQUAL(" <> disp x1 <> ")"
-    BITensorAdd ns x1 x2 -> "TENSOR.ADD@{" <> dispListLiteral ns <> "}(" <> disps [x1, x2] <> ")"
-    BITensorMm k m n x1 x2 -> "TENSOR.MM@{" <> disps [k, m, n] <> "}(" <> disps [x1, x2] <> "}"
+    BIGenVadd -> "GEN_VADD"
+    BIMtranspose m n -> "MTRANSPOSE@{" <> disps [m, n] <> "}"
+    BITensorGenZeros -> "TENSOR.GEN_ZEROS"
+    BITensorGenGrad -> "TENSOR.GEN_GRAD"
+    BITensorGenZeroGrad -> "TENSOR.GEN_ZERO_GRAD"
+    BITensorGenSubUpdate -> "TENSOR.GEN_SUB_UPDATE"
+    BITensorGenCountEqual -> "TENSOR.GEN_COUNT_EQUAL"
 
-instance Disp Ass0BuiltInName where
-  dispGen _ a0builtInName = "<" <> disp (show a0builtInName) <> ">"
+instance Disp BuiltInArity2 where
+  dispGen _ = \case
+    BIAdd -> "+"
+    BISub -> "-"
+    BIMult -> "*"
+    BILeq -> "<="
+    BIAnd -> "&&"
+    BIListMap -> "LIST.MAP"
+    BIGenVconcat -> "GEN_VCONCAT"
+    BIGenMtranspose -> "GEN_MTRANSPOSE"
+    BIVadd n -> "VADD@{" <> disp n <> "}"
+    BIVconcat m n -> "VCONCAT@{" <> disps [m, n] <> "}"
+    BIMconcatVert m1 m2 n -> "MCONCAT_VERT@{" <> disps [m1, m2, n] <> "}"
+    BIDropAt -> "DROP_AT"
+    BIBroadcastable -> "BROADCASTABLE"
+    BIBroadcast -> "BROADCAST"
+    BIListAppend -> "LIST.APPEND"
+    BIListIter -> "LIST.ITER"
+    BITensorGenAdd -> "TENSOR.GEN_ADD"
+    BITensorGenMult -> "TENSOR.GEN_MULT"
+    BITensorGenArgmax -> "TENSOR.GEN_ARGMAX"
+    BITensorGenCrossEntropyForLogits -> "TENSOR.GEN_CROSS_ENTROPY_FOR_LOGITS"
+    BITensorAdd ns -> "TENSOR.ADD@{" <> dispListLiteral ns <> "}"
+    BITensorMm k m n -> "TENSOR.MM@{" <> disps [k, m, n] <> "}"
 
-instance Disp Ass1BuiltInName where
-  dispGen _ a1builtInName = "<" <> disp (show a1builtInName) <> ">"
+instance Disp BuiltInArity3 where
+  dispGen _ = \case
+    BIGenMconcatVert -> "GEN_MCONCAT_VERT"
+    BITensorGenMm -> "TENSOR.GEN_MM"
+
+instance Disp BuiltIn where
+  dispGen req = \case
+    BuiltInArity1 bi1 -> dispGen req bi1
+    BuiltInArity2 bi2 -> dispGen req bi2
+    BuiltInArity3 bi3 -> dispGen req bi3
 
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
@@ -406,7 +412,6 @@ instance (Disp e) => Disp (AssLiteral e) where
 instance Disp Ass0Expr where
   dispGen req = \case
     A0Literal lit -> disp lit
-    A0AppBuiltIn bi -> disp bi
     A0Var y -> disp y
     A0BuiltInName builtInName -> disp builtInName
     A0Lam Nothing (y, a0tye1) a0e2 -> dispNonrecLam req y a0tye1 a0e2
@@ -665,25 +670,55 @@ instance Disp Ass0Val where
     A0ValLam Nothing (x, a0tyv1) a0v2 _env -> dispNonrecLam req x a0tyv1 a0v2
     A0ValLam (Just (f, a0tyvRec)) (x, a0tyv1) a0v2 _env -> dispRecLam req f a0tyvRec x a0tyv1 a0v2
     A0ValBracket a1v1 -> dispBracket a1v1
+    A0ValPartialBuiltInApp pba -> dispGen req pba
 
-instance Disp Ass1ValConst where
+instance (Disp v) => Disp (Ass0PartialBuiltInApp v) where
+  dispGen req = \case
+    A0PartialBuiltInApp1With0 bi1 -> disp bi1
+    A0PartialBuiltInApp2With0 bi2 -> disp bi2
+    A0PartialBuiltInApp2With1 bi2 a0v1 -> f (disp bi2 <+> disp a0v1)
+    A0PartialBuiltInApp3With0 bi3 -> disp bi3
+    A0PartialBuiltInApp3With1 bi3 a0v1 -> f (disp bi3 <+> disp a0v1)
+    A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> f (disp bi3 <+> disp a0v1 <+> disp a0v2)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance Disp Ass1BuiltIn where
   dispGen _ = \case
-    A1ValConstVadd n -> "vadd@{" <> disp n <> "}"
-    A1ValConstVconcat m n -> "vconcat@{" <> disps [m, n] <> "}"
-    A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
-    A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
-    A1ValConstBroadcasted ns1 ns2 -> "broadcasted@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
-    A1ValConstTensorZeros ns1 -> "Tensor.zeros@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorMult ns1 ns2 -> "Tensor.mult@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
-    A1ValConstTensorGrad ns1 -> "Tensor.grad@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorZeroGrad ns1 -> "Tensor.zero_grad@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorSubUpdate ns1 -> "Tensor.sub_update@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorArgmax ns1 n2 -> "Tensor.argmax@{" <> dispListLiteral ns1 <> "," <+> disp n2 <> "}"
-    A1ValConstTensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits@{" <> disps [n1, n2] <> "}"
-    A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
-    A1ValConstTensorAdd ns1 ns2 -> "Tensor.add@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
-    A1ValConstTensorMm k m n -> "Tensor.mm@{" <> disps [k, m, n] <> "}"
-    A1ValConstBuiltInName a1builtInName -> disp a1builtInName
+    A1BIVadd n -> "vadd" <> param (disp n)
+    A1BIVconcat m n -> "vconcat" <> param (disps [m, n])
+    A1BIMtranspose m n -> "mtranspose" <> param (disps [m, n])
+    A1BIMconcatVert m1 m2 n -> "mconcat_vert" <> param (disps [m1, m2, n])
+    A1BITensorZeros ns1 -> "Tensor.zeros" <> param (dispListLiteral ns1)
+    A1BITensorMult ns1 ns2 -> "Tensor.mult" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
+    A1BITensorGrad ns1 -> "Tensor.grad" <> param (dispListLiteral ns1)
+    A1BITensorZeroGrad ns1 -> "Tensor.zero_grad" <> param (dispListLiteral ns1)
+    A1BITensorSubUpdate ns1 -> "Tensor.sub_update" <> param (dispListLiteral ns1)
+    A1BITensorArgmax ns1 n2 -> "Tensor.argmax" <> param (dispListLiteral ns1 <> "," <+> disp n2)
+    A1BITensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits" <> param (disps [n1, n2])
+    A1BITensorCountEqual ns -> "Tensor.count_equal" <> param (dispListLiteral ns)
+    A1BITensorAdd ns1 ns2 -> "Tensor.add" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
+    A1BITensorMm k m n -> "Tensor.mm" <> param (disps [k, m, n])
+    A1BIAdd -> "+"
+    A1BISub -> "-"
+    A1BIMult -> "*"
+    A1BIFloatDiv -> "/"
+    A1BILeq -> "<="
+    A1BIFloat -> "float"
+    A1BIPrintFloat -> "print_float"
+    A1BIListAppend -> "List.append"
+    A1BIListIter -> "List.iter"
+    A1BIRange -> "range"
+    A1BITensorF -> "Tensor.f"
+    A1BITensorBackward -> "Tensor.backward"
+    A1BITensorNoGrad -> "Tensor.no_grad"
+    A1BITensorFloatValue -> "Tensor.float_value"
+    A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
+    A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
+    A1BIMnistHelperTestImages -> "Mnist_helper.test_images"
+    A1BIMnistHelperTestLabels -> "Mnist_helper.test_labels"
+    where
+      param doc = stagingOperatorStyle ("@{" <> doc <> "}")
 
 instance Disp Ass1Val where
   dispGen req = \case
@@ -754,44 +789,47 @@ instance Disp SpanInFile where
           indentation = disp (replicate (startColumn - 1) ' ')
           hats = disp (replicate (endColumn - startColumn) '^')
 
-instance Disp Evaluator.Bug where
+instance Disp Bug where
   dispGen _ = \case
-    Evaluator.UnboundVar x ->
+    UnboundVarFound x ->
       "Unbound variable:" <+> disp x
-    Evaluator.NotAClosure a0v ->
+    NotAClosure a0v ->
       "Not a closure:" <+> disp a0v
-    Evaluator.NotACodeValue a0v ->
+    NotACodeValue a0v ->
       "Not a code value:" <+> disp a0v
-    Evaluator.NotAnInteger Nothing a0v ->
+    NotAnInteger a0v ->
       "Not an integer:" <+> disp a0v
-    Evaluator.NotAnInteger (Just x) a0v ->
-      "Not an integer:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
-    Evaluator.NotAList Nothing a0v ->
+    NotAList a0v ->
       "Not a list:" <+> disp a0v
-    Evaluator.NotAList (Just x) a0v ->
-      "Not a list:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
-    Evaluator.NotAVector x a0v ->
-      "Not a vector:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
-    Evaluator.NotAMatrix x a0v ->
-      "Not a matrix:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
-    Evaluator.NotABoolean a0v ->
+    NotAVector a0v ->
+      "Not a vector:" <+> disp a0v
+    NotAMatrix a0v ->
+      "Not a matrix:" <+> disp a0v
+    NotABoolean a0v ->
       "Not a Boolean:" <+> disp a0v
-    Evaluator.NotAUnit a0v ->
+    NotAUnit a0v ->
       "Not a unit:" <+> disp a0v
-    Evaluator.FoundSymbol x symb ->
+    FoundSymbol x symb ->
       "Expected a stage-0 value, but found a symbol:" <+> disp symb <+> "(bound to:" <+> disp x <> ")"
-    Evaluator.FoundAss0Val x a0v ->
+    FoundAss0Val x a0v ->
       "Expected a symbol, but found a stage-0 value:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
-    Evaluator.InconsistentAppBuiltIn builtin ->
-      "Inconsistent application of a built-in function:" <+> disp (Text.pack (show builtin))
-    Evaluator.BroadcastFailed ns1 ns2 ->
+    InconsistentAppBuiltInArity1 bi1 a0v1 ->
+      "Inconsistent application of a built-in function:"
+        <+> disp (Text.pack (show bi1))
+        <+> disp a0v1
+    InconsistentAppBuiltInArity2 bi2 a0v1 a0v2 ->
+      "Inconsistent application of a built-in function:"
+        <+> disp (Text.pack (show bi2))
+        <+> disp a0v1
+        <+> disp a0v2
+    BroadcastFailed ns1 ns2 ->
       "Broadcast failed:" <+> dispListLiteral ns1 <> "," <+> dispListLiteral ns2
 
-instance Disp Evaluator.EvalError where
+instance Disp EvalError where
   dispGen _ = \case
-    Evaluator.Bug bug ->
+    Bug bug ->
       "Bug:" <+> disp bug
-    Evaluator.AssertionFailure spanInFile a1tyv1 a1tyv2 ->
+    AssertionFailure spanInFile a1tyv1 a1tyv2 ->
       "Assertion failure"
         <+> disp spanInFile
         <> hardline
@@ -800,7 +838,7 @@ instance Disp Evaluator.EvalError where
         <> hardline
         <> "expected:"
         <> nest 2 (hardline <> disp a1tyv2)
-    Evaluator.RefinementAssertionFailure spanInFile a0v ->
+    RefinementAssertionFailure spanInFile a0v ->
       "Assertion failure of downcast"
         <+> disp spanInFile
         <> hardline

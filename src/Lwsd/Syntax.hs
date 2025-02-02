@@ -2,10 +2,6 @@ module Lwsd.Syntax
   ( AssVar (..),
     Symbol (..),
     symbolToVar,
-    BuiltIn (..),
-    Ass0BuiltInName (..),
-    Ass1BuiltInName (..),
-    unliftBuiltInName,
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
@@ -24,7 +20,6 @@ module Lwsd.Syntax
     liftPrimType,
     Ass0Val (..),
     Ass1Val (..),
-    Ass1ValConst (..),
     Ass0TypeVal (..),
     Ass0PrimTypeVal (..),
     Ass1TypeVal (..),
@@ -48,6 +43,7 @@ where
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Lwsd.BuiltIn.Core
 import Util.Matrix (Matrix)
 import Util.TokenUtil (Span)
 import Util.Vector (Vector)
@@ -66,122 +62,6 @@ newtype Symbol = Symbol Int
 symbolToVar :: Symbol -> AssVar
 symbolToVar (Symbol n) = AssVar $ Text.pack $ "#S" ++ show n
 
-data BuiltIn
-  = BIAdd AssVar AssVar
-  | BISub AssVar AssVar
-  | BIMult AssVar AssVar
-  | BILeq AssVar AssVar
-  | BIAnd AssVar AssVar
-  | BIListMap AssVar AssVar
-  | BIGenVadd AssVar
-  | BIGenVconcat AssVar AssVar
-  | BIGenMtranspose AssVar AssVar
-  | BIGenMconcatVert AssVar AssVar AssVar
-  | BIVadd Int AssVar AssVar
-  | BIVconcat Int Int AssVar AssVar
-  | BIMtranspose Int Int AssVar
-  | BIMconcatVert Int Int Int AssVar AssVar
-  | BIDropAt AssVar AssVar
-  | BIBroadcastable AssVar AssVar
-  | BIBroadcast AssVar AssVar
-  | BIListAppend AssVar AssVar
-  | BIListIter AssVar AssVar
-  | BIGenBroadcasted AssVar AssVar
-  | BITensorGenZeros AssVar
-  | BITensorGenAdd AssVar AssVar
-  | BITensorGenMult AssVar AssVar
-  | BITensorGenMm AssVar AssVar AssVar
-  | BITensorGenGrad AssVar
-  | BITensorGenZeroGrad AssVar
-  | BITensorGenSubUpdate AssVar
-  | BITensorGenCrossEntropyForLogits AssVar AssVar
-  | BITensorGenArgmax AssVar AssVar
-  | BITensorGenCountEqual AssVar
-  | BITensorAdd [Int] AssVar AssVar
-  | BITensorMm Int Int Int AssVar AssVar
-  deriving stock (Eq, Show)
-
-data Ass0BuiltInName
-  = A0BINameAdd
-  | A0BINameSub
-  | A0BINameMult
-  | A0BINameFloatDiv
-  | A0BINameLeq
-  | A0BINameFloat
-  | A0BINameGenVadd
-  | A0BINameGenVconcat
-  | A0BINameGenMtranspose
-  | A0BINameGenMconcatVert
-  | A0BINameDropAt
-  | A0BINameBroadcastable
-  | A0BINameBroadcast
-  | A0BINameTensorGenZeros
-  | A0BINameTensorGenAdd
-  | A0BINameTensorGenMult
-  | A0BINameTensorGenMm
-  | A0BINameTensorGenGrad
-  | A0BINameTensorGenZeroGrad
-  | A0BINameTensorGenSubUpdate
-  | A0BINameTensorGenArgmax
-  | A0BINameTensorGenCrossEntropyForLogits
-  | A0BINameTensorGenCountEqual
-  | A0BINamePrintFloat
-  | A0BINameListAppend
-  | A0BINameListIter
-  | A0BINameRange
-  | A0BINameGenBroadcasted
-  | A0BINameTensorF
-  | A0BINameTensorBackward
-  | A0BINameTensorNoGrad
-  | A0BINameTensorFloatValue
-  | A0BINameMnistHelperTrainImages
-  | A0BINameMnistHelperTrainLabels
-  | A0BINameMnistHelperTestImages
-  | A0BINameMnistHelperTestLabels
-  deriving stock (Eq, Show)
-
-data Ass1BuiltInName
-  = A1BINameAdd
-  | A1BINameSub
-  | A1BINameMult
-  | A1BINameFloatDiv
-  | A1BINameLeq
-  | A1BINameFloat
-  | A1BINamePrintFloat
-  | A1BINameListAppend
-  | A1BINameListIter
-  | A1BINameRange
-  | A1BINameTensorF
-  | A1BINameTensorBackward
-  | A1BINameTensorNoGrad
-  | A1BINameTensorFloatValue
-  | A1BINameMnistHelperTrainImages
-  | A1BINameMnistHelperTrainLabels
-  | A1BINameMnistHelperTestImages
-  | A1BINameMnistHelperTestLabels
-  deriving stock (Eq, Show)
-
-unliftBuiltInName :: Ass1BuiltInName -> Ass0BuiltInName
-unliftBuiltInName = \case
-  A1BINameAdd -> A0BINameAdd
-  A1BINameSub -> A0BINameSub
-  A1BINameMult -> A0BINameMult
-  A1BINameFloatDiv -> A0BINameFloatDiv
-  A1BINameLeq -> A0BINameLeq
-  A1BINameFloat -> A0BINameFloat
-  A1BINamePrintFloat -> A0BINamePrintFloat
-  A1BINameListAppend -> A0BINameListAppend
-  A1BINameListIter -> A0BINameListIter
-  A1BINameRange -> A0BINameRange
-  A1BINameTensorF -> A0BINameTensorF
-  A1BINameTensorBackward -> A0BINameTensorBackward
-  A1BINameTensorNoGrad -> A0BINameTensorNoGrad
-  A1BINameTensorFloatValue -> A0BINameTensorFloatValue
-  A1BINameMnistHelperTrainImages -> A0BINameMnistHelperTrainImages
-  A1BINameMnistHelperTrainLabels -> A0BINameMnistHelperTrainLabels
-  A1BINameMnistHelperTestImages -> A0BINameMnistHelperTestImages
-  A1BINameMnistHelperTestLabels -> A0BINameMnistHelperTestLabels
-
 data AssLiteral e
   = ALitInt Int
   | ALitFloat Double
@@ -194,9 +74,8 @@ data AssLiteral e
 
 data Ass0Expr
   = A0Literal (AssLiteral Ass0Expr)
-  | A0AppBuiltIn BuiltIn
+  | A0BuiltInName BuiltIn
   | A0Var AssVar
-  | A0BuiltInName Ass0BuiltInName
   | A0Lam (Maybe (AssVar, StrictAss0TypeExpr)) (AssVar, StrictAss0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0LetIn (AssVar, StrictAss0TypeExpr) Ass0Expr Ass0Expr
@@ -210,7 +89,7 @@ data Ass0Expr
 data Ass1Expr
   = A1Literal (AssLiteral Ass1Expr)
   | A1Var AssVar
-  | A1BuiltInName Ass1BuiltInName
+  | A1BuiltInName Ass1BuiltIn
   | A1Lam (Maybe (AssVar, Ass1TypeExpr)) (AssVar, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
   | A1Sequential Ass1Expr Ass1Expr
@@ -311,35 +190,17 @@ data Ass0Val
   = A0ValLiteral (AssLiteral Ass0Val)
   | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr EvalEnv
   | A0ValBracket Ass1Val
+  | A0ValPartialBuiltInApp (Ass0PartialBuiltInApp Ass0Val)
   deriving stock (Eq, Show)
 
 data Ass1Val
   = A1ValLiteral (AssLiteral Ass1Val)
-  | A1ValConst Ass1ValConst
+  | A1ValConst Ass1BuiltIn
   | A1ValVar Symbol
   | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) Ass1Val
   | A1ValApp Ass1Val Ass1Val
   | A1ValSequential Ass1Val Ass1Val
   | A1ValIfThenElse Ass1Val Ass1Val Ass1Val
-  deriving stock (Eq, Show)
-
-data Ass1ValConst
-  = A1ValConstVadd Int
-  | A1ValConstVconcat Int Int
-  | A1ValConstMtranspose Int Int
-  | A1ValConstMconcatVert Int Int Int
-  | A1ValConstBroadcasted [Int] [Int]
-  | A1ValConstTensorZeros [Int]
-  | A1ValConstTensorAdd [Int] [Int]
-  | A1ValConstTensorMult [Int] [Int]
-  | A1ValConstTensorMm Int Int Int
-  | A1ValConstTensorGrad [Int]
-  | A1ValConstTensorZeroGrad [Int]
-  | A1ValConstTensorSubUpdate [Int]
-  | A1ValConstTensorArgmax [Int] Int
-  | A1ValConstTensorCrossEntropyForLogits Int Int
-  | A1ValConstTensorCountEqual [Int]
-  | A1ValConstBuiltInName Ass1BuiltInName -- TODO: consider merging `Ass1BuiltInName` and `Ass1ValConst`
   deriving stock (Eq, Show)
 
 data Ass0TypeVal

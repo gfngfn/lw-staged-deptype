@@ -76,8 +76,6 @@ instance HasVar Ass0Expr where
   frees = \case
     A0Literal alit ->
       frees alit
-    A0AppBuiltIn _ ->
-      (Set.empty, Set.empty) -- We do not see variables for built-in functions
     A0Var y ->
       (Set.singleton y, Set.empty)
     A0BuiltInName _ ->
@@ -111,8 +109,6 @@ instance HasVar Ass0Expr where
   subst s = \case
     A0Literal alit ->
       A0Literal (go alit)
-    A0AppBuiltIn bi ->
-      A0AppBuiltIn bi -- We do not see variables for built-in functions
     A0Var y ->
       case s of
         Subst0 x a0e -> if y == x then a0e else A0Var y
@@ -154,8 +150,6 @@ instance HasVar Ass0Expr where
     case (a0e1, a0e2) of
       (A0Literal alit1, A0Literal alit2) ->
         alphaEquivalent alit1 alit2
-      (A0AppBuiltIn builtIn1, A0AppBuiltIn builtIn2) ->
-        builtIn1 == builtIn2
       (A0Var x1, A0Var x2) ->
         x1 == x2
       (A0BuiltInName builtInName1, A0BuiltInName builtInName2) ->

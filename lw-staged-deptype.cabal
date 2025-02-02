@@ -60,7 +60,9 @@ library
     -- Modules exported by the library.
     exposed-modules:
       Lwsd.BuiltIn,
+      Lwsd.BuiltIn.Core,
       Lwsd.Entrypoint,
+      Lwsd.EvalError,
       Lwsd.Evaluator,
       Lwsd.Formatter,
       Lwsd.Parser,

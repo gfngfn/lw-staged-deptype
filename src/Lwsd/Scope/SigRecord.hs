@@ -18,23 +18,24 @@ where
 
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Lwsd.BuiltIn.Core
 import Lwsd.SrcSyntax (Var)
 import Lwsd.Syntax
 import Surface.Syntax qualified as SurfaceSyntax
 import Prelude
 
 data Ass0Metadata = Ass0Metadata
-  { ass0builtInName :: Ass0BuiltInName,
+  { ass0builtInName :: BuiltIn,
     ass0surfaceName :: SurfaceSyntax.Var
   }
 
 data Ass1Metadata = Ass1Metadata
-  { ass1builtInName :: Ass1BuiltInName,
+  { ass1builtInName :: Ass1BuiltIn,
     ass1surfaceName :: SurfaceSyntax.Var
   }
 
 data AssPersMetadata = AssPersMetadata
-  { assPbuiltInName :: Ass1BuiltInName,
+  { assPbuiltInName :: Ass1BuiltIn,
     assPsurfaceName :: SurfaceSyntax.Var
   }
 

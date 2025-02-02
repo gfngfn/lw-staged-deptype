@@ -13,14 +13,12 @@ val ~broadcastable : List Nat -> List Nat -> Bool external "broadcastable" "broa
 val ~broadcast : List Nat -> List Nat -> List Nat external "broadcast" "broadcast"
 val %float : Int -> Float external "float" "float"
 val print_float : Float -> Unit external "print_float" "print_float"
+val %range : Int -> Int -> List Int external "range" "range"
 
 module List = struct
-  val %append : List Int -> List Int -> List Int external "list_append" "append" (* TODO: generalize the type *)
-  val %iter : (Int -> Unit) -> List Int -> Unit external "list_iter" "iter" (* TODO: generalize the type *)
+  val %append : List Int -> List Int -> List Int external "list__append" "append" (* TODO: generalize the type *)
+  val %iter : (Int -> Unit) -> List Int -> Unit external "list__iter" "iter" (* TODO: generalize the type *)
 end
-
-val %range : Int -> Int -> List Int external "range" "range"
-val ~gen_broadcasted : {shape : List Nat} -> (added : List Nat) -> &(Tensor %shape -> Tensor %(List.append added shape)) external "gen_broadcasted" "broadcasted"
 
 module Tensor = struct
   val ~gen_zeros : (shape : List Nat) -> &(Tensor %shape) external "tensor__gen_zeros" "zeros"
