@@ -1,0 +1,32 @@
+&(let learning_rate = Tensor.f 1.0 in
+  let ws = ~(Tensor.gen_zeros (let open Mnist_helper in [image_dim, label_count])) in
+  let bs = ~(Tensor.gen_zeros (let open Mnist_helper in [label_count])) in
+~(let gen_model {n : Nat} =
+    &(fun(xs : Tensor %[n, Mnist_helper.image_dim]) ->
+      let open Tensor in
+      (~gen_add (~gen_mm xs ws) bs) as Tensor %[n, Mnist_helper.label_count]
+    )
+  in
+&(List.iter (fun(i : Int) ->
+    let loss =
+      ~Tensor.gen_cross_entropy_for_logits
+        (~gen_model Mnist_helper.train_images)
+        Mnist_helper.train_labels
+    in
+    Tensor.backward loss;
+    Tensor.no_grad (fun(u : Unit) ->
+      let open Tensor in
+      ~gen_sub_update ws (~gen_mult (~gen_grad ws) learning_rate);
+      ~gen_sub_update bs (~gen_mult (~gen_grad bs) learning_rate)
+    );
+    ~Tensor.gen_zero_grad ws;
+    ~Tensor.gen_zero_grad bs;
+    let got = ~gen_model Mnist_helper.test_images in
+    let estimated = ~(Tensor.gen_argmax 1) got in
+    let test_accuracy =
+      let sum = ~Tensor.gen_count_equal estimated Mnist_helper.test_labels in
+      float sum / float Mnist_helper.num_test_images
+    in
+    print_float test_accuracy
+  ) (range 1 200)
+)))
