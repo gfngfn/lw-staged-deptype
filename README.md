@@ -30,11 +30,15 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Add realistic examples (specifically, ones using PyTorch or ocaml-torch)
 - [x] Full-fledged refinement types `( x : τ | φ )`
   * This is beneficial for handling *broadcasting* of tensors in PyTorch, for example
-- [ ] Support binding of type names like `type Nat = ( n : Int | n >= 0 )`
 - [x] Represent broadcasting of tensor shapes by refinement types
+- [ ] Syntax sugar for recursive functions (i.e., `let rec`-expressions)
 - [ ] Type-checking in a bi-directional manner as to return types
+- [ ] Generalize the `external` syntax for various backends
 - [ ] Transpilation to Python or OCaml
+- [ ] Support binding of type names like `type Nat = ( n : Int | n >= 0 )`
+- [ ] Support ADTs
 - [ ] Add the `run`-primitive
+- [ ] `let`-expressions for persistent values
 
 
 ## Memo
