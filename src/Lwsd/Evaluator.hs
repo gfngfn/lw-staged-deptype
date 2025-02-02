@@ -15,7 +15,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Data.Maybe (isJust)
-import Lwsd.BuiltIn qualified as BuiltIn
+import Lwsd.BuiltIn.Core
 import Lwsd.Syntax
 import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.Matrix (Matrix)

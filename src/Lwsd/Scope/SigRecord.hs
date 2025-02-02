@@ -18,6 +18,7 @@ where
 
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Lwsd.BuiltIn.Core
 import Lwsd.SrcSyntax (Var)
 import Lwsd.Syntax
 import Surface.Syntax qualified as SurfaceSyntax

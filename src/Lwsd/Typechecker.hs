@@ -26,6 +26,7 @@ import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Data.Tuple.Extra
 import Lwsd.BuiltIn qualified as BuiltIn
+import Lwsd.BuiltIn.Core
 import Lwsd.Scope.SigRecord (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), ModuleEntry (..), SigRecord, ValEntry (..))
 import Lwsd.Scope.SigRecord qualified as SigRecord
 import Lwsd.Scope.TypeEnv (TypeEnv)

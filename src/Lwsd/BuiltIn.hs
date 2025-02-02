@@ -6,6 +6,7 @@ module Lwsd.BuiltIn
 where
 
 import Data.Text (Text)
+import Lwsd.BuiltIn.Core
 import Lwsd.Syntax
 import Prelude
 

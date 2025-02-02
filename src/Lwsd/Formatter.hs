@@ -11,6 +11,7 @@ where
 import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Lwsd.BuiltIn.Core
 import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.SrcSyntax
 import Lwsd.Syntax
