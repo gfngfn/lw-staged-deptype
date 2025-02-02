@@ -72,8 +72,9 @@ spec = do
       parseExpr "x (y z)"
         `shouldBe` pure (app (var "x") (app (var "y") (var "z")))
     it "parses applications (4)" $ do
+      let eBody = expr (LetIn "z" [] (litInt 1) (app (var "y") (var "z")))
       parseExpr "Foo.bar (fun(y : Y) -> let z = 1 in y z)"
-        `shouldBe` pure (app (longVar ["Foo"] "bar") (nonrecLam ("y", typ (TyName "Y" [])) (expr (LetIn "z" (litInt 1) (app (var "y") (var "z"))))))
+        `shouldBe` pure (app (longVar ["Foo"] "bar") (nonrecLam ("y", typ (TyName "Y" [])) eBody))
     it "parses applications and integer literals" $
       parseExpr "x 42 z"
         `shouldBe` pure (app (app (var "x") (litInt 42)) (var "z"))
@@ -83,17 +84,25 @@ spec = do
     it "parses lambda abstractions (1)" $
       parseExpr "fun (x : Int) -> x"
         `shouldBe` pure (nonrecLam ("x", tyInt) (var "x"))
-    it "parses lambda abstractions (2)" $
+    it "parses lambda abstractions (2)" $ do
       let ty = tyDepFun "n" tyInt tyBool
-       in parseExpr "fun (x : (n : Int) -> Bool) -> x y"
-            `shouldBe` pure (nonrecLam ("x", ty) (app (var "x") (var "y")))
+      parseExpr "fun (x : (n : Int) -> Bool) -> x y"
+        `shouldBe` pure (nonrecLam ("x", ty) (app (var "x") (var "y")))
     it "parses recursive lambda abstractions" $
       parseExpr "rec (self : Int -> Int) -> fun (x : Int) -> x"
         `shouldBe` pure (recLam ("self", tyNondepFun tyInt tyInt) ("x", tyInt) (var "x"))
-    it "parses let-expressions" $
+    it "parses let-expressions (1)" $ do
       let ty = tyDepFun "n" tyInt tyBool
-       in parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
-            `shouldBe` pure (expr (LetIn "f" (nonrecLam ("x", ty) (app (var "x") (var "y"))) (var "f")))
+      parseExpr "let f = fun (x : (n : Int) -> Bool) -> x y in f"
+        `shouldBe` pure (expr (LetIn "f" [] (nonrecLam ("x", ty) (app (var "x") (var "y"))) (var "f")))
+    it "parses let-expressions (2)" $ do
+      let ty = tyDepFun "n" tyInt tyBool
+      parseExpr "let f (x : (n : Int) -> Bool) = x y in f"
+        `shouldBe` pure (expr (LetIn "f" [MandatoryBinder ("x", ty)] (app (var "x") (var "y")) (var "f")))
+    it "parses let-expressions (3)" $ do
+      let params = [OptionalBinder ("n", tyInt), MandatoryBinder ("x", tyPersVec (var "n"))]
+      parseExpr "let f {n : Int} (x : Vec %n) = g x in f"
+        `shouldBe` pure (expr (LetIn "f" params (app (var "g") (var "x")) (var "f")))
     it "parses let-open-expressions" $
       parseExpr "let open X in f 42"
         `shouldBe` pure (expr (LetOpenIn "X" (app (var "f") (litInt 42))))
@@ -240,30 +249,31 @@ spec = do
     it "parses applications (1)" $
       Parser.parseExpr "x y"
         `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))
-    it "parses applications (2)" $
+    it "parses applications (2)" $ do
       let e =
             exprLoc 0 5 $
               App
                 (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))
                 (exprLoc 4 5 $ short "z")
-       in Parser.parseExpr "x y z"
-            `shouldBe` pure e
-    it "parses applications (3)" $
+      Parser.parseExpr "x y z"
+        `shouldBe` pure e
+    it "parses applications (3)" $ do
       let e =
             exprLoc 0 7 $
               App
                 (exprLoc 0 1 $ short "x")
                 (exprLoc 2 7 $ App (exprLoc 3 4 $ short "y") (exprLoc 5 6 $ short "z"))
-       in Parser.parseExpr "x (y z)" `shouldBe` pure e
-    it "parses brackets" $
+      Parser.parseExpr "x (y z)"
+        `shouldBe` pure e
+    it "parses brackets" $ do
       let e =
             exprLoc 0 8 $
               App
                 (exprLoc 0 1 $ short "f")
                 (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ short "g") (exprLoc 6 7 $ short "x")))
-       in Parser.parseExpr "f &(g x)"
-            `shouldBe` pure e
-    it "parses lambda abstractions" $
+      Parser.parseExpr "f &(g x)"
+        `shouldBe` pure e
+    it "parses lambda abstractions" $ do
       let ty =
             typLoc 9 26 $
               TyArrow
@@ -275,15 +285,16 @@ spec = do
                 Nothing
                 ("x", ty)
                 (exprLoc 31 34 $ App (exprLoc 31 32 $ short "x") (exprLoc 33 34 $ short "y"))
-       in Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
-            `shouldBe` pure e
+      Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
+        `shouldBe` pure e
     it "parses optional applications (1)" $
       Parser.parseExpr "x {y}"
         `shouldBe` pure (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ short "x") (exprLoc 3 4 $ short "y"))
-    it "parses optional applications (2)" $
+    it "parses optional applications (2)" $ do
       let e =
             exprLoc 0 9 $
               AppOptGiven
                 (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ short "x") (exprLoc 3 4 $ short "y"))
                 (exprLoc 7 8 $ short "z")
-       in Parser.parseExpr "x {y} {z}" `shouldBe` pure e
+      Parser.parseExpr "x {y} {z}"
+        `shouldBe` pure e

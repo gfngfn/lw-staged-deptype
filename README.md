@@ -33,6 +33,7 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [ ] Support binding of type names like `type Nat = ( n : Int | n >= 0 )`
 - [ ] Represent broadcasting of tensor shapes by refinement types
 - [ ] Transpilation to Python or OCaml
+- [ ] Add the `run`-primitive
 
 
 ## Memo

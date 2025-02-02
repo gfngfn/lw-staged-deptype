@@ -22,10 +22,6 @@ import Prelude hiding (or)
 
 type P a = GenP Token a
 
-data BinderKind
-  = MandatoryBinder (Var, TypeExpr)
-  | OptionalBinder (Var, TypeExpr)
-
 parenGen :: Token -> Token -> P a -> P (Located a)
 parenGen tokLeft tokRight p =
   make <$> token tokLeft <*> p <*> token tokRight
@@ -173,21 +169,12 @@ exprAtom, expr :: P Expr
     lam :: P Expr
     lam =
       tries
-        [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
+        [ makeNonrecLam <$> token TokFun <*> (lamBinder <* token TokArrow) <*> expr,
           makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr,
           makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
         ]
         comp
       where
-        binder =
-          (MandatoryBinder <$> mandatoryBinder) `or` (OptionalBinder <$> optionalBinder)
-
-        mandatoryBinder =
-          noLoc (paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr)))
-
-        optionalBinder =
-          noLoc (brace ((,) <$> noLoc lower <*> (token TokColon *> typeExpr)))
-
         makeNonrecLam locFirst xBinder' e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) $
             case xBinder' of
@@ -200,17 +187,25 @@ exprAtom, expr :: P Expr
         makeIf locFirst e0 e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
 
+    lamBinder :: P LamBinder
+    lamBinder =
+      (MandatoryBinder <$> mandatoryBinder) `or` (OptionalBinder <$> optionalBinder)
+
+    mandatoryBinder, optionalBinder :: P (Var, TypeExpr)
+    mandatoryBinder = noLoc (paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr)))
+    optionalBinder = noLoc (brace ((,) <$> noLoc lower <*> (token TokColon *> typeExpr)))
+
     letin :: P Expr
     letin =
       tries
-        [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
+        [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
           makeLetOpenIn <$> token TokLet <*> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin),
           makeSequential <$> (comp <* token TokSemicolon) <*> letin
         ]
         lam
       where
-        makeLetIn locFirst x e1 e2@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (LetIn x e1 e2)
+        makeLetIn locFirst x params e1 e2@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LetIn x params e1 e2)
 
         makeLetOpenIn locFirst m e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetOpenIn m e)

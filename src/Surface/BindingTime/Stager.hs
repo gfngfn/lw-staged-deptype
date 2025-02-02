@@ -42,7 +42,7 @@ stageExpr0Main = \case
   App e1 e2 ->
     Lwsd.App (stageExpr0 e1) (stageExpr0 e2)
   LetIn x e1 e2 ->
-    Lwsd.LetIn x (stageExpr0 e1) (stageExpr0 e2)
+    Lwsd.LetIn x [] (stageExpr0 e1) (stageExpr0 e2)
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr0 e)
   Sequential e1 e2 ->
@@ -77,7 +77,7 @@ stageExpr1Main = \case
   App e1 e2 ->
     Lwsd.App (stageExpr1 e1) (stageExpr1 e2)
   LetIn x e1 e2 ->
-    Lwsd.LetIn x (stageExpr1 e1) (stageExpr1 e2)
+    Lwsd.LetIn x [] (stageExpr1 e1) (stageExpr1 e2)
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr1 e)
   Sequential e1 e2 ->

@@ -3,8 +3,10 @@ module Lwsd.SrcSyntax
     Literal (..),
     ExprF (..),
     ExprMainF (..),
+    LamBinderF (..),
     Expr,
     ExprMain,
+    LamBinder,
     TypeName,
     TypeExprF (..),
     TypeExprMainF (..),
@@ -50,7 +52,7 @@ data ExprMainF ann
   | Var ([Var], Var) -- A module name chain and a value identifier
   | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)
-  | LetIn Var (ExprF ann) (ExprF ann)
+  | LetIn Var [LamBinderF ann] (ExprF ann) (ExprF ann)
   | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)
   | As (ExprF ann) (TypeExprF ann)
   | Bracket (ExprF ann)
@@ -63,10 +65,18 @@ data ExprMainF ann
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ExprMainF)
 
+data LamBinderF ann
+  = MandatoryBinder (Var, TypeExprF ann)
+  | OptionalBinder (Var, TypeExprF ann)
+  deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
+  deriving (Eq1, Show1) via (Generically1 LamBinderF)
+
 -- The type for ASTs for expressions obtained by parsing source programs.
 type Expr = ExprF Span
 
 type ExprMain = ExprMainF Span
+
+type LamBinder = LamBinderF Span
 
 type TypeName = Text
 

@@ -1,8 +1,7 @@
-let gen_square =
-  fun{n : Nat} ->
-    &(fun(mat : Mat %n %n) ->
-      ~(gen_mmult {n} {n} {n}) mat mat
-    )
+let gen_square {n : Nat} =
+  &(fun(mat : Mat %n %n) ->
+    ~(gen_mmult {n} {n} {n}) mat mat
+  )
 in
 &(
   ~(gen_square {2})

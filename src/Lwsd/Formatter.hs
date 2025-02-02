@@ -126,10 +126,12 @@ dispAppOptOmitted req e1 =
   deepenParenWhen (req <= Atomic) $
     group (dispGen FunDomain e1 <> nest 2 (line <> "_"))
 
-dispLetIn :: (Disp var, Disp expr) => Associativity -> var -> expr -> expr -> Doc Ann
-dispLetIn req x e1 e2 =
+dispLetIn :: (Disp var, Disp param, Disp expr) => Associativity -> var -> [param] -> expr -> expr -> Doc Ann
+dispLetIn req x params e1 e2 =
   deepenParenWhen (req <= FunDomain) $
-    group ("let" <+> disp x <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
+    group ("let" <+> d <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
+  where
+    d = sep (disp x : map disp params)
 
 dispLetInWithAnnot :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> expr -> Doc Ann
 dispLetInWithAnnot req x tye e1 e2 =
@@ -272,13 +274,18 @@ instance Disp (ExprMainF ann) where
     LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
     AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
     AppOptOmitted e1 -> dispAppOptOmitted req e1
-    LetIn x e1 e2 -> dispLetIn req x e1 e2
+    LetIn x params e1 e2 -> dispLetIn req x params e1 e2
     LetOpenIn m e -> dispLetOpenIn req m e
     Sequential e1 e2 -> dispSequential req e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2
     Bracket e1 -> dispBracket e1
     Escape e1 -> dispEscape e1
+
+instance Disp (LamBinderF ann) where
+  dispGen _ = \case
+    MandatoryBinder (x, tye) -> "(" <> disp x <+> ":" <+> disp tye <> ")"
+    OptionalBinder (x, tye) -> "{" <> disp x <+> ":" <+> disp tye <> "}"
 
 instance Disp (TypeExprF ann) where
   dispGen req (TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -357,7 +364,7 @@ instance Disp Surface.ExprMain where
     Surface.Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
-    Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
+    Surface.LetIn x e1 e2 -> dispLetIn req x ([] :: [Int]) e1 e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
@@ -833,7 +840,7 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
-    Surface.LetIn x e1 e2 -> dispLetIn req x e1 e2
+    Surface.LetIn x e1 e2 -> dispLetIn req x ([] :: [Int]) e1 e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
