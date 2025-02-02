@@ -24,7 +24,7 @@ import Surface.Syntax qualified as SurfaceSyntax
 import Prelude
 
 data Ass0Metadata = Ass0Metadata
-  { ass0builtInName :: Ass0BuiltInName,
+  { ass0builtInName :: BuiltIn,
     ass0surfaceName :: SurfaceSyntax.Var
   }
 

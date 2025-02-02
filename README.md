@@ -35,9 +35,10 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [ ] Type-checking in a bi-directional manner as to return types
 - [ ] Generalize the `external` syntax for various backends
 - [ ] Transpilation to Python or OCaml
-- [ ] Support binding of type names like `type Nat = ( n : Int | n >= 0 )`
-- [ ] Support ADTs
+- [ ] Binding of type names like `type Nat = ( n : Int | n >= 0 )`
+- [ ] ADTs
 - [ ] Add the `run`-primitive
+- [ ] Polymorphic types
 - [ ] `let`-expressions for persistent values
 
 

@@ -161,12 +161,8 @@ makeAssertiveCast trav loc =
                   else maybePred2'
           let castForListByElemPred =
                 case castForElem of
-                  Nothing ->
-                    Nothing
-                  Just a0eCastForElem ->
-                    let sa0tye1' = strictify (applySolution solution a0tye1')
-                        sa0tye2' = strictify (applySolution solution a0tye2')
-                     in Just (A0App (BuiltIn.ass0exprListMap sa0tye1' sa0tye2') a0eCastForElem)
+                  Nothing -> Nothing
+                  Just a0eCastForElem -> Just (A0App ass0exprListMap a0eCastForElem)
           castForListByWholePred <- castOrIdentityLam maybePred2 a0tye1
           castForList <-
             case (castForListByElemPred, castForListByWholePred) of
@@ -181,7 +177,7 @@ makeAssertiveCast trav loc =
                 pure $
                   Just $
                     A0Lam Nothing (ax, strictify a0tye1) $
-                      A0App (A0App BuiltIn.ass0exprAnd (A0App a0eCast1 (A0Var ax))) (A0App a0eCast2 (A0Var ax))
+                      A0App (A0App ass0exprAnd (A0App a0eCast1 (A0Var ax))) (A0App a0eCast2 (A0Var ax))
           pure (castForList, solution)
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22withX2opt) -> do
           (castDom, solutionDom) <- go varsToInfer a0tye11 a0tye21
@@ -1128,7 +1124,7 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
               pure $
                 A0TyPrim a0tyPrim . Just $
                   A0Lam Nothing (ax, strictify a0tye1) $
-                    A0App (A0App BuiltIn.ass0exprAnd (A0App a0ePredForBase (A0Var ax))) a0e2
+                    A0App (A0App ass0exprAnd (A0App a0ePredForBase (A0Var ax))) a0e2
             A0TyList a0tyeElem Nothing -> do
               pure $
                 A0TyList a0tyeElem . Just $
@@ -1137,7 +1133,7 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
               pure $
                 A0TyList a0tyeElem . Just $
                   A0Lam Nothing (ax, strictify a0tye1) $
-                    A0App (A0App BuiltIn.ass0exprAnd (A0App a0ePredForBase (A0Var ax))) a0e2
+                    A0App (A0App ass0exprAnd (A0App a0ePredForBase (A0Var ax))) a0e2
             _ -> do
               let TypeExpr loc1 _ = tye1
               spanInFile1 <- askSpanInFile loc1
@@ -1146,6 +1142,12 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
           let Expr loc2 _ = e2
           spanInFile2 <- askSpanInFile loc2
           typeError trav $ NotABoolTypeForStage0 spanInFile2 a0tye2
+
+ass0exprAnd :: Ass0Expr
+ass0exprAnd = A0BuiltInName (BuiltInArity2 BIAnd)
+
+ass0exprListMap :: Ass0Expr
+ass0exprListMap = A0BuiltInName (BuiltInArity2 BIListMap)
 
 data IntermediateArgForAss1Type
   = IA1ExprArg Ass0Expr Ass0TypeExpr

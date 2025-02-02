@@ -3,8 +3,12 @@ module Lwsd.Syntax
     Symbol (..),
     symbolToVar,
     BuiltIn (..),
+    BuiltInArity1 (..),
+    BuiltInArity2 (..),
+    BuiltInArity3 (..),
     Ass0BuiltInName (..),
     Ass1BuiltInName (..),
+    Ass0PartialBuiltInApp (..),
     unliftBuiltInName,
     AssLiteral (..),
     Ass0Expr (..),
@@ -67,38 +71,59 @@ symbolToVar :: Symbol -> AssVar
 symbolToVar (Symbol n) = AssVar $ Text.pack $ "#S" ++ show n
 
 data BuiltIn
-  = BIAdd AssVar AssVar
-  | BISub AssVar AssVar
-  | BIMult AssVar AssVar
-  | BILeq AssVar AssVar
-  | BIAnd AssVar AssVar
-  | BIListMap AssVar AssVar
-  | BIGenVadd AssVar
-  | BIGenVconcat AssVar AssVar
-  | BIGenMtranspose AssVar AssVar
-  | BIGenMconcatVert AssVar AssVar AssVar
-  | BIVadd Int AssVar AssVar
-  | BIVconcat Int Int AssVar AssVar
-  | BIMtranspose Int Int AssVar
-  | BIMconcatVert Int Int Int AssVar AssVar
-  | BIDropAt AssVar AssVar
-  | BIBroadcastable AssVar AssVar
-  | BIBroadcast AssVar AssVar
-  | BIListAppend AssVar AssVar
-  | BIListIter AssVar AssVar
-  | BIGenBroadcasted AssVar AssVar
-  | BITensorGenZeros AssVar
-  | BITensorGenAdd AssVar AssVar
-  | BITensorGenMult AssVar AssVar
-  | BITensorGenMm AssVar AssVar AssVar
-  | BITensorGenGrad AssVar
-  | BITensorGenZeroGrad AssVar
-  | BITensorGenSubUpdate AssVar
-  | BITensorGenCrossEntropyForLogits AssVar AssVar
-  | BITensorGenArgmax AssVar AssVar
-  | BITensorGenCountEqual AssVar
-  | BITensorAdd [Int] AssVar AssVar
-  | BITensorMm Int Int Int AssVar AssVar
+  = BuiltInArity1 BuiltInArity1
+  | BuiltInArity2 BuiltInArity2
+  | BuiltInArity3 BuiltInArity3
+  deriving stock (Eq, Show)
+
+data BuiltInArity1
+  = BIGenVadd
+  | BIMtranspose Int Int
+  | BITensorGenZeros
+  | BITensorGenGrad
+  | BITensorGenZeroGrad
+  | BITensorGenSubUpdate
+  | BITensorGenCountEqual
+  deriving stock (Eq, Show)
+
+data BuiltInArity2
+  = BIAdd
+  | BISub
+  | BIMult
+  | BILeq
+  | BIAnd
+  | BIListMap
+  | BIGenVconcat
+  | BIGenMtranspose
+  | BIVadd Int
+  | BIVconcat Int Int
+  | BIMconcatVert Int Int Int
+  | BIDropAt
+  | BIBroadcastable
+  | BIBroadcast
+  | BIListAppend
+  | BIListIter
+  | BIGenBroadcasted
+  | BITensorGenAdd
+  | BITensorGenMult
+  | BITensorGenCrossEntropyForLogits
+  | BITensorGenArgmax
+  | BITensorAdd [Int]
+  | BITensorMm Int Int Int
+  deriving stock (Eq, Show)
+
+data BuiltInArity3
+  = BIGenMconcatVert
+  | BITensorGenMm
+  deriving stock (Eq, Show)
+
+data Ass0PartialBuiltInApp
+  = A0PartialBuiltInApp1With0 BuiltInArity1
+  | A0PartialBuiltInApp2With0 BuiltInArity2
+  | A0PartialBuiltInApp2With1 BuiltInArity2 Ass0Val
+  | A0PartialBuiltInApp3With0 BuiltInArity3
+  | A0PartialBuiltInApp3With1 BuiltInArity3 Ass0Val
+  | A0PartialBuiltInApp3With2 BuiltInArity3 Ass0Val Ass0Val
   deriving stock (Eq, Show)
 
 data Ass0BuiltInName
@@ -138,6 +163,12 @@ data Ass0BuiltInName
   | A0BINameMnistHelperTrainLabels
   | A0BINameMnistHelperTestImages
   | A0BINameMnistHelperTestLabels
+  | A0BINameVadd Int
+  | A0BINameVconcat Int Int
+  | A0BINameMtranspose Int Int
+  | A0BINameMconcatVert Int Int Int
+  | A0BINameTensorAdd [Int]
+  | A0BINameTensorMm Int Int Int
   deriving stock (Eq, Show)
 
 data Ass1BuiltInName
@@ -161,26 +192,17 @@ data Ass1BuiltInName
   | A1BINameMnistHelperTestLabels
   deriving stock (Eq, Show)
 
-unliftBuiltInName :: Ass1BuiltInName -> Ass0BuiltInName
+unliftBuiltInName :: Ass1BuiltInName -> BuiltIn
 unliftBuiltInName = \case
-  A1BINameAdd -> A0BINameAdd
-  A1BINameSub -> A0BINameSub
-  A1BINameMult -> A0BINameMult
-  A1BINameFloatDiv -> A0BINameFloatDiv
-  A1BINameLeq -> A0BINameLeq
-  A1BINameFloat -> A0BINameFloat
-  A1BINamePrintFloat -> A0BINamePrintFloat
-  A1BINameListAppend -> A0BINameListAppend
-  A1BINameListIter -> A0BINameListIter
-  A1BINameRange -> A0BINameRange
-  A1BINameTensorF -> A0BINameTensorF
-  A1BINameTensorBackward -> A0BINameTensorBackward
-  A1BINameTensorNoGrad -> A0BINameTensorNoGrad
-  A1BINameTensorFloatValue -> A0BINameTensorFloatValue
-  A1BINameMnistHelperTrainImages -> A0BINameMnistHelperTrainImages
-  A1BINameMnistHelperTrainLabels -> A0BINameMnistHelperTrainLabels
-  A1BINameMnistHelperTestImages -> A0BINameMnistHelperTestImages
-  A1BINameMnistHelperTestLabels -> A0BINameMnistHelperTestLabels
+  A1BINameAdd -> arity2 BIAdd
+  A1BINameSub -> arity2 BISub
+  A1BINameMult -> arity2 BIMult
+  A1BINameLeq -> arity2 BILeq
+  A1BINameListAppend -> arity2 BIListAppend
+  A1BINameListIter -> arity2 BIListIter
+  a1builtInName -> error $ "TODO: unliftBuiltInName, " ++ show a1builtInName
+  where
+    arity2 = BuiltInArity2
 
 data AssLiteral e
   = ALitInt Int
@@ -194,9 +216,8 @@ data AssLiteral e
 
 data Ass0Expr
   = A0Literal (AssLiteral Ass0Expr)
-  | A0AppBuiltIn BuiltIn
+  | A0BuiltInName BuiltIn
   | A0Var AssVar
-  | A0BuiltInName Ass0BuiltInName
   | A0Lam (Maybe (AssVar, StrictAss0TypeExpr)) (AssVar, StrictAss0TypeExpr) Ass0Expr
   | A0App Ass0Expr Ass0Expr
   | A0LetIn (AssVar, StrictAss0TypeExpr) Ass0Expr Ass0Expr
@@ -311,6 +332,7 @@ data Ass0Val
   = A0ValLiteral (AssLiteral Ass0Val)
   | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr EvalEnv
   | A0ValBracket Ass1Val
+  | A0ValPartialBuiltInApp Ass0PartialBuiltInApp
   deriving stock (Eq, Show)
 
 data Ass1Val

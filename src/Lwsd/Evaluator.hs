@@ -28,15 +28,16 @@ data Bug
   = UnboundVar AssVar
   | NotAClosure Ass0Val
   | NotACodeValue Ass0Val
-  | NotAnInteger (Maybe AssVar) Ass0Val
-  | NotAList (Maybe AssVar) Ass0Val
-  | NotAVector AssVar Ass0Val
-  | NotAMatrix AssVar Ass0Val
+  | NotAnInteger Ass0Val
+  | NotAList Ass0Val
+  | NotAVector Ass0Val
+  | NotAMatrix Ass0Val
   | NotABoolean Ass0Val
   | NotAUnit Ass0Val
   | FoundSymbol AssVar Symbol
   | FoundAss0Val AssVar Ass0Val
-  | InconsistentAppBuiltIn BuiltIn
+  | InconsistentAppBuiltInArity1 BuiltInArity1 Ass0Val
+  | InconsistentAppBuiltInArity2 BuiltInArity2 Ass0Val Ass0Val
   | BroadcastFailed [Int] [Int]
   deriving stock (Eq, Show)
 
@@ -93,10 +94,10 @@ findSymbol env x = do
     Ass0ValEntry a0v -> bug $ FoundAss0Val x a0v
     SymbolEntry symb -> pure symb
 
-validateIntLiteral :: Maybe AssVar -> Ass0Val -> M Int
-validateIntLiteral info = \case
+validateIntLiteral :: Ass0Val -> M Int
+validateIntLiteral = \case
   A0ValLiteral (ALitInt n) -> pure n
-  a0v -> bug $ NotAnInteger info a0v
+  a0v -> bug $ NotAnInteger a0v
 
 validateBoolLiteral :: Ass0Val -> M Bool
 validateBoolLiteral = \case
@@ -111,50 +112,206 @@ validateUnitLiteral = \case
 validateListValue :: Ass0Val -> M [Ass0Val]
 validateListValue = \case
   A0ValLiteral (ALitList a0vs) -> pure a0vs
-  a0v -> bug $ NotAList Nothing a0v
+  a0v -> bug $ NotAList a0v
 
-findInt0 :: EvalEnv -> AssVar -> M Int
-findInt0 env x = findVal0 env x >>= validateIntLiteral (Just x)
+validateIntListLiteral :: Ass0Val -> M [Int]
+validateIntListLiteral a0v = do
+  a0vs <- validateListValue a0v
+  mapM validateIntLiteral a0vs
 
-findList0 :: EvalEnv -> AssVar -> M [Ass0Val]
-findList0 env x = do
-  a0v <- findVal0 env x
-  case a0v of
-    A0ValLiteral (ALitList a0es) -> pure a0es
-    _ -> bug $ NotAList (Just x) a0v
+validateVec0 :: Ass0Val -> M Vector
+validateVec0 = \case
+  A0ValLiteral (ALitVec v) -> pure v
+  a0v -> bug $ NotAVector a0v
 
-findIntList0 :: EvalEnv -> AssVar -> M [Int]
-findIntList0 env x = do
-  a0vs <- findList0 env x
-  mapM (validateIntLiteral Nothing) a0vs
+validateMat0 :: Ass0Val -> M Matrix
+validateMat0 = \case
+  A0ValLiteral (ALitMat mat) -> pure mat
+  a0v -> bug $ NotAMatrix a0v
 
-findVec0 :: EvalEnv -> AssVar -> M Vector
-findVec0 env x = do
-  a0v <- findVal0 env x
-  case a0v of
-    A0ValLiteral (ALitVec v) -> pure v
-    _ -> bug $ NotAVector x a0v
+reduceDeltaArity1 :: BuiltInArity1 -> Ass0Val -> M Ass0Val
+reduceDeltaArity1 bi1 a0v1 =
+  case bi1 of
+    BIGenVadd -> do
+      n1 <- validateIntLiteral a0v1
+      pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
+    BIMtranspose m n -> do
+      mat1 <- validateMat0 a0v1
+      case Matrix.transpose m n mat1 of
+        Just mat -> pure $ A0ValLiteral (ALitMat mat)
+        Nothing -> bug $ InconsistentAppBuiltInArity1 bi1 a0v1
+    BITensorGenZeros -> do
+      ns1 <- validateIntListLiteral a0v1
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeros ns1))
+    BITensorGenGrad -> do
+      ns1 <- validateIntListLiteral a0v1
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorGrad ns1))
+    BITensorGenZeroGrad -> do
+      ns1 <- validateIntListLiteral a0v1
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeroGrad ns1))
+    BITensorGenSubUpdate -> do
+      ns1 <- validateIntListLiteral a0v1
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorSubUpdate ns1))
+    BITensorGenCountEqual -> do
+      ns1 <- validateIntListLiteral a0v1
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorCountEqual ns1))
 
-findMat0 :: EvalEnv -> AssVar -> M Matrix
-findMat0 env x = do
-  a0v <- findVal0 env x
-  case a0v of
-    A0ValLiteral (ALitMat mat) -> pure mat
-    _ -> bug $ NotAMatrix x a0v
+reduceDeltaArity2 :: BuiltInArity2 -> Ass0Val -> Ass0Val -> M Ass0Val
+reduceDeltaArity2 bi2 a0v1 a0v2 =
+  case bi2 of
+    BIAdd ->
+      arithmetic (\n1 n2 -> A0ValLiteral (ALitInt (n1 + n2)))
+    BISub ->
+      arithmetic (\n1 n2 -> A0ValLiteral (ALitInt (n1 - n2)))
+    BIMult ->
+      arithmetic (\n1 n2 -> A0ValLiteral (ALitInt (n1 * n2)))
+    BILeq ->
+      arithmetic (\n1 n2 -> A0ValLiteral (ALitBool (n1 <= n2)))
+    BIAnd ->
+      logical (\b1 b2 -> A0ValLiteral (ALitBool (b1 && b2)))
+    BIListMap -> do
+      a0vsIn <- validateListValue a0v2
+      a0vsOut <- mapM (reduceBeta a0v1) a0vsIn
+      pure $ A0ValLiteral (ALitList a0vsOut)
+    BIGenVconcat ->
+      arithmetic (\n1 n2 -> A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2)))
+    BIGenMtranspose ->
+      arithmetic (\n1 n2 -> A0ValBracket (A1ValConst (A1ValConstMtranspose n1 n2)))
+    BITensorGenAdd -> do
+      ns1 <- validateIntListLiteral a0v1
+      ns2 <- validateIntListLiteral a0v2
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorAdd ns1 ns2))
+    BIVadd n -> do
+      v1 <- validateVec0 a0v1
+      v2 <- validateVec0 a0v2
+      case Vector.add n v1 v2 of
+        Just v -> pure $ A0ValLiteral (ALitVec v)
+        Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
+    BIVconcat m n -> do
+      v1 <- validateVec0 a0v1
+      v2 <- validateVec0 a0v2
+      case Vector.concat m n v1 v2 of
+        Just v -> pure $ A0ValLiteral (ALitVec v)
+        Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
+    BIMconcatVert m1 m2 n -> do
+      mat1 <- validateMat0 a0v1
+      mat2 <- validateMat0 a0v2
+      case Matrix.concatVert m1 m2 n mat1 mat2 of
+        Just mat -> pure $ A0ValLiteral (ALitMat mat)
+        Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
+    BIDropAt -> do
+      n1 <- validateIntLiteral a0v1
+      a0vs2 <- validateListValue a0v2
+      pure $ A0ValLiteral (ALitList (dropAt n1 a0vs2))
+    BIBroadcastable -> do
+      ns1 <- validateIntListLiteral a0v1
+      ns2 <- validateIntListLiteral a0v2
+      let b = isJust (broadcast ns1 ns2)
+      pure $ A0ValLiteral (ALitBool b)
+    BIBroadcast -> do
+      ns1 <- validateIntListLiteral a0v1
+      ns2 <- validateIntListLiteral a0v2
+      ns <-
+        case broadcast ns1 ns2 of
+          Just ns' -> pure ns'
+          Nothing -> bug $ BroadcastFailed ns1 ns2
+      pure $ A0ValLiteral (ALitList (map (A0ValLiteral . ALitInt) ns))
+    BIListAppend -> do
+      a0vs1 <- validateListValue a0v1
+      a0vs2 <- validateListValue a0v2
+      pure $ A0ValLiteral (ALitList (a0vs1 ++ a0vs2))
+    BIListIter -> do
+      a0vsIn <- validateListValue a0v2
+      forM_ a0vsIn (reduceBeta a0v1 >=> validateUnitLiteral)
+      pure $ A0ValLiteral ALitUnit
+    BIGenBroadcasted -> do
+      ns1 <- validateIntListLiteral a0v1
+      ns2 <- validateIntListLiteral a0v2
+      pure $ A0ValBracket (A1ValConst (A1ValConstBroadcasted ns1 ns2))
+    BITensorGenMult -> do
+      ns1 <- validateIntListLiteral a0v1
+      ns2 <- validateIntListLiteral a0v2
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorMult ns1 ns2))
+    BITensorGenArgmax -> do
+      ns1 <- validateIntListLiteral a0v1
+      n2 <- validateIntLiteral a0v2
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorArgmax ns1 n2))
+    BITensorGenCrossEntropyForLogits -> do
+      n1 <- validateIntLiteral a0v1
+      n2 <- validateIntLiteral a0v2
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorCrossEntropyForLogits n1 n2))
+    BITensorAdd ns ->
+      case ns of
+        [n] -> do
+          v1 <- validateVec0 a0v1
+          v2 <- validateVec0 a0v2
+          case Vector.add n v1 v2 of
+            Just v -> pure $ A0ValLiteral (ALitVec v)
+            Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
+        [m, n] -> do
+          mat1 <- validateMat0 a0v1
+          mat2 <- validateMat0 a0v2
+          case Matrix.add m n mat1 mat2 of
+            Just mat -> pure $ A0ValLiteral (ALitMat mat)
+            Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
+        _ ->
+          error "TODO: evalExpr0, BITadd, dimension >= 3"
+    BITensorMm k m n -> do
+      mat1 <- validateMat0 a0v1
+      mat2 <- validateMat0 a0v2
+      case Matrix.mult k m n mat1 mat2 of
+        Just mat -> pure $ A0ValLiteral (ALitMat mat)
+        Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
+  where
+    arithmetic :: (Int -> Int -> Ass0Val) -> M Ass0Val
+    arithmetic f = do
+      n1 <- validateIntLiteral a0v1
+      n2 <- validateIntLiteral a0v2
+      pure (f n1 n2)
+
+    logical :: (Bool -> Bool -> Ass0Val) -> M Ass0Val
+    logical f = do
+      b1 <- validateBoolLiteral a0v1
+      b2 <- validateBoolLiteral a0v2
+      pure (f b1 b2)
+
+reduceDeltaArity3 :: BuiltInArity3 -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
+reduceDeltaArity3 bi3 a0v1 a0v2 a0v3 =
+  case bi3 of
+    BIGenMconcatVert -> do
+      n1 <- validateIntLiteral a0v1
+      n2 <- validateIntLiteral a0v2
+      n3 <- validateIntLiteral a0v3
+      pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
+    BITensorGenMm -> do
+      n1 <- validateIntLiteral a0v1
+      n2 <- validateIntLiteral a0v2
+      n3 <- validateIntLiteral a0v3
+      pure $ A0ValBracket (A1ValConst (A1ValConstTensorMm n1 n2 n3))
 
 reduceBeta :: Ass0Val -> Ass0Val -> M Ass0Val
-reduceBeta a0v1 a0v2 =
-  case a0v1 of
-    A0ValLam Nothing (x, _a0tyv11) a0e12 env1 ->
+reduceBeta a0vFun a0vArg =
+  case a0vFun of
+    A0ValLam Nothing (x, _a0tyv) a0eBody env ->
       evalExpr0
-        (Map.insert x (Ass0ValEntry a0v2) env1)
-        a0e12
-    A0ValLam (Just (f, _a0tyvRec)) (x, _a0tyv11) a0e12 env1 ->
+        (Map.insert x (Ass0ValEntry a0vArg) env)
+        a0eBody
+    A0ValLam (Just (f, _a0tyvRec)) (x, _a0tyv) a0eBody env ->
       evalExpr0
-        (Map.insert x (Ass0ValEntry a0v2) (Map.insert f (Ass0ValEntry a0v1) env1))
-        a0e12
+        (Map.insert x (Ass0ValEntry a0vArg) (Map.insert f (Ass0ValEntry a0vFun) env))
+        a0eBody
+    A0ValPartialBuiltInApp pba ->
+      case pba of
+        A0PartialBuiltInApp1With0 bi1 -> reduceDeltaArity1 bi1 a0vArg
+        A0PartialBuiltInApp2With0 bi2 -> partial $ A0PartialBuiltInApp2With1 bi2 a0vArg
+        A0PartialBuiltInApp2With1 bi2 a0v1 -> reduceDeltaArity2 bi2 a0v1 a0vArg
+        A0PartialBuiltInApp3With0 bi3 -> partial $ A0PartialBuiltInApp3With1 bi3 a0vArg
+        A0PartialBuiltInApp3With1 bi3 a0v1 -> partial $ A0PartialBuiltInApp3With2 bi3 a0v1 a0vArg
+        A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> reduceDeltaArity3 bi3 a0v1 a0v2 a0vArg
     _ ->
-      bug $ NotAClosure a0v1
+      bug $ NotAClosure a0vFun
+  where
+    partial = pure . A0ValPartialBuiltInApp
 
 -- The implementation of the built-in function `drop_at`.
 dropAt :: Int -> [a] -> [a]
@@ -177,164 +334,14 @@ evalExpr0 :: EvalEnv -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
     A0ValLiteral <$> mapMAssLiteral (evalExpr0 env) lit
-  A0AppBuiltIn bi ->
-    case bi of
-      BIAdd x1 x2 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        pure $ A0ValLiteral (ALitInt (n1 + n2))
-      BISub x1 x2 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        pure $ A0ValLiteral (ALitInt (n1 - n2))
-      BIMult x1 x2 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        pure $ A0ValLiteral (ALitInt (n1 * n2))
-      BILeq x1 x2 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        pure $ A0ValLiteral (ALitBool (n1 <= n2))
-      BIAnd x1 x2 -> do
-        b1 <- validateBoolLiteral =<< findVal0 env x1
-        b2 <- validateBoolLiteral =<< findVal0 env x2
-        pure $ A0ValLiteral (ALitBool (b1 && b2))
-      BIListMap f x -> do
-        a0vF <- findVal0 env f
-        a0vsIn <- findList0 env x
-        a0vsOut <- mapM (reduceBeta a0vF) a0vsIn
-        pure $ A0ValLiteral (ALitList a0vsOut)
-      BIGenVadd x1 -> do
-        n1 <- findInt0 env x1
-        pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
-      BIGenVconcat x1 x2 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        pure $ A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2))
-      BIGenMtranspose x1 x2 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        pure $ A0ValBracket (A1ValConst (A1ValConstMtranspose n1 n2))
-      BIGenMconcatVert x1 x2 x3 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        n3 <- findInt0 env x3
-        pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
-      BITensorGenAdd x1 x2 -> do
-        ns1 <- findIntList0 env x1
-        ns2 <- findIntList0 env x2
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorAdd ns1 ns2))
-      BIVadd n x1 x2 -> do
-        v1 <- findVec0 env x1
-        v2 <- findVec0 env x2
-        case Vector.add n v1 v2 of
-          Just v -> pure $ A0ValLiteral (ALitVec v)
-          Nothing -> bug $ InconsistentAppBuiltIn bi
-      BIVconcat m n x1 x2 -> do
-        v1 <- findVec0 env x1
-        v2 <- findVec0 env x2
-        case Vector.concat m n v1 v2 of
-          Just v -> pure $ A0ValLiteral (ALitVec v)
-          Nothing -> bug $ InconsistentAppBuiltIn bi
-      BIMtranspose m n x1 -> do
-        mat1 <- findMat0 env x1
-        case Matrix.transpose m n mat1 of
-          Just mat -> pure $ A0ValLiteral (ALitMat mat)
-          Nothing -> bug $ InconsistentAppBuiltIn bi
-      BIMconcatVert m1 m2 n x1 x2 -> do
-        mat1 <- findMat0 env x1
-        mat2 <- findMat0 env x2
-        case Matrix.concatVert m1 m2 n mat1 mat2 of
-          Just mat -> pure $ A0ValLiteral (ALitMat mat)
-          Nothing -> bug $ InconsistentAppBuiltIn bi
-      BIDropAt x1 x2 -> do
-        n1 <- findInt0 env x1
-        a0vs2 <- findList0 env x2
-        pure $ A0ValLiteral (ALitList (dropAt n1 a0vs2))
-      BIBroadcastable x1 x2 -> do
-        ns1 <- findIntList0 env x1
-        ns2 <- findIntList0 env x2
-        let b = isJust (broadcast ns1 ns2)
-        pure $ A0ValLiteral (ALitBool b)
-      BIBroadcast x1 x2 -> do
-        ns1 <- findIntList0 env x1
-        ns2 <- findIntList0 env x2
-        ns <-
-          case broadcast ns1 ns2 of
-            Just ns' -> pure ns'
-            Nothing -> bug $ BroadcastFailed ns1 ns2
-        pure $ A0ValLiteral (ALitList (map (A0ValLiteral . ALitInt) ns))
-      BIListAppend x1 x2 -> do
-        a0vs1 <- findList0 env x1
-        a0vs2 <- findList0 env x2
-        pure $ A0ValLiteral (ALitList (a0vs1 ++ a0vs2))
-      BIListIter f x -> do
-        a0vF <- findVal0 env f
-        a0vsIn <- findList0 env x
-        forM_ a0vsIn (reduceBeta a0vF >=> validateUnitLiteral)
-        pure $ A0ValLiteral ALitUnit
-      BIGenBroadcasted x1 x2 -> do
-        ns1 <- findIntList0 env x1
-        ns2 <- findIntList0 env x2
-        pure $ A0ValBracket (A1ValConst (A1ValConstBroadcasted ns1 ns2))
-      BITensorGenZeros x1 -> do
-        ns1 <- findIntList0 env x1
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeros ns1))
-      BITensorGenMult x1 x2 -> do
-        ns1 <- findIntList0 env x1
-        ns2 <- findIntList0 env x2
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorMult ns1 ns2))
-      BITensorGenMm x1 x2 x3 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        n3 <- findInt0 env x3
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorMm n1 n2 n3))
-      BITensorGenGrad x1 -> do
-        ns1 <- findIntList0 env x1
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorGrad ns1))
-      BITensorGenZeroGrad x1 -> do
-        ns1 <- findIntList0 env x1
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeroGrad ns1))
-      BITensorGenSubUpdate x1 -> do
-        ns1 <- findIntList0 env x1
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorSubUpdate ns1))
-      BITensorGenArgmax x1 x2 -> do
-        ns1 <- findIntList0 env x1
-        n2 <- findInt0 env x2
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorArgmax ns1 n2))
-      BITensorGenCrossEntropyForLogits x1 x2 -> do
-        n1 <- findInt0 env x1
-        n2 <- findInt0 env x2
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorCrossEntropyForLogits n1 n2))
-      BITensorGenCountEqual x1 -> do
-        ns1 <- findIntList0 env x1
-        pure $ A0ValBracket (A1ValConst (A1ValConstTensorCountEqual ns1))
-      BITensorAdd ns x1 x2 ->
-        case ns of
-          [n] -> do
-            v1 <- findVec0 env x1
-            v2 <- findVec0 env x2
-            case Vector.add n v1 v2 of
-              Just v -> pure $ A0ValLiteral (ALitVec v)
-              Nothing -> bug $ InconsistentAppBuiltIn bi
-          [m, n] -> do
-            mat1 <- findMat0 env x1
-            mat2 <- findMat0 env x2
-            case Matrix.add m n mat1 mat2 of
-              Just mat -> pure $ A0ValLiteral (ALitMat mat)
-              Nothing -> bug $ InconsistentAppBuiltIn bi
-          _ ->
-            error "TODO: evalExpr0, BITadd, dimension >= 3"
-      BITensorMm k m n x1 x2 -> do
-        mat1 <- findMat0 env x1
-        mat2 <- findMat0 env x2
-        case Matrix.mult k m n mat1 mat2 of
-          Just mat -> pure $ A0ValLiteral (ALitMat mat)
-          Nothing -> bug $ InconsistentAppBuiltIn bi
   A0Var x ->
     findVal0 env x
-  A0BuiltInName a0builtInName ->
-    pure $ BuiltIn.getAss0Val a0builtInName
+  A0BuiltInName bi ->
+    pure $
+      case bi of
+        BuiltInArity1 bi1 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp1With0 bi1)
+        BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp2With0 bi2)
+        BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp3With0 bi3)
   A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam Nothing (x, a0tyv1) a0e2 env
@@ -459,7 +466,7 @@ evalTypeExpr1 env = \case
         A1TyTensor a0eList -> do
           a0v <- evalExpr0 env a0eList
           a0vs <- validateListValue a0v
-          ns <- mapM (validateIntLiteral Nothing) a0vs
+          ns <- mapM validateIntLiteral a0vs
           pure $ A1TyValTensor ns
   A1TyList a1tye -> do
     a1tyv <- evalTypeExpr1 env a1tye
@@ -478,15 +485,15 @@ unliftVal = \case
     A0Literal (mapAssLiteral unliftVal lit)
   A1ValConst c ->
     case c of
-      A1ValConstVadd n -> BuiltIn.ass0exprVadd n
-      A1ValConstVconcat m n -> BuiltIn.ass0exprVconcat m n
-      A1ValConstMtranspose m n -> BuiltIn.ass0exprMtranspose m n
-      A1ValConstMconcatVert m1 m2 n -> BuiltIn.ass0exprMconcatVert m1 m2 n
+      A1ValConstVadd n -> arity2 (BIVadd n)
+      A1ValConstVconcat m n -> arity2 (BIVconcat m n)
+      A1ValConstMtranspose m n -> arity1 (BIMtranspose m n)
+      A1ValConstMconcatVert m1 m2 n -> arity2 (BIMconcatVert m1 m2 n)
       A1ValConstTensorAdd ns1 ns2 ->
         if ns1 == ns2
-          then BuiltIn.ass0exprTensorAdd ns1
+          then arity2 (BITensorAdd ns1)
           else error $ "TODO: unliftVal, A1ValConstTensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
-      A1ValConstTensorMm k m n -> BuiltIn.ass0exprTensorMm k m n
+      A1ValConstTensorMm k m n -> arity2 (BITensorMm k m n)
       A1ValConstBuiltInName a1builtInName -> A0BuiltInName (unliftBuiltInName a1builtInName)
       _ -> error $ "TODO: unliftVal, " ++ show c
   A1ValVar symbX ->
@@ -501,6 +508,9 @@ unliftVal = \case
     A0Sequential (unliftVal a1v1) (unliftVal a1v2)
   A1ValIfThenElse a1v0 a1v1 a1v2 ->
     A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
+  where
+    arity1 = A0BuiltInName . BuiltInArity1
+    arity2 = A0BuiltInName . BuiltInArity2
 
 unliftTypeVal :: Ass1TypeVal -> StrictAss0TypeExpr
 unliftTypeVal = \case
