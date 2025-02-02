@@ -22,15 +22,17 @@ import Prelude hiding (or)
 
 type P a = GenP Token a
 
-data BinderKind
-  = MandatoryBinder (Var, TypeExpr)
-  | OptionalBinder (Var, TypeExpr)
+parenGen :: Token -> Token -> P a -> P (Located a)
+parenGen tokLeft tokRight p =
+  make <$> token tokLeft <*> p <*> token tokRight
+  where
+    make locLeft v locRight = Located (mergeSpan locLeft locRight) v
 
-paren :: P a -> P a
-paren p = token TokLeftParen *> p <* token TokRightParen
+paren :: P a -> P (Located a)
+paren = parenGen TokLeftParen TokRightParen
 
-brace :: P a -> P a
-brace p = token TokLeftBrace *> p <* token TokRightBrace
+brace :: P a -> P (Located a)
+brace = parenGen TokLeftBrace TokRightBrace
 
 lower :: P (Located Text)
 lower = expectToken (^? #_TokLower)
@@ -44,9 +46,7 @@ longOrShortLower =
     `or` (fmap ([],) <$> lower)
 
 standaloneOp :: P (Located Text)
-standaloneOp = makeOp <$> token TokLeftParen <*> operator <*> token TokRightParen
-  where
-    makeOp locLeft (Located _ opName) locRight = Located (mergeSpan locLeft locRight) opName
+standaloneOp = paren (noLoc operator)
 
 boundIdent :: P (Located Text)
 boundIdent = lower `or` standaloneOp
@@ -90,7 +90,7 @@ makeBinOpApp e1@(Expr loc1 _) (Located locBinOp binOp) e2@(Expr loc2 _) =
 
 data FunArg
   = FunArgMandatory Expr
-  | FunArgOptGiven Span Expr Span
+  | FunArgOptGiven (Located Expr)
   | FunArgOptOmitted Span
 
 exprAtom, expr :: P Expr
@@ -108,11 +108,11 @@ exprAtom, expr :: P Expr
           located (\x -> Var ([], x)) <$> standaloneOp,
           makeLitUnit <$> token TokLeftParen <*> token TokRightParen
         ]
-        (makeEnclosed <$> token TokLeftParen <*> expr <*> token TokRightParen)
+        (makeEnclosed <$> paren expr)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
-        makeEnclosed loc1 (Expr _ e) loc2 = Expr (mergeSpan loc1 loc2) e
         makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
+        makeEnclosed (Located loc (Expr _ eMain)) = Expr loc eMain
 
     staged :: P Expr
     staged =
@@ -132,20 +132,20 @@ exprAtom, expr :: P Expr
         arg :: P FunArg
         arg =
           tries
-            [ FunArgMandatory <$> staged,
-              FunArgOptGiven <$> token TokLeftBrace <*> letin <*> token TokRightBrace
+            [ FunArgOptOmitted <$> token TokUnderscore,
+              FunArgOptGiven <$> brace letin
             ]
-            (FunArgOptOmitted <$> token TokUnderscore)
+            (FunArgMandatory <$> staged)
 
         makeApp :: NonEmpty FunArg -> P Expr
         makeApp (FunArgMandatory eFun :| args) = pure $ List.foldl' makeAppSingle eFun args
-        makeApp (FunArgOptGiven loc _ _ :| _) = failure (Located loc TokLeftBrace)
+        makeApp (FunArgOptGiven (Located loc _e) :| _) = failure (Located loc TokLeftBrace)
         makeApp (FunArgOptOmitted loc :| _) = failure (Located loc TokUnderscore)
 
         makeAppSingle :: Expr -> FunArg -> Expr
         makeAppSingle e1@(Expr loc1 _) = \case
           FunArgMandatory e2@(Expr loc2 _) -> Expr (mergeSpan loc1 loc2) (App e1 e2)
-          FunArgOptGiven _ e2 loc2 -> Expr (mergeSpan loc1 loc2) (AppOptGiven e1 e2)
+          FunArgOptGiven (Located loc2 e2) -> Expr (mergeSpan loc1 loc2) (AppOptGiven e1 e2)
           FunArgOptOmitted loc2 -> Expr (mergeSpan loc1 loc2) (AppOptOmitted e1)
 
     as :: P Expr
@@ -169,21 +169,12 @@ exprAtom, expr :: P Expr
     lam :: P Expr
     lam =
       tries
-        [ makeNonrecLam <$> token TokFun <*> (binder <* token TokArrow) <*> expr,
+        [ makeNonrecLam <$> token TokFun <*> (lamBinder <* token TokArrow) <*> expr,
           makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr,
           makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
         ]
         comp
       where
-        binder =
-          (MandatoryBinder <$> mandatoryBinder) `or` (OptionalBinder <$> optionalBinder)
-
-        mandatoryBinder =
-          paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
-
-        optionalBinder =
-          brace ((,) <$> noLoc lower <*> (token TokColon *> typeExpr))
-
         makeNonrecLam locFirst xBinder' e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) $
             case xBinder' of
@@ -196,17 +187,25 @@ exprAtom, expr :: P Expr
         makeIf locFirst e0 e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (IfThenElse e0 e1 e2)
 
+    lamBinder :: P LamBinder
+    lamBinder =
+      (MandatoryBinder <$> mandatoryBinder) `or` (OptionalBinder <$> optionalBinder)
+
+    mandatoryBinder, optionalBinder :: P (Var, TypeExpr)
+    mandatoryBinder = noLoc (paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr)))
+    optionalBinder = noLoc (brace ((,) <$> noLoc lower <*> (token TokColon *> typeExpr)))
+
     letin :: P Expr
     letin =
       tries
-        [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
+        [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
           makeLetOpenIn <$> token TokLet <*> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin),
           makeSequential <$> (comp <* token TokSemicolon) <*> letin
         ]
         lam
       where
-        makeLetIn locFirst x e1 e2@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (LetIn x e1 e2)
+        makeLetIn locFirst x params e1 e2@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LetIn x params e1 e2)
 
         makeLetOpenIn locFirst m e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetOpenIn m e)
@@ -221,18 +220,13 @@ typeExpr = fun
     atom =
       tries
         [ makeNamed <$> upper,
-          makeRefinement <$> token TokLeftParen <*> (noLoc boundIdent <* token TokColon) <*> (fun <* token TokBar) <*> expr <*> token TokRightParen
+          makeRefinement <$> paren ((,,) <$> (noLoc boundIdent <* token TokColon) <*> (fun <* token TokBar) <*> expr)
         ]
-        (makeEnclosed <$> token TokLeftParen <*> fun <*> token TokRightParen)
+        (makeEnclosed <$> paren fun)
       where
-        makeNamed (Located loc t) =
-          TypeExpr loc (TyName t [])
-
-        makeRefinement loc1 x tye e loc2 =
-          TypeExpr (mergeSpan loc1 loc2) (TyRefinement x tye e)
-
-        makeEnclosed loc1 (TypeExpr _ tyeMain) loc2 =
-          TypeExpr (mergeSpan loc1 loc2) tyeMain
+        makeNamed (Located loc t) = TypeExpr loc (TyName t [])
+        makeRefinement (Located loc (x, tye, e)) = TypeExpr loc (TyRefinement x tye e)
+        makeEnclosed (Located loc (TypeExpr _ tyeMain)) = TypeExpr loc tyeMain
 
     staged :: P TypeExpr
     staged =
@@ -244,24 +238,25 @@ typeExpr = fun
 
     app :: P TypeExpr
     app =
-      (makeTyName <$> upper <*> some arg)
+      (makeTyName <$> upper <*> some argForType)
         `or` staged
       where
-        arg :: P ArgForType
-        arg =
+        argForType :: P ArgForType
+        argForType =
           tries
             [ ExprArgPersistent <$> (token TokPersistent *> exprAtom),
               ExprArgNormal <$> exprAtom
             ]
             (TypeArg <$> atom)
 
-        makeTyName (Located locFirst t) tyeArgs =
+        makeTyName (Located locFirst t) args =
           let loc =
-                case NonEmpty.last tyeArgs of
-                  ExprArgPersistent (Expr locLast _) -> mergeSpan locFirst locLast
-                  ExprArgNormal (Expr locLast _) -> mergeSpan locFirst locLast
-                  TypeArg (TypeExpr locLast _) -> mergeSpan locFirst locLast
-           in TypeExpr loc (TyName t (NonEmpty.toList tyeArgs))
+                mergeSpan locFirst $
+                  case NonEmpty.last args of
+                    ExprArgPersistent (Expr locLast _) -> locLast
+                    ExprArgNormal (Expr locLast _) -> locLast
+                    TypeArg (TypeExpr locLast _) -> locLast
+           in TypeExpr loc (TyName t (NonEmpty.toList args))
 
     fun :: P TypeExpr
     fun =
@@ -281,13 +276,12 @@ typeExpr = fun
     funDom :: P (Maybe (Bool, Span, Var), TypeExpr)
     funDom =
       tries
-        [ makeFunDom True <$> token TokLeftParen <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightParen),
-          makeFunDom False <$> token TokLeftBrace <*> (noLoc lower <* token TokColon) <*> (fun <* token TokRightBrace)
+        [ makeFunDom True <$> paren ((,) <$> (noLoc lower <* token TokColon) <*> fun),
+          makeFunDom False <$> brace ((,) <$> (noLoc lower <* token TokColon) <*> fun)
         ]
         ((Nothing,) <$> app)
       where
-        makeFunDom isMandatory locFirst x tyeDom =
-          (Just (isMandatory, locFirst, x), tyeDom)
+        makeFunDom isMandatory (Located loc (x, tyeDom)) = (Just (isMandatory, loc, x), tyeDom)
 
 bind :: P Bind
 bind =

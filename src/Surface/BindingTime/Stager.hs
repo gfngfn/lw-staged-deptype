@@ -1,6 +1,7 @@
 module Surface.BindingTime.Stager
   ( BCExprF,
     BCExprMainF,
+    BCLamBinderF,
     BCTypeExprF,
     BCTypeExprMainF,
     BCArgForTypeF,
@@ -16,6 +17,8 @@ import Prelude
 type BCExprF ann = ExprF (BindingTimeConst, ann)
 
 type BCExprMainF ann = ExprMainF (BindingTimeConst, ann)
+
+type BCLamBinderF ann = LamBinderF (BindingTimeConst, ann)
 
 type BCTypeExprF ann = TypeExprF (BindingTimeConst, ann)
 
@@ -41,8 +44,10 @@ stageExpr0Main = \case
     Lwsd.Lam (Just (f, stageTypeExpr0 tyeRec)) (x, stageTypeExpr0 tye1) (stageExpr0 e2)
   App e1 e2 ->
     Lwsd.App (stageExpr0 e1) (stageExpr0 e2)
-  LetIn x e1 e2 ->
-    Lwsd.LetIn x (stageExpr0 e1) (stageExpr0 e2)
+  LetIn _x (_ : _) _e1 _e2 ->
+    error "Bug: Stager.stageExpr0Main, non-empty parameter sequence"
+  LetIn x [] e1 e2 ->
+    Lwsd.LetIn x [] (stageExpr0 e1) (stageExpr0 e2)
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr0 e)
   Sequential e1 e2 ->
@@ -76,8 +81,10 @@ stageExpr1Main = \case
     Lwsd.Lam (Just (f, stageTypeExpr1 tyeRec)) (x, stageTypeExpr1 tye1) (stageExpr1 e2)
   App e1 e2 ->
     Lwsd.App (stageExpr1 e1) (stageExpr1 e2)
-  LetIn x e1 e2 ->
-    Lwsd.LetIn x (stageExpr1 e1) (stageExpr1 e2)
+  LetIn _x (_ : _) _e1 _e2 ->
+    error "Bug: Stager.stageExpr0Main, non-empty parameter sequence"
+  LetIn x [] e1 e2 ->
+    Lwsd.LetIn x [] (stageExpr1 e1) (stageExpr1 e2)
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr1 e)
   Sequential e1 e2 ->

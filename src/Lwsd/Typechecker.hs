@@ -702,9 +702,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             pure (result, A0App a0e1 a0eInferred)
           _ -> do
             bug "stage-0, AppOptOmitted, not a FillInferred0"
-      LetIn x e1 e2 -> do
-        (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
-        a0tye1 <- validateEmptyRetAppContext "stage-0, LetIn" result1
+      LetIn x params e1 e2 -> do
+        (a0tye1, a0e1) <- typecheckLetInBody0 trav tyEnv params e1
         (result2, a0e2) <- do
           let tyEnv' = TypeEnv.addVal x (Ass0Entry a0tye1 Nothing) tyEnv
           typecheckExpr0 trav tyEnv' appCtx e2
@@ -779,6 +778,24 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
           completeInferredOptional (result', A0App a0e a0eInferred)
         _ ->
           pair
+
+typecheckLetInBody0 :: trav -> TypeEnv -> [LamBinder] -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
+typecheckLetInBody0 trav tyEnv params e1 =
+  case params of
+    [] -> do
+      (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
+      a0tye1 <- validateEmptyRetAppContext "stage-0, LetIn" result1
+      pure (a0tye1, a0e1)
+    MandatoryBinder (x, tye) : params' -> do
+      a0tye <- typecheckTypeExpr0 trav tyEnv tye
+      (a0tye', a0e') <- typecheckLetInBody0 trav (TypeEnv.addVal x (Ass0Entry a0tye Nothing) tyEnv) params' e1
+      let ax = AssVar x
+      pure (A0TyArrow (Just ax, a0tye) a0tye', A0Lam Nothing (ax, strictify a0tye) a0e')
+    OptionalBinder (x, tye) : params' -> do
+      a0tye <- typecheckTypeExpr0 trav tyEnv tye
+      (a0tye', a0e') <- typecheckLetInBody0 trav (TypeEnv.addVal x (Ass0Entry a0tye Nothing) tyEnv) params' e1
+      let ax = AssVar x
+      pure (A0TyOptArrow (ax, a0tye) a0tye', A0Lam Nothing (ax, strictify a0tye) a0e')
 
 typecheckExpr1 :: trav -> TypeEnv -> AppContext -> Expr -> M trav (Result Ass1TypeExpr, Ass1Expr)
 typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
@@ -888,9 +905,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       typeError trav $ CannotUseAppOptGivenAtStage1 spanInFile
     AppOptOmitted _ ->
       typeError trav $ CannotUseAppOptOmittedAtStage1 spanInFile
-    LetIn x e1 e2 -> do
-      (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
-      a1tye1 <- validateEmptyRetAppContext "stage-1, LetIn" result1
+    LetIn x params e1 e2 -> do
+      (a1tye1, a1e1) <- typecheckLetInBody1 trav tyEnv params e1
       (result2, a1e2) <-
         typecheckExpr1 trav (TypeEnv.addVal x (Ass1Entry a1tye1 Nothing) tyEnv) appCtx e2
       let ax = AssVar x
@@ -972,6 +988,23 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           )
           result1
       pure (result, A1Escape a0e1)
+
+typecheckLetInBody1 :: trav -> TypeEnv -> [LamBinder] -> Expr -> M trav (Ass1TypeExpr, Ass1Expr)
+typecheckLetInBody1 trav tyEnv params e1 =
+  case params of
+    [] -> do
+      (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
+      a1tye1 <- validateEmptyRetAppContext "stage-0, LetIn" result1
+      pure (a1tye1, a1e1)
+    MandatoryBinder (x, tye) : params' -> do
+      a1tye <- typecheckTypeExpr1 trav tyEnv tye
+      (a1tye', a1e') <- typecheckLetInBody1 trav (TypeEnv.addVal x (Ass1Entry a1tye Nothing) tyEnv) params' e1
+      let ax = AssVar x
+      pure (A1TyArrow a1tye a1tye', A1Lam Nothing (ax, a1tye) a1e')
+    OptionalBinder (_x, tye) : _params' -> do
+      let TypeExpr loc _ = tye -- TODO (enhance): give a better code position
+      spanInFile <- askSpanInFile loc
+      typeError trav $ CannotUseLamOptAtStage1 spanInFile
 
 mapMPure :: (a -> M trav b) -> Result a -> M trav (Result b)
 mapMPure f = go

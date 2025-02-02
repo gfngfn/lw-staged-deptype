@@ -1,8 +1,8 @@
 &(let learning_rate = Tensor.f 1.0 in
   let ws = ~(Tensor.gen_zeros (let open Mnist_helper in [image_dim, label_count])) in
   let bs = ~(Tensor.gen_zeros (let open Mnist_helper in [label_count])) in
-~(let gen_model =
-    fun{n : Nat} -> &(fun(xs : Tensor %[n, Mnist_helper.image_dim]) ->
+~(let gen_model {n : Nat} =
+    &(fun(xs : Tensor %[n, Mnist_helper.image_dim]) ->
       let open Tensor in
       ~gen_add (~gen_mm xs ws) bs
     )
