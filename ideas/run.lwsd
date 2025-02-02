@@ -1,0 +1,12 @@
+(* gen_some_heavy_fun : (n : Int) -> &(Mat %n %n -> ComputationResult) *)
+(* lift_matrix_with_validation : (n : Int) -> &(DynMat -> Mat %n %n) *)
+
+let receive_size_and_matrix (n : Int) (a : DynMat) =
+  let code_f = gen_some_heavy_fun n in
+  let code_a = lift_matrix_with_validation n a in
+  case run &(~code_f ~code_a) of
+  | Error e ->  (* May fail, but it's immediate, not during heavy computation. *)
+      print_error e
+  | Ok r ->
+      print_computation_result r
+  end
