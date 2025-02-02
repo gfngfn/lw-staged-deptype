@@ -531,7 +531,7 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x
-              (cast', _solution'') <-
+              (cast', _solution) <-
                 makeAssertiveCast trav loc Set.empty a0tyeInferred (applySolution solution' a0tye1)
               pure (InsertInferred0 (applyCast cast' a0eInferred) result', solution')
         (_, A0TyCode a1tye) -> do
@@ -752,16 +752,11 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               _ : _ ->
                 typeError trav $ CannotApplyLiteral spanInFile
           _ -> do
-            -- `e1 as τ2` is treated in the same way as `(λx : τ2. x) e1`.
             (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
             a0tye1 <- validateEmptyRetAppContext "stage-0, As, 1" result1
             a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
-            result' <- instantiateGuidedByAppContext0 trav loc (AppArg0 a0e1 a0tye1 : appCtx) a0tye2
-            case result' of
-              Cast0 cast _a0tye' result ->
-                pure (result, applyCast cast a0e1)
-              _ ->
-                bug "stage-0, As"
+            (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye1 a0tye2
+            pure (Pure a0tye2, applyCast cast a0e1)
       Bracket e1 -> do
         (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
         result <- mapMPure (pure . A0TyCode) result1
@@ -963,12 +958,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
           a1tye1 <- validateEmptyRetAppContext "stage-1, As" result1
           a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
-          (result', _) <- instantiateGuidedByAppContext1 trav loc Set.empty (AppArg1 a1tye1 : appCtx) a1tye2
-          case result' of
-            Cast1 cast _a1tye' result -> do
-              pure (result, applyCast1 cast a1e1)
-            _ ->
-              bug "stage-1, As"
+          (eq, _solution) <- makeEquation1 trav loc Set.empty a1tye1 a1tye2
+          pure (Pure a1tye2, applyEquationCast loc eq a1e1)
     Bracket _ ->
       typeError trav $ CannotUseBracketAtStage1 spanInFile
     Escape e1 -> do

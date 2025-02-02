@@ -38,7 +38,7 @@ module Tensor = struct
 end
 
 module Mnist_helper = struct
-  val ~image_dim = 28 * 28
+  val ~image_dim = (28 * 28) as Nat
   val ~label_count = 10
   val train_images : Tensor %[60000, image_dim] external "mnist_helper__train_images" "train_images"
   val train_labels : Tensor %[60000] external "mnist_helper__train_labels" "train_labels"
