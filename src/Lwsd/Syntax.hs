@@ -6,7 +6,6 @@ module Lwsd.Syntax
     BuiltInArity1 (..),
     BuiltInArity2 (..),
     BuiltInArity3 (..),
-    Ass0BuiltInName (..),
     Ass1BuiltInName (..),
     Ass0PartialBuiltInApp (..),
     unliftBuiltInName,
@@ -124,51 +123,6 @@ data Ass0PartialBuiltInApp
   | A0PartialBuiltInApp3With0 BuiltInArity3
   | A0PartialBuiltInApp3With1 BuiltInArity3 Ass0Val
   | A0PartialBuiltInApp3With2 BuiltInArity3 Ass0Val Ass0Val
-  deriving stock (Eq, Show)
-
-data Ass0BuiltInName
-  = A0BINameAdd
-  | A0BINameSub
-  | A0BINameMult
-  | A0BINameFloatDiv
-  | A0BINameLeq
-  | A0BINameFloat
-  | A0BINameGenVadd
-  | A0BINameGenVconcat
-  | A0BINameGenMtranspose
-  | A0BINameGenMconcatVert
-  | A0BINameDropAt
-  | A0BINameBroadcastable
-  | A0BINameBroadcast
-  | A0BINameTensorGenZeros
-  | A0BINameTensorGenAdd
-  | A0BINameTensorGenMult
-  | A0BINameTensorGenMm
-  | A0BINameTensorGenGrad
-  | A0BINameTensorGenZeroGrad
-  | A0BINameTensorGenSubUpdate
-  | A0BINameTensorGenArgmax
-  | A0BINameTensorGenCrossEntropyForLogits
-  | A0BINameTensorGenCountEqual
-  | A0BINamePrintFloat
-  | A0BINameListAppend
-  | A0BINameListIter
-  | A0BINameRange
-  | A0BINameGenBroadcasted
-  | A0BINameTensorF
-  | A0BINameTensorBackward
-  | A0BINameTensorNoGrad
-  | A0BINameTensorFloatValue
-  | A0BINameMnistHelperTrainImages
-  | A0BINameMnistHelperTrainLabels
-  | A0BINameMnistHelperTestImages
-  | A0BINameMnistHelperTestLabels
-  | A0BINameVadd Int
-  | A0BINameVconcat Int Int
-  | A0BINameMtranspose Int Int
-  | A0BINameMconcatVert Int Int Int
-  | A0BINameTensorAdd [Int]
-  | A0BINameTensorMm Int Int Int
   deriving stock (Eq, Show)
 
 data Ass1BuiltInName

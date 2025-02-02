@@ -351,9 +351,6 @@ instance Disp BuiltIn where
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
 
-instance Disp Ass0BuiltInName where
-  dispGen _ a0builtInName = "<" <> disp (show a0builtInName) <> ">"
-
 instance Disp Ass1BuiltInName where
   dispGen _ a1builtInName = "<" <> disp (show a1builtInName) <> ">"
 
