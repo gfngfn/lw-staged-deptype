@@ -1,7 +1,5 @@
-let square =
-  fun{n : Nat} ->
-    fun(mat : Mat n n) ->
-      mmult mat mat
+let square {n : Nat} (mat : Mat n n) =
+  mmult mat mat
 in
 square
   (mmult

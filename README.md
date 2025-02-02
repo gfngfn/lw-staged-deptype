@@ -31,7 +31,8 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Full-fledged refinement types `( x : τ | φ )`
   * This is beneficial for handling *broadcasting* of tensors in PyTorch, for example
 - [ ] Support binding of type names like `type Nat = ( n : Int | n >= 0 )`
-- [ ] Represent broadcasting of tensor shapes by refinement types
+- [x] Represent broadcasting of tensor shapes by refinement types
+- [ ] Type-checking in a bi-directional manner as to return types
 - [ ] Transpilation to Python or OCaml
 - [ ] Add the `run`-primitive
 

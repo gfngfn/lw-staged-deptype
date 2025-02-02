@@ -238,24 +238,25 @@ typeExpr = fun
 
     app :: P TypeExpr
     app =
-      (makeTyName <$> upper <*> some arg)
+      (makeTyName <$> upper <*> some argForType)
         `or` staged
       where
-        arg :: P ArgForType
-        arg =
+        argForType :: P ArgForType
+        argForType =
           tries
             [ ExprArgPersistent <$> (token TokPersistent *> exprAtom),
               ExprArgNormal <$> exprAtom
             ]
             (TypeArg <$> atom)
 
-        makeTyName (Located locFirst t) tyeArgs =
+        makeTyName (Located locFirst t) args =
           let loc =
-                case NonEmpty.last tyeArgs of
-                  ExprArgPersistent (Expr locLast _) -> mergeSpan locFirst locLast
-                  ExprArgNormal (Expr locLast _) -> mergeSpan locFirst locLast
-                  TypeArg (TypeExpr locLast _) -> mergeSpan locFirst locLast
-           in TypeExpr loc (TyName t (NonEmpty.toList tyeArgs))
+                mergeSpan locFirst $
+                  case NonEmpty.last args of
+                    ExprArgPersistent (Expr locLast _) -> locLast
+                    ExprArgNormal (Expr locLast _) -> locLast
+                    TypeArg (TypeExpr locLast _) -> locLast
+           in TypeExpr loc (TyName t (NonEmpty.toList args))
 
     fun :: P TypeExpr
     fun =

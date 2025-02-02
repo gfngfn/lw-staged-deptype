@@ -3,8 +3,10 @@ module Surface.Syntax
     Literal (..),
     ExprF (..),
     ExprMainF (..),
+    LamBinderF (..),
     Expr,
     ExprMain,
+    LamBinder,
     TypeName,
     TypeExprF (..),
     TypeExprMainF (..),
@@ -39,7 +41,7 @@ data ExprMainF ann
   | Var ([Var], Var)
   | Lam (Maybe (Var, TypeExprF ann)) (Var, TypeExprF ann) (ExprF ann)
   | App (ExprF ann) (ExprF ann)
-  | LetIn Var (ExprF ann) (ExprF ann)
+  | LetIn Var [LamBinderF ann] (ExprF ann) (ExprF ann)
   | LetOpenIn Var (ExprF ann)
   | Sequential (ExprF ann) (ExprF ann)
   | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)
@@ -49,9 +51,16 @@ data ExprMainF ann
   | AppOptOmitted (ExprF ann)
   deriving stock (Show, Functor)
 
+data LamBinderF ann
+  = MandatoryBinder (Var, TypeExprF ann)
+  | OptionalBinder (Var, TypeExprF ann)
+  deriving stock (Show, Functor)
+
 type Expr = ExprF Span
 
 type ExprMain = ExprMainF Span
+
+type LamBinder = LamBinderF Span
 
 type TypeName = Text
 

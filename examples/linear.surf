@@ -1,10 +1,9 @@
 let learning_rate = Tensor.f 1.0 in
 let ws = Tensor.zeros (let open Mnist_helper in [image_dim, label_count]) in
 let bs = Tensor.zeros (let open Mnist_helper in [label_count]) in
-let model =
-  fun{n : Nat} -> fun(xs : Tensor [n, Mnist_helper.image_dim]) ->
-    let open Tensor in
-    mm xs ws + bs
+let model {n : Nat} (xs : Tensor [n, Mnist_helper.image_dim]) =
+  let open Tensor in
+  mm xs ws + bs
 in
 List.iter (fun(i : Int) ->
   let loss =

@@ -8,6 +8,7 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
+import Data.Foldable (foldrM)
 import Data.Map qualified as Map
 import Safe.Exact (zipExactMay)
 import Surface.BindingTime.AnalysisError
@@ -55,10 +56,10 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         be1 <- assignBindingTimeVarToExpr e1
         be2 <- assignBindingTimeVarToExpr e2
         pure $ App be1 be2
-      LetIn x e1 e2 -> do
-        be1 <- assignBindingTimeVarToExpr e1
+      LetIn x params e1 e2 -> do
+        be1 <- makeLam params e1
         be2 <- assignBindingTimeVarToExpr e2
-        pure $ LetIn x be1 be2
+        pure $ LetIn x [] be1 be2
       LetOpenIn m e -> do
         be <- assignBindingTimeVarToExpr e
         pure $ LetOpenIn m be
@@ -71,9 +72,9 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         be1 <- assignBindingTimeVarToExpr e1
         be2 <- assignBindingTimeVarToExpr e2
         pure $ IfThenElse be0 be1 be2
-      As e1 tye2 -> do
+      As e1 ty2 -> do
         be1 <- assignBindingTimeVarToExpr e1
-        btye2 <- assignBindingTimeVarToTypeExpr tye2
+        btye2 <- assignBindingTimeVarToTypeExpr ty2
         pure $ As be1 btye2
       LamOpt (x, ty) e -> do
         bty <- assignBindingTimeVarToTypeExpr ty
@@ -86,6 +87,23 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
       AppOptOmitted e1 -> do
         be1 <- assignBindingTimeVarToExpr e1
         pure $ AppOptOmitted be1
+
+makeLam :: [LamBinder] -> Expr -> Assigner BExpr
+makeLam params eBody = do
+  beBody <- assignBindingTimeVarToExpr eBody
+  foldrM go beBody params
+  where
+    go :: LamBinder -> BExpr -> Assigner BExpr
+    go (MandatoryBinder (x, ty@(TypeExpr loc1 _))) be@(Expr (_, loc2) _) = do
+      btv <- fresh
+      let ann = mergeSpan loc1 loc2 -- TODO (enhance): give better range
+      bty <- assignBindingTimeVarToTypeExpr ty
+      pure $ Expr (BTVar btv, ann) (Lam Nothing (x, bty) be)
+    go (OptionalBinder (x, ty@(TypeExpr loc1 _))) be@(Expr (_, loc2) _) = do
+      btv <- fresh
+      let ann = mergeSpan loc1 loc2 -- TODO (enhance): give better range
+      bty <- assignBindingTimeVarToTypeExpr ty
+      pure $ Expr (BTVar btv, ann) (LamOpt (x, bty) be)
 
 assignBindingTimeVarToTypeExpr :: TypeExpr -> Assigner BTypeExpr
 assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
@@ -241,12 +259,14 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
             spanInFile1 <- askSpanInFile ann1
             analysisError $ NotAFunction spanInFile1 bity1
       pure (Expr (bt, ann) (App e1' e2'), bity, constraints)
-    LetIn x e1 e2 -> do
+    LetIn _ (_ : _) _ _ ->
+      error "Bug: Analyzer.extractConstraintsFromExpr, non-empty parameter sequence"
+    LetIn x [] e1 e2 -> do
       -- Not confident. TODO: check the validity of the following
       (e1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromExpr btenv e1
       (e2', bity2@(BIType bt2 _), constraints2) <-
         extractConstraintsFromExpr (Map.insert x (EntryLocallyBound bt bity1) btenv) e2
-      let e' = Expr (bt, ann) (LetIn x e1' e2')
+      let e' = Expr (bt, ann) (LetIn x [] e1' e2')
       pure (e', bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
     LetOpenIn m e1 -> do
       (e1', bity1@(BIType bt1 _), constraints) <- do

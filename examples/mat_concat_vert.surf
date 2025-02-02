@@ -1,13 +1,10 @@
-let f =
-  fun{k : Nat} -> fun{l : Nat} -> fun{m : Nat} -> fun{n : Nat} ->
-    fun(matA : Mat k l) ->
-    fun(matB : Mat m n) ->
-    fun(matC : Mat (l - 2 * m) n) ->
-      mmult
-        matA
-        (mconcat_vert
-          (mconcat_vert matB matC)
-          matB)
+let f {k : Nat} {l : Nat} {m : Nat} {n : Nat}
+  (matA : Mat k l) (matB : Mat m n) (matC : Mat (l - 2 * m) n) =
+    mmult
+      matA
+      (mconcat_vert
+        (mconcat_vert matB matC)
+        matB)
 in
 f
   [#1, 2, 3, 4, 5;

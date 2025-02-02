@@ -364,7 +364,7 @@ instance Disp Surface.ExprMain where
     Surface.Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
-    Surface.LetIn x e1 e2 -> dispLetIn req x ([] :: [Int]) e1 e2
+    Surface.LetIn x params e1 e2 -> dispLetIn req x params e1 e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
@@ -372,6 +372,11 @@ instance Disp Surface.ExprMain where
     Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
     Surface.AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
     Surface.AppOptOmitted e1 -> dispAppOptOmitted req e1
+
+instance Disp Surface.LamBinder where
+  dispGen _ = \case
+    Surface.MandatoryBinder (x, tye) -> "(" <> disp x <+> ":" <+> disp tye <> ")"
+    Surface.OptionalBinder (x, tye) -> "{" <> disp x <+> ":" <+> disp tye <> "}"
 
 instance Disp Surface.TypeExpr where
   dispGen req (Surface.TypeExpr _ann typeExprMain) = dispGen req typeExprMain
@@ -840,7 +845,7 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
-    Surface.LetIn x e1 e2 -> dispLetIn req x ([] :: [Int]) e1 e2
+    Surface.LetIn x params e1 e2 -> dispLetIn req x params e1 e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
@@ -848,6 +853,11 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
     Surface.AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
     Surface.AppOptOmitted e1 -> dispAppOptOmitted req e1
+
+instance Disp (Bta.BCLamBinderF ann) where
+  dispGen _ = \case
+    Surface.MandatoryBinder (x, tye) -> "(" <> disp x <+> ":" <+> disp tye <> ")"
+    Surface.OptionalBinder (x, tye) -> "{" <> disp x <+> ":" <+> disp tye <> "}"
 
 instance Disp (Bta.BCTypeExprF ann) where
   dispGen _ (Surface.TypeExpr (btc, _ann) typeExprMain) =
