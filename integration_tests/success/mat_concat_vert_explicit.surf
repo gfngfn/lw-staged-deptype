@@ -1,4 +1,4 @@
-let f {k : Nat} {l : Nat} {m : Nat} {n : Nat} =
+let f {k : Nat} {l : Nat} {m : Nat} {n : Nat}
   (matA : Mat k l) (matB : Mat m n) (matC : Mat (l - 2 * m) n) =
     mmult {k} {l} {n}
       matA
