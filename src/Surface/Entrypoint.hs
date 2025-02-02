@@ -6,6 +6,7 @@ where
 
 import Control.Monad.Trans.Reader
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text.IO qualified as TextIO
 import Lwsd.Entrypoint qualified
 import Lwsd.Formatter (Disp)
@@ -37,27 +38,32 @@ makeBindingTimeEnvFromStub =
         case entry of
           Ass0Entry a0tye a0metadataOpt ->
             let x =
+                  -- Uses the same name if not specified
                   case a0metadataOpt of
-                    Just Ass0Metadata {ass0surfaceName} -> ass0surfaceName
-                    Nothing -> varVal -- Uses the same name
+                    Just Ass0Metadata {ass0surfaceName} -> fromMaybe varVal ass0surfaceName
+                    Nothing -> varVal
              in Map.insert
                   x
                   (EntryBuiltInFixed varVal BT0 (fromStaged0 a0tye))
                   bindingTimeEnv
           Ass1Entry a1tye a1metadataOpt ->
             let x =
+                  -- Uses the same name if not specified
                   case a1metadataOpt of
-                    Just Ass1Metadata {ass1surfaceName} -> ass1surfaceName
-                    Nothing -> varVal -- Uses the same name
+                    Just Ass1Metadata {ass1surfaceName} -> fromMaybe varVal ass1surfaceName
+                    Nothing -> varVal
              in Map.insert
                   x
                   (EntryBuiltInFixed varVal BT1 (fromStaged1 a1tye))
                   bindingTimeEnv
-          AssPersEntry aPtye AssPersMetadata {assPsurfaceName = x} ->
-            Map.insert
-              x
-              (EntryBuiltInPersistent varVal (fromStagedPers aPtye))
-              bindingTimeEnv
+          AssPersEntry aPtye AssPersMetadata {assPsurfaceName} ->
+            let x =
+                  -- Uses the same name if not specified
+                  fromMaybe varVal assPsurfaceName
+             in Map.insert
+                  x
+                  (EntryBuiltInPersistent varVal (fromStagedPers aPtye))
+                  bindingTimeEnv
     )
     ( \varMod (ModuleEntry sigr) bindingTimeEnv ->
         -- Reuses the module name `varMod` in the core language for the surface language.

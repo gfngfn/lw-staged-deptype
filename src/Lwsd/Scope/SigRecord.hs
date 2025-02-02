@@ -26,17 +26,17 @@ import Prelude
 
 data Ass0Metadata = Ass0Metadata
   { ass0builtInName :: BuiltIn,
-    ass0surfaceName :: SurfaceSyntax.Var
+    ass0surfaceName :: Maybe SurfaceSyntax.Var
   }
 
 data Ass1Metadata = Ass1Metadata
   { ass1builtInName :: Ass1BuiltIn,
-    ass1surfaceName :: SurfaceSyntax.Var
+    ass1surfaceName :: Maybe SurfaceSyntax.Var
   }
 
 data AssPersMetadata = AssPersMetadata
   { assPbuiltInName :: Ass1BuiltIn,
-    assPsurfaceName :: SurfaceSyntax.Var
+    assPsurfaceName :: Maybe SurfaceSyntax.Var
   }
 
 data ValEntry

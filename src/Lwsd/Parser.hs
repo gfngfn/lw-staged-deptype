@@ -304,14 +304,18 @@ valBinder =
 
 bindVal :: P (BindVal, Span)
 bindVal =
-  (makeBindValExternal <$> (token TokColon *> typeExpr) <*> (token TokExternal *> external) <*> string)
+  (makeBindValExternal <$> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
     `or` ((\e@(Expr locLast _) -> (BindValNormal e, locLast)) <$> (token TokEqual *> expr))
   where
-    makeBindValExternal ty ext (Located locLast surfaceName) =
-      (BindValExternal ty ext surfaceName, locLast)
+    makeBindValExternal ty (Located locLast ext) =
+      (BindValExternal ty ext, locLast)
 
-external :: P External
-external = noLoc string
+external :: P (Located External)
+external =
+  paren (field `sepBy` token TokComma)
+  where
+    field :: P (Text, Text)
+    field = (,) <$> (noLoc lower <* token TokEqual) <*> noLoc string
 
 parse :: P a -> Text -> Either String a
 parse p source = do

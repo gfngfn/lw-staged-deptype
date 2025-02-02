@@ -1,48 +1,91 @@
-val %( + ) : Int -> Int -> Int external "int_add" "+"
-val %( - ) : Int -> Int -> Int external "int_sub" "-"
-val %( * ) : Int -> Int -> Int external "int_mult" "*"
-val %( / ) : Float -> Float -> Float external "float_div" "/"
-val %( <= ) : Int -> Int -> Bool external "int_leq" "<="
-val ~gen_vadd : {a : Nat} -> &(Vec %a -> Vec %a -> Vec %a) external "gen_vadd" "vadd"
-val ~gen_vconcat : {a : Nat} -> {b : Nat} -> &(Vec %a -> Vec %b -> Vec %(a + b)) external "gen_vconcat" "vconcat"
-val ~gen_mtranspose : {a : Nat} -> {b : Nat} -> &(Mat %a %b -> Mat %b %a) external "gen_mtranspose" "mtranspose"
-val ~gen_mmult : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %b -> Mat %b %c -> Mat %a %c) external "tensor__gen_mm" "mmult" (* TODO: replace this with `Tensor.gen_mm` *)
-val ~gen_mconcat_vert : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %c -> Mat %b %c -> Mat %(a + b) %c) external "gen_mconcat_vert" "mconcat_vert"
-val ~drop_at : Nat -> List Nat -> List Nat external "drop_at" "drop_at"
-val ~broadcastable : List Nat -> List Nat -> Bool external "broadcastable" "broadcastable"
-val ~broadcast : List Nat -> List Nat -> List Nat external "broadcast" "broadcast"
-val %float : Int -> Float external "float" "float"
-val print_float : Float -> Unit external "print_float" "print_float"
-val %range : Int -> Int -> List Int external "range" "range"
+val %( + ) : Int -> Int -> Int
+  external (builtin = "int_add", surface = "+")
+val %( - ) : Int -> Int -> Int
+  external (builtin = "int_sub", surface = "-")
+val %( * ) : Int -> Int -> Int
+  external (builtin = "int_mult", surface = "*")
+val %( / ) : Float -> Float -> Float
+  external (builtin = "float_div", surface = "/")
+val %( <= ) : Int -> Int -> Bool
+  external (builtin = "int_leq", surface = "<=")
+val ~gen_vadd : {a : Nat} -> &(Vec %a -> Vec %a -> Vec %a)
+  external (builtin = "gen_vadd", surface = "vadd")
+val ~gen_vconcat : {a : Nat} -> {b : Nat} -> &(Vec %a -> Vec %b -> Vec %(a + b))
+  external (builtin = "gen_vconcat", surface = "vconcat")
+val ~gen_mtranspose : {a : Nat} -> {b : Nat} -> &(Mat %a %b -> Mat %b %a)
+  external (builtin = "gen_mtranspose", surface = "mtranspose")
+val ~gen_mmult : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %b -> Mat %b %c -> Mat %a %c)
+  external (builtin = "tensor__gen_mm", surface = "mmult")
+    (* TODO: replace this with `Tensor.gen_mm` *)
+val ~gen_mconcat_vert : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %c -> Mat %b %c -> Mat %(a + b) %c)
+  external (builtin = "gen_mconcat_vert", surface = "mconcat_vert")
+val ~drop_at : Nat -> List Nat -> List Nat
+  external (builtin = "drop_at", surface = "drop_at")
+val ~broadcastable : List Nat -> List Nat -> Bool
+  external (builtin = "broadcastable", surface = "broadcastable")
+val ~broadcast : List Nat -> List Nat -> List Nat
+  external (builtin = "broadcast", surface = "broadcast")
+val %float : Int -> Float
+  external (builtin = "float", surface = "float")
+val print_float : Float -> Unit
+  external (builtin = "print_float", surface = "print_float")
+val %range : Int -> Int -> List Int
+  external (builtin = "range", surface = "range")
 
 module List = struct
-  val %append : List Int -> List Int -> List Int external "list__append" "append" (* TODO: generalize the type *)
-  val %iter : (Int -> Unit) -> List Int -> Unit external "list__iter" "iter" (* TODO: generalize the type *)
+  val %append : List Int -> List Int -> List Int
+    external (builtin = "list__append", surface = "append") (* TODO: generalize the type *)
+  val %iter : (Int -> Unit) -> List Int -> Unit
+    external (builtin = "list__iter", surface = "iter") (* TODO: generalize the type *)
 end
 
 module Tensor = struct
-  val ~gen_zeros : (shape : List Nat) -> &(Tensor %shape) external "tensor__gen_zeros" "zeros"
-  val ~gen_add : {shape1 : List Nat} -> {shape2 : (s : List Nat | broadcastable shape1 s)} -> &(Tensor %shape1 -> Tensor %shape2 -> Tensor %(broadcast shape1 shape2)) external "tensor__gen_add" "+"
-  val ~gen_mult : {shape1 : List Nat} -> {shape2 : (s : List Nat | broadcastable shape1 s)} -> &(Tensor %shape1 -> Tensor %shape2 -> Tensor %(broadcast shape1 shape2)) external "tensor__gen_mult" "*"
-  val ~gen_grad : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape) external "tensor__gen_grad" "grad"
-  val ~gen_zero_grad : {shape : List Nat} -> &(Tensor %shape -> Unit) external "tensor__gen_zero_grad" "zero_grad"
-  val ~gen_mm : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %b -> Mat %b %c -> Mat %a %c) external "tensor__gen_mm" "mm"
-  val ~gen_sub_update : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Unit) external "tensor__gen_sub_update" "-="
-  val ~gen_argmax : {shape : List Nat} -> (dim : Nat) -> &(Tensor %shape -> Tensor %(drop_at dim shape)) external "tensor__gen_argmax" "argmax"
-  val ~gen_cross_entropy_for_logits : {m : Nat} -> {n : Nat} -> &(Tensor %[m, n] -> Tensor %[m] -> Tensor %([] as List Nat)) external "tensor__gen_cross_entropy_for_logits" "cross_entropy_for_logits"
-  val ~gen_count_equal : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Int) external "tensor__gen_count_equal" "count_equal"
-  val f : Float -> Tensor %([] as List Nat) external "tensor__f" "f"
-  val backward : Tensor %([] as List Nat) -> Unit external "tensor__backward" "backward"
-  val no_grad : (Unit -> Unit) -> Unit external "tensor__no_grad" "no_grad"
-  val float_value : Tensor %([] as List Nat) -> Float external "tensor__float_value" "float_value"
+  val ~gen_zeros : (shape : List Nat) -> &(Tensor %shape)
+    external (builtin = "tensor__gen_zeros", surface = "zeros")
+  val ~gen_add :
+    {shape1 : List Nat} -> {shape2 : (s : List Nat | broadcastable shape1 s)} ->
+    &(Tensor %shape1 -> Tensor %shape2 -> Tensor %(broadcast shape1 shape2))
+    external (builtin = "tensor__gen_add", surface = "+")
+  val ~gen_mult :
+    {shape1 : List Nat} -> {shape2 : (s : List Nat | broadcastable shape1 s)} ->
+    &(Tensor %shape1 -> Tensor %shape2 -> Tensor %(broadcast shape1 shape2))
+    external (builtin = "tensor__gen_mult", surface = "*")
+  val ~gen_grad : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape)
+    external (builtin = "tensor__gen_grad", surface = "grad")
+  val ~gen_zero_grad : {shape : List Nat} -> &(Tensor %shape -> Unit)
+    external (builtin = "tensor__gen_zero_grad", surface = "zero_grad")
+  val ~gen_mm : {a : Nat} -> {b : Nat} -> {c : Nat} -> &(Mat %a %b -> Mat %b %c -> Mat %a %c)
+    external (builtin = "tensor__gen_mm", surface = "mm")
+  val ~gen_sub_update : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Unit)
+    external (builtin = "tensor__gen_sub_update", surface = "-=")
+  val ~gen_argmax : {shape : List Nat} -> (dim : Nat) -> &(Tensor %shape -> Tensor %(drop_at dim shape))
+    external (builtin = "tensor__gen_argmax", surface = "argmax")
+  val ~gen_cross_entropy_for_logits :
+    {m : Nat} -> {n : Nat} ->
+    &(Tensor %[m, n] -> Tensor %[m] -> Tensor %([] as List Nat))
+    external (builtin = "tensor__gen_cross_entropy_for_logits", surface = "cross_entropy_for_logits")
+  val ~gen_count_equal : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Int)
+    external (builtin = "tensor__gen_count_equal", surface = "count_equal")
+  val f : Float -> Tensor %([] as List Nat)
+    external (builtin = "tensor__f", surface = "f")
+  val backward : Tensor %([] as List Nat) -> Unit
+    external (builtin = "tensor__backward", surface = "backward")
+  val no_grad : (Unit -> Unit) -> Unit
+    external (builtin = "tensor__no_grad", surface = "no_grad")
+  val float_value : Tensor %([] as List Nat) -> Float
+    external (builtin = "tensor__float_value", surface = "float_value")
 end
 
 module Mnist_helper = struct
   val ~image_dim = (28 * 28) as Nat
   val ~label_count = 10
-  val train_images : Tensor %[60000, image_dim] external "mnist_helper__train_images" "train_images"
-  val train_labels : Tensor %[60000] external "mnist_helper__train_labels" "train_labels"
+  val train_images : Tensor %[60000, image_dim]
+    external (builtin = "mnist_helper__train_images", surface = "train_images")
+  val train_labels : Tensor %[60000]
+    external (builtin = "mnist_helper__train_labels", surface = "train_labels")
   val num_test_images = 10000
-  val test_images : Tensor %[10000, image_dim] external "mnist_helper__test_images" "test_images"
-  val test_labels : Tensor %[10000] external "mnist_helper__test_labels" "test_labels"
+  val test_images : Tensor %[10000, image_dim]
+    external (builtin = "mnist_helper__test_images", surface = "test_images")
+  val test_labels : Tensor %[10000]
+    external (builtin = "mnist_helper__test_labels", surface = "test_labels")
 end

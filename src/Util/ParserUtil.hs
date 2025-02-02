@@ -6,6 +6,7 @@ module Util.ParserUtil
     some,
     many,
     manyNoTry,
+    sepBy,
     tries,
     or,
     expectToken,
@@ -52,6 +53,9 @@ many = Mp.many . Mp.try
 
 manyNoTry :: (Ord token) => GenP token a -> GenP token [a]
 manyNoTry = Mp.many
+
+sepBy :: (Ord token) => GenP token a -> GenP token sep -> GenP token [a]
+sepBy = Mp.sepBy
 
 tries :: (Ord token) => [GenP token a] -> GenP token a -> GenP token a
 tries ps pAcc0 = foldr or pAcc0 ps

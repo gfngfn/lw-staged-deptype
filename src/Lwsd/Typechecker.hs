@@ -19,10 +19,12 @@ import Control.Monad.Trans.State
 import Data.Either.Extra
 import Data.Function
 import Data.List qualified as List
+import Data.List.Extra qualified as List
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set (Set, (\\))
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Tuple.Extra
 import Lwsd.BuiltIn qualified as BuiltIn
@@ -1226,10 +1228,22 @@ validatePersistentType trav loc a0tye =
       A0TyCode _ ->
         Nothing
 
+extractFromExternal :: ExternalField -> External -> Maybe Text
+extractFromExternal field0 =
+  List.firstJust (\(field, s) -> if field == field0 then Just s else Nothing)
+
 typecheckBind :: trav -> TypeEnv -> Bind -> M trav (SigRecord, [AssBind])
 typecheckBind trav tyEnv (Bind loc bindMain) =
   case bindMain of
-    BindVal stage x (BindValExternal tye extName surfaceName) ->
+    BindVal stage x (BindValExternal tye ext) -> do
+      extName <-
+        case extractFromExternal "builtin" ext of
+          Just s ->
+            pure s
+          Nothing -> do
+            spanInFile <- askSpanInFile loc
+            typeError trav $ NoBuiltInNameInExternal spanInFile
+      let surfaceName = extractFromExternal "surface" ext
       case stage of
         Stage0 -> do
           a0tye <- typecheckTypeExpr0 trav tyEnv tye
