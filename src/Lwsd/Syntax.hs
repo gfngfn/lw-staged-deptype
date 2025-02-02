@@ -2,7 +2,6 @@ module Lwsd.Syntax
   ( AssVar (..),
     Symbol (..),
     symbolToVar,
-    Ass0PartialBuiltInApp (..),
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
@@ -63,15 +62,6 @@ newtype Symbol = Symbol Int
 
 symbolToVar :: Symbol -> AssVar
 symbolToVar (Symbol n) = AssVar $ Text.pack $ "#S" ++ show n
-
-data Ass0PartialBuiltInApp
-  = A0PartialBuiltInApp1With0 BuiltInArity1
-  | A0PartialBuiltInApp2With0 BuiltInArity2
-  | A0PartialBuiltInApp2With1 BuiltInArity2 Ass0Val
-  | A0PartialBuiltInApp3With0 BuiltInArity3
-  | A0PartialBuiltInApp3With1 BuiltInArity3 Ass0Val
-  | A0PartialBuiltInApp3With2 BuiltInArity3 Ass0Val Ass0Val
-  deriving stock (Eq, Show)
 
 data AssLiteral e
   = ALitInt Int
@@ -201,7 +191,7 @@ data Ass0Val
   = A0ValLiteral (AssLiteral Ass0Val)
   | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr EvalEnv
   | A0ValBracket Ass1Val
-  | A0ValPartialBuiltInApp Ass0PartialBuiltInApp
+  | A0ValPartialBuiltInApp (Ass0PartialBuiltInApp Ass0Val)
   deriving stock (Eq, Show)
 
 data Ass1Val

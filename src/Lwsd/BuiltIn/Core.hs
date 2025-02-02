@@ -3,6 +3,7 @@ module Lwsd.BuiltIn.Core
     BuiltInArity1 (..),
     BuiltInArity2 (..),
     BuiltInArity3 (..),
+    Ass0PartialBuiltInApp (..),
     Ass1BuiltInName (..),
     validateExternalName0,
     validateExternalName1,
@@ -58,6 +59,15 @@ data BuiltInArity2
 data BuiltInArity3
   = BIGenMconcatVert
   | BITensorGenMm
+  deriving stock (Eq, Show)
+
+data Ass0PartialBuiltInApp v
+  = A0PartialBuiltInApp1With0 BuiltInArity1
+  | A0PartialBuiltInApp2With0 BuiltInArity2
+  | A0PartialBuiltInApp2With1 BuiltInArity2 v
+  | A0PartialBuiltInApp3With0 BuiltInArity3
+  | A0PartialBuiltInApp3With1 BuiltInArity3 v
+  | A0PartialBuiltInApp3With2 BuiltInArity3 v v
   deriving stock (Eq, Show)
 
 data Ass1BuiltInName

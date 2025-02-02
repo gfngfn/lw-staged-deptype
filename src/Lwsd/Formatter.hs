@@ -12,7 +12,7 @@ import Data.List qualified as List
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Lwsd.BuiltIn.Core
-import Lwsd.Evaluator qualified as Evaluator
+import Lwsd.EvalError
 import Lwsd.SrcSyntax
 import Lwsd.Syntax
 import Lwsd.TypeError
@@ -676,7 +676,7 @@ instance Disp Ass0Val where
     A0ValBracket a1v1 -> dispBracket a1v1
     A0ValPartialBuiltInApp pba -> dispGen req pba
 
-instance Disp Ass0PartialBuiltInApp where
+instance (Disp v) => Disp (Ass0PartialBuiltInApp v) where
   dispGen req = \case
     A0PartialBuiltInApp1With0 bi1 -> disp bi1
     A0PartialBuiltInApp2With0 bi2 -> disp bi2
@@ -775,47 +775,47 @@ instance Disp SpanInFile where
           indentation = disp (replicate (startColumn - 1) ' ')
           hats = disp (replicate (endColumn - startColumn) '^')
 
-instance Disp Evaluator.Bug where
+instance Disp Bug where
   dispGen _ = \case
-    Evaluator.UnboundVar x ->
+    UnboundVarFound x ->
       "Unbound variable:" <+> disp x
-    Evaluator.NotAClosure a0v ->
+    NotAClosure a0v ->
       "Not a closure:" <+> disp a0v
-    Evaluator.NotACodeValue a0v ->
+    NotACodeValue a0v ->
       "Not a code value:" <+> disp a0v
-    Evaluator.NotAnInteger a0v ->
+    NotAnInteger a0v ->
       "Not an integer:" <+> disp a0v
-    Evaluator.NotAList a0v ->
+    NotAList a0v ->
       "Not a list:" <+> disp a0v
-    Evaluator.NotAVector a0v ->
+    NotAVector a0v ->
       "Not a vector:" <+> disp a0v
-    Evaluator.NotAMatrix a0v ->
+    NotAMatrix a0v ->
       "Not a matrix:" <+> disp a0v
-    Evaluator.NotABoolean a0v ->
+    NotABoolean a0v ->
       "Not a Boolean:" <+> disp a0v
-    Evaluator.NotAUnit a0v ->
+    NotAUnit a0v ->
       "Not a unit:" <+> disp a0v
-    Evaluator.FoundSymbol x symb ->
+    FoundSymbol x symb ->
       "Expected a stage-0 value, but found a symbol:" <+> disp symb <+> "(bound to:" <+> disp x <> ")"
-    Evaluator.FoundAss0Val x a0v ->
+    FoundAss0Val x a0v ->
       "Expected a symbol, but found a stage-0 value:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
-    Evaluator.InconsistentAppBuiltInArity1 bi1 a0v1 ->
+    InconsistentAppBuiltInArity1 bi1 a0v1 ->
       "Inconsistent application of a built-in function:"
         <+> disp (Text.pack (show bi1))
         <+> disp a0v1
-    Evaluator.InconsistentAppBuiltInArity2 bi2 a0v1 a0v2 ->
+    InconsistentAppBuiltInArity2 bi2 a0v1 a0v2 ->
       "Inconsistent application of a built-in function:"
         <+> disp (Text.pack (show bi2))
         <+> disp a0v1
         <+> disp a0v2
-    Evaluator.BroadcastFailed ns1 ns2 ->
+    BroadcastFailed ns1 ns2 ->
       "Broadcast failed:" <+> dispListLiteral ns1 <> "," <+> dispListLiteral ns2
 
-instance Disp Evaluator.EvalError where
+instance Disp EvalError where
   dispGen _ = \case
-    Evaluator.Bug bug ->
+    Bug bug ->
       "Bug:" <+> disp bug
-    Evaluator.AssertionFailure spanInFile a1tyv1 a1tyv2 ->
+    AssertionFailure spanInFile a1tyv1 a1tyv2 ->
       "Assertion failure"
         <+> disp spanInFile
         <> hardline
@@ -824,7 +824,7 @@ instance Disp Evaluator.EvalError where
         <> hardline
         <> "expected:"
         <> nest 2 (hardline <> disp a1tyv2)
-    Evaluator.RefinementAssertionFailure spanInFile a0v ->
+    RefinementAssertionFailure spanInFile a0v ->
       "Assertion failure of downcast"
         <+> disp spanInFile
         <> hardline

@@ -4,8 +4,6 @@ module Lwsd.Evaluator
     initialState,
     run,
     unliftVal,
-    Bug (..),
-    EvalError (..),
     EvalState,
   )
 where
@@ -16,35 +14,14 @@ import Control.Monad.Trans.State
 import Data.Map qualified as Map
 import Data.Maybe (isJust)
 import Lwsd.BuiltIn.Core
+import Lwsd.EvalError
 import Lwsd.Syntax
-import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
+import Util.LocationInFile (SourceSpec, getSpanInFile)
 import Util.Matrix (Matrix)
 import Util.Matrix qualified as Matrix
 import Util.Vector (Vector)
 import Util.Vector qualified as Vector
 import Prelude
-
-data Bug
-  = UnboundVar AssVar
-  | NotAClosure Ass0Val
-  | NotACodeValue Ass0Val
-  | NotAnInteger Ass0Val
-  | NotAList Ass0Val
-  | NotAVector Ass0Val
-  | NotAMatrix Ass0Val
-  | NotABoolean Ass0Val
-  | NotAUnit Ass0Val
-  | FoundSymbol AssVar Symbol
-  | FoundAss0Val AssVar Ass0Val
-  | InconsistentAppBuiltInArity1 BuiltInArity1 Ass0Val
-  | InconsistentAppBuiltInArity2 BuiltInArity2 Ass0Val Ass0Val
-  | BroadcastFailed [Int] [Int]
-  deriving stock (Eq, Show)
-
-data EvalError
-  = Bug Bug
-  | AssertionFailure SpanInFile Ass1TypeVal Ass1TypeVal
-  | RefinementAssertionFailure SpanInFile Ass0Val
 
 data EvalState = EvalState
   { nextSymbolIndex :: Int,
@@ -77,7 +54,7 @@ generateIdentityFunction env a0tyv = do
 findEntry :: EvalEnv -> AssVar -> M EvalEnvEntry
 findEntry env x =
   case Map.lookup x env of
-    Nothing -> bug $ UnboundVar x
+    Nothing -> bug $ UnboundVarFound x
     Just envEntry -> pure envEntry
 
 findVal0 :: EvalEnv -> AssVar -> M Ass0Val
@@ -128,6 +105,23 @@ validateMat0 :: Ass0Val -> M Matrix
 validateMat0 = \case
   A0ValLiteral (ALitMat mat) -> pure mat
   a0v -> bug $ NotAMatrix a0v
+
+-- The implementation of the built-in function `drop_at`.
+dropAt :: Int -> [a] -> [a]
+dropAt _ [] = []
+dropAt n (v : vs) = if n <= 0 then vs else v : dropAt (n - 1) vs
+
+-- The implementation of the built-in function `drop_at`.
+broadcast :: [Int] -> [Int] -> Maybe [Int]
+broadcast ns1' ns2' = reverse <$> go (reverse ns1', reverse ns2')
+  where
+    go = \case
+      ([], ns2) -> pure ns2
+      (ns1, []) -> pure ns1
+      (n1 : ns1, 1 : ns2) -> (n1 :) <$> broadcast ns1 ns2
+      (1 : ns1, n2 : ns2) -> (n2 :) <$> broadcast ns1 ns2
+      (n1 : ns1, n2 : ns2) | n1 == n2 -> (n1 :) <$> broadcast ns1 ns2
+      _ -> Nothing
 
 reduceDeltaArity1 :: BuiltInArity1 -> Ass0Val -> M Ass0Val
 reduceDeltaArity1 bi1 a0v1 =
@@ -289,6 +283,18 @@ reduceDeltaArity3 bi3 a0v1 a0v2 a0v3 =
       n3 <- validateIntLiteral a0v3
       pure $ A0ValBracket (A1ValConst (A1ValConstTensorMm n1 n2 n3))
 
+reduceDelta :: Ass0PartialBuiltInApp Ass0Val -> Ass0Val -> M Ass0Val
+reduceDelta pba a0vArg =
+  case pba of
+    A0PartialBuiltInApp1With0 bi1 -> reduceDeltaArity1 bi1 a0vArg
+    A0PartialBuiltInApp2With0 bi2 -> partial $ A0PartialBuiltInApp2With1 bi2 a0vArg
+    A0PartialBuiltInApp2With1 bi2 a0v1 -> reduceDeltaArity2 bi2 a0v1 a0vArg
+    A0PartialBuiltInApp3With0 bi3 -> partial $ A0PartialBuiltInApp3With1 bi3 a0vArg
+    A0PartialBuiltInApp3With1 bi3 a0v1 -> partial $ A0PartialBuiltInApp3With2 bi3 a0v1 a0vArg
+    A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> reduceDeltaArity3 bi3 a0v1 a0v2 a0vArg
+  where
+    partial = pure . A0ValPartialBuiltInApp
+
 reduceBeta :: Ass0Val -> Ass0Val -> M Ass0Val
 reduceBeta a0vFun a0vArg =
   case a0vFun of
@@ -301,34 +307,9 @@ reduceBeta a0vFun a0vArg =
         (Map.insert x (Ass0ValEntry a0vArg) (Map.insert f (Ass0ValEntry a0vFun) env))
         a0eBody
     A0ValPartialBuiltInApp pba ->
-      case pba of
-        A0PartialBuiltInApp1With0 bi1 -> reduceDeltaArity1 bi1 a0vArg
-        A0PartialBuiltInApp2With0 bi2 -> partial $ A0PartialBuiltInApp2With1 bi2 a0vArg
-        A0PartialBuiltInApp2With1 bi2 a0v1 -> reduceDeltaArity2 bi2 a0v1 a0vArg
-        A0PartialBuiltInApp3With0 bi3 -> partial $ A0PartialBuiltInApp3With1 bi3 a0vArg
-        A0PartialBuiltInApp3With1 bi3 a0v1 -> partial $ A0PartialBuiltInApp3With2 bi3 a0v1 a0vArg
-        A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> reduceDeltaArity3 bi3 a0v1 a0v2 a0vArg
+      reduceDelta pba a0vArg
     _ ->
       bug $ NotAClosure a0vFun
-  where
-    partial = pure . A0ValPartialBuiltInApp
-
--- The implementation of the built-in function `drop_at`.
-dropAt :: Int -> [a] -> [a]
-dropAt _ [] = []
-dropAt n (v : vs) = if n <= 0 then vs else v : dropAt (n - 1) vs
-
--- The implementation of the built-in function `drop_at`.
-broadcast :: [Int] -> [Int] -> Maybe [Int]
-broadcast ns1' ns2' = reverse <$> go (reverse ns1', reverse ns2')
-  where
-    go = \case
-      ([], ns2) -> pure ns2
-      (ns1, []) -> pure ns1
-      (n1 : ns1, 1 : ns2) -> (n1 :) <$> broadcast ns1 ns2
-      (1 : ns1, n2 : ns2) -> (n2 :) <$> broadcast ns1 ns2
-      (n1 : ns1, n2 : ns2) | n1 == n2 -> (n1 :) <$> broadcast ns1 ns2
-      _ -> Nothing
 
 evalExpr0 :: EvalEnv -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case

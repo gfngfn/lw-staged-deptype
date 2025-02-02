@@ -62,6 +62,7 @@ library
       Lwsd.BuiltIn,
       Lwsd.BuiltIn.Core,
       Lwsd.Entrypoint,
+      Lwsd.EvalError,
       Lwsd.Evaluator,
       Lwsd.Formatter,
       Lwsd.Parser,
