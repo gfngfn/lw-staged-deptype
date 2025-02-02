@@ -128,7 +128,7 @@ reduceDeltaArity1 bi1 a0v1 =
   case bi1 of
     BIGenVadd -> do
       n1 <- validateIntLiteral a0v1
-      pure $ A0ValBracket (A1ValConst (A1ValConstVadd n1))
+      pure $ A0ValBracket (A1ValConst (A1BIVadd n1))
     BIMtranspose m n -> do
       mat1 <- validateMat0 a0v1
       case Matrix.transpose m n mat1 of
@@ -136,19 +136,19 @@ reduceDeltaArity1 bi1 a0v1 =
         Nothing -> bug $ InconsistentAppBuiltInArity1 bi1 a0v1
     BITensorGenZeros -> do
       ns1 <- validateIntListLiteral a0v1
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeros ns1))
+      pure $ A0ValBracket (A1ValConst (A1BITensorZeros ns1))
     BITensorGenGrad -> do
       ns1 <- validateIntListLiteral a0v1
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorGrad ns1))
+      pure $ A0ValBracket (A1ValConst (A1BITensorGrad ns1))
     BITensorGenZeroGrad -> do
       ns1 <- validateIntListLiteral a0v1
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorZeroGrad ns1))
+      pure $ A0ValBracket (A1ValConst (A1BITensorZeroGrad ns1))
     BITensorGenSubUpdate -> do
       ns1 <- validateIntListLiteral a0v1
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorSubUpdate ns1))
+      pure $ A0ValBracket (A1ValConst (A1BITensorSubUpdate ns1))
     BITensorGenCountEqual -> do
       ns1 <- validateIntListLiteral a0v1
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorCountEqual ns1))
+      pure $ A0ValBracket (A1ValConst (A1BITensorCountEqual ns1))
 
 reduceDeltaArity2 :: BuiltInArity2 -> Ass0Val -> Ass0Val -> M Ass0Val
 reduceDeltaArity2 bi2 a0v1 a0v2 =
@@ -168,13 +168,13 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
       a0vsOut <- mapM (reduceBeta a0v1) a0vsIn
       pure $ A0ValLiteral (ALitList a0vsOut)
     BIGenVconcat ->
-      arithmetic (\n1 n2 -> A0ValBracket (A1ValConst (A1ValConstVconcat n1 n2)))
+      arithmetic (\n1 n2 -> A0ValBracket (A1ValConst (A1BIVconcat n1 n2)))
     BIGenMtranspose ->
-      arithmetic (\n1 n2 -> A0ValBracket (A1ValConst (A1ValConstMtranspose n1 n2)))
+      arithmetic (\n1 n2 -> A0ValBracket (A1ValConst (A1BIMtranspose n1 n2)))
     BITensorGenAdd -> do
       ns1 <- validateIntListLiteral a0v1
       ns2 <- validateIntListLiteral a0v2
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorAdd ns1 ns2))
+      pure $ A0ValBracket (A1ValConst (A1BITensorAdd ns1 ns2))
     BIVadd n -> do
       v1 <- validateVec0 a0v1
       v2 <- validateVec0 a0v2
@@ -221,19 +221,19 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
     BIGenBroadcasted -> do
       ns1 <- validateIntListLiteral a0v1
       ns2 <- validateIntListLiteral a0v2
-      pure $ A0ValBracket (A1ValConst (A1ValConstBroadcasted ns1 ns2))
+      pure $ A0ValBracket (A1ValConst (A1BIBroadcasted ns1 ns2))
     BITensorGenMult -> do
       ns1 <- validateIntListLiteral a0v1
       ns2 <- validateIntListLiteral a0v2
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorMult ns1 ns2))
+      pure $ A0ValBracket (A1ValConst (A1BITensorMult ns1 ns2))
     BITensorGenArgmax -> do
       ns1 <- validateIntListLiteral a0v1
       n2 <- validateIntLiteral a0v2
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorArgmax ns1 n2))
+      pure $ A0ValBracket (A1ValConst (A1BITensorArgmax ns1 n2))
     BITensorGenCrossEntropyForLogits -> do
       n1 <- validateIntLiteral a0v1
       n2 <- validateIntLiteral a0v2
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorCrossEntropyForLogits n1 n2))
+      pure $ A0ValBracket (A1ValConst (A1BITensorCrossEntropyForLogits n1 n2))
     BITensorAdd ns ->
       case ns of
         [n] -> do
@@ -276,12 +276,12 @@ reduceDeltaArity3 bi3 a0v1 a0v2 a0v3 =
       n1 <- validateIntLiteral a0v1
       n2 <- validateIntLiteral a0v2
       n3 <- validateIntLiteral a0v3
-      pure $ A0ValBracket (A1ValConst (A1ValConstMconcatVert n1 n2 n3))
+      pure $ A0ValBracket (A1ValConst (A1BIMconcatVert n1 n2 n3))
     BITensorGenMm -> do
       n1 <- validateIntLiteral a0v1
       n2 <- validateIntLiteral a0v2
       n3 <- validateIntLiteral a0v3
-      pure $ A0ValBracket (A1ValConst (A1ValConstTensorMm n1 n2 n3))
+      pure $ A0ValBracket (A1ValConst (A1BITensorMm n1 n2 n3))
 
 reduceDelta :: Ass0PartialBuiltInApp Ass0Val -> Ass0Val -> M Ass0Val
 reduceDelta pba a0vArg =

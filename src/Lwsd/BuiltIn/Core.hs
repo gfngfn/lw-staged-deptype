@@ -71,58 +71,58 @@ data Ass0PartialBuiltInApp v
   deriving stock (Eq, Show)
 
 data Ass1BuiltIn
-  = A1ValConstVadd Int
-  | A1ValConstVconcat Int Int
-  | A1ValConstMtranspose Int Int
-  | A1ValConstMconcatVert Int Int Int
-  | A1ValConstBroadcasted [Int] [Int]
-  | A1ValConstTensorZeros [Int]
-  | A1ValConstTensorAdd [Int] [Int]
-  | A1ValConstTensorMult [Int] [Int]
-  | A1ValConstTensorMm Int Int Int
-  | A1ValConstTensorGrad [Int]
-  | A1ValConstTensorZeroGrad [Int]
-  | A1ValConstTensorSubUpdate [Int]
-  | A1ValConstTensorArgmax [Int] Int
-  | A1ValConstTensorCrossEntropyForLogits Int Int
-  | A1ValConstTensorCountEqual [Int]
-  | A1BINameAdd
-  | A1BINameSub
-  | A1BINameMult
-  | A1BINameFloatDiv
-  | A1BINameLeq
-  | A1BINameFloat
-  | A1BINamePrintFloat
-  | A1BINameListAppend
-  | A1BINameListIter
-  | A1BINameRange
-  | A1BINameTensorF
-  | A1BINameTensorBackward
-  | A1BINameTensorNoGrad
-  | A1BINameTensorFloatValue
-  | A1BINameMnistHelperTrainImages
-  | A1BINameMnistHelperTrainLabels
-  | A1BINameMnistHelperTestImages
-  | A1BINameMnistHelperTestLabels
+  = A1BIVadd Int
+  | A1BIVconcat Int Int
+  | A1BIMtranspose Int Int
+  | A1BIMconcatVert Int Int Int
+  | A1BIBroadcasted [Int] [Int]
+  | A1BITensorZeros [Int]
+  | A1BITensorAdd [Int] [Int]
+  | A1BITensorMult [Int] [Int]
+  | A1BITensorMm Int Int Int
+  | A1BITensorGrad [Int]
+  | A1BITensorZeroGrad [Int]
+  | A1BITensorSubUpdate [Int]
+  | A1BITensorArgmax [Int] Int
+  | A1BITensorCrossEntropyForLogits Int Int
+  | A1BITensorCountEqual [Int]
+  | A1BIAdd
+  | A1BISub
+  | A1BIMult
+  | A1BIFloatDiv
+  | A1BILeq
+  | A1BIFloat
+  | A1BIPrintFloat
+  | A1BIListAppend
+  | A1BIListIter
+  | A1BIRange
+  | A1BITensorF
+  | A1BITensorBackward
+  | A1BITensorNoGrad
+  | A1BITensorFloatValue
+  | A1BIMnistHelperTrainImages
+  | A1BIMnistHelperTrainLabels
+  | A1BIMnistHelperTestImages
+  | A1BIMnistHelperTestLabels
   deriving stock (Eq, Show)
 
 unliftBuiltInName :: Ass1BuiltIn -> BuiltIn
 unliftBuiltInName = \case
-  A1ValConstVadd n -> arity2 (BIVadd n)
-  A1ValConstVconcat m n -> arity2 (BIVconcat m n)
-  A1ValConstMtranspose m n -> arity1 (BIMtranspose m n)
-  A1ValConstMconcatVert m1 m2 n -> arity2 (BIMconcatVert m1 m2 n)
-  A1ValConstTensorAdd ns1 ns2 ->
+  A1BIVadd n -> arity2 (BIVadd n)
+  A1BIVconcat m n -> arity2 (BIVconcat m n)
+  A1BIMtranspose m n -> arity1 (BIMtranspose m n)
+  A1BIMconcatVert m1 m2 n -> arity2 (BIMconcatVert m1 m2 n)
+  A1BITensorAdd ns1 ns2 ->
     if ns1 == ns2
       then arity2 (BITensorAdd ns1)
-      else error $ "TODO: unliftVal, A1ValConstTensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
-  A1ValConstTensorMm k m n -> arity2 (BITensorMm k m n)
-  A1BINameAdd -> arity2 BIAdd
-  A1BINameSub -> arity2 BISub
-  A1BINameMult -> arity2 BIMult
-  A1BINameLeq -> arity2 BILeq
-  A1BINameListAppend -> arity2 BIListAppend
-  A1BINameListIter -> arity2 BIListIter
+      else error $ "TODO: unliftVal, A1BITensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
+  A1BITensorMm k m n -> arity2 (BITensorMm k m n)
+  A1BIAdd -> arity2 BIAdd
+  A1BISub -> arity2 BISub
+  A1BIMult -> arity2 BIMult
+  A1BILeq -> arity2 BILeq
+  A1BIListAppend -> arity2 BIListAppend
+  A1BIListIter -> arity2 BIListIter
   a1builtInName -> error $ "TODO: unliftBuiltInName, " ++ show a1builtInName
   where
     arity1 = BuiltInArity1
@@ -162,22 +162,22 @@ validateExternalName0 = \case
 
 validateExternalName1 :: Text -> Maybe Ass1BuiltIn
 validateExternalName1 = \case
-  "int_add" -> pure A1BINameAdd
-  "int_sub" -> pure A1BINameSub
-  "int_mult" -> pure A1BINameMult
-  "float_div" -> pure A1BINameFloatDiv
-  "int_leq" -> pure A1BINameLeq
-  "float" -> pure A1BINameFloat
-  "print_float" -> pure A1BINamePrintFloat
-  "list__append" -> pure A1BINameListAppend
-  "list__iter" -> pure A1BINameListIter
-  "range" -> pure A1BINameRange
-  "tensor__f" -> pure A1BINameTensorF
-  "tensor__backward" -> pure A1BINameTensorBackward
-  "tensor__no_grad" -> pure A1BINameTensorNoGrad
-  "tensor__float_value" -> pure A1BINameTensorFloatValue
-  "mnist_helper__train_images" -> pure A1BINameMnistHelperTrainImages
-  "mnist_helper__train_labels" -> pure A1BINameMnistHelperTrainLabels
-  "mnist_helper__test_images" -> pure A1BINameMnistHelperTestImages
-  "mnist_helper__test_labels" -> pure A1BINameMnistHelperTestLabels
+  "int_add" -> pure A1BIAdd
+  "int_sub" -> pure A1BISub
+  "int_mult" -> pure A1BIMult
+  "float_div" -> pure A1BIFloatDiv
+  "int_leq" -> pure A1BILeq
+  "float" -> pure A1BIFloat
+  "print_float" -> pure A1BIPrintFloat
+  "list__append" -> pure A1BIListAppend
+  "list__iter" -> pure A1BIListIter
+  "range" -> pure A1BIRange
+  "tensor__f" -> pure A1BITensorF
+  "tensor__backward" -> pure A1BITensorBackward
+  "tensor__no_grad" -> pure A1BITensorNoGrad
+  "tensor__float_value" -> pure A1BITensorFloatValue
+  "mnist_helper__train_images" -> pure A1BIMnistHelperTrainImages
+  "mnist_helper__train_labels" -> pure A1BIMnistHelperTrainLabels
+  "mnist_helper__test_images" -> pure A1BIMnistHelperTestImages
+  "mnist_helper__test_labels" -> pure A1BIMnistHelperTestLabels
   _ -> Nothing

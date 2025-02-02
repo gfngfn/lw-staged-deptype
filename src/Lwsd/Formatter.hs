@@ -686,22 +686,41 @@ instance (Disp v) => Disp (Ass0PartialBuiltInApp v) where
 
 instance Disp Ass1BuiltIn where
   dispGen _ = \case
-    A1ValConstVadd n -> "vadd@{" <> disp n <> "}"
-    A1ValConstVconcat m n -> "vconcat@{" <> disps [m, n] <> "}"
-    A1ValConstMtranspose m n -> "mtranspose@{" <> disps [m, n] <> "}"
-    A1ValConstMconcatVert m1 m2 n -> "mconcat_vert@{" <> disps [m1, m2, n] <> "}"
-    A1ValConstBroadcasted ns1 ns2 -> "broadcasted@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
-    A1ValConstTensorZeros ns1 -> "Tensor.zeros@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorMult ns1 ns2 -> "Tensor.mult@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
-    A1ValConstTensorGrad ns1 -> "Tensor.grad@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorZeroGrad ns1 -> "Tensor.zero_grad@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorSubUpdate ns1 -> "Tensor.sub_update@{" <> dispListLiteral ns1 <> "}"
-    A1ValConstTensorArgmax ns1 n2 -> "Tensor.argmax@{" <> dispListLiteral ns1 <> "," <+> disp n2 <> "}"
-    A1ValConstTensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits@{" <> disps [n1, n2] <> "}"
-    A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
-    A1ValConstTensorAdd ns1 ns2 -> "Tensor.add@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
-    A1ValConstTensorMm k m n -> "Tensor.mm@{" <> disps [k, m, n] <> "}"
-    a1bi -> "<" <> disp (show a1bi) <> ">" -- TODO: fix this
+    A1BIVadd n -> "vadd" <> param (disp n)
+    A1BIVconcat m n -> "vconcat" <> param (disps [m, n])
+    A1BIMtranspose m n -> "mtranspose" <> param (disps [m, n])
+    A1BIMconcatVert m1 m2 n -> "mconcat_vert" <> param (disps [m1, m2, n])
+    A1BIBroadcasted ns1 ns2 -> "broadcasted" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
+    A1BITensorZeros ns1 -> "Tensor.zeros" <> param (dispListLiteral ns1)
+    A1BITensorMult ns1 ns2 -> "Tensor.mult" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
+    A1BITensorGrad ns1 -> "Tensor.grad" <> param (dispListLiteral ns1)
+    A1BITensorZeroGrad ns1 -> "Tensor.zero_grad" <> param (dispListLiteral ns1)
+    A1BITensorSubUpdate ns1 -> "Tensor.sub_update" <> param (dispListLiteral ns1)
+    A1BITensorArgmax ns1 n2 -> "Tensor.argmax" <> param (dispListLiteral ns1 <> "," <+> disp n2)
+    A1BITensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits" <> param (disps [n1, n2])
+    A1BITensorCountEqual ns -> "Tensor.count_equal" <> param (dispListLiteral ns)
+    A1BITensorAdd ns1 ns2 -> "Tensor.add" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
+    A1BITensorMm k m n -> "Tensor.mm" <> param (disps [k, m, n])
+    A1BIAdd -> "+"
+    A1BISub -> "-"
+    A1BIMult -> "*"
+    A1BIFloatDiv -> "/"
+    A1BILeq -> "<="
+    A1BIFloat -> "float"
+    A1BIPrintFloat -> "print_float"
+    A1BIListAppend -> "List.append"
+    A1BIListIter -> "List.iter"
+    A1BIRange -> "range"
+    A1BITensorF -> "Tensor.f"
+    A1BITensorBackward -> "Tensor.backward"
+    A1BITensorNoGrad -> "Tensor.no_grad"
+    A1BITensorFloatValue -> "Tensor.float_value"
+    A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
+    A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
+    A1BIMnistHelperTestImages -> "Mnist_helper.test_images"
+    A1BIMnistHelperTestLabels -> "Mnist_helper.test_labels"
+    where
+      param doc = stagingOperatorStyle ("@{" <> doc <> "}")
 
 instance Disp Ass1Val where
   dispGen req = \case
