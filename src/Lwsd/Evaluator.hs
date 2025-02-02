@@ -379,8 +379,8 @@ evalExpr1 env = \case
   A1Var x -> do
     symb <- findSymbol env x
     pure $ A1ValVar symb
-  A1BuiltInName a1builtInName ->
-    pure $ A1ValConst (A1ValConstBuiltInName a1builtInName)
+  A1BuiltInName a1bi ->
+    pure $ A1ValConst a1bi
   A1Lam Nothing (x, a1tye1) a1e2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     symbX <- generateFreshSymbol
@@ -464,19 +464,8 @@ unliftVal :: Ass1Val -> Ass0Expr
 unliftVal = \case
   A1ValLiteral lit ->
     A0Literal (mapAssLiteral unliftVal lit)
-  A1ValConst c ->
-    case c of
-      A1ValConstVadd n -> arity2 (BIVadd n)
-      A1ValConstVconcat m n -> arity2 (BIVconcat m n)
-      A1ValConstMtranspose m n -> arity1 (BIMtranspose m n)
-      A1ValConstMconcatVert m1 m2 n -> arity2 (BIMconcatVert m1 m2 n)
-      A1ValConstTensorAdd ns1 ns2 ->
-        if ns1 == ns2
-          then arity2 (BITensorAdd ns1)
-          else error $ "TODO: unliftVal, A1ValConstTensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
-      A1ValConstTensorMm k m n -> arity2 (BITensorMm k m n)
-      A1ValConstBuiltInName a1builtInName -> A0BuiltInName (unliftBuiltInName a1builtInName)
-      _ -> error $ "TODO: unliftVal, " ++ show c
+  A1ValConst a1bi ->
+    A0BuiltInName (unliftBuiltInName a1bi)
   A1ValVar symbX ->
     A0Var (symbolToVar symbX)
   A1ValLam Nothing (symbX, a1tyv1) a1v2 ->
@@ -489,9 +478,6 @@ unliftVal = \case
     A0Sequential (unliftVal a1v1) (unliftVal a1v2)
   A1ValIfThenElse a1v0 a1v1 a1v2 ->
     A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
-  where
-    arity1 = A0BuiltInName . BuiltInArity1
-    arity2 = A0BuiltInName . BuiltInArity2
 
 unliftTypeVal :: Ass1TypeVal -> StrictAss0TypeExpr
 unliftTypeVal = \case

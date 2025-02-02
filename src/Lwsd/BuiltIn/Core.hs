@@ -4,7 +4,7 @@ module Lwsd.BuiltIn.Core
     BuiltInArity2 (..),
     BuiltInArity3 (..),
     Ass0PartialBuiltInApp (..),
-    Ass1BuiltInName (..),
+    Ass1BuiltIn (..),
     validateExternalName0,
     validateExternalName1,
     unliftBuiltInName,
@@ -70,8 +70,23 @@ data Ass0PartialBuiltInApp v
   | A0PartialBuiltInApp3With2 BuiltInArity3 v v
   deriving stock (Eq, Show)
 
-data Ass1BuiltInName
-  = A1BINameAdd
+data Ass1BuiltIn
+  = A1ValConstVadd Int
+  | A1ValConstVconcat Int Int
+  | A1ValConstMtranspose Int Int
+  | A1ValConstMconcatVert Int Int Int
+  | A1ValConstBroadcasted [Int] [Int]
+  | A1ValConstTensorZeros [Int]
+  | A1ValConstTensorAdd [Int] [Int]
+  | A1ValConstTensorMult [Int] [Int]
+  | A1ValConstTensorMm Int Int Int
+  | A1ValConstTensorGrad [Int]
+  | A1ValConstTensorZeroGrad [Int]
+  | A1ValConstTensorSubUpdate [Int]
+  | A1ValConstTensorArgmax [Int] Int
+  | A1ValConstTensorCrossEntropyForLogits Int Int
+  | A1ValConstTensorCountEqual [Int]
+  | A1BINameAdd
   | A1BINameSub
   | A1BINameMult
   | A1BINameFloatDiv
@@ -91,8 +106,17 @@ data Ass1BuiltInName
   | A1BINameMnistHelperTestLabels
   deriving stock (Eq, Show)
 
-unliftBuiltInName :: Ass1BuiltInName -> BuiltIn
+unliftBuiltInName :: Ass1BuiltIn -> BuiltIn
 unliftBuiltInName = \case
+  A1ValConstVadd n -> arity2 (BIVadd n)
+  A1ValConstVconcat m n -> arity2 (BIVconcat m n)
+  A1ValConstMtranspose m n -> arity1 (BIMtranspose m n)
+  A1ValConstMconcatVert m1 m2 n -> arity2 (BIMconcatVert m1 m2 n)
+  A1ValConstTensorAdd ns1 ns2 ->
+    if ns1 == ns2
+      then arity2 (BITensorAdd ns1)
+      else error $ "TODO: unliftVal, A1ValConstTensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
+  A1ValConstTensorMm k m n -> arity2 (BITensorMm k m n)
   A1BINameAdd -> arity2 BIAdd
   A1BINameSub -> arity2 BISub
   A1BINameMult -> arity2 BIMult
@@ -101,6 +125,7 @@ unliftBuiltInName = \case
   A1BINameListIter -> arity2 BIListIter
   a1builtInName -> error $ "TODO: unliftBuiltInName, " ++ show a1builtInName
   where
+    arity1 = BuiltInArity1
     arity2 = BuiltInArity2
 
 validateExternalName0 :: Text -> Maybe BuiltIn
@@ -135,7 +160,7 @@ validateExternalName0 = \case
     arity2 = pure . BuiltInArity2
     arity3 = pure . BuiltInArity3
 
-validateExternalName1 :: Text -> Maybe Ass1BuiltInName
+validateExternalName1 :: Text -> Maybe Ass1BuiltIn
 validateExternalName1 = \case
   "int_add" -> pure A1BINameAdd
   "int_sub" -> pure A1BINameSub

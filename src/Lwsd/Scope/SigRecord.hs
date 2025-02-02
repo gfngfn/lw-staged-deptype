@@ -30,12 +30,12 @@ data Ass0Metadata = Ass0Metadata
   }
 
 data Ass1Metadata = Ass1Metadata
-  { ass1builtInName :: Ass1BuiltInName,
+  { ass1builtInName :: Ass1BuiltIn,
     ass1surfaceName :: SurfaceSyntax.Var
   }
 
 data AssPersMetadata = AssPersMetadata
-  { assPbuiltInName :: Ass1BuiltInName,
+  { assPbuiltInName :: Ass1BuiltIn,
     assPsurfaceName :: SurfaceSyntax.Var
   }
 

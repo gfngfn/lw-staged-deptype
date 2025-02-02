@@ -20,7 +20,6 @@ module Lwsd.Syntax
     liftPrimType,
     Ass0Val (..),
     Ass1Val (..),
-    Ass1ValConst (..),
     Ass0TypeVal (..),
     Ass0PrimTypeVal (..),
     Ass1TypeVal (..),
@@ -90,7 +89,7 @@ data Ass0Expr
 data Ass1Expr
   = A1Literal (AssLiteral Ass1Expr)
   | A1Var AssVar
-  | A1BuiltInName Ass1BuiltInName
+  | A1BuiltInName Ass1BuiltIn
   | A1Lam (Maybe (AssVar, Ass1TypeExpr)) (AssVar, Ass1TypeExpr) Ass1Expr
   | A1App Ass1Expr Ass1Expr
   | A1Sequential Ass1Expr Ass1Expr
@@ -196,31 +195,12 @@ data Ass0Val
 
 data Ass1Val
   = A1ValLiteral (AssLiteral Ass1Val)
-  | A1ValConst Ass1ValConst
+  | A1ValConst Ass1BuiltIn
   | A1ValVar Symbol
   | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) Ass1Val
   | A1ValApp Ass1Val Ass1Val
   | A1ValSequential Ass1Val Ass1Val
   | A1ValIfThenElse Ass1Val Ass1Val Ass1Val
-  deriving stock (Eq, Show)
-
-data Ass1ValConst
-  = A1ValConstVadd Int
-  | A1ValConstVconcat Int Int
-  | A1ValConstMtranspose Int Int
-  | A1ValConstMconcatVert Int Int Int
-  | A1ValConstBroadcasted [Int] [Int]
-  | A1ValConstTensorZeros [Int]
-  | A1ValConstTensorAdd [Int] [Int]
-  | A1ValConstTensorMult [Int] [Int]
-  | A1ValConstTensorMm Int Int Int
-  | A1ValConstTensorGrad [Int]
-  | A1ValConstTensorZeroGrad [Int]
-  | A1ValConstTensorSubUpdate [Int]
-  | A1ValConstTensorArgmax [Int] Int
-  | A1ValConstTensorCrossEntropyForLogits Int Int
-  | A1ValConstTensorCountEqual [Int]
-  | A1ValConstBuiltInName Ass1BuiltInName -- TODO: consider merging `Ass1BuiltInName` and `Ass1ValConst`
   deriving stock (Eq, Show)
 
 data Ass0TypeVal

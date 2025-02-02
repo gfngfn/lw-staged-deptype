@@ -352,9 +352,6 @@ instance Disp BuiltIn where
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
 
-instance Disp Ass1BuiltInName where
-  dispGen _ a1builtInName = "<" <> disp (show a1builtInName) <> ">"
-
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
     Surface.LitInt n -> pretty n
@@ -687,7 +684,7 @@ instance (Disp v) => Disp (Ass0PartialBuiltInApp v) where
     where
       f = deepenParenWhen (req <= Atomic)
 
-instance Disp Ass1ValConst where
+instance Disp Ass1BuiltIn where
   dispGen _ = \case
     A1ValConstVadd n -> "vadd@{" <> disp n <> "}"
     A1ValConstVconcat m n -> "vconcat@{" <> disps [m, n] <> "}"
@@ -704,7 +701,7 @@ instance Disp Ass1ValConst where
     A1ValConstTensorCountEqual ns -> "Tensor.count_equal@{" <> dispListLiteral ns <> "}"
     A1ValConstTensorAdd ns1 ns2 -> "Tensor.add@{" <> dispListLiteral ns1 <> "," <+> dispListLiteral ns2 <> "}"
     A1ValConstTensorMm k m n -> "Tensor.mm@{" <> disps [k, m, n] <> "}"
-    A1ValConstBuiltInName a1builtInName -> disp a1builtInName
+    a1bi -> "<" <> disp (show a1bi) <> ">" -- TODO: fix this
 
 instance Disp Ass1Val where
   dispGen req = \case
