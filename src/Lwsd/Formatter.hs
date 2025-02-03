@@ -640,6 +640,8 @@ instance Disp TypeError where
       "Invalid persistent type:" <+> stage0Style (disp a0tye) <+> disp spanInFile
     InvalidTypeForRefinement spanInFile a0tye ->
       "Invalid type for refinement:" <+> stage0Style (disp a0tye) <+> disp spanInFile
+    NoBuiltInNameInExternal spanInFile ->
+      "No built-in name specified for an external value" <+> disp spanInFile
 
 instance Disp ConditionalMergeError where
   dispGen _ = \case

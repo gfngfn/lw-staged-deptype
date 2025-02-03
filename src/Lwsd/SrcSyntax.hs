@@ -20,6 +20,7 @@ module Lwsd.SrcSyntax
     BindValF (..),
     BindVal,
     Stage (..),
+    ExternalField,
     External,
   )
 where
@@ -120,7 +121,7 @@ data BindMainF ann
 type Bind = BindF Span
 
 data BindValF ann
-  = BindValExternal (TypeExprF ann) External Text
+  = BindValExternal (TypeExprF ann) External
   | BindValNormal (ExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 BindValF)
@@ -130,4 +131,6 @@ type BindVal = BindValF Span
 data Stage = Stage0 | Stage1 | StagePers
   deriving stock (Eq, Show)
 
-type External = Text
+type ExternalField = Text
+
+type External = [(ExternalField, Text)]

@@ -33,11 +33,11 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Represent broadcasting of tensor shapes by refinement types
 - [ ] Syntax sugar for recursive functions (i.e., `let rec`-expressions)
 - [ ] Type-checking in a bi-directional manner as to return types
-- [ ] Generalize the `external` syntax for various backends
+- [x] Generalize the `external` syntax for various backends
 - [ ] Transpilation to Python or OCaml
-- [ ] Binding of type names like `type Nat = ( n : Int | n >= 0 )`
-- [ ] ADTs
+- [ ] ADTs and pattern matching
 - [ ] Add the `run`-primitive
+- [ ] Binding of type names like `type Nat = ( n : Int | n >= 0 )`
 - [ ] Polymorphic types
 - [ ] `let`-expressions for persistent values
 

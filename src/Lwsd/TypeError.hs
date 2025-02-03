@@ -53,6 +53,7 @@ data TypeError
   | UnknownExternalName SpanInFile Text
   | InvalidPersistentType SpanInFile Ass0TypeExpr
   | InvalidTypeForRefinement SpanInFile Ass0TypeExpr
+  | NoBuiltInNameInExternal SpanInFile
   deriving stock (Eq, Show)
 
 data ConditionalMergeError
