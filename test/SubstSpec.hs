@@ -36,20 +36,15 @@ spec = do
   describe "alphaEquivalent" $ do
     it "judges alpha-equivalence of functions (1)" $
       alphaEquivalent
-        svWitness
         (a0nonrecLam "foo" sa0tyInt (a0var "foo"))
         (a0nonrecLam "bar" sa0tyInt (a0var "bar"))
         `shouldBe` True
     it "judges alpha-equivalence of functions (2)" $
       alphaEquivalent
-        svWitness
         (a0nonrecLam "foo" sa0tyInt (a0var "bar"))
         (a0nonrecLam "bar" sa0tyInt (a0var "bar"))
         `shouldBe` False
   where
-    svWitness :: Text -> Text -> Bool
-    svWitness = (==)
-
     v :: Text -> AssVarF Text
     v = AssVarStatic
 

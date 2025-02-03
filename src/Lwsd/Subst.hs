@@ -26,7 +26,7 @@ data SubstF sv
 class (Ord sv) => HasVar sv af where
   frees :: af sv -> (Set (AssVarF sv), Set (AssVarF sv))
   subst :: SubstF sv -> af sv -> af sv
-  alphaEquivalent :: (sv -> sv -> Bool) -> af sv -> af sv -> Bool
+  alphaEquivalent :: af sv -> af sv -> Bool
 
 frees0 :: (HasVar sv af) => af sv -> Set (AssVarF sv)
 frees0 = fst . frees
@@ -69,14 +69,14 @@ instance (Ord sv, HasVar sv af) => HasVar sv (AssLiteralF af) where
     ALitVec vec -> ALitVec vec
     ALitMat mat -> ALitMat mat
 
-  alphaEquivalent eq alit1 alit2 =
+  alphaEquivalent alit1 alit2 =
     case (alit1, alit2) of
       (ALitInt n1, ALitInt n2) -> n1 == n2
       (ALitBool b1, ALitBool b2) -> b1 == b2
       (ALitList es1, ALitList es2) ->
         case zipExactMay es1 es2 of
           Nothing -> False
-          Just zipped -> all (uncurry (alphaEquivalent eq)) zipped
+          Just zipped -> all (uncurry alphaEquivalent) zipped
       (ALitVec vec1, ALitVec vec2) -> vec1 == vec2
       (ALitMat mat1, ALitMat mat2) -> mat1 == mat2
       (_, _) -> False
@@ -155,7 +155,7 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
-  alphaEquivalent eq a0e1 a0e2 =
+  alphaEquivalent a0e1 a0e2 =
     case (a0e1, a0e2) of
       (A0Literal alit1, A0Literal alit2) ->
         go alit1 alit2
@@ -187,7 +187,7 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
         False
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
-      go = alphaEquivalent eq
+      go = alphaEquivalent
 
 instance (Ord sv) => HasVar sv Ass1ExprF where
   frees = \case
@@ -248,7 +248,7 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
-  alphaEquivalent eq a1e1 a1e2 =
+  alphaEquivalent a1e1 a1e2 =
     case (a1e1, a1e2) of
       (A1Literal lit1, A1Literal lit2) ->
         go lit1 lit2
@@ -274,7 +274,7 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
         False
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
-      go = alphaEquivalent eq
+      go = alphaEquivalent
 
 instance (Ord sv) => HasVar sv Ass0TypeExprF where
   frees = \case
@@ -322,7 +322,7 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
-  alphaEquivalent eq a0tye1 a0tye2 =
+  alphaEquivalent a0tye1 a0tye2 =
     case (a0tye1, a0tye2) of
       (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2) ->
         -- Exact match
@@ -348,7 +348,7 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
         False
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
-      go = alphaEquivalent eq
+      go = alphaEquivalent
 
 instance (Ord sv) => HasVar sv Ass1TypeExprF where
   frees = \case
@@ -380,7 +380,7 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
-  alphaEquivalent eq a1tye1 a1tye2 =
+  alphaEquivalent a1tye1 a1tye2 =
     case (a1tye1, a1tye2) of
       (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
         case (a1tyPrim1, a1tyPrim2) of
@@ -400,7 +400,7 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         False
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
-      go = alphaEquivalent eq
+      go = alphaEquivalent
 
 instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
   frees = \case
@@ -438,7 +438,7 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
-  alphaEquivalent eq sa0tye1 sa0tye2 =
+  alphaEquivalent sa0tye1 sa0tye2 =
     case (sa0tye1, sa0tye2) of
       (SA0TyPrim a0tyPrim1 maybePred1, SA0TyPrim a0tyPrim2 maybePred2) ->
         -- Exact match
@@ -460,7 +460,7 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
         False
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
-      go = alphaEquivalent eq
+      go = alphaEquivalent
 
 instance (Ord sv) => HasVar sv Type1EquationF where
   frees = \case
@@ -495,7 +495,7 @@ instance (Ord sv) => HasVar sv Type1EquationF where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
-  alphaEquivalent eq ty1eq1 ty1eq2 =
+  alphaEquivalent ty1eq1 ty1eq2 =
     case (ty1eq1, ty1eq2) of
       (TyEq1Prim ty1eqPrim1, TyEq1Prim ty1eqPrim2) ->
         case (ty1eqPrim1, ty1eqPrim2) of
@@ -526,7 +526,7 @@ instance (Ord sv) => HasVar sv Type1EquationF where
         False
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
-      go = alphaEquivalent eq
+      go = alphaEquivalent
 
 newtype Maybe1 af sv = Maybe1 {unMaybe1 :: Maybe (af sv)}
 
@@ -535,9 +535,9 @@ instance (HasVar sv af) => HasVar sv (Maybe1 af) where
 
   subst s = Maybe1 . fmap (subst s) . unMaybe1
 
-  alphaEquivalent _ (Maybe1 Nothing) (Maybe1 Nothing) = True
-  alphaEquivalent eq (Maybe1 (Just v1)) (Maybe1 (Just v2)) = alphaEquivalent eq v1 v2
-  alphaEquivalent _ _ _ = False
+  alphaEquivalent (Maybe1 Nothing) (Maybe1 Nothing) = True
+  alphaEquivalent (Maybe1 (Just v1)) (Maybe1 (Just v2)) = alphaEquivalent v1 v2
+  alphaEquivalent _ _ = False
 
 instance (HasVar sv af) => HasVar sv (ResultF af) where
   frees = \case

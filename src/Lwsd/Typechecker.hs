@@ -139,9 +139,6 @@ askSpanInFile loc = do
 liftEither :: Either (TypeError, trav) a -> M trav a
 liftEither x = M' $ pure x
 
-svWitness :: StaticVar -> StaticVar -> Bool
-svWitness = (==)
-
 findValVar :: trav -> Span -> [Var] -> Var -> TypeEnv -> M trav ValEntry
 findValVar trav loc ms x tyEnv = do
   spanInFile <- askSpanInFile loc
@@ -195,7 +192,7 @@ makeAssertiveCast trav loc =
   where
     go :: Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
     go _varsToInfer a0tye1 a0tye2
-      | alphaEquivalent svWitness a0tye1 a0tye2 =
+      | alphaEquivalent a0tye1 a0tye2 =
           pure (Nothing, Map.empty)
     go varsToInfer a0tye1 a0tye2 = do
       spanInFile <- askSpanInFile loc
@@ -203,7 +200,7 @@ makeAssertiveCast trav loc =
         (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2') -> do
           -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
-                if alphaEquivalent svWitness (Maybe1 maybePred2') (Maybe1 maybePred1)
+                if alphaEquivalent (Maybe1 maybePred2') (Maybe1 maybePred1)
                   then Nothing
                   else maybePred2'
           cast <-
@@ -226,7 +223,7 @@ makeAssertiveCast trav loc =
           (castForElem, solution) <- go varsToInfer a0tye1' a0tye2'
           -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
-                if alphaEquivalent svWitness (Maybe1 maybePred2') (Maybe1 maybePred1)
+                if alphaEquivalent (Maybe1 maybePred2') (Maybe1 maybePred1)
                   then Nothing
                   else maybePred2'
           let castForListByElemPred =
@@ -345,7 +342,7 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
     checkExprArgs varsToInfer (a0e1, a0tye1) a0e2 =
       case a0e2 of
         A0Var x | x `elem` varsToInfer -> (True, a0e1, Map.singleton x (a0e1, a0tye1))
-        _ -> (alphaEquivalent svWitness a0e1 a0e2, a0e2, Map.empty)
+        _ -> (alphaEquivalent a0e1 a0e2, a0e2, Map.empty)
 
     go :: Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> Either () (Bool, Type1Equation, InferenceSolution)
     go varsToInfer a1tye1 a1tye2 =
@@ -387,7 +384,7 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
                       pure (True, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList1), solution)
                 -- General rule:
                 (_, _) -> do
-                  let trivial = alphaEquivalent svWitness a0eList1 a0eList2
+                  let trivial = alphaEquivalent a0eList1 a0eList2
                   pure (trivial, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList2), Map.empty)
             (_, _) ->
               Left ()
