@@ -13,7 +13,6 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
 import Data.Tuple.Extra (first)
 import Lwsd.Evaluator qualified as Evaluator
@@ -86,7 +85,7 @@ typecheckStub sourceSpecOfStub bindsInStub = do
     first (mapLeft fst) $
       Typechecker.run (Typechecker.typecheckBinds () initialTypeEnv bindsInStub) tcConfig tcState
 
-typecheckInput :: SourceSpec -> TypecheckState -> TypeEnv -> Expr -> M (Either TypeError (Result Ass0TypeExpr, Ass0Expr), TypecheckState)
+typecheckInput :: SourceSpec -> TypecheckState -> TypeEnv -> Expr -> M (Either TypeError (ResultF Ass0TypeExprF StaticVar, Ass0Expr), TypecheckState)
 typecheckInput sourceSpecOfInput tcState tyEnvStub e = do
   tcConfig <- makeConfig sourceSpecOfInput
   pure $
@@ -106,10 +105,10 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
       putSectionLine "type error:"
       -- putRenderedLines tyErr -- TODO: display `tyErr` by converting variables
       failure
-    Right (_result, a0eWithoutStub) -> do
+    Right (result, a0eWithoutStub) -> do
       let a0e = makeExprFromBinds abinds a0eWithoutStub
       putSectionLine "type:"
-      -- putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) result) -- TODO: display
+      putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) result)
       putSectionLine "elaborated expression:"
       putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) a0e)
       case Evaluator.run (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of

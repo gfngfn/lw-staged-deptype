@@ -3,7 +3,7 @@ module Lwsd.Syntax
     AssVarF (..),
     Symbol (..),
     symbolToVar,
-    AssLiteral (..),
+    AssLiteralF (..),
     Ass0ExprF (..),
     Ass1ExprF (..),
     a1LetIn,
@@ -78,18 +78,18 @@ newtype Symbol = Symbol Int
 symbolToVar :: Symbol -> AssVarF sv
 symbolToVar (Symbol n) = AssVarDynamic n
 
-data AssLiteral e
+data AssLiteralF af sv
   = ALitInt Int
   | ALitFloat Double
   | ALitBool Bool
   | ALitUnit
-  | ALitList [e]
+  | ALitList [af sv]
   | ALitVec Vector
   | ALitMat Matrix
   deriving stock (Eq, Show, Functor)
 
 data Ass0ExprF sv
-  = A0Literal (AssLiteral (Ass0ExprF sv))
+  = A0Literal (AssLiteralF Ass0ExprF sv)
   | A0BuiltInName BuiltIn
   | A0Var (AssVarF sv)
   | A0Lam (Maybe (AssVarF sv, StrictAss0TypeExprF sv)) (AssVarF sv, StrictAss0TypeExprF sv) (Ass0ExprF sv)
@@ -103,7 +103,7 @@ data Ass0ExprF sv
   deriving stock (Eq, Show, Functor)
 
 data Ass1ExprF sv
-  = A1Literal (AssLiteral (Ass1ExprF sv))
+  = A1Literal (AssLiteralF Ass1ExprF sv)
   | A1Var (AssVarF sv)
   | A1BuiltInName Ass1BuiltIn
   | A1Lam (Maybe (AssVarF sv, Ass1TypeExprF sv)) (AssVarF sv, Ass1TypeExprF sv) (Ass1ExprF sv)
@@ -204,14 +204,14 @@ liftPrimType = \case
   A0TyTensor ns -> A1TyTensor (A0Literal (ALitList (map (A0Literal . ALitInt) ns)))
 
 data Ass0ValF sv
-  = A0ValLiteral (AssLiteral (Ass0ValF sv))
+  = A0ValLiteral (AssLiteralF Ass0ValF sv)
   | A0ValLam (Maybe (AssVarF sv, Ass0TypeValF sv)) (AssVarF sv, Ass0TypeValF sv) (Ass0ExprF sv) EvalEnv
   | A0ValBracket (Ass1ValF sv)
   | A0ValPartialBuiltInApp (Ass0PartialBuiltInApp (Ass0ValF sv))
   deriving stock (Eq, Show, Functor)
 
 data Ass1ValF sv
-  = A1ValLiteral (AssLiteral (Ass1ValF sv))
+  = A1ValLiteral (AssLiteralF Ass1ValF sv)
   | A1ValConst Ass1BuiltIn
   | A1ValVar Symbol
   | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) (Ass1ValF sv)
@@ -271,7 +271,7 @@ data EvalEnvEntry
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
 
-mapAssLiteral :: (e1 -> e2) -> AssLiteral e1 -> AssLiteral e2
+mapAssLiteral :: (e1 sv -> e2 sv) -> AssLiteralF e1 sv -> AssLiteralF e2 sv
 mapAssLiteral f = \case
   ALitInt n -> ALitInt n
   ALitFloat r -> ALitFloat r
@@ -281,7 +281,7 @@ mapAssLiteral f = \case
   ALitVec vec -> ALitVec vec
   ALitMat mat -> ALitMat mat
 
-mapMAssLiteral :: (Monad m) => (e -> m v) -> AssLiteral e -> m (AssLiteral v)
+mapMAssLiteral :: (Monad m) => (e sv -> m (v sv)) -> AssLiteralF e sv -> m (AssLiteralF v sv)
 mapMAssLiteral eval = \case
   ALitInt n -> pure $ ALitInt n
   ALitFloat r -> pure $ ALitFloat r
@@ -344,13 +344,13 @@ data AppContextEntryF sv
   | AppArgOptOmitted0
   deriving (Eq, Show, Functor)
 
-data ResultF a sv
-  = Pure a
-  | Cast0 (Maybe (Ass0ExprF sv)) (Ass0TypeExprF sv) (ResultF a sv)
-  | Cast1 (Maybe (Ass0ExprF sv)) (Ass1TypeExprF sv) (ResultF a sv)
-  | CastGiven0 (Maybe (Ass0ExprF sv)) (Ass0TypeExprF sv) (ResultF a sv)
-  | FillInferred0 (Ass0ExprF sv) (ResultF a sv)
-  | InsertInferred0 (Ass0ExprF sv) (ResultF a sv)
+data ResultF af sv
+  = Pure (af sv)
+  | Cast0 (Maybe (Ass0ExprF sv)) (Ass0TypeExprF sv) (ResultF af sv)
+  | Cast1 (Maybe (Ass0ExprF sv)) (Ass1TypeExprF sv) (ResultF af sv)
+  | CastGiven0 (Maybe (Ass0ExprF sv)) (Ass0TypeExprF sv) (ResultF af sv)
+  | FillInferred0 (Ass0ExprF sv) (ResultF af sv)
+  | InsertInferred0 (Ass0ExprF sv) (ResultF af sv)
   deriving (Eq, Show, Functor)
 
 type AssVar = AssVarF StaticVar
@@ -379,4 +379,4 @@ type Ass0TypeVal = Ass0TypeValF StaticVar
 
 type AppContext = AppContextF StaticVar
 
-type Result a = ResultF a StaticVar
+type Result af = ResultF af StaticVar

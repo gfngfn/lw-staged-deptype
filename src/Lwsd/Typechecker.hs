@@ -203,7 +203,7 @@ makeAssertiveCast trav loc =
         (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2') -> do
           -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
-                if alphaEquivalent svWitness maybePred2' maybePred1
+                if alphaEquivalent svWitness (Maybe1 maybePred2') (Maybe1 maybePred1)
                   then Nothing
                   else maybePred2'
           cast <-
@@ -226,7 +226,7 @@ makeAssertiveCast trav loc =
           (castForElem, solution) <- go varsToInfer a0tye1' a0tye2'
           -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
-                if alphaEquivalent svWitness maybePred2' maybePred1
+                if alphaEquivalent svWitness (Maybe1 maybePred2') (Maybe1 maybePred1)
                   then Nothing
                   else maybePred2'
           let castForListByElemPred =
@@ -487,7 +487,7 @@ mergeTypesByConditional1 trav distributeIfUnderTensorShape a0e0 = go1
 
     a0branch = A0IfThenElse a0e0
 
-mergeResultsByConditional0 :: forall trav. trav -> Span -> Ass0Expr -> Result Ass0TypeExpr -> Result Ass0TypeExpr -> M trav (Result Ass0TypeExpr)
+mergeResultsByConditional0 :: forall trav. trav -> Span -> Ass0Expr -> ResultF Ass0TypeExprF StaticVar -> ResultF Ass0TypeExprF StaticVar -> M trav (ResultF Ass0TypeExprF StaticVar)
 mergeResultsByConditional0 trav loc a0e0 = go
   where
     go result1 result2 =
@@ -546,16 +546,16 @@ mergeResultsByConditional0 trav loc a0e0 = go
 
 type InferenceSolution = Map AssVar (Ass0Expr, Ass0TypeExpr)
 
-applySolution :: forall a. (HasVar StaticVar a) => InferenceSolution -> a -> a
+applySolution :: forall af. (HasVar StaticVar af) => InferenceSolution -> af StaticVar -> af StaticVar
 applySolution solution entity =
   Map.foldrWithKey (flip subst0) entity (Map.map fst solution)
 
-instantiateGuidedByAppContext0 :: forall trav. trav -> Span -> AppContext -> Ass0TypeExpr -> M trav (Result Ass0TypeExpr)
+instantiateGuidedByAppContext0 :: forall trav. trav -> Span -> AppContext -> Ass0TypeExpr -> M trav (ResultF Ass0TypeExprF StaticVar)
 instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
   (result, _isubstRet) <- go Set.empty appCtx0 a0tye0
   pure result
   where
-    go :: Set AssVar -> AppContext -> Ass0TypeExpr -> M trav (Result Ass0TypeExpr, InferenceSolution)
+    go :: Set AssVar -> AppContext -> Ass0TypeExpr -> M trav (ResultF Ass0TypeExprF StaticVar, InferenceSolution)
     go varsToInfer appCtx a0tye =
       case (appCtx, a0tye) of
         ([], _) ->
@@ -613,10 +613,10 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye
 
-instantiateGuidedByAppContext1 :: forall trav. trav -> Span -> Set AssVar -> AppContext -> Ass1TypeExpr -> M trav (Result Ass1TypeExpr, InferenceSolution)
+instantiateGuidedByAppContext1 :: forall trav. trav -> Span -> Set AssVar -> AppContext -> Ass1TypeExpr -> M trav (ResultF Ass1TypeExprF StaticVar, InferenceSolution)
 instantiateGuidedByAppContext1 trav loc = go
   where
-    go :: Set AssVar -> AppContext -> Ass1TypeExpr -> M trav (Result Ass1TypeExpr, InferenceSolution)
+    go :: Set AssVar -> AppContext -> Ass1TypeExpr -> M trav (ResultF Ass1TypeExprF StaticVar, InferenceSolution)
     go varsToInfer appCtx a1tye =
       case (appCtx, a1tye) of
         ([], _) ->
@@ -631,11 +631,11 @@ instantiateGuidedByAppContext1 trav loc = go
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext1 spanInFile appCtx a1tye
 
-validateEmptyRetAppContext :: String -> Result a -> M trav a
+validateEmptyRetAppContext :: String -> ResultF af StaticVar -> M trav (af StaticVar)
 validateEmptyRetAppContext _ (Pure v) = pure v
 validateEmptyRetAppContext msg _ = bug $ "non-empty RetAppContext; " ++ msg
 
-typecheckExpr0 :: trav -> TypeEnv -> AppContext -> Expr -> M trav (Result Ass0TypeExpr, Ass0Expr)
+typecheckExpr0 :: trav -> TypeEnv -> AppContext -> Expr -> M trav (ResultF Ass0TypeExprF StaticVar, Ass0Expr)
 typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
   spanInFile <- askSpanInFile loc
   completeInferredOptional
@@ -924,7 +924,7 @@ typecheckLetInBody0 trav tyEnv params e1 =
       let ax = AssVarStatic svX
       pure (A0TyOptArrow (ax, a0tye) a0tye', A0Lam Nothing (ax, strictify a0tye) a0e')
 
-typecheckExpr1 :: trav -> TypeEnv -> AppContext -> Expr -> M trav (Result Ass1TypeExpr, Ass1Expr)
+typecheckExpr1 :: trav -> TypeEnv -> AppContext -> Expr -> M trav (ResultF Ass1TypeExprF StaticVar, Ass1Expr)
 typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
   spanInFile <- askSpanInFile loc
   case eMain of
@@ -1162,7 +1162,7 @@ typecheckLetInBody1 trav tyEnv params e1 =
       spanInFile <- askSpanInFile loc
       typeError trav $ CannotUseLamOptAtStage1 spanInFile
 
-mapMPure :: (a -> M trav b) -> Result a -> M trav (Result b)
+mapMPure :: (af StaticVar -> M trav (bf StaticVar)) -> ResultF af StaticVar -> M trav (ResultF bf StaticVar)
 mapMPure f = go
   where
     go (Pure v) = Pure <$> f v

@@ -408,7 +408,7 @@ instance Disp Surface.ArgForType where
     Surface.ExprArg e -> dispGen req e
     Surface.TypeArg tye -> dispGen req tye
 
-instance (Disp e) => Disp (AssLiteral e) where
+instance (Disp sv, Disp (af sv)) => Disp (AssLiteralF af sv) where
   dispGen _ = \case
     ALitInt n -> pretty n
     ALitFloat r -> pretty r
@@ -667,7 +667,7 @@ instance (Disp sv) => Disp (AppContextEntryF sv) where
     AppArgOptGiven0 a0e a0tye -> "{" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye) <> "}"
     AppArgOptOmitted0 -> "_"
 
-instance (Disp a, Disp sv) => Disp (ResultF a sv) where
+instance (Disp sv, Disp (af sv)) => Disp (ResultF af sv) where
   dispGen _ = \case
     Pure v -> disp v -- TODO (enhance): add `stage0Style` etc.
     Cast0 _ a0tye r -> "cast0 :" <+> stage0Style (disp a0tye) <> ";" <+> disp r

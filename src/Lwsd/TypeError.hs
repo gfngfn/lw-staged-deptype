@@ -40,12 +40,12 @@ data TypeErrorF sv
   | CannotUseRefinementTypeAtStage1 SpanInFile
   | CannotUsePersistentArgAtStage0 SpanInFile
   | CannotUseNormalArgAtStage1 SpanInFile
-  | VarOccursFreelyInAss0Type SpanInFile Var (ResultF (Ass0TypeExprF sv) sv)
-  | VarOccursFreelyInAss1Type SpanInFile Var (ResultF (Ass1TypeExprF sv) sv)
+  | VarOccursFreelyInAss0Type SpanInFile Var (ResultF Ass0TypeExprF sv)
+  | VarOccursFreelyInAss1Type SpanInFile Var (ResultF Ass1TypeExprF sv)
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
   | CannotMergeTypesByConditional0 SpanInFile (Ass0TypeExprF sv) (Ass0TypeExprF sv) (ConditionalMergeErrorF sv)
   | CannotMergeTypesByConditional1 SpanInFile (Ass1TypeExprF sv) (Ass1TypeExprF sv) (ConditionalMergeErrorF sv)
-  | CannotMergeResultsByConditionals SpanInFile (ResultF (Ass0TypeExprF sv) sv) (ResultF (Ass0TypeExprF sv) sv)
+  | CannotMergeResultsByConditionals SpanInFile (ResultF Ass0TypeExprF sv) (ResultF Ass0TypeExprF sv)
   | CannotApplyLiteral SpanInFile
   | CannotInstantiateGuidedByAppContext0 SpanInFile (AppContextF sv) (Ass0TypeExprF sv)
   | CannotInstantiateGuidedByAppContext1 SpanInFile (AppContextF sv) (Ass1TypeExprF sv)
@@ -56,7 +56,7 @@ data TypeErrorF sv
   | InvalidPersistentType SpanInFile (Ass0TypeExprF sv)
   | InvalidTypeForRefinement SpanInFile (Ass0TypeExprF sv)
   | NoBuiltInNameInExternal SpanInFile
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
 data ConditionalMergeErrorF sv
   = CannotMerge0 (Ass0TypeExprF sv) (Ass0TypeExprF sv)
