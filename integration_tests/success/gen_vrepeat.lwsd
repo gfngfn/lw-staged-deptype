@@ -1,11 +1,9 @@
-let aux = rec(self : (q : Nat) -> {p : Nat} -> &(Vec %p) -> &(Vec %(p * q))) ->
-  fun(m : Nat) -> fun{n : Nat} -> fun(e : &(Vec %n)) ->
-    if m <= 0 then
-      &[| |]
-    else
-      &(~gen_vconcat ~e ~(self (m - 1) e))
+let rec aux (m : Nat) {n : Nat} (e : &(Vec %n)) : &(Vec %(n * m)) =
+  if m <= 0 then
+    &[| |]
+  else
+    &(~gen_vconcat ~e ~(aux (m - 1) e))
 in
-let gen_vrepeat =
-  fun(m : Nat) -> fun{n : Nat} -> &(fun(v : Vec %n) -> ~(aux m &v))
+let gen_vrepeat (m : Nat) {n : Nat} = &(fun(v : Vec %n) -> ~(aux m &v))
 in
 &(~(gen_vrepeat 5) [| 4; 6; 9 |])
