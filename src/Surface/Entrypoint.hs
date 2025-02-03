@@ -14,6 +14,7 @@ import Lwsd.Formatter qualified as Formatter
 import Lwsd.Parser qualified as LwsdParser
 import Lwsd.Scope.SigRecord (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), ModuleEntry (..), SigRecord, ValEntry (..))
 import Lwsd.Scope.SigRecord qualified as SigRecord
+import Lwsd.Typechecker (TypecheckState (..))
 import Surface.BindingTime qualified as BindingTime
 import Surface.BindingTime.Core
 import Surface.Parser qualified as Parser
@@ -98,11 +99,12 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
               { LocationInFile.source = stub,
                 LocationInFile.inputFilePath = stubFilePath
               }
-      (r, stateAfterTraversingStub) <- runReaderT (Lwsd.Entrypoint.typecheckStub sourceSpecOfStub declsInStub) lwArg
+      (r, stateAfterTraversingStub@TypecheckState {assVarDisplay}) <-
+        runReaderT (Lwsd.Entrypoint.typecheckStub sourceSpecOfStub declsInStub) lwArg
       case r of
-        Left _tyErr -> do
+        Left tyErr -> do
           putSectionLine "type error of stub:"
-          -- putRenderedLines tyErr -- TODO:
+          putRenderedLines (fmap (Lwsd.Entrypoint.showVar assVarDisplay) tyErr)
           failure
         Right (tyEnvStub, sigr, abinds) -> do
           let initialBindingTimeEnv = makeBindingTimeEnvFromStub sigr

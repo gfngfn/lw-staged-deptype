@@ -1,5 +1,6 @@
 module Lwsd.Entrypoint
   ( Argument (..),
+    showVar,
     typecheckStub,
     typecheckAndEvalInput,
     handle,
@@ -147,11 +148,11 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
 
 typecheckAndEval :: SourceSpec -> [Bind] -> SourceSpec -> Expr -> M Bool
 typecheckAndEval sourceSpecOfStub bindsInStub sourceSpecOfInput e = do
-  (r, tcState@TypecheckState {assVarDisplay = _}) <- typecheckStub sourceSpecOfStub bindsInStub
+  (r, tcState@TypecheckState {assVarDisplay}) <- typecheckStub sourceSpecOfStub bindsInStub
   case r of
-    Left _tyErr -> do
+    Left tyErr -> do
       putSectionLine "type error by stub"
-      -- putRenderedLines tyErr -- TODO: display `tyErr` by converting variables
+      putRenderedLines (fmap (showVar assVarDisplay) tyErr)
       failure
     Right (tyEnvStub, _sigr, abinds) -> do
       typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e
