@@ -52,7 +52,8 @@ module Lwsd.Syntax
     Ass0TypeVal,
     Ass1PrimType,
     AppContext,
-    Result,
+    Result0,
+    Result1,
   )
 where
 
@@ -379,4 +380,6 @@ type Ass0TypeVal = Ass0TypeValF StaticVar
 
 type AppContext = AppContextF StaticVar
 
-type Result af = ResultF af StaticVar
+type Result0 = ResultF Ass0TypeExprF StaticVar
+
+type Result1 = ResultF Ass1TypeExprF StaticVar
