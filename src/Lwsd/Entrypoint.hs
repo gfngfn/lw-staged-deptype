@@ -101,9 +101,9 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
   let initialEvalState = Evaluator.initialState sourceSpecOfInput
   (r, TypecheckState {assVarDisplay}) <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
   case r of
-    Left _tyErr -> do
+    Left tyErr -> do
       putSectionLine "type error:"
-      -- putRenderedLines tyErr -- TODO: display `tyErr` by converting variables
+      putRenderedLines (fmap (showVar assVarDisplay) tyErr)
       failure
     Right (result, a0eWithoutStub) -> do
       let a0e = makeExprFromBinds abinds a0eWithoutStub
