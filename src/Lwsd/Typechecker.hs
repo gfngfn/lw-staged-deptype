@@ -61,45 +61,34 @@ newtype M' err trav a = M'
   { impl :: StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) a)
   }
 
+fmapImpl :: (a -> b) -> StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) a) -> StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) b)
+fmapImpl vf sx =
+  sx >>= \case
+    Left e -> lift $ pure $ Left e
+    Right vx -> pure $ Right (vf vx)
+
 instance Functor (M' err trav) where
   fmap :: (a -> b) -> M' err trav a -> M' err trav b
-  fmap vf (M' sx) =
-    M' $ do
-      x <- sx
-      case x of
-        Left e ->
-          lift (pure (Left e))
-        Right vx ->
-          pure $ Right (vf vx)
+  fmap vf (M' sx) = M' $ fmapImpl vf sx
 
 instance Applicative (M' err trav) where
   pure :: a -> M' err trav a
-  pure v =
-    M' $ pure $ Right v
+  pure v = M' $ pure $ Right v
 
   (<*>) :: M' err trav (a -> b) -> M' err trav a -> M' err trav b
   (M' sf) <*> (M' sx) =
-    M' $ do
-      f <- sf
-      x <- sx
-      case f of
-        Left e ->
-          lift (pure (Left e))
-        Right vf ->
-          case x of
-            Left e ->
-              lift (pure (Left e))
-            Right vx ->
-              pure $ Right (vf vx)
+    M' $
+      sf >>= \case
+        Left e -> lift $ pure $ Left e
+        Right vf -> fmapImpl vf sx
 
 instance Monad (M' err trav) where
   (>>=) :: forall a b. M' err trav a -> (a -> M' err trav b) -> M' err trav b
-  (M' {impl}) >>= f =
-    M' $ do
-      x :: Either (err, trav) a <- impl
-      case x of
-        Left e -> lift (pure (Left e))
-        Right v -> let M' {impl = impl'} = f v in impl'
+  (M' sx) >>= f =
+    M' $
+      sx >>= \case
+        Left e -> lift $ pure $ Left e
+        Right v -> let M' s' = f v in s'
 
 type M trav a = M' TypeError trav a
 
