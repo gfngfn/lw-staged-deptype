@@ -21,8 +21,8 @@ data BugF sv
   | NotAMatrix (Ass0ValF sv)
   | NotABoolean (Ass0ValF sv)
   | NotAUnit (Ass0ValF sv)
-  | FoundSymbol AssVar Symbol
-  | FoundAss0Val AssVar (Ass0ValF sv)
+  | FoundSymbol (AssVarF sv) Symbol
+  | FoundAss0Val (AssVarF sv) (Ass0ValF sv)
   | InconsistentAppBuiltInArity1 BuiltInArity1 (Ass0ValF sv)
   | InconsistentAppBuiltInArity2 BuiltInArity2 (Ass0ValF sv) (Ass0ValF sv)
   | BroadcastFailed [Int] [Int]

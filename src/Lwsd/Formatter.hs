@@ -803,8 +803,8 @@ instance Disp SpanInFile where
 
 instance (Disp sv) => Disp (BugF sv) where
   dispGen _ = \case
-    UnboundVarFound _x ->
-      "Unbound variable" -- TODO: show `x`
+    UnboundVarFound x ->
+      "Unbound variable" <+> disp x
     NotAClosure a0v ->
       "Not a closure:" <+> disp a0v
     NotACodeValue a0v ->
@@ -821,10 +821,10 @@ instance (Disp sv) => Disp (BugF sv) where
       "Not a Boolean:" <+> disp a0v
     NotAUnit a0v ->
       "Not a unit:" <+> disp a0v
-    FoundSymbol _x _symb ->
-      "Expected a stage-0 value, but found a symbol" -- TODO: show `x` and `symb`
-    FoundAss0Val _x a0v ->
-      "Expected a symbol, but found a stage-0 value:" <+> disp a0v -- TODO: show `x`
+    FoundSymbol x symb ->
+      "Expected a stage-0 value, but found a symbol:" <+> disp symb <+> "(bound to:" <+> disp x <> ")"
+    FoundAss0Val x a0v ->
+      "Expected a symbol, but found a stage-0 value:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     InconsistentAppBuiltInArity1 bi1 a0v1 ->
       "Inconsistent application of a built-in function:"
         <+> disp (Text.pack (show bi1))
