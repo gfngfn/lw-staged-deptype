@@ -57,21 +57,79 @@ data TypecheckState = TypecheckState
     assVarDisplay :: Map StaticVar Text
   }
 
-type M' err trav a = StateT TypecheckState (ReaderT TypecheckConfig (Either (err, trav))) a
+newtype M' err trav a = M'
+  { impl :: StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) a)
+  }
+
+instance Functor (M' err trav) where
+  fmap :: (a -> b) -> M' err trav a -> M' err trav b
+  fmap vf (M' sx) =
+    M' $ do
+    x <- sx
+    case x of
+      Left e ->
+        lift (pure (Left e))
+      Right vx ->
+        pure $ Right (vf vx)
+
+instance Applicative (M' err trav) where
+  pure :: a -> M' err trav a
+  pure v =
+    M' $ pure $ Right v
+
+  (<*>) :: M' err trav (a -> b) -> M' err trav a -> M' err trav b
+  (M' sf) <*> (M' sx) =
+    M' $ do
+      f <- sf
+      x <- sx
+      case f of
+        Left e ->
+          lift (pure (Left e))
+        Right vf ->
+          case x of
+            Left e ->
+              lift (pure (Left e))
+            Right vx ->
+              pure $ Right (vf vx)
+
+instance Monad (M' err trav) where
+  (>>=) :: forall a b. M' err trav a -> (a -> M' err trav b) -> M' err trav b
+  (M' {impl}) >>= f =
+    M' $ do
+      x :: Either (err, trav) a <- impl
+      case x of
+        Left e -> lift (pure (Left e))
+        Right v -> let M' {impl = impl'} = f v in impl'
 
 type M trav a = M' TypeError trav a
 
+getState :: M' err trav TypecheckState
+getState =
+  M' $ do
+    tcState <- get
+    pure $ Right tcState
+
+putState :: TypecheckState -> M' err trav ()
+putState tcState =
+  M' $ do
+    () <- put tcState
+    pure $ Right ()
+
+askConfig :: M trav TypecheckConfig
+askConfig =
+  M' $
+    lift $ do
+      tcConfig <- ask
+      pure $ Right tcConfig
+
 typeError :: trav -> err -> M' err trav a
-typeError trav e = lift $ lift $ Left (e, trav)
+typeError trav e = M' $ lift $ pure $ Left (e, trav)
 
 mapTypeError :: (err1 -> err2) -> M' err1 trav a -> M' err2 trav a
-mapTypeError f = mapStateT (mapReaderT (mapLeft (first f)))
+mapTypeError f M' {impl} = M' $ mapStateT (mapReader (first (mapLeft (first f)))) impl
 
 bug :: String -> a
 bug msg = error $ "bug: " ++ msg
-
-askConfig :: M trav TypecheckConfig
-askConfig = lift ask
 
 askSpanInFile :: Span -> M trav SpanInFile
 askSpanInFile loc = do
@@ -79,12 +137,15 @@ askSpanInFile loc = do
   pure $ getSpanInFile sourceSpec loc
 
 liftEither :: Either (TypeError, trav) a -> M trav a
-liftEither = lift . lift
+liftEither x = M' $ pure x
+
+svWitness :: StaticVar -> StaticVar -> Bool
+svWitness = (==)
 
 findValVar :: trav -> Span -> [Var] -> Var -> TypeEnv -> M trav ValEntry
 findValVar trav loc ms x tyEnv = do
   spanInFile <- askSpanInFile loc
-  lift $ lift $ maybeToEither (UnboundVar spanInFile ms x, trav) $ do
+  liftEither $ maybeToEither (UnboundVar spanInFile ms x, trav) $ do
     case ms of
       [] ->
         TypeEnv.findVal x tyEnv
@@ -101,10 +162,10 @@ findValVar trav loc ms x tyEnv = do
 
 generateFreshVar :: Maybe Text -> M' err trav StaticVar
 generateFreshVar maybeName = do
-  currentState@TypecheckState {nextVarIndex = n, assVarDisplay} <- get
+  currentState@TypecheckState {nextVarIndex = n, assVarDisplay} <- getState
   let t = fromMaybe (Text.pack ("#X" ++ show n)) maybeName
   let sv = StaticVar n
-  put $ currentState {nextVarIndex = n + 1, assVarDisplay = Map.insert sv t assVarDisplay}
+  putState $ currentState {nextVarIndex = n + 1, assVarDisplay = Map.insert sv t assVarDisplay}
   pure sv
 
 makeIdentityLam :: Ass0TypeExpr -> M trav Ass0Expr
@@ -134,7 +195,7 @@ makeAssertiveCast trav loc =
   where
     go :: Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
     go _varsToInfer a0tye1 a0tye2
-      | alphaEquivalent a0tye1 a0tye2 =
+      | alphaEquivalent svWitness a0tye1 a0tye2 =
           pure (Nothing, Map.empty)
     go varsToInfer a0tye1 a0tye2 = do
       spanInFile <- askSpanInFile loc
@@ -142,7 +203,7 @@ makeAssertiveCast trav loc =
         (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2') -> do
           -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
-                if alphaEquivalent maybePred2' maybePred1
+                if alphaEquivalent svWitness maybePred2' maybePred1
                   then Nothing
                   else maybePred2'
           cast <-
@@ -165,7 +226,7 @@ makeAssertiveCast trav loc =
           (castForElem, solution) <- go varsToInfer a0tye1' a0tye2'
           -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
-                if alphaEquivalent maybePred2' maybePred1
+                if alphaEquivalent svWitness maybePred2' maybePred1
                   then Nothing
                   else maybePred2'
           let castForListByElemPred =
@@ -284,7 +345,7 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
     checkExprArgs varsToInfer (a0e1, a0tye1) a0e2 =
       case a0e2 of
         A0Var x | x `elem` varsToInfer -> (True, a0e1, Map.singleton x (a0e1, a0tye1))
-        _ -> (alphaEquivalent a0e1 a0e2, a0e2, Map.empty)
+        _ -> (alphaEquivalent svWitness a0e1 a0e2, a0e2, Map.empty)
 
     go :: Set AssVar -> Ass1TypeExpr -> Ass1TypeExpr -> Either () (Bool, Type1Equation, InferenceSolution)
     go varsToInfer a1tye1 a1tye2 =
@@ -326,7 +387,7 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
                       pure (True, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList1), solution)
                 -- General rule:
                 (_, _) -> do
-                  let trivial = alphaEquivalent a0eList1 a0eList2
+                  let trivial = alphaEquivalent svWitness a0eList1 a0eList2
                   pure (trivial, TyEq1Prim (TyEq1TensorByWhole a0eList1 a0eList2), Map.empty)
             (_, _) ->
               Left ()
@@ -485,7 +546,7 @@ mergeResultsByConditional0 trav loc a0e0 = go
 
 type InferenceSolution = Map AssVar (Ass0Expr, Ass0TypeExpr)
 
-applySolution :: forall a. (HasVar a) => InferenceSolution -> a -> a
+applySolution :: forall a. (HasVar StaticVar a) => InferenceSolution -> a -> a
 applySolution solution entity =
   Map.foldrWithKey (flip subst0) entity (Map.map fst solution)
 
@@ -1426,4 +1487,9 @@ typecheckBinds trav tyEnv =
     (tyEnv, SigRecord.empty, [])
 
 run :: M trav a -> TypecheckConfig -> TypecheckState -> (Either (TypeError, trav) a, TypecheckState)
-run checker config st = runReaderT (runStateT checker st) config
+run (M' checker) config st = runReader (runStateT checker st) config
+
+-- runStateT :: StateT s m b -> s -> m (b, s)
+-- s = TypecheckState
+-- m = Reader TypecheckConfig
+-- b = Either (TypeError, trav) a

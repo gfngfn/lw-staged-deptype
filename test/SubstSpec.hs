@@ -1,6 +1,8 @@
 module SubstSpec (spec) where
 
+import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Lwsd.Subst
 import Lwsd.Syntax
 import SyntaxUtil
@@ -33,15 +35,21 @@ spec = do
         `shouldBe` (set ["y"], set ["f"])
   describe "alphaEquivalent" $ do
     it "judges alpha-equivalence of functions (1)" $
-      alphaEquivalent
+      alphaEquivalent svWitness
         (a0nonrecLam "foo" sa0tyInt (a0var "foo"))
         (a0nonrecLam "bar" sa0tyInt (a0var "bar"))
         `shouldBe` True
     it "judges alpha-equivalence of functions (2)" $
-      alphaEquivalent
+      alphaEquivalent svWitness
         (a0nonrecLam "foo" sa0tyInt (a0var "bar"))
         (a0nonrecLam "bar" sa0tyInt (a0var "bar"))
         `shouldBe` False
   where
-    v = AssVar
-    set = Set.fromList . map AssVar
+    svWitness :: Text -> Text -> Bool
+    svWitness = (==)
+
+    v :: Text -> AssVarF Text
+    v = AssVarStatic
+
+    set :: [Text] -> Set (AssVarF Text)
+    set = Set.fromList . map AssVarStatic

@@ -61,7 +61,7 @@ data TypeErrorF sv
 data ConditionalMergeErrorF sv
   = CannotMerge0 (Ass0TypeExprF sv) (Ass0TypeExprF sv)
   | CannotMerge1 (Ass1TypeExprF sv) (Ass1TypeExprF sv)
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
 type TypeError = TypeErrorF StaticVar
 

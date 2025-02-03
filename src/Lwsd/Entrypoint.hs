@@ -92,45 +92,45 @@ typecheckInput sourceSpecOfInput tcState tyEnvStub e = do
 typecheckAndEvalInput :: TypecheckState -> SourceSpec -> TypeEnv -> [AssBind] -> Expr -> M Bool
 typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
   let initialEvalState = Evaluator.initialState sourceSpecOfInput
-  (r, TypecheckState {assVarDisplay}) <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
+  (r, TypecheckState {assVarDisplay = _}) <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
   case r of
-    Left tyErr -> do
+    Left _tyErr -> do
       putSectionLine "type error:"
-      putRenderedLines tyErr
+      -- putRenderedLines tyErr -- TODO: display `tyErr` by converting variables
       failure
-    Right (result, a0eWithoutStub) -> do
+    Right (_result, a0eWithoutStub) -> do
       let a0e = makeExprFromBinds abinds a0eWithoutStub
       putSectionLine "type:"
-      putRenderedLinesAtStage0 result
+      -- putRenderedLinesAtStage0 result -- TODO: display
       putSectionLine "elaborated expression:"
-      putRenderedLinesAtStage0 a0e
+      -- putRenderedLinesAtStage0 a0e -- TODO: display
       case Evaluator.run (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of
-        Left err -> do
+        Left _err -> do
           putSectionLine "error during compile-time code generation:"
-          putRenderedLines err
+          -- putRenderedLines err -- TODO: display
           failure
         Right a0v -> do
           Argument {compileTimeOnly} <- ask
           case a0v of
             A0ValBracket a1v -> do
               putSectionLine "generated code:"
-              putRenderedLinesAtStage1 a1v
+              -- putRenderedLinesAtStage1 a1v -- TODO:
               let a0eRuntime = Evaluator.unliftVal a1v
               if compileTimeOnly
                 then success
                 else case Evaluator.run (Evaluator.evalExpr0 initialEnv a0eRuntime) initialEvalState of
-                  Left err -> do
+                  Left _err -> do
                     putSectionLine "eval error:"
-                    putRenderedLines err
+                    -- putRenderedLines err -- TODO:
                     failure
-                  Right a0vRuntime -> do
+                  Right _a0vRuntime -> do
                     putSectionLine "result of runtime evaluation:"
-                    putRenderedLinesAtStage0 a0vRuntime
+                    -- putRenderedLinesAtStage0 a0vRuntime -- TODO:
                     success
             _ -> do
               putSectionLine "stage-0 result:"
               lift $ putStrLn "(The stage-0 result was not a code value)"
-              putRenderedLinesAtStage0 a0v
+              -- putRenderedLinesAtStage0 a0v -- TODO:
               if compileTimeOnly
                 then success
                 else failure
@@ -140,13 +140,13 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
 
 typecheckAndEval :: SourceSpec -> [Bind] -> SourceSpec -> Expr -> M Bool
 typecheckAndEval sourceSpecOfStub bindsInStub sourceSpecOfInput e = do
-  r <- typecheckStub sourceSpecOfStub bindsInStub
+  (r, tcState@TypecheckState{assVarDisplay = _}) <- typecheckStub sourceSpecOfStub bindsInStub
   case r of
-    Left tyErr -> do
+    Left _tyErr -> do
       putSectionLine "type error by stub"
-      putRenderedLines tyErr
+      -- putRenderedLines tyErr -- TODO: display `tyErr` by converting variables
       failure
-    Right ((tyEnvStub, _sigr, abinds), tcState) -> do
+    Right (tyEnvStub, _sigr, abinds) -> do
       typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e
 
 handle' :: M Bool
