@@ -60,14 +60,14 @@ data BuiltInArity3
   | BITensorGenMm
   deriving stock (Eq, Show)
 
-data Ass0PartialBuiltInApp v
+data Ass0PartialBuiltInApp val
   = A0PartialBuiltInApp1With0 BuiltInArity1
   | A0PartialBuiltInApp2With0 BuiltInArity2
-  | A0PartialBuiltInApp2With1 BuiltInArity2 v
+  | A0PartialBuiltInApp2With1 BuiltInArity2 val
   | A0PartialBuiltInApp3With0 BuiltInArity3
-  | A0PartialBuiltInApp3With1 BuiltInArity3 v
-  | A0PartialBuiltInApp3With2 BuiltInArity3 v v
-  deriving stock (Eq, Show)
+  | A0PartialBuiltInApp3With1 BuiltInArity3 val
+  | A0PartialBuiltInApp3With2 BuiltInArity3 val val
+  deriving stock (Eq, Show, Functor)
 
 data Ass1BuiltIn
   = A1BIVadd Int

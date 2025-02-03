@@ -26,12 +26,13 @@ data BugF sv
   | InconsistentAppBuiltInArity1 BuiltInArity1 (Ass0ValF sv)
   | InconsistentAppBuiltInArity2 BuiltInArity2 (Ass0ValF sv) (Ass0ValF sv)
   | BroadcastFailed [Int] [Int]
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
 data EvalErrorF sv
   = Bug (BugF sv)
   | AssertionFailure SpanInFile Ass1TypeVal Ass1TypeVal
   | RefinementAssertionFailure SpanInFile (Ass0ValF sv)
+  deriving stock (Eq, Show, Functor)
 
 type Bug = BugF StaticVar
 

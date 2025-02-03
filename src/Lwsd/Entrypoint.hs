@@ -9,7 +9,11 @@ where
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Data.Either.Extra (mapLeft)
+import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.IO qualified as TextIO
 import Data.Tuple.Extra (first)
 import Lwsd.Evaluator qualified as Evaluator
@@ -89,10 +93,14 @@ typecheckInput sourceSpecOfInput tcState tyEnvStub e = do
     first (mapLeft fst) $
       Typechecker.run (Typechecker.typecheckExpr0 () tyEnvStub [] e) tcConfig tcState
 
+showVar :: Map StaticVar Text -> StaticVar -> Text
+showVar assVarDisplay sv =
+  fromMaybe "<!!UNKNOWN-VAR!!>" (Map.lookup sv assVarDisplay)
+
 typecheckAndEvalInput :: TypecheckState -> SourceSpec -> TypeEnv -> [AssBind] -> Expr -> M Bool
 typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
   let initialEvalState = Evaluator.initialState sourceSpecOfInput
-  (r, TypecheckState {assVarDisplay = _}) <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
+  (r, TypecheckState {assVarDisplay}) <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
   case r of
     Left _tyErr -> do
       putSectionLine "type error:"
@@ -101,36 +109,36 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
     Right (_result, a0eWithoutStub) -> do
       let a0e = makeExprFromBinds abinds a0eWithoutStub
       putSectionLine "type:"
-      -- putRenderedLinesAtStage0 result -- TODO: display
+      -- putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) result) -- TODO: display
       putSectionLine "elaborated expression:"
-      -- putRenderedLinesAtStage0 a0e -- TODO: display
+      putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) a0e)
       case Evaluator.run (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of
-        Left _err -> do
+        Left err -> do
           putSectionLine "error during compile-time code generation:"
-          -- putRenderedLines err -- TODO: display
+          putRenderedLines (fmap (showVar assVarDisplay) err)
           failure
         Right a0v -> do
           Argument {compileTimeOnly} <- ask
           case a0v of
             A0ValBracket a1v -> do
               putSectionLine "generated code:"
-              -- putRenderedLinesAtStage1 a1v -- TODO:
+              putRenderedLinesAtStage1 (fmap (showVar assVarDisplay) a1v)
               let a0eRuntime = Evaluator.unliftVal a1v
               if compileTimeOnly
                 then success
                 else case Evaluator.run (Evaluator.evalExpr0 initialEnv a0eRuntime) initialEvalState of
-                  Left _err -> do
+                  Left err -> do
                     putSectionLine "eval error:"
-                    -- putRenderedLines err -- TODO:
+                    putRenderedLines (fmap (showVar assVarDisplay) err)
                     failure
-                  Right _a0vRuntime -> do
+                  Right a0vRuntime -> do
                     putSectionLine "result of runtime evaluation:"
-                    -- putRenderedLinesAtStage0 a0vRuntime -- TODO:
+                    putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) a0vRuntime)
                     success
             _ -> do
               putSectionLine "stage-0 result:"
               lift $ putStrLn "(The stage-0 result was not a code value)"
-              -- putRenderedLinesAtStage0 a0v -- TODO:
+              putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) a0v)
               if compileTimeOnly
                 then success
                 else failure

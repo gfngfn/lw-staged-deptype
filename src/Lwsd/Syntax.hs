@@ -208,7 +208,7 @@ data Ass0ValF sv
   | A0ValLam (Maybe (AssVarF sv, Ass0TypeValF sv)) (AssVarF sv, Ass0TypeValF sv) (Ass0ExprF sv) EvalEnv
   | A0ValBracket (Ass1ValF sv)
   | A0ValPartialBuiltInApp (Ass0PartialBuiltInApp (Ass0ValF sv))
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
 data Ass1ValF sv
   = A1ValLiteral (AssLiteral (Ass1ValF sv))
@@ -218,14 +218,14 @@ data Ass1ValF sv
   | A1ValApp (Ass1ValF sv) (Ass1ValF sv)
   | A1ValSequential (Ass1ValF sv) (Ass1ValF sv)
   | A1ValIfThenElse (Ass1ValF sv) (Ass1ValF sv) (Ass1ValF sv)
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
 data Ass0TypeValF sv
   = A0TyValPrim Ass0PrimTypeVal (Maybe (Ass0ValF sv)) -- Possibly equipped with a refinement predicate.
   | A0TyValList (Ass0TypeValF sv) (Maybe (Ass0ValF sv)) -- Possibly equipped with a refinement predicate.
   | A0TyValArrow (Maybe (AssVarF sv), Ass0TypeValF sv) (StrictAss0TypeExprF sv)
   | A0TyValCode Ass1TypeVal
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
 data Ass0PrimTypeVal
   = A0TyValInt
