@@ -31,7 +31,7 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] Full-fledged refinement types `( x : τ | φ )`
   * This is beneficial for handling *broadcasting* of tensors in PyTorch, for example
 - [x] Represent broadcasting of tensor shapes by refinement types
-- [ ] Syntax sugar for recursive functions (i.e., `let rec`-expressions)
+- [x] `let`- and `let rec`-expressions as syntax sugar
 - [ ] Type-checking in a bi-directional manner as to return types
 - [x] Generalize the `external` syntax for various backends
 - [ ] Transpilation to Python or OCaml
