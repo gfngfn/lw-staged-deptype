@@ -21,9 +21,9 @@ import Data.Foldable (foldrM)
 import Data.Function
 import Data.List qualified as List
 import Data.List.Extra qualified as List
-import Data.Maybe (fromMaybe)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Set (Set, (\\))
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -65,12 +65,12 @@ instance Functor (M' err trav) where
   fmap :: (a -> b) -> M' err trav a -> M' err trav b
   fmap vf (M' sx) =
     M' $ do
-    x <- sx
-    case x of
-      Left e ->
-        lift (pure (Left e))
-      Right vx ->
-        pure $ Right (vf vx)
+      x <- sx
+      case x of
+        Left e ->
+          lift (pure (Left e))
+        Right vx ->
+          pure $ Right (vf vx)
 
 instance Applicative (M' err trav) where
   pure :: a -> M' err trav a

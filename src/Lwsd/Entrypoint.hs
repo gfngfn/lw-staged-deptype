@@ -140,7 +140,7 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
 
 typecheckAndEval :: SourceSpec -> [Bind] -> SourceSpec -> Expr -> M Bool
 typecheckAndEval sourceSpecOfStub bindsInStub sourceSpecOfInput e = do
-  (r, tcState@TypecheckState{assVarDisplay = _}) <- typecheckStub sourceSpecOfStub bindsInStub
+  (r, tcState@TypecheckState {assVarDisplay = _}) <- typecheckStub sourceSpecOfStub bindsInStub
   case r of
     Left _tyErr -> do
       putSectionLine "type error by stub"

@@ -184,9 +184,9 @@ instance (Ord sv) => HasVar sv (Ass0ExprF sv) where
         go a0ePred1 a0ePred2 && go a0eTarget1 a0eTarget2
       (_, _) ->
         False
-      where
-        go :: forall b. (HasVar sv b) => b -> b -> Bool
-        go = alphaEquivalent eq
+    where
+      go :: forall b. (HasVar sv b) => b -> b -> Bool
+      go = alphaEquivalent eq
 
 instance (Ord sv) => HasVar sv (Ass1ExprF sv) where
   frees = \case
