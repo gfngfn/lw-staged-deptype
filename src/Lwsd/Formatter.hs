@@ -378,7 +378,8 @@ instance Disp Surface.ExprMain where
     Surface.Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
-    Surface.LetIn x params e1 e2 -> dispLetIn req x params e1 e2
+    Surface.LetIn x params eBody e2 -> dispLetIn req x params eBody e2
+    Surface.LetRecIn f params tyeBody eBody e2 -> dispLetRecIn req f params tyeBody eBody e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
@@ -893,7 +894,8 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.Lam Nothing (x, tye1) e2 -> dispNonrecLam req x tye1 e2
     Surface.Lam (Just (f, tyeRec)) (x, tye1) e2 -> dispRecLam req f tyeRec x tye1 e2
     Surface.App e1 e2 -> dispApp req e1 e2
-    Surface.LetIn x params e1 e2 -> dispLetIn req x params e1 e2
+    Surface.LetIn x params eBody e2 -> dispLetIn req x params eBody e2
+    Surface.LetRecIn f params tyeBody eBody e2 -> dispLetRecIn req f params tyeBody eBody e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2

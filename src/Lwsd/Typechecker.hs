@@ -1268,8 +1268,8 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       () <-
         case xOpt of
-          Just x -> typeError trav $ FunctionTypeCannotBeDependentAtStage1 spanInFile x
           Nothing -> pure ()
+          Just x -> typeError trav $ FunctionTypeCannotBeDependentAtStage1 spanInFile x
       a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
       pure $ A1TyArrow a1tye1 a1tye2
     TyOptArrow _ _ ->
