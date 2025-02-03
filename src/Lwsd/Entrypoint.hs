@@ -11,6 +11,7 @@ import Control.Monad.Trans.Reader
 import Data.Either.Extra (mapLeft)
 import Data.Map qualified as Map
 import Data.Text.IO qualified as TextIO
+import Data.Tuple.Extra (first)
 import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
@@ -72,26 +73,26 @@ putRenderedLinesAtStage1 v = do
   Argument {displayWidth} <- ask
   lift $ Formatter.putRenderedLinesAtStage1 displayWidth v
 
-typecheckStub :: SourceSpec -> [Bind] -> M (Either TypeError ((TypeEnv, SigRecord, [AssBind]), TypecheckState))
+typecheckStub :: SourceSpec -> [Bind] -> M (Either TypeError (TypeEnv, SigRecord, [AssBind]), TypecheckState)
 typecheckStub sourceSpecOfStub bindsInStub = do
   tcConfig <- makeConfig sourceSpecOfStub
-  let tcState = TypecheckState {nextVarIndex = 0}
+  let tcState = TypecheckState {nextVarIndex = 0, assVarDisplay = Map.empty}
       initialTypeEnv = TypeEnv.empty
   pure $
-    mapLeft fst $
+    first (mapLeft fst) $
       Typechecker.run (Typechecker.typecheckBinds () initialTypeEnv bindsInStub) tcConfig tcState
 
-typecheckInput :: SourceSpec -> TypecheckState -> TypeEnv -> Expr -> M (Either TypeError (Result Ass0TypeExpr, Ass0Expr))
+typecheckInput :: SourceSpec -> TypecheckState -> TypeEnv -> Expr -> M (Either TypeError (Result Ass0TypeExpr, Ass0Expr), TypecheckState)
 typecheckInput sourceSpecOfInput tcState tyEnvStub e = do
   tcConfig <- makeConfig sourceSpecOfInput
   pure $
-    mapLeft fst $
-      fst <$> Typechecker.run (Typechecker.typecheckExpr0 () tyEnvStub [] e) tcConfig tcState
+    first (mapLeft fst) $
+      Typechecker.run (Typechecker.typecheckExpr0 () tyEnvStub [] e) tcConfig tcState
 
 typecheckAndEvalInput :: TypecheckState -> SourceSpec -> TypeEnv -> [AssBind] -> Expr -> M Bool
 typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
   let initialEvalState = Evaluator.initialState sourceSpecOfInput
-  r <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
+  (r, TypecheckState {assVarDisplay}) <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
   case r of
     Left tyErr -> do
       putSectionLine "type error:"

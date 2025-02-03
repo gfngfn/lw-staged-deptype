@@ -40,8 +40,8 @@ data AssPersMetadata = AssPersMetadata
   }
 
 data ValEntry
-  = Ass0Entry Ass0TypeExpr (Maybe Ass0Metadata)
-  | Ass1Entry Ass1TypeExpr (Maybe Ass1Metadata)
+  = Ass0Entry Ass0TypeExpr (Either Ass0Metadata StaticVar)
+  | Ass1Entry Ass1TypeExpr (Either Ass1Metadata StaticVar)
   | AssPersEntry AssPersTypeExpr AssPersMetadata
 
 newtype ModuleEntry
