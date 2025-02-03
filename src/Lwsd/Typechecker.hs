@@ -17,6 +17,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Either.Extra
+import Data.Foldable (foldrM)
 import Data.Function
 import Data.List qualified as List
 import Data.List.Extra qualified as List
@@ -711,17 +712,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         if ax `occurs0` result2
           then typeError trav $ VarOccursFreelyInAss0Type spanInFile x result2
           else pure (result2, A0LetIn (ax, sa0tye1) a0e1 a0e2)
-      LetRecIn f params tyeBody e1 e2 -> do
-        let tyeRec =
-              -- TODO (enhance): give better code position
-              foldr
-                ( \param tyeAcc ->
-                    case param of
-                      MandatoryBinder (x, tye) -> TypeExpr loc (TyArrow (Just x, tye) tyeAcc)
-                      OptionalBinder (x, tye) -> TypeExpr loc (TyOptArrow (x, tye) tyeAcc)
-                )
-                tyeBody
-                params
+      LetRecIn f params tyeBody eBody e2 -> do
+        let tyeRec = constructFunTypeExpr0 loc params tyeBody
         a0tye1Rec <- typecheckTypeExpr0 trav tyEnv tyeRec
         (x0, tyeParam0, paramsRest) <-
           case params of
@@ -734,7 +726,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 tyEnv
                   & TypeEnv.addVal f (Ass0Entry a0tye1Rec Nothing)
                   & TypeEnv.addVal x0 (Ass0Entry a0tyeParam0 Nothing)
-          typecheckLetInBody0 trav tyEnv' paramsRest e1
+          typecheckLetInBody0 trav tyEnv' paramsRest eBody
         let ax0 = AssVar x0
         let a0tye1Synth = A0TyArrow (Just ax0, a0tyeParam0) a0tyeRestSynth
         (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye1Synth a0tye1Rec
@@ -743,10 +735,9 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         (result2, a0e2) <- do
           let tyEnv' = TypeEnv.addVal f (Ass0Entry a0tye1Rec Nothing) tyEnv
           typecheckExpr0 trav tyEnv' appCtx e2
-        let sa0tye1 = strictify a0tye1Rec
         if af `occurs0` result2
           then typeError trav $ VarOccursFreelyInAss0Type spanInFile f result2
-          else pure (result2, A0LetIn (af, sa0tye1) a0e1 a0e2)
+          else pure (result2, A0LetIn (af, strictify a0tye1Rec) a0e1 a0e2)
       LetOpenIn m e -> do
         case TypeEnv.findModule m tyEnv of
           Nothing ->
@@ -808,6 +799,33 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
           completeInferredOptional (result', A0App a0e a0eInferred)
         _ ->
           pair
+
+-- TODO (enhance): give better code position
+-- TODO: refactor this; elaborate the types of the parameters before building a function type
+constructFunTypeExpr0 :: Span -> [LamBinder] -> TypeExpr -> TypeExpr
+constructFunTypeExpr0 loc params tyeBody =
+  foldr
+    ( \param tyeAcc ->
+        case param of
+          MandatoryBinder (x, tye) -> TypeExpr loc (TyArrow (Just x, tye) tyeAcc)
+          OptionalBinder (x, tye) -> TypeExpr loc (TyOptArrow (x, tye) tyeAcc)
+    )
+    tyeBody
+    params
+
+-- TODO (enhance): give better code position
+-- TODO: refactor this; elaborate the types of the parameters before building a function type
+constructFunTypeExpr1 :: trav -> Span -> [LamBinder] -> TypeExpr -> M trav TypeExpr
+constructFunTypeExpr1 trav loc params tyeBody = do
+  spanInFile <- askSpanInFile loc
+  foldrM
+    ( \param tyeAcc ->
+        case param of
+          MandatoryBinder (_x, tye) -> pure $ TypeExpr loc (TyArrow (Nothing, tye) tyeAcc)
+          OptionalBinder (_x, _tye) -> typeError trav $ CannotUseLamOptAtStage1 spanInFile
+    )
+    tyeBody
+    params
 
 typecheckLetInBody0 :: trav -> TypeEnv -> [LamBinder] -> Expr -> M trav (Ass0TypeExpr, Ass0Expr)
 typecheckLetInBody0 trav tyEnv params e1 =
@@ -935,14 +953,40 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       typeError trav $ CannotUseAppOptGivenAtStage1 spanInFile
     AppOptOmitted _ ->
       typeError trav $ CannotUseAppOptOmittedAtStage1 spanInFile
-    LetIn x params e1 e2 -> do
-      (a1tye1, a1e1) <- typecheckLetInBody1 trav tyEnv params e1
+    LetIn x params eBody e2 -> do
+      (a1tye1, a1e1) <- typecheckLetInBody1 trav tyEnv params eBody
       (result2, a1e2) <-
         typecheckExpr1 trav (TypeEnv.addVal x (Ass1Entry a1tye1 Nothing) tyEnv) appCtx e2
       let ax = AssVar x
-      if ax `occurs0` result2
+      if ax `occurs1` result2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile x result2
-        else pure (result2, A1App (A1Lam Nothing (ax, a1tye1) a1e2) a1e1)
+        else pure (result2, a1LetIn (ax, a1tye1) a1e1 a1e2)
+    LetRecIn f params tyeBody eBody e2 -> do
+      tyeRec <- constructFunTypeExpr1 trav loc params tyeBody
+      a1tye1Rec <- typecheckTypeExpr1 trav tyEnv tyeRec
+      (x0, tyeParam0, paramsRest) <-
+        case params of
+          MandatoryBinder (x0', tyeParam0') : paramsRest' -> pure (x0', tyeParam0', paramsRest')
+          OptionalBinder _ : _ -> error "TODO (error): LetRecIn, optional"
+          [] -> error "TODO (error): LetRecIn, empty param"
+      a1tyeParam0 <- typecheckTypeExpr1 trav tyEnv tyeParam0
+      (a1tyeRestSynth, a1eRest) <- do
+        let tyEnv' =
+              tyEnv
+                & TypeEnv.addVal f (Ass1Entry a1tye1Rec Nothing)
+                & TypeEnv.addVal x0 (Ass1Entry a1tyeParam0 Nothing)
+        typecheckLetInBody1 trav tyEnv' paramsRest eBody
+      let a1tye1Synth = A1TyArrow a1tyeParam0 a1tyeRestSynth
+      (eq, _solution) <- makeEquation1 trav loc Set.empty a1tye1Synth a1tye1Rec
+      let af = AssVar f
+      let ax0 = AssVar x0
+      let a1e1 = applyEquationCast loc eq (A1Lam (Just (af, a1tye1Rec)) (ax0, a1tyeParam0) a1eRest)
+      (result2, a1e2) <- do
+        let tyEnv' = TypeEnv.addVal f (Ass1Entry a1tye1Rec Nothing) tyEnv
+        typecheckExpr1 trav tyEnv' appCtx e2
+      if af `occurs1` result2
+        then typeError trav $ VarOccursFreelyInAss1Type spanInFile f result2
+        else pure (result2, a1LetIn (af, a1tye1Rec) a1e1 a1e2)
     LetOpenIn m e -> do
       case TypeEnv.findModule m tyEnv of
         Nothing ->

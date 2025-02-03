@@ -5,6 +5,7 @@ module Lwsd.Syntax
     AssLiteral (..),
     Ass0Expr (..),
     Ass1Expr (..),
+    a1LetIn,
     AssBind (..),
     makeExprFromBinds,
     Type1Equation (..),
