@@ -48,6 +48,8 @@ stageExpr0Main = \case
     error "Bug: Stager.stageExpr0Main, non-empty parameter sequence"
   LetIn x [] e1 e2 ->
     Lwsd.LetIn x [] (stageExpr0 e1) (stageExpr0 e2)
+  LetRecIn _x _params _tye _e1 _e2 ->
+    error "Bug: Stager.stageExpr0Main, LetRecIn"
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr0 e)
   Sequential e1 e2 ->
@@ -85,6 +87,8 @@ stageExpr1Main = \case
     error "Bug: Stager.stageExpr0Main, non-empty parameter sequence"
   LetIn x [] e1 e2 ->
     Lwsd.LetIn x [] (stageExpr1 e1) (stageExpr1 e2)
+  LetRecIn _x _params _tye _e1 _e2 ->
+    error "Bug: Stager.stageExpr0Main, LetRecIn"
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr1 e)
   Sequential e1 e2 ->
@@ -126,8 +130,8 @@ stageTypeExpr1 (TypeExpr (btc, ann) typeExprMain) =
 stageTypeExpr1Main :: BCTypeExprMainF ann -> Lwsd.TypeExprMainF ann
 stageTypeExpr1Main = \case
   TyName tyName args -> Lwsd.TyName tyName (map stageArgForType1 args)
-  TyArrow (xOpt, tye1) tye2 -> Lwsd.TyArrow (xOpt, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
-  TyOptArrow (x, tye1) tye2 -> Lwsd.TyOptArrow (x, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
+  TyArrow (_xOpt, tye1) tye2 -> Lwsd.TyArrow (Nothing, stageTypeExpr1 tye1) (stageTypeExpr1 tye2)
+  TyOptArrow (_x, _tye1) _tye2 -> error "bug: stageTypeExpr1Main, TyOptArrow"
 
 stageArgForType1 :: BCArgForTypeF ann -> Lwsd.ArgForTypeF ann
 stageArgForType1 = \case

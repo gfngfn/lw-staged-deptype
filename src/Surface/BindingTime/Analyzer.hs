@@ -56,10 +56,14 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         be1 <- assignBindingTimeVarToExpr e1
         be2 <- assignBindingTimeVarToExpr e2
         pure $ App be1 be2
-      LetIn x params e1 e2 -> do
-        be1 <- makeLam params e1
+      LetIn x params eBody e2 -> do
+        be1 <- makeLam params eBody
         be2 <- assignBindingTimeVarToExpr e2
         pure $ LetIn x [] be1 be2
+      LetRecIn f params tyeBody eBody e2 -> do
+        be1 <- makeRecLam f params tyeBody eBody
+        be2 <- assignBindingTimeVarToExpr e2
+        pure $ LetIn f [] be1 be2
       LetOpenIn m e -> do
         be <- assignBindingTimeVarToExpr e
         pure $ LetOpenIn m be
@@ -104,6 +108,42 @@ makeLam params eBody = do
       let ann = mergeSpan loc1 loc2 -- TODO (enhance): give better range
       bty <- assignBindingTimeVarToTypeExpr ty
       pure $ Expr (BTVar btv, ann) (LamOpt (x, bty) be)
+
+makeRecLam :: Var -> [LamBinder] -> TypeExpr -> Expr -> Assigner BExpr
+makeRecLam f params tyBody eBody = do
+  beBody <- assignBindingTimeVarToExpr eBody
+  (x0, ty0, paramsRest) <-
+    case params of
+      MandatoryBinder (x0', ty0') : paramsRest' -> pure (x0', ty0', paramsRest')
+      OptionalBinder _ : _ -> error "TODO (error): makeLamRec, optional binder"
+      [] -> error "TODO (error): makeLamRec, empty parameter sequence"
+  btyBody <- assignBindingTimeVarToTypeExpr tyBody
+  (beRest, btyRest) <- foldrM go (beBody, btyBody) paramsRest
+  bty0 <- assignBindingTimeVarToTypeExpr ty0
+  btv <- fresh
+  let ann =
+        -- TODO (enhance): give better code position
+        let TypeExpr loc1 _ = ty0
+            Expr loc2 _ = eBody
+         in mergeSpan loc1 loc2
+  let btyRec = TypeExpr (BTVar btv, ann) (TyArrow (Just x0, bty0) btyRest)
+  pure $ Expr (BTVar btv, ann) (Lam (Just (f, btyRec)) (x0, bty0) beRest)
+  where
+    go :: LamBinder -> (BExpr, BTypeExpr) -> Assigner (BExpr, BTypeExpr)
+    go (MandatoryBinder (x, ty@(TypeExpr loc1 _))) (beAcc@(Expr (_, loc2) _), btyAcc) = do
+      btv <- fresh
+      let ann = mergeSpan loc1 loc2 -- TODO (enhance): give better code position
+      bty <- assignBindingTimeVarToTypeExpr ty
+      let beAcc' = Expr (BTVar btv, ann) (Lam Nothing (x, bty) beAcc)
+      let btyAcc' = TypeExpr (BTVar btv, ann) (TyArrow (Just x, bty) btyAcc)
+      pure (beAcc', btyAcc')
+    go (OptionalBinder (x, ty@(TypeExpr loc1 _))) (beAcc@(Expr (_, loc2) _), btyAcc) = do
+      btv <- fresh
+      let ann = mergeSpan loc1 loc2 -- TODO (enhance): give better code position
+      bty <- assignBindingTimeVarToTypeExpr ty
+      let beAcc' = Expr (BTVar btv, ann) (LamOpt (x, bty) beAcc)
+      let btyAcc' = TypeExpr (BTVar btv, ann) (TyOptArrow (x, bty) btyAcc)
+      pure (beAcc', btyAcc')
 
 assignBindingTimeVarToTypeExpr :: TypeExpr -> Assigner BTypeExpr
 assignBindingTimeVarToTypeExpr (TypeExpr ann typeExprMain) = do
@@ -259,7 +299,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
             spanInFile1 <- askSpanInFile ann1
             analysisError $ NotAFunction spanInFile1 bity1
       pure (Expr (bt, ann) (App e1' e2'), bity, constraints)
-    LetIn _ (_ : _) _ _ ->
+    LetIn _x (_ : _) _eBody _e2 ->
       error "Bug: Analyzer.extractConstraintsFromExpr, non-empty parameter sequence"
     LetIn x [] e1 e2 -> do
       -- Not confident. TODO: check the validity of the following
@@ -268,6 +308,8 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
         extractConstraintsFromExpr (Map.insert x (EntryLocallyBound bt bity1) btenv) e2
       let e' = Expr (bt, ann) (LetIn x [] e1' e2')
       pure (e', bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
+    LetRecIn _x _params _tye _eBody _e2 ->
+      error "Bug: Analyzer.extractConstraintsFromExpr, LetRecIn"
     LetOpenIn m e1 -> do
       (e1', bity1@(BIType bt1 _), constraints) <- do
         btenv' <- openModule m btenv

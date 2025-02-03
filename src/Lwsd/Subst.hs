@@ -1,9 +1,11 @@
 module Lwsd.Subst
   ( HasVar (..),
     frees0,
+    frees1,
     subst0,
     subst1,
     occurs0,
+    occurs1,
   )
 where
 
@@ -28,6 +30,9 @@ class HasVar a where
 frees0 :: (HasVar a) => a -> Set AssVar
 frees0 = fst . frees
 
+frees1 :: (HasVar a) => a -> Set AssVar
+frees1 = snd . frees
+
 subst0 :: (HasVar a) => Ass0Expr -> AssVar -> a -> a
 subst0 a0e x = subst (Subst0 x a0e)
 
@@ -36,6 +41,9 @@ subst1 a1e x = subst (Subst1 x a1e)
 
 occurs0 :: (HasVar a) => AssVar -> a -> Bool
 occurs0 x e = x `elem` frees0 e
+
+occurs1 :: (HasVar a) => AssVar -> a -> Bool
+occurs1 x e = x `elem` frees1 e
 
 unionPairs :: [(Set AssVar, Set AssVar)] -> (Set AssVar, Set AssVar)
 unionPairs pairs =
