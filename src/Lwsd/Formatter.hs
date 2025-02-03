@@ -134,6 +134,13 @@ dispLetIn req x params e1 e2 =
   where
     d = sep (disp x : map disp params)
 
+dispLetRecIn :: (Disp var, Disp param, Disp ty, Disp expr) => Associativity -> var -> [param] -> ty -> expr -> expr -> Doc Ann
+dispLetRecIn req x params tye e1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group ("let" <+> "rec" <+> d <+> ":" <+> disp tye <+> "=" <> nest 2 (line <> disp e1) <+> "in" <> line <> disp e2)
+  where
+    d = sep (disp x : map disp params)
+
 dispLetInWithAnnot :: (Disp var, Disp ty, Disp expr) => Associativity -> var -> ty -> expr -> expr -> Doc Ann
 dispLetInWithAnnot req x tye e1 e2 =
   deepenParenWhen (req <= FunDomain) $
@@ -276,6 +283,7 @@ instance Disp (ExprMainF ann) where
     AppOptGiven e1 e2 -> dispAppOptGiven req e1 e2
     AppOptOmitted e1 -> dispAppOptOmitted req e1
     LetIn x params e1 e2 -> dispLetIn req x params e1 e2
+    LetRecIn x params tye e1 e2 -> dispLetRecIn req x params tye e1 e2
     LetOpenIn m e -> dispLetOpenIn req m e
     Sequential e1 e2 -> dispSequential req e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2

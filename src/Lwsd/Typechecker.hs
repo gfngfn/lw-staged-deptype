@@ -657,7 +657,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 let ax1 = AssVar x1
                 let af = AssVar f
                 let a0tyeSynth = A0TyArrow (Just ax1, a0tye1) a0tye2
-                (cast, _) <- makeAssertiveCast trav loc Set.empty a0tyeSynth a0tyeRec
+                (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tyeSynth a0tyeRec
                 let sa0tyeRec = strictify a0tyeRec
                 let sa0tye1 = strictify a0tye1
                 pure (Pure a0tyeRec, applyCast cast (A0Lam (Just (af, sa0tyeRec)) (ax1, sa0tye1) a0e2))
@@ -711,6 +711,42 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         if ax `occurs0` result2
           then typeError trav $ VarOccursFreelyInAss0Type spanInFile x result2
           else pure (result2, A0LetIn (ax, sa0tye1) a0e1 a0e2)
+      LetRecIn f params tyeBody e1 e2 -> do
+        let tyeRec =
+              -- TODO (enhance): give better code position
+              foldr
+                ( \param tyeAcc ->
+                    case param of
+                      MandatoryBinder (x, tye) -> TypeExpr loc (TyArrow (Just x, tye) tyeAcc)
+                      OptionalBinder (x, tye) -> TypeExpr loc (TyOptArrow (x, tye) tyeAcc)
+                )
+                tyeBody
+                params
+        a0tye1Rec <- typecheckTypeExpr0 trav tyEnv tyeRec
+        (x0, tyeParam0, paramsRest) <-
+          case params of
+            MandatoryBinder (x0', tyeParam0') : paramsRest' -> pure (x0', tyeParam0', paramsRest')
+            OptionalBinder _ : _ -> error "TODO (error): LetRecIn, optional"
+            [] -> error "TODO (error): LetRecIn, empty param"
+        a0tyeParam0 <- typecheckTypeExpr0 trav tyEnv tyeParam0
+        (a0tyeRestSynth, a0eRest) <- do
+          let tyEnv' =
+                tyEnv
+                  & TypeEnv.addVal f (Ass0Entry a0tye1Rec Nothing)
+                  & TypeEnv.addVal x0 (Ass0Entry a0tyeParam0 Nothing)
+          typecheckLetInBody0 trav tyEnv' paramsRest e1
+        let ax0 = AssVar x0
+        let a0tye1Synth = A0TyArrow (Just ax0, a0tyeParam0) a0tyeRestSynth
+        (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye1Synth a0tye1Rec
+        let af = AssVar f
+        let a0e1 = applyCast cast (A0Lam (Just (af, strictify a0tye1Rec)) (ax0, strictify a0tyeParam0) a0eRest)
+        (result2, a0e2) <- do
+          let tyEnv' = TypeEnv.addVal f (Ass0Entry a0tye1Rec Nothing) tyEnv
+          typecheckExpr0 trav tyEnv' appCtx e2
+        let sa0tye1 = strictify a0tye1Rec
+        if af `occurs0` result2
+          then typeError trav $ VarOccursFreelyInAss0Type spanInFile f result2
+          else pure (result2, A0LetIn (af, sa0tye1) a0e1 a0e2)
       LetOpenIn m e -> do
         case TypeEnv.findModule m tyEnv of
           Nothing ->

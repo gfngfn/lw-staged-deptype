@@ -199,6 +199,7 @@ exprAtom, expr :: P Expr
     letin =
       tries
         [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
+          makeLetRecIn <$> (token TokLet <* token TokRec) <*> noLoc boundIdent <*> many lamBinder <*> (token TokColon *> typeExpr) <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
           makeLetOpenIn <$> token TokLet <*> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin),
           makeSequential <$> (comp <* token TokSemicolon) <*> letin
         ]
@@ -206,6 +207,9 @@ exprAtom, expr :: P Expr
       where
         makeLetIn locFirst x params e1 e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetIn x params e1 e2)
+
+        makeLetRecIn locFirst x params tye e1 e2@(Expr locLast _) =
+          Expr (mergeSpan locFirst locLast) (LetRecIn x params tye e1 e2)
 
         makeLetOpenIn locFirst m e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (LetOpenIn m e)
