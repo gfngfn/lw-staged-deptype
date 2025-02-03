@@ -57,65 +57,49 @@ data TypecheckState = TypecheckState
     assVarDisplay :: Map StaticVar Text
   }
 
-newtype M' err trav a = M'
-  { impl :: StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) a)
-  }
+type MImpl err trav a = StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) a)
 
-fmapImpl :: (a -> b) -> StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) a) -> StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) b)
-fmapImpl vf sx =
-  sx >>= \case
-    Left e -> lift $ pure $ Left e
-    Right vx -> pure $ Right (vf vx)
+newtype M' err trav a = M' (MImpl err trav a)
+
+mapRightOfM :: (a -> MImpl err trav b) -> Either (err, trav) a -> MImpl err trav b
+mapRightOfM f = \case
+  Left e -> lift $ pure $ Left e
+  Right vx -> f vx
+
+flipFmapImpl :: MImpl err trav a -> (a -> b) -> MImpl err trav b
+flipFmapImpl sx vf = sx >>= mapRightOfM (pure . Right . vf)
 
 instance Functor (M' err trav) where
   fmap :: (a -> b) -> M' err trav a -> M' err trav b
-  fmap vf (M' sx) = M' $ fmapImpl vf sx
+  fmap vf (M' sx) = M' $ flipFmapImpl sx vf
 
 instance Applicative (M' err trav) where
   pure :: a -> M' err trav a
   pure v = M' $ pure $ Right v
 
   (<*>) :: M' err trav (a -> b) -> M' err trav a -> M' err trav b
-  (M' sf) <*> (M' sx) =
-    M' $
-      sf >>= \case
-        Left e -> lift $ pure $ Left e
-        Right vf -> fmapImpl vf sx
+  (M' sf) <*> (M' sx) = M' $ sf >>= mapRightOfM (flipFmapImpl sx)
 
 instance Monad (M' err trav) where
   (>>=) :: forall a b. M' err trav a -> (a -> M' err trav b) -> M' err trav b
-  (M' sx) >>= f =
-    M' $
-      sx >>= \case
-        Left e -> lift $ pure $ Left e
-        Right v -> let M' s' = f v in s'
+  (M' sx) >>= f = M' $ sx >>= mapRightOfM (\v -> let M' s' = f v in s')
 
 type M trav a = M' TypeError trav a
 
 getState :: M' err trav TypecheckState
-getState =
-  M' $ do
-    tcState <- get
-    pure $ Right tcState
+getState = M' $ Right <$> get
 
 putState :: TypecheckState -> M' err trav ()
-putState tcState =
-  M' $ do
-    () <- put tcState
-    pure $ Right ()
+putState tcState = M' $ Right <$> put tcState
 
 askConfig :: M trav TypecheckConfig
-askConfig =
-  M' $
-    lift $ do
-      tcConfig <- ask
-      pure $ Right tcConfig
+askConfig = M' $ lift $ Right <$> ask
 
 typeError :: trav -> err -> M' err trav a
 typeError trav e = M' $ lift $ pure $ Left (e, trav)
 
 mapTypeError :: (err1 -> err2) -> M' err1 trav a -> M' err2 trav a
-mapTypeError f M' {impl} = M' $ mapStateT (mapReader (first (mapLeft (first f)))) impl
+mapTypeError f (M' s) = M' $ mapStateT (mapReader (first (mapLeft (first f)))) s
 
 bug :: String -> a
 bug msg = error $ "bug: " ++ msg
