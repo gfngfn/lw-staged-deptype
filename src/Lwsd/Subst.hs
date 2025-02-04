@@ -6,6 +6,7 @@ module Lwsd.Subst
     subst1,
     occurs0,
     occurs1,
+    Maybe1 (..),
   )
 where
 
@@ -18,38 +19,38 @@ import Prelude
 
 -- TODO (refactor): use `Traversal` to implement `occurs0` and `subst0`
 
-data Subst
-  = Subst0 AssVar Ass0Expr
-  | Subst1 AssVar Ass1Expr
+data SubstF sv
+  = Subst0 (AssVarF sv) (Ass0ExprF sv)
+  | Subst1 (AssVarF sv) (Ass1ExprF sv)
 
-class HasVar a where
-  frees :: a -> (Set AssVar, Set AssVar)
-  subst :: Subst -> a -> a
-  alphaEquivalent :: a -> a -> Bool
+class (Ord sv) => HasVar sv af where
+  frees :: af sv -> (Set (AssVarF sv), Set (AssVarF sv))
+  subst :: SubstF sv -> af sv -> af sv
+  alphaEquivalent :: af sv -> af sv -> Bool
 
-frees0 :: (HasVar a) => a -> Set AssVar
+frees0 :: (HasVar sv af) => af sv -> Set (AssVarF sv)
 frees0 = fst . frees
 
-frees1 :: (HasVar a) => a -> Set AssVar
+frees1 :: (HasVar sv af) => af sv -> Set (AssVarF sv)
 frees1 = snd . frees
 
-subst0 :: (HasVar a) => Ass0Expr -> AssVar -> a -> a
+subst0 :: (HasVar sv af) => Ass0ExprF sv -> AssVarF sv -> af sv -> af sv
 subst0 a0e x = subst (Subst0 x a0e)
 
-subst1 :: (HasVar a) => Ass1Expr -> AssVar -> a -> a
+subst1 :: (HasVar sv af) => Ass1ExprF sv -> AssVarF sv -> af sv -> af sv
 subst1 a1e x = subst (Subst1 x a1e)
 
-occurs0 :: (HasVar a) => AssVar -> a -> Bool
+occurs0 :: (HasVar sv af) => AssVarF sv -> af sv -> Bool
 occurs0 x e = x `elem` frees0 e
 
-occurs1 :: (HasVar a) => AssVar -> a -> Bool
+occurs1 :: (HasVar sv af) => AssVarF sv -> af sv -> Bool
 occurs1 x e = x `elem` frees1 e
 
-unionPairs :: [(Set AssVar, Set AssVar)] -> (Set AssVar, Set AssVar)
+unionPairs :: (Ord sv) => [(Set (AssVarF sv), Set (AssVarF sv))] -> (Set (AssVarF sv), Set (AssVarF sv))
 unionPairs pairs =
   (Set.unions (map fst pairs), Set.unions (map snd pairs))
 
-instance (HasVar e) => HasVar (AssLiteral e) where
+instance (Ord sv, HasVar sv af) => HasVar sv (AssLiteralF af) where
   frees = \case
     ALitInt _ -> (Set.empty, Set.empty)
     ALitFloat _ -> (Set.empty, Set.empty)
@@ -80,7 +81,7 @@ instance (HasVar e) => HasVar (AssLiteral e) where
       (ALitMat mat1, ALitMat mat2) -> mat1 == mat2
       (_, _) -> False
 
-instance HasVar Ass0Expr where
+instance (Ord sv) => HasVar sv Ass0ExprF where
   frees = \case
     A0Literal alit ->
       frees alit
@@ -151,47 +152,44 @@ instance HasVar Ass0Expr where
     A0RefinementAssert loc a0ePred a0eTarget ->
       A0RefinementAssert loc (go a0ePred) (go a0eTarget)
     where
-      go :: forall a. (HasVar a) => a -> a
+      go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
   alphaEquivalent a0e1 a0e2 =
     case (a0e1, a0e2) of
       (A0Literal alit1, A0Literal alit2) ->
-        alphaEquivalent alit1 alit2
+        go alit1 alit2
       (A0Var x1, A0Var x2) ->
         x1 == x2
       (A0BuiltInName builtInName1, A0BuiltInName builtInName2) ->
         builtInName1 == builtInName2
       (A0Lam Nothing (x1, a0tye11) a0e12, A0Lam Nothing (x2, a0tye21) a0e22) ->
-        alphaEquivalent a0tye11 a0tye21
-          && alphaEquivalent a0e12 (subst0 (A0Var x1) x2 a0e22)
+        go a0tye11 a0tye21 && go a0e12 (subst0 (A0Var x1) x2 a0e22)
       (A0Lam (Just (f1, a0tye1Rec)) (x1, a0tye11) a0e12, A0Lam (Just (f2, a0tye2Rec)) (x2, a0tye21) a0e22) ->
-        alphaEquivalent a0tye1Rec a0tye2Rec
-          && alphaEquivalent a0tye11 a0tye21
-          && alphaEquivalent a0e12 (subst0 (A0Var f1) f2 (subst0 (A0Var x1) x2 a0e22))
+        go a0tye1Rec a0tye2Rec
+          && go a0tye11 a0tye21
+          && go a0e12 (subst0 (A0Var f1) f2 (subst0 (A0Var x1) x2 a0e22))
       (A0App a0e11 a0e12, A0App a0e21 a0e22) ->
-        alphaEquivalent a0e11 a0e21
-          && alphaEquivalent a0e12 a0e22
+        go a0e11 a0e21 && go a0e12 a0e22
       (A0LetIn (x1, a0tye1) a0e11 a0e12, A0LetIn (x2, a0tye2) a0e21 a0e22) ->
-        alphaEquivalent a0tye1 a0tye2
-          && alphaEquivalent a0e11 a0e21
-          && alphaEquivalent a0e12 (subst0 (A0Var x1) x2 a0e22)
+        go a0tye1 a0tye2 && go a0e11 a0e21 && go a0e12 (subst0 (A0Var x1) x2 a0e22)
       (A0Sequential a0e11 a0e12, A0Sequential a0e21 a0e22) ->
-        alphaEquivalent a0e11 a0e21 && alphaEquivalent a0e12 a0e22
+        go a0e11 a0e21 && go a0e12 a0e22
       (A0IfThenElse a0e10 a0e11 a0e12, A0IfThenElse a0e20 a0e21 a0e22) ->
-        alphaEquivalent a0e10 a0e20
-          && alphaEquivalent a0e11 a0e21
-          && alphaEquivalent a0e12 a0e22
+        go a0e10 a0e20 && go a0e11 a0e21 && go a0e12 a0e22
       (A0Bracket a1e1, A0Bracket a1e2) ->
-        alphaEquivalent a1e1 a1e2
+        go a1e1 a1e2
       (A0TyEqAssert _ ty0eq1, A0TyEqAssert _ ty0eq2) ->
-        alphaEquivalent ty0eq1 ty0eq2
+        go ty0eq1 ty0eq2
       (A0RefinementAssert _ a0ePred1 a0eTarget1, A0RefinementAssert _ a0ePred2 a0eTarget2) ->
-        alphaEquivalent a0ePred1 a0ePred2 && alphaEquivalent a0eTarget1 a0eTarget2
+        go a0ePred1 a0ePred2 && go a0eTarget1 a0eTarget2
       (_, _) ->
         False
+    where
+      go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
+      go = alphaEquivalent
 
-instance HasVar Ass1Expr where
+instance (Ord sv) => HasVar sv Ass1ExprF where
   frees = \case
     A1Literal alit ->
       frees alit
@@ -247,40 +245,43 @@ instance HasVar Ass1Expr where
     A1Escape a0e1 ->
       A1Escape (go a0e1)
     where
-      go :: forall a. (HasVar a) => a -> a
+      go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
   alphaEquivalent a1e1 a1e2 =
     case (a1e1, a1e2) of
       (A1Literal lit1, A1Literal lit2) ->
-        alphaEquivalent lit1 lit2
+        go lit1 lit2
       (A1Var x1, A1Var x2) ->
         x1 == x2
       (A1Lam Nothing (x1, a1tye11) a1e12, A1Lam Nothing (x2, a1tye21) a1e22) ->
-        alphaEquivalent a1tye11 a1tye21
-          && alphaEquivalent a1e12 (subst1 (A1Var x1) x2 a1e22)
+        go a1tye11 a1tye21
+          && go a1e12 (subst1 (A1Var x1) x2 a1e22)
       (A1Lam (Just (f1, a1tye1Rec)) (x1, a1tye11) a1e12, A1Lam (Just (f2, a1tye2Rec)) (x2, a1tye21) a1e22) ->
-        alphaEquivalent a1tye1Rec a1tye2Rec
-          && alphaEquivalent a1tye11 a1tye21
-          && alphaEquivalent a1e12 (subst1 (A1Var x1) x2 (subst1 (A1Var f1) f2 a1e22))
+        go a1tye1Rec a1tye2Rec
+          && go a1tye11 a1tye21
+          && go a1e12 (subst1 (A1Var x1) x2 (subst1 (A1Var f1) f2 a1e22))
       (A1App a1e11 a1e12, A1App a1e21 a1e22) ->
-        alphaEquivalent a1e11 a1e21
-          && alphaEquivalent a1e12 a1e22
+        go a1e11 a1e21
+          && go a1e12 a1e22
       (A1IfThenElse a1e10 a1e11 a1e12, A1IfThenElse a1e20 a1e21 a1e22) ->
-        alphaEquivalent a1e10 a1e20
-          && alphaEquivalent a1e11 a1e21
-          && alphaEquivalent a1e12 a1e22
+        go a1e10 a1e20
+          && go a1e11 a1e21
+          && go a1e12 a1e22
       (A1Escape a0e1, A1Escape a0e2) ->
-        alphaEquivalent a0e1 a0e2
+        go a0e1 a0e2
       (_, _) ->
         False
+    where
+      go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
+      go = alphaEquivalent
 
-instance HasVar Ass0TypeExpr where
+instance (Ord sv) => HasVar sv Ass0TypeExprF where
   frees = \case
     A0TyPrim _ maybePred ->
-      frees maybePred
+      frees (Maybe1 maybePred)
     A0TyList a0tye maybePred ->
-      unionPairs [frees a0tye, frees maybePred]
+      unionPairs [frees a0tye, frees (Maybe1 maybePred)]
     A0TyArrow (yOpt, a0tye1) a0tye2 ->
       let (var0set1, var1set1) = frees a0tye1
           (var0set2, var1set2) = frees a0tye2
@@ -302,9 +303,9 @@ instance HasVar Ass0TypeExpr where
 
   subst s = \case
     A0TyPrim a0tyPrim maybePred ->
-      A0TyPrim a0tyPrim (go maybePred)
+      A0TyPrim a0tyPrim (unMaybe1 . go . Maybe1 $ maybePred)
     A0TyList a0tye maybePred ->
-      A0TyList (go a0tye) (go maybePred)
+      A0TyList (go a0tye) (unMaybe1 . go . Maybe1 $ maybePred)
     A0TyArrow (yOpt, a0tye1) a0tye2 ->
       A0TyArrow (yOpt, go a0tye1) $
         case (yOpt, s) of
@@ -318,35 +319,38 @@ instance HasVar Ass0TypeExpr where
         Subst0 x _ -> A0TyOptArrow (y, go a0tye1) (if y == x then a0tye2 else go a0tye2)
         Subst1 _ _ -> A0TyOptArrow (y, go a0tye1) (go a0tye2)
     where
-      go :: forall a. (HasVar a) => a -> a
+      go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
   alphaEquivalent a0tye1 a0tye2 =
     case (a0tye1, a0tye2) of
       (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2) ->
         -- Exact match
-        a0tyPrim1 == a0tyPrim2 && alphaEquivalent maybePred1 maybePred2
+        a0tyPrim1 == a0tyPrim2 && go (Maybe1 maybePred1) (Maybe1 maybePred2)
       (A0TyList a0tye1' maybePred1, A0TyList a0tye2' maybePred2) ->
-        alphaEquivalent a0tye1' a0tye2' && alphaEquivalent maybePred1 maybePred2
+        go a0tye1' a0tye2' && go (Maybe1 maybePred1) (Maybe1 maybePred2)
       (A0TyArrow (y1opt, a0tye11) a0tye12, A0TyArrow (y2opt, a0tye21) a0tye22) ->
-        (alphaEquivalent a0tye11 a0tye21 &&) $
+        (go a0tye11 a0tye21 &&) $
           case (y1opt, y2opt) of
             (Nothing, Nothing) ->
-              alphaEquivalent a0tye12 a0tye22
+              go a0tye12 a0tye22
             (Just y1, Nothing) ->
-              not (occurs0 y1 a0tye12) && alphaEquivalent a0tye12 a0tye22
+              not (occurs0 y1 a0tye12) && go a0tye12 a0tye22
             (Nothing, Just y2) ->
-              not (occurs0 y2 a0tye22) && alphaEquivalent a0tye12 a0tye22
+              not (occurs0 y2 a0tye22) && go a0tye12 a0tye22
             (Just y1, Just y2) ->
-              alphaEquivalent a0tye12 (subst0 (A0Var y1) y2 a0tye22)
+              go a0tye12 (subst0 (A0Var y1) y2 a0tye22)
       (A0TyCode a1tye1, A0TyCode a1tye2) ->
-        alphaEquivalent a1tye1 a1tye2
+        go a1tye1 a1tye2
       (A0TyOptArrow (y1, a0tye11) a0tye12, A0TyOptArrow (y2, a0tye21) a0tye22) ->
-        alphaEquivalent a0tye11 a0tye21 && alphaEquivalent a0tye12 (subst0 (A0Var y1) y2 a0tye22)
+        go a0tye11 a0tye21 && go a0tye12 (subst0 (A0Var y1) y2 a0tye22)
       (_, _) ->
         False
+    where
+      go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
+      go = alphaEquivalent
 
-instance HasVar Ass1TypeExpr where
+instance (Ord sv) => HasVar sv Ass1TypeExprF where
   frees = \case
     A1TyPrim a1tyPrim ->
       case a1tyPrim of
@@ -373,7 +377,7 @@ instance HasVar Ass1TypeExpr where
     A1TyArrow a1tye1 a1tye2 ->
       A1TyArrow (go a1tye1) (go a1tye2)
     where
-      go :: forall a. (HasVar a) => a -> a
+      go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
   alphaEquivalent a1tye1 a1tye2 =
@@ -385,22 +389,25 @@ instance HasVar Ass1TypeExpr where
           (A1TyBool, A1TyBool) ->
             True
           (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
-            alphaEquivalent a0eList1 a0eList2
+            go a0eList1 a0eList2
           (_, _) ->
             False
       (A1TyList a1tye1', A1TyList a1tye2') ->
-        alphaEquivalent a1tye1' a1tye2'
+        go a1tye1' a1tye2'
       (A1TyArrow a1tye11 a1tye12, A1TyArrow a1tye21 a1tye22) ->
-        alphaEquivalent a1tye11 a1tye21 && alphaEquivalent a1tye12 a1tye22
+        go a1tye11 a1tye21 && go a1tye12 a1tye22
       (_, _) ->
         False
+    where
+      go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
+      go = alphaEquivalent
 
-instance HasVar StrictAss0TypeExpr where
+instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
   frees = \case
     SA0TyPrim _ maybePred ->
-      frees maybePred
+      frees (Maybe1 maybePred)
     SA0TyList a0tye maybePred ->
-      unionPairs [frees a0tye, frees maybePred]
+      unionPairs [frees a0tye, frees (Maybe1 maybePred)]
     SA0TyArrow (yOpt, a0tye1) a0tye2 ->
       let (var0set1, var1set1) = frees a0tye1
           (var0set2, var1set2) = frees a0tye2
@@ -416,9 +423,9 @@ instance HasVar StrictAss0TypeExpr where
 
   subst s = \case
     SA0TyPrim a0tyPrim maybePred ->
-      SA0TyPrim a0tyPrim (go maybePred)
+      SA0TyPrim a0tyPrim (unMaybe1 . go . Maybe1 $ maybePred)
     SA0TyList a0tye maybePred ->
-      SA0TyList (go a0tye) (go maybePred)
+      SA0TyList (go a0tye) (unMaybe1 . go . Maybe1 $ maybePred)
     SA0TyArrow (yOpt, sa0tye1) sa0tye2 ->
       SA0TyArrow (yOpt, go sa0tye1) $
         case (yOpt, s) of
@@ -428,31 +435,34 @@ instance HasVar StrictAss0TypeExpr where
     SA0TyCode a1tye1 ->
       SA0TyCode (go a1tye1)
     where
-      go :: forall a. (HasVar a) => a -> a
+      go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
   alphaEquivalent sa0tye1 sa0tye2 =
     case (sa0tye1, sa0tye2) of
       (SA0TyPrim a0tyPrim1 maybePred1, SA0TyPrim a0tyPrim2 maybePred2) ->
         -- Exact match
-        a0tyPrim1 == a0tyPrim2 && alphaEquivalent maybePred1 maybePred2
+        a0tyPrim1 == a0tyPrim2 && go (Maybe1 maybePred1) (Maybe1 maybePred2)
       (SA0TyArrow (y1opt, sa0tye11) sa0tye12, SA0TyArrow (y2opt, sa0tye21) sa0tye22) ->
-        (alphaEquivalent sa0tye11 sa0tye21 &&) $
+        (go sa0tye11 sa0tye21 &&) $
           case (y1opt, y2opt) of
             (Nothing, Nothing) ->
-              alphaEquivalent sa0tye12 sa0tye22
+              go sa0tye12 sa0tye22
             (Just y1, Nothing) ->
-              not (occurs0 y1 sa0tye12) && alphaEquivalent sa0tye12 sa0tye22
+              not (occurs0 y1 sa0tye12) && go sa0tye12 sa0tye22
             (Nothing, Just y2) ->
-              not (occurs0 y2 sa0tye22) && alphaEquivalent sa0tye12 sa0tye22
+              not (occurs0 y2 sa0tye22) && go sa0tye12 sa0tye22
             (Just y1, Just y2) ->
-              alphaEquivalent sa0tye12 (subst0 (A0Var y1) y2 sa0tye22)
+              go sa0tye12 (subst0 (A0Var y1) y2 sa0tye22)
       (SA0TyCode a1tye1, SA0TyCode a1tye2) ->
-        alphaEquivalent a1tye1 a1tye2
+        go a1tye1 a1tye2
       (_, _) ->
         False
+    where
+      go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
+      go = alphaEquivalent
 
-instance HasVar Type1Equation where
+instance (Ord sv) => HasVar sv Type1EquationF where
   frees = \case
     TyEq1Prim ty1eqPrim ->
       case ty1eqPrim of
@@ -482,7 +492,7 @@ instance HasVar Type1Equation where
     TyEq1Arrow ty1eqDom ty1eqCod ->
       TyEq1Arrow (go ty1eqDom) (go ty1eqCod)
     where
-      go :: forall a. (HasVar a) => a -> a
+      go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
 
   alphaEquivalent ty1eq1 ty1eq2 =
@@ -500,49 +510,53 @@ instance HasVar Type1Equation where
               Just zippedZipped ->
                 all
                   ( \((a0e11, a0e12), (a0e21, a0e22)) ->
-                      alphaEquivalent a0e11 a0e21 && alphaEquivalent a0e12 a0e22
+                      go a0e11 a0e21 && go a0e12 a0e22
                   )
                   zippedZipped
           (TyEq1TensorByWhole a0eList11 a0eList12, TyEq1TensorByWhole a0eList21 a0eList22) ->
-            alphaEquivalent a0eList11 a0eList21 && alphaEquivalent a0eList12 a0eList22
+            go a0eList11 a0eList21 && go a0eList12 a0eList22
           (_, _) ->
             False
       (TyEq1List ty1eqElem1, TyEq1List ty1eqElem2) ->
-        alphaEquivalent ty1eqElem1 ty1eqElem2
+        go ty1eqElem1 ty1eqElem2
       (TyEq1Arrow ty1eqDom1 ty1eqCod1, TyEq1Arrow ty1eqDom2 ty1eqCod2) ->
-        alphaEquivalent ty1eqDom1 ty1eqDom2
-          && alphaEquivalent ty1eqCod1 ty1eqCod2
+        go ty1eqDom1 ty1eqDom2
+          && go ty1eqCod1 ty1eqCod2
       (_, _) ->
         False
+    where
+      go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
+      go = alphaEquivalent
 
-instance (HasVar a) => HasVar (Maybe a) where
-  frees Nothing = (Set.empty, Set.empty)
-  frees (Just v) = frees v
+newtype Maybe1 af sv = Maybe1 {unMaybe1 :: Maybe (af sv)}
 
-  subst s = fmap (subst s)
+instance (HasVar sv af) => HasVar sv (Maybe1 af) where
+  frees = maybe (Set.empty, Set.empty) frees . unMaybe1
 
-  alphaEquivalent Nothing Nothing = True
-  alphaEquivalent (Just v1) (Just v2) = alphaEquivalent v1 v2
+  subst s = Maybe1 . fmap (subst s) . unMaybe1
+
+  alphaEquivalent (Maybe1 Nothing) (Maybe1 Nothing) = True
+  alphaEquivalent (Maybe1 (Just v1)) (Maybe1 (Just v2)) = alphaEquivalent v1 v2
   alphaEquivalent _ _ = False
 
-instance (HasVar a) => HasVar (Result a) where
+instance (HasVar sv af) => HasVar sv (ResultF af) where
   frees = \case
     Pure v -> frees v
-    Cast0 cast a0tye r -> unionPairs [frees cast, frees a0tye, frees r]
-    Cast1 eq a1tye r -> unionPairs [frees eq, frees a1tye, frees r]
-    CastGiven0 cast a0tye r -> unionPairs [frees cast, frees a0tye, frees r]
+    Cast0 cast a0tye r -> unionPairs [frees (Maybe1 cast), frees a0tye, frees r]
+    Cast1 eq a1tye r -> unionPairs [frees (Maybe1 eq), frees a1tye, frees r]
+    CastGiven0 cast a0tye r -> unionPairs [frees (Maybe1 cast), frees a0tye, frees r]
     FillInferred0 a0e r -> unionPairs [frees a0e, frees r]
     InsertInferred0 a0e r -> unionPairs [frees a0e, frees r]
 
   subst s = \case
     Pure v -> Pure (go v)
-    Cast0 cast a0tye r -> Cast0 (go cast) (go a0tye) (go r)
-    Cast1 eq a1tye r -> Cast1 (go eq) (go a1tye) (go r)
-    CastGiven0 cast a0tye r -> CastGiven0 (go cast) (go a0tye) (go r)
+    Cast0 cast a0tye r -> Cast0 (unMaybe1 . go . Maybe1 $ cast) (go a0tye) (go r)
+    Cast1 eq a1tye r -> Cast1 (unMaybe1 . go . Maybe1 $ eq) (go a1tye) (go r)
+    CastGiven0 cast a0tye r -> CastGiven0 (unMaybe1 . go . Maybe1 $ cast) (go a0tye) (go r)
     FillInferred0 a0e r -> FillInferred0 (go a0e) (go r)
     InsertInferred0 a0e r -> InsertInferred0 (go a0e) (go r)
     where
-      go :: forall b. (HasVar b) => b -> b
+      go :: forall bf. (HasVar sv bf) => bf sv -> bf sv
       go = subst s
 
   alphaEquivalent =

@@ -14,6 +14,7 @@ import Lwsd.Formatter qualified as Formatter
 import Lwsd.Parser qualified as LwsdParser
 import Lwsd.Scope.SigRecord (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), ModuleEntry (..), SigRecord, ValEntry (..))
 import Lwsd.Scope.SigRecord qualified as SigRecord
+import Lwsd.Typechecker (TypecheckState (..))
 import Surface.BindingTime qualified as BindingTime
 import Surface.BindingTime.Core
 import Surface.Parser qualified as Parser
@@ -40,8 +41,8 @@ makeBindingTimeEnvFromStub =
             let x =
                   -- Uses the same name if not specified
                   case a0metadataOpt of
-                    Just Ass0Metadata {ass0surfaceName} -> fromMaybe varVal ass0surfaceName
-                    Nothing -> varVal
+                    Left Ass0Metadata {ass0surfaceName} -> fromMaybe varVal ass0surfaceName
+                    Right _ -> varVal
              in Map.insert
                   x
                   (EntryBuiltInFixed varVal BT0 (fromStaged0 a0tye))
@@ -50,8 +51,8 @@ makeBindingTimeEnvFromStub =
             let x =
                   -- Uses the same name if not specified
                   case a1metadataOpt of
-                    Just Ass1Metadata {ass1surfaceName} -> fromMaybe varVal ass1surfaceName
-                    Nothing -> varVal
+                    Left Ass1Metadata {ass1surfaceName} -> fromMaybe varVal ass1surfaceName
+                    Right _ -> varVal
              in Map.insert
                   x
                   (EntryBuiltInFixed varVal BT1 (fromStaged1 a1tye))
@@ -98,13 +99,14 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
               { LocationInFile.source = stub,
                 LocationInFile.inputFilePath = stubFilePath
               }
-      r <- runReaderT (Lwsd.Entrypoint.typecheckStub sourceSpecOfStub declsInStub) lwArg
+      (r, stateAfterTraversingStub@TypecheckState {assVarDisplay}) <-
+        runReaderT (Lwsd.Entrypoint.typecheckStub sourceSpecOfStub declsInStub) lwArg
       case r of
         Left tyErr -> do
           putSectionLine "type error of stub:"
-          putRenderedLines tyErr
+          putRenderedLines (fmap (Lwsd.Entrypoint.showVar assVarDisplay) tyErr)
           failure
-        Right ((tyEnvStub, sigr, abinds), stateAfterTraversingStub) -> do
+        Right (tyEnvStub, sigr, abinds) -> do
           let initialBindingTimeEnv = makeBindingTimeEnvFromStub sigr
           source <- TextIO.readFile inputFilePath
           let sourceSpecOfInput =

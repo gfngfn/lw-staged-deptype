@@ -1,5 +1,6 @@
 module Lwsd.Entrypoint
   ( Argument (..),
+    showVar,
     typecheckStub,
     typecheckAndEvalInput,
     handle,
@@ -9,8 +10,12 @@ where
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Data.Either.Extra (mapLeft)
+import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
+import Data.Text (Text)
 import Data.Text.IO qualified as TextIO
+import Data.Tuple.Extra (first)
 import Lwsd.Evaluator qualified as Evaluator
 import Lwsd.Formatter (Disp)
 import Lwsd.Formatter qualified as Formatter
@@ -72,64 +77,68 @@ putRenderedLinesAtStage1 v = do
   Argument {displayWidth} <- ask
   lift $ Formatter.putRenderedLinesAtStage1 displayWidth v
 
-typecheckStub :: SourceSpec -> [Bind] -> M (Either TypeError ((TypeEnv, SigRecord, [AssBind]), TypecheckState))
+typecheckStub :: SourceSpec -> [Bind] -> M (Either TypeError (TypeEnv, SigRecord, [AssBind]), TypecheckState)
 typecheckStub sourceSpecOfStub bindsInStub = do
   tcConfig <- makeConfig sourceSpecOfStub
-  let tcState = TypecheckState {nextVarIndex = 0}
+  let tcState = TypecheckState {nextVarIndex = 0, assVarDisplay = Map.empty}
       initialTypeEnv = TypeEnv.empty
   pure $
-    mapLeft fst $
+    first (mapLeft fst) $
       Typechecker.run (Typechecker.typecheckBinds () initialTypeEnv bindsInStub) tcConfig tcState
 
-typecheckInput :: SourceSpec -> TypecheckState -> TypeEnv -> Expr -> M (Either TypeError (Result Ass0TypeExpr, Ass0Expr))
+typecheckInput :: SourceSpec -> TypecheckState -> TypeEnv -> Expr -> M (Either TypeError (ResultF Ass0TypeExprF StaticVar, Ass0Expr), TypecheckState)
 typecheckInput sourceSpecOfInput tcState tyEnvStub e = do
   tcConfig <- makeConfig sourceSpecOfInput
   pure $
-    mapLeft fst $
-      fst <$> Typechecker.run (Typechecker.typecheckExpr0 () tyEnvStub [] e) tcConfig tcState
+    first (mapLeft fst) $
+      Typechecker.run (Typechecker.typecheckExpr0 () tyEnvStub [] e) tcConfig tcState
+
+showVar :: Map StaticVar Text -> StaticVar -> Text
+showVar assVarDisplay sv =
+  fromMaybe "<!!UNKNOWN-VAR!!>" (Map.lookup sv assVarDisplay)
 
 typecheckAndEvalInput :: TypecheckState -> SourceSpec -> TypeEnv -> [AssBind] -> Expr -> M Bool
 typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
   let initialEvalState = Evaluator.initialState sourceSpecOfInput
-  r <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
+  (r, TypecheckState {assVarDisplay}) <- typecheckInput sourceSpecOfInput tcState tyEnvStub e
   case r of
     Left tyErr -> do
       putSectionLine "type error:"
-      putRenderedLines tyErr
+      putRenderedLines (fmap (showVar assVarDisplay) tyErr)
       failure
     Right (result, a0eWithoutStub) -> do
       let a0e = makeExprFromBinds abinds a0eWithoutStub
       putSectionLine "type:"
-      putRenderedLinesAtStage0 result
+      putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) result)
       putSectionLine "elaborated expression:"
-      putRenderedLinesAtStage0 a0e
+      putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) a0e)
       case Evaluator.run (Evaluator.evalExpr0 initialEnv a0e) initialEvalState of
         Left err -> do
           putSectionLine "error during compile-time code generation:"
-          putRenderedLines err
+          putRenderedLines (fmap (showVar assVarDisplay) err)
           failure
         Right a0v -> do
           Argument {compileTimeOnly} <- ask
           case a0v of
             A0ValBracket a1v -> do
               putSectionLine "generated code:"
-              putRenderedLinesAtStage1 a1v
+              putRenderedLinesAtStage1 (fmap (showVar assVarDisplay) a1v)
               let a0eRuntime = Evaluator.unliftVal a1v
               if compileTimeOnly
                 then success
                 else case Evaluator.run (Evaluator.evalExpr0 initialEnv a0eRuntime) initialEvalState of
                   Left err -> do
                     putSectionLine "eval error:"
-                    putRenderedLines err
+                    putRenderedLines (fmap (showVar assVarDisplay) err)
                     failure
                   Right a0vRuntime -> do
                     putSectionLine "result of runtime evaluation:"
-                    putRenderedLinesAtStage0 a0vRuntime
+                    putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) a0vRuntime)
                     success
             _ -> do
               putSectionLine "stage-0 result:"
               lift $ putStrLn "(The stage-0 result was not a code value)"
-              putRenderedLinesAtStage0 a0v
+              putRenderedLinesAtStage0 (fmap (showVar assVarDisplay) a0v)
               if compileTimeOnly
                 then success
                 else failure
@@ -139,13 +148,13 @@ typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e = do
 
 typecheckAndEval :: SourceSpec -> [Bind] -> SourceSpec -> Expr -> M Bool
 typecheckAndEval sourceSpecOfStub bindsInStub sourceSpecOfInput e = do
-  r <- typecheckStub sourceSpecOfStub bindsInStub
+  (r, tcState@TypecheckState {assVarDisplay}) <- typecheckStub sourceSpecOfStub bindsInStub
   case r of
     Left tyErr -> do
       putSectionLine "type error by stub"
-      putRenderedLines tyErr
+      putRenderedLines (fmap (showVar assVarDisplay) tyErr)
       failure
-    Right ((tyEnvStub, _sigr, abinds), tcState) -> do
+    Right (tyEnvStub, _sigr, abinds) -> do
       typecheckAndEvalInput tcState sourceSpecOfInput tyEnvStub abinds e
 
 handle' :: M Bool

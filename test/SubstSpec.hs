@@ -1,6 +1,8 @@
 module SubstSpec (spec) where
 
+import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Lwsd.Subst
 import Lwsd.Syntax
 import SyntaxUtil
@@ -43,5 +45,8 @@ spec = do
         (a0nonrecLam "bar" sa0tyInt (a0var "bar"))
         `shouldBe` False
   where
-    v = AssVar
-    set = Set.fromList . map AssVar
+    v :: Text -> AssVarF Text
+    v = AssVarStatic
+
+    set :: [Text] -> Set (AssVarF Text)
+    set = Set.fromList . map AssVarStatic

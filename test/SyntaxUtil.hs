@@ -91,44 +91,54 @@ bracket = expr . Bracket
 escape :: ExprVoid -> ExprVoid
 escape = expr . Escape
 
-a0litInt :: Int -> Ass0Expr
+type Ass0ExprText = Ass0ExprF Text
+
+type Ass1ExprText = Ass1ExprF Text
+
+type Ass0TypeExprText = Ass0TypeExprF Text
+
+type Ass1TypeExprText = Ass1TypeExprF Text
+
+type StrictAss0TypeExprText = StrictAss0TypeExprF Text
+
+a0litInt :: Int -> Ass0ExprText
 a0litInt n = A0Literal (ALitInt n)
 
-a0var :: Text -> Ass0Expr
-a0var = A0Var . AssVar
+a0var :: Text -> Ass0ExprText
+a0var = A0Var . AssVarStatic
 
-a0app :: Ass0Expr -> Ass0Expr -> Ass0Expr
+a0app :: Ass0ExprText -> Ass0ExprText -> Ass0ExprText
 a0app = A0App
 
-a0nonrecLam :: Text -> StrictAss0TypeExpr -> Ass0Expr -> Ass0Expr
-a0nonrecLam x sa0tye1 = A0Lam Nothing (AssVar x, sa0tye1)
+a0nonrecLam :: Text -> StrictAss0TypeExprText -> Ass0ExprText -> Ass0ExprText
+a0nonrecLam x sa0tye1 = A0Lam Nothing (AssVarStatic x, sa0tye1)
 
-a0recLam :: Text -> StrictAss0TypeExpr -> Text -> StrictAss0TypeExpr -> Ass0Expr -> Ass0Expr
-a0recLam f sa0tyeRec x sa0tye1 = A0Lam (Just (AssVar f, sa0tyeRec)) (AssVar x, sa0tye1)
+a0recLam :: Text -> StrictAss0TypeExprText -> Text -> StrictAss0TypeExprText -> Ass0ExprText -> Ass0ExprText
+a0recLam f sa0tyeRec x sa0tye1 = A0Lam (Just (AssVarStatic f, sa0tyeRec)) (AssVarStatic x, sa0tye1)
 
-a0bracket :: Ass1Expr -> Ass0Expr
+a0bracket :: Ass1ExprText -> Ass0ExprText
 a0bracket = A0Bracket
 
-sa0tyInt :: StrictAss0TypeExpr
+sa0tyInt :: StrictAss0TypeExprText
 sa0tyInt = SA0TyPrim A0TyInt Nothing
 
-sa0nondepTyArrow :: StrictAss0TypeExpr -> StrictAss0TypeExpr -> StrictAss0TypeExpr
+sa0nondepTyArrow :: StrictAss0TypeExprText -> StrictAss0TypeExprText -> StrictAss0TypeExprText
 sa0nondepTyArrow sa0tye1 = SA0TyArrow (Nothing, sa0tye1)
 
-a1var :: Text -> Ass1Expr
-a1var = A1Var . AssVar
+a1var :: Text -> Ass1ExprText
+a1var = A1Var . AssVarStatic
 
-a1app :: Ass1Expr -> Ass1Expr -> Ass1Expr
+a1app :: Ass1ExprText -> Ass1ExprText -> Ass1ExprText
 a1app = A1App
 
-a1nonrecLam :: Text -> Ass1TypeExpr -> Ass1Expr -> Ass1Expr
-a1nonrecLam x a1tye1 = A1Lam Nothing (AssVar x, a1tye1)
+a1nonrecLam :: Text -> Ass1TypeExprText -> Ass1ExprText -> Ass1ExprText
+a1nonrecLam x a1tye1 = A1Lam Nothing (AssVarStatic x, a1tye1)
 
-a1escape :: Ass0Expr -> Ass1Expr
+a1escape :: Ass0ExprText -> Ass1ExprText
 a1escape = A1Escape
 
-a1tyInt :: Ass1TypeExpr
+a1tyInt :: Ass1TypeExprText
 a1tyInt = A1TyPrim A1TyInt
 
-a1tyVec :: Ass0Expr -> Ass1TypeExpr
+a1tyVec :: Ass0ExprText -> Ass1TypeExprText
 a1tyVec a0e = A1TyPrim (a1TyVec a0e)

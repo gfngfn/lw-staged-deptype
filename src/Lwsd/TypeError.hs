@@ -1,6 +1,8 @@
 module Lwsd.TypeError
-  ( TypeError (..),
-    ConditionalMergeError (..),
+  ( TypeErrorF (..),
+    ConditionalMergeErrorF (..),
+    TypeError,
+    ConditionalMergeError,
   )
 where
 
@@ -11,22 +13,22 @@ import Util.LocationInFile (SpanInFile)
 import Util.Matrix qualified as Matrix
 import Prelude
 
-data TypeError
+data TypeErrorF sv
   = UnboundVar SpanInFile [Var] Var
   | UnboundModule SpanInFile Var
   | NotAStage0Var SpanInFile Var
   | NotAStage1Var SpanInFile Var
   | UnknownTypeOrInvalidArityAtStage0 SpanInFile TypeName Int
   | UnknownTypeOrInvalidArityAtStage1 SpanInFile TypeName Int
-  | NotAnIntLitArgAtStage0 SpanInFile Ass0Expr
-  | NotAnIntListLitArgAtStage0 SpanInFile Ass0Expr
-  | TypeContradictionAtStage0 SpanInFile Ass0TypeExpr Ass0TypeExpr
-  | TypeContradictionAtStage1 SpanInFile Ass1TypeExpr Ass1TypeExpr
-  | NotABoolTypeForStage0 SpanInFile Ass0TypeExpr
-  | NotABoolTypeForStage1 SpanInFile Ass1TypeExpr
-  | NotAUnitTypeForStage0 SpanInFile Ass0TypeExpr
-  | NotAUnitTypeForStage1 SpanInFile Ass1TypeExpr
-  | NotACodeType SpanInFile Ass0TypeExpr
+  | NotAnIntLitArgAtStage0 SpanInFile (Ass0ExprF sv)
+  | NotAnIntListLitArgAtStage0 SpanInFile (Ass0ExprF sv)
+  | TypeContradictionAtStage0 SpanInFile (Ass0TypeExprF sv) (Ass0TypeExprF sv)
+  | TypeContradictionAtStage1 SpanInFile (Ass1TypeExprF sv) (Ass1TypeExprF sv)
+  | NotABoolTypeForStage0 SpanInFile (Ass0TypeExprF sv)
+  | NotABoolTypeForStage1 SpanInFile (Ass1TypeExprF sv)
+  | NotAUnitTypeForStage0 SpanInFile (Ass0TypeExprF sv)
+  | NotAUnitTypeForStage1 SpanInFile (Ass1TypeExprF sv)
+  | NotACodeType SpanInFile (Ass0TypeExprF sv)
   | CannotUseEscapeAtStage0 SpanInFile
   | CannotUseBracketAtStage1 SpanInFile
   | CannotUseLamOptAtStage1 SpanInFile
@@ -38,25 +40,29 @@ data TypeError
   | CannotUseRefinementTypeAtStage1 SpanInFile
   | CannotUsePersistentArgAtStage0 SpanInFile
   | CannotUseNormalArgAtStage1 SpanInFile
-  | VarOccursFreelyInAss0Type SpanInFile Var (Result Ass0TypeExpr)
-  | VarOccursFreelyInAss1Type SpanInFile Var (Result Ass1TypeExpr)
+  | VarOccursFreelyInAss0Type SpanInFile Var (ResultF Ass0TypeExprF sv)
+  | VarOccursFreelyInAss1Type SpanInFile Var (ResultF Ass1TypeExprF sv)
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError
-  | CannotMergeTypesByConditional0 SpanInFile Ass0TypeExpr Ass0TypeExpr ConditionalMergeError
-  | CannotMergeTypesByConditional1 SpanInFile Ass1TypeExpr Ass1TypeExpr ConditionalMergeError
-  | CannotMergeResultsByConditionals SpanInFile (Result Ass0TypeExpr) (Result Ass0TypeExpr)
+  | CannotMergeTypesByConditional0 SpanInFile (Ass0TypeExprF sv) (Ass0TypeExprF sv) (ConditionalMergeErrorF sv)
+  | CannotMergeTypesByConditional1 SpanInFile (Ass1TypeExprF sv) (Ass1TypeExprF sv) (ConditionalMergeErrorF sv)
+  | CannotMergeResultsByConditionals SpanInFile (ResultF Ass0TypeExprF sv) (ResultF Ass0TypeExprF sv)
   | CannotApplyLiteral SpanInFile
-  | CannotInstantiateGuidedByAppContext0 SpanInFile AppContext Ass0TypeExpr
-  | CannotInstantiateGuidedByAppContext1 SpanInFile AppContext Ass1TypeExpr
-  | CannotInferOptional SpanInFile AssVar
-  | Stage1IfThenElseRestrictedToEmptyContext SpanInFile AppContext
+  | CannotInstantiateGuidedByAppContext0 SpanInFile (AppContextF sv) (Ass0TypeExprF sv)
+  | CannotInstantiateGuidedByAppContext1 SpanInFile (AppContextF sv) (Ass1TypeExprF sv)
+  | CannotInferOptional SpanInFile (AssVarF sv)
+  | Stage1IfThenElseRestrictedToEmptyContext SpanInFile (AppContextF sv)
   | BindingOverwritten SpanInFile Var
   | UnknownExternalName SpanInFile Text
-  | InvalidPersistentType SpanInFile Ass0TypeExpr
-  | InvalidTypeForRefinement SpanInFile Ass0TypeExpr
+  | InvalidPersistentType SpanInFile (Ass0TypeExprF sv)
+  | InvalidTypeForRefinement SpanInFile (Ass0TypeExprF sv)
   | NoBuiltInNameInExternal SpanInFile
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
-data ConditionalMergeError
-  = CannotMerge0 Ass0TypeExpr Ass0TypeExpr
-  | CannotMerge1 Ass1TypeExpr Ass1TypeExpr
-  deriving stock (Eq, Show)
+data ConditionalMergeErrorF sv
+  = CannotMerge0 (Ass0TypeExprF sv) (Ass0TypeExprF sv)
+  | CannotMerge1 (Ass1TypeExprF sv) (Ass1TypeExprF sv)
+  deriving stock (Eq, Show, Functor)
+
+type TypeError = TypeErrorF StaticVar
+
+type ConditionalMergeError = ConditionalMergeErrorF StaticVar

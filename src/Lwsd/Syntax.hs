@@ -1,27 +1,28 @@
 module Lwsd.Syntax
-  ( AssVar (..),
+  ( StaticVar (..),
+    AssVarF (..),
     Symbol (..),
     symbolToVar,
-    AssLiteral (..),
-    Ass0Expr (..),
-    Ass1Expr (..),
+    AssLiteralF (..),
+    Ass0ExprF (..),
+    Ass1ExprF (..),
     a1LetIn,
-    AssBind (..),
+    AssBindF (..),
     makeExprFromBinds,
-    Type1Equation (..),
-    Type1PrimEquation (..),
-    Ass0TypeExpr (..),
-    StrictAss0TypeExpr (..),
+    Type1EquationF (..),
+    Type1PrimEquationF (..),
+    Ass0TypeExprF (..),
+    StrictAss0TypeExprF (..),
     Ass0PrimType (..),
-    Ass1TypeExpr (..),
-    Ass1PrimType (..),
+    Ass1TypeExprF (..),
+    Ass1PrimTypeF (..),
     AssPersTypeExpr (..),
     persistentTypeTo0,
     persistentTypeTo1,
     liftPrimType,
-    Ass0Val (..),
-    Ass1Val (..),
-    Ass0TypeVal (..),
+    Ass0ValF (..),
+    Ass1ValF (..),
+    Ass0TypeValF (..),
     Ass0PrimTypeVal (..),
     Ass1TypeVal (..),
     Ass1PrimTypeVal (..),
@@ -35,108 +36,124 @@ module Lwsd.Syntax
     mapMAssLiteral,
     strictify,
     decomposeType1Equation,
+    AppContextF,
+    AppContextEntryF (..),
+    ResultF (..),
+    AssVar,
+    Ass0Expr,
+    Ass1Expr,
+    AssBind,
+    Type1Equation,
+    Ass0TypeExpr,
+    StrictAss0TypeExpr,
+    Ass1TypeExpr,
+    Ass0Val,
+    Ass1Val,
+    Ass0TypeVal,
+    Ass1PrimType,
     AppContext,
-    AppContextEntry (..),
-    Result (..),
+    Result0,
+    Result1,
   )
 where
 
 import Data.Map (Map)
-import Data.Text (Text)
-import Data.Text qualified as Text
 import Lwsd.BuiltIn.Core
 import Util.Matrix (Matrix)
 import Util.TokenUtil (Span)
 import Util.Vector (Vector)
 import Prelude
 
-newtype AssVar = AssVar Text
-  deriving newtype (Eq, Ord)
+newtype StaticVar = StaticVar Int
+  deriving newtype (Eq, Ord, Show)
 
-instance Show AssVar where
-  show (AssVar x) = show x
+data AssVarF sv
+  = AssVarStatic sv
+  | AssVarDynamic Int
+  deriving stock (Eq, Ord, Show, Functor)
 
 -- The type for symbols generated dynamically for hygienicity.
 newtype Symbol = Symbol Int
   deriving newtype (Eq, Show)
 
-symbolToVar :: Symbol -> AssVar
-symbolToVar (Symbol n) = AssVar $ Text.pack $ "#S" ++ show n
+symbolToVar :: Symbol -> AssVarF sv
+symbolToVar (Symbol n) = AssVarDynamic n
 
-data AssLiteral e
+data AssLiteralF af sv
   = ALitInt Int
   | ALitFloat Double
   | ALitBool Bool
   | ALitUnit
-  | ALitList [e]
+  | ALitList [af sv]
   | ALitVec Vector
   | ALitMat Matrix
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
-data Ass0Expr
-  = A0Literal (AssLiteral Ass0Expr)
+data Ass0ExprF sv
+  = A0Literal (AssLiteralF Ass0ExprF sv)
   | A0BuiltInName BuiltIn
-  | A0Var AssVar
-  | A0Lam (Maybe (AssVar, StrictAss0TypeExpr)) (AssVar, StrictAss0TypeExpr) Ass0Expr
-  | A0App Ass0Expr Ass0Expr
-  | A0LetIn (AssVar, StrictAss0TypeExpr) Ass0Expr Ass0Expr
-  | A0Sequential Ass0Expr Ass0Expr
-  | A0IfThenElse Ass0Expr Ass0Expr Ass0Expr
-  | A0Bracket Ass1Expr
-  | A0TyEqAssert Span Type1Equation
-  | A0RefinementAssert Span Ass0Expr Ass0Expr -- A predicate and a target.
-  deriving stock (Eq, Show)
+  | A0Var (AssVarF sv)
+  | A0Lam (Maybe (AssVarF sv, StrictAss0TypeExprF sv)) (AssVarF sv, StrictAss0TypeExprF sv) (Ass0ExprF sv)
+  | A0App (Ass0ExprF sv) (Ass0ExprF sv)
+  | A0LetIn (AssVarF sv, StrictAss0TypeExprF sv) (Ass0ExprF sv) (Ass0ExprF sv)
+  | A0Sequential (Ass0ExprF sv) (Ass0ExprF sv)
+  | A0IfThenElse (Ass0ExprF sv) (Ass0ExprF sv) (Ass0ExprF sv)
+  | A0Bracket (Ass1ExprF sv)
+  | A0TyEqAssert Span (Type1EquationF sv)
+  | A0RefinementAssert Span (Ass0ExprF sv) (Ass0ExprF sv) -- A predicate and a target.
+  deriving stock (Eq, Show, Functor)
 
-data Ass1Expr
-  = A1Literal (AssLiteral Ass1Expr)
-  | A1Var AssVar
+data Ass1ExprF sv
+  = A1Literal (AssLiteralF Ass1ExprF sv)
+  | A1Var (AssVarF sv)
   | A1BuiltInName Ass1BuiltIn
-  | A1Lam (Maybe (AssVar, Ass1TypeExpr)) (AssVar, Ass1TypeExpr) Ass1Expr
-  | A1App Ass1Expr Ass1Expr
-  | A1Sequential Ass1Expr Ass1Expr
-  | A1IfThenElse Ass1Expr Ass1Expr Ass1Expr
-  | A1Escape Ass0Expr
-  deriving stock (Eq, Show)
+  | A1Lam (Maybe (AssVarF sv, Ass1TypeExprF sv)) (AssVarF sv, Ass1TypeExprF sv) (Ass1ExprF sv)
+  | A1App (Ass1ExprF sv) (Ass1ExprF sv)
+  | A1Sequential (Ass1ExprF sv) (Ass1ExprF sv)
+  | A1IfThenElse (Ass1ExprF sv) (Ass1ExprF sv) (Ass1ExprF sv)
+  | A1Escape (Ass0ExprF sv)
+  deriving stock (Eq, Show, Functor)
 
-a1LetIn :: (AssVar, Ass1TypeExpr) -> Ass1Expr -> Ass1Expr -> Ass1Expr
+a1LetIn :: (AssVarF sv, Ass1TypeExprF sv) -> Ass1ExprF sv -> Ass1ExprF sv -> Ass1ExprF sv
 a1LetIn (x, a1tye) a1e1 a1e2 =
   A1App (A1Lam Nothing (x, a1tye) a1e2) a1e1
 
-data AssBind
-  = ABind0 (AssVar, StrictAss0TypeExpr) Ass0Expr
-  | ABind1 (AssVar, Ass1TypeExpr) Ass1Expr
+data AssBindF sv
+  = ABind0 (AssVarF sv, StrictAss0TypeExprF sv) (Ass0ExprF sv)
+  | ABind1 (AssVarF sv, Ass1TypeExprF sv) (Ass1ExprF sv)
+  deriving stock (Eq, Show, Functor)
 
-makeExprFromBinds :: [AssBind] -> Ass0Expr -> Ass0Expr
+makeExprFromBinds :: forall sv. [AssBindF sv] -> Ass0ExprF sv -> Ass0ExprF sv
 makeExprFromBinds abinds' a0eFinal = go0 abinds'
   where
-    go0 :: [AssBind] -> Ass0Expr
+    go0 :: [AssBindF sv] -> Ass0ExprF sv
     go0 = \case
       [] -> a0eFinal
       ABind0 xsty a0e : abinds -> A0LetIn xsty a0e (go0 abinds)
       ABind1 xty a1e : abinds -> A0Bracket (a1LetIn xty a1e (go1 abinds))
 
-    go1 :: [AssBind] -> Ass1Expr
+    go1 :: [AssBindF sv] -> Ass1ExprF sv
     go1 = \case
       [] -> A1Escape a0eFinal
       ABind1 xty a1e : abinds -> a1LetIn xty a1e (go1 abinds)
       ABind0 xsty a0e : abinds -> A1Escape (A0LetIn xsty a0e (go0 abinds))
 
 -- For type-checking.
-data Ass0TypeExpr
-  = A0TyPrim Ass0PrimType (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
-  | A0TyList Ass0TypeExpr (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
-  | A0TyArrow (Maybe AssVar, Ass0TypeExpr) Ass0TypeExpr
-  | A0TyOptArrow (AssVar, Ass0TypeExpr) Ass0TypeExpr
-  | A0TyCode Ass1TypeExpr
-  deriving stock (Eq, Show)
+data Ass0TypeExprF sv
+  = A0TyPrim Ass0PrimType (Maybe (Ass0ExprF sv)) -- Possibly equipped with a refinement predicate.
+  | A0TyList (Ass0TypeExprF sv) (Maybe (Ass0ExprF sv)) -- Possibly equipped with a refinement predicate.
+  | A0TyArrow (Maybe (AssVarF sv), Ass0TypeExprF sv) (Ass0TypeExprF sv)
+  | A0TyOptArrow (AssVarF sv, Ass0TypeExprF sv) (Ass0TypeExprF sv)
+  | A0TyCode (Ass1TypeExprF sv)
+  deriving stock (Eq, Show, Functor)
 
 -- For type annotations in target terms.
-data StrictAss0TypeExpr
-  = SA0TyPrim Ass0PrimType (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
-  | SA0TyList StrictAss0TypeExpr (Maybe Ass0Expr) -- Possibly equipped with a refinement predicate.
-  | SA0TyArrow (Maybe AssVar, StrictAss0TypeExpr) StrictAss0TypeExpr
-  | SA0TyCode Ass1TypeExpr
-  deriving stock (Eq, Show)
+data StrictAss0TypeExprF sv
+  = SA0TyPrim Ass0PrimType (Maybe (Ass0ExprF sv)) -- Possibly equipped with a refinement predicate.
+  | SA0TyList (StrictAss0TypeExprF sv) (Maybe (Ass0ExprF sv)) -- Possibly equipped with a refinement predicate.
+  | SA0TyArrow (Maybe (AssVarF sv), StrictAss0TypeExprF sv) (StrictAss0TypeExprF sv)
+  | SA0TyCode (Ass1TypeExprF sv)
+  deriving stock (Eq, Show, Functor)
 
 data Ass0PrimType
   = A0TyInt
@@ -146,19 +163,19 @@ data Ass0PrimType
   | A0TyTensor [Int]
   deriving stock (Eq, Show)
 
-data Ass1TypeExpr
-  = A1TyPrim Ass1PrimType
-  | A1TyList Ass1TypeExpr
-  | A1TyArrow Ass1TypeExpr Ass1TypeExpr
-  deriving stock (Eq, Show)
+data Ass1TypeExprF sv
+  = A1TyPrim (Ass1PrimTypeF sv)
+  | A1TyList (Ass1TypeExprF sv)
+  | A1TyArrow (Ass1TypeExprF sv) (Ass1TypeExprF sv)
+  deriving stock (Eq, Show, Functor)
 
-data Ass1PrimType
+data Ass1PrimTypeF sv
   = A1TyInt
   | A1TyFloat
   | A1TyBool
   | A1TyUnit
-  | A1TyTensor Ass0Expr
-  deriving stock (Eq, Show)
+  | A1TyTensor (Ass0ExprF sv)
+  deriving stock (Eq, Show, Functor)
 
 -- Types for persistent value items.
 data AssPersTypeExpr
@@ -167,19 +184,19 @@ data AssPersTypeExpr
   | APersTyArrow AssPersTypeExpr AssPersTypeExpr
   deriving stock (Eq, Show)
 
-persistentTypeTo0 :: AssPersTypeExpr -> Ass0TypeExpr
+persistentTypeTo0 :: AssPersTypeExpr -> Ass0TypeExprF sv
 persistentTypeTo0 = \case
   APersTyPrim a0tyPrim -> A0TyPrim a0tyPrim Nothing
   APersTyList aPtye -> A0TyList (persistentTypeTo0 aPtye) Nothing
   APersTyArrow aPtye1 aPtye2 -> A0TyArrow (Nothing, persistentTypeTo0 aPtye1) (persistentTypeTo0 aPtye2)
 
-persistentTypeTo1 :: AssPersTypeExpr -> Ass1TypeExpr
+persistentTypeTo1 :: AssPersTypeExpr -> Ass1TypeExprF sv
 persistentTypeTo1 = \case
   APersTyPrim a0tyPrim -> A1TyPrim (liftPrimType a0tyPrim)
   APersTyList aPtye -> A1TyList (persistentTypeTo1 aPtye)
   APersTyArrow aPtye1 aPtye2 -> A1TyArrow (persistentTypeTo1 aPtye1) (persistentTypeTo1 aPtye2)
 
-liftPrimType :: Ass0PrimType -> Ass1PrimType
+liftPrimType :: Ass0PrimType -> Ass1PrimTypeF sv
 liftPrimType = \case
   A0TyInt -> A1TyInt
   A0TyFloat -> A1TyFloat
@@ -187,29 +204,29 @@ liftPrimType = \case
   A0TyUnit -> A1TyUnit
   A0TyTensor ns -> A1TyTensor (A0Literal (ALitList (map (A0Literal . ALitInt) ns)))
 
-data Ass0Val
-  = A0ValLiteral (AssLiteral Ass0Val)
-  | A0ValLam (Maybe (AssVar, Ass0TypeVal)) (AssVar, Ass0TypeVal) Ass0Expr EvalEnv
-  | A0ValBracket Ass1Val
-  | A0ValPartialBuiltInApp (Ass0PartialBuiltInApp Ass0Val)
-  deriving stock (Eq, Show)
+data Ass0ValF sv
+  = A0ValLiteral (AssLiteralF Ass0ValF sv)
+  | A0ValLam (Maybe (AssVarF sv, Ass0TypeValF sv)) (AssVarF sv, Ass0TypeValF sv) (Ass0ExprF sv) EvalEnv
+  | A0ValBracket (Ass1ValF sv)
+  | A0ValPartialBuiltInApp (Ass0PartialBuiltInApp (Ass0ValF sv))
+  deriving stock (Eq, Show, Functor)
 
-data Ass1Val
-  = A1ValLiteral (AssLiteral Ass1Val)
+data Ass1ValF sv
+  = A1ValLiteral (AssLiteralF Ass1ValF sv)
   | A1ValConst Ass1BuiltIn
   | A1ValVar Symbol
-  | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) Ass1Val
-  | A1ValApp Ass1Val Ass1Val
-  | A1ValSequential Ass1Val Ass1Val
-  | A1ValIfThenElse Ass1Val Ass1Val Ass1Val
-  deriving stock (Eq, Show)
+  | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) (Ass1ValF sv)
+  | A1ValApp (Ass1ValF sv) (Ass1ValF sv)
+  | A1ValSequential (Ass1ValF sv) (Ass1ValF sv)
+  | A1ValIfThenElse (Ass1ValF sv) (Ass1ValF sv) (Ass1ValF sv)
+  deriving stock (Eq, Show, Functor)
 
-data Ass0TypeVal
-  = A0TyValPrim Ass0PrimTypeVal (Maybe Ass0Val) -- Possibly equipped with a refinement predicate.
-  | A0TyValList Ass0TypeVal (Maybe Ass0Val) -- Possibly equipped with a refinement predicate.
-  | A0TyValArrow (Maybe AssVar, Ass0TypeVal) StrictAss0TypeExpr
+data Ass0TypeValF sv
+  = A0TyValPrim Ass0PrimTypeVal (Maybe (Ass0ValF sv)) -- Possibly equipped with a refinement predicate.
+  | A0TyValList (Ass0TypeValF sv) (Maybe (Ass0ValF sv)) -- Possibly equipped with a refinement predicate.
+  | A0TyValArrow (Maybe (AssVarF sv), Ass0TypeValF sv) (StrictAss0TypeExprF sv)
   | A0TyValCode Ass1TypeVal
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Show, Functor)
 
 data Ass0PrimTypeVal
   = A0TyValInt
@@ -233,20 +250,20 @@ data Ass1PrimTypeVal
   | A1TyValTensor [Int]
   deriving stock (Eq, Show)
 
-data Type1Equation
-  = TyEq1Prim Type1PrimEquation
-  | TyEq1List Type1Equation
-  | TyEq1Arrow Type1Equation Type1Equation
-  deriving stock (Eq, Show)
+data Type1EquationF sv
+  = TyEq1Prim (Type1PrimEquationF sv)
+  | TyEq1List (Type1EquationF sv)
+  | TyEq1Arrow (Type1EquationF sv) (Type1EquationF sv)
+  deriving stock (Eq, Show, Functor)
 
-data Type1PrimEquation
+data Type1PrimEquationF sv
   = TyEq1Int
   | TyEq1Float
   | TyEq1Bool
   | TyEq1Unit
-  | TyEq1TensorByLiteral [(Ass0Expr, Ass0Expr)]
-  | TyEq1TensorByWhole Ass0Expr Ass0Expr -- A Pair of ASTs of type `List Nat`
-  deriving stock (Eq, Show)
+  | TyEq1TensorByLiteral [(Ass0ExprF sv, Ass0ExprF sv)]
+  | TyEq1TensorByWhole (Ass0ExprF sv) (Ass0ExprF sv) -- A Pair of ASTs of type `List Nat`
+  deriving stock (Eq, Show, Functor)
 
 type EvalEnv = Map AssVar EvalEnvEntry
 
@@ -255,7 +272,7 @@ data EvalEnvEntry
   | SymbolEntry Symbol
   deriving stock (Eq, Show)
 
-mapAssLiteral :: (e1 -> e2) -> AssLiteral e1 -> AssLiteral e2
+mapAssLiteral :: (e1 sv -> e2 sv) -> AssLiteralF e1 sv -> AssLiteralF e2 sv
 mapAssLiteral f = \case
   ALitInt n -> ALitInt n
   ALitFloat r -> ALitFloat r
@@ -265,7 +282,7 @@ mapAssLiteral f = \case
   ALitVec vec -> ALitVec vec
   ALitMat mat -> ALitMat mat
 
-mapMAssLiteral :: (Monad m) => (e -> m v) -> AssLiteral e -> m (AssLiteral v)
+mapMAssLiteral :: (Monad m) => (e sv -> m (v sv)) -> AssLiteralF e sv -> m (AssLiteralF v sv)
 mapMAssLiteral eval = \case
   ALitInt n -> pure $ ALitInt n
   ALitFloat r -> pure $ ALitFloat r
@@ -275,7 +292,7 @@ mapMAssLiteral eval = \case
   ALitVec vec -> pure $ ALitVec vec
   ALitMat mat -> pure $ ALitMat mat
 
-strictify :: Ass0TypeExpr -> StrictAss0TypeExpr
+strictify :: Ass0TypeExprF sv -> StrictAss0TypeExprF sv
 strictify = \case
   A0TyPrim a0tyPrim maybePred -> SA0TyPrim a0tyPrim maybePred
   A0TyList a0tye maybePred -> SA0TyList (strictify a0tye) maybePred
@@ -289,13 +306,13 @@ a0TyVec n = A0TyTensor [n]
 a0TyMat :: Int -> Int -> Ass0PrimType
 a0TyMat m n = A0TyTensor [m, n]
 
-a1TyVec :: Ass0Expr -> Ass1PrimType
+a1TyVec :: Ass0ExprF ann -> Ass1PrimTypeF ann
 a1TyVec a0e = A1TyTensor (A0Literal (ALitList [a0e]))
 
-a1TyMat :: Ass0Expr -> Ass0Expr -> Ass1PrimType
+a1TyMat :: Ass0ExprF ann -> Ass0ExprF ann -> Ass1PrimTypeF ann
 a1TyMat a0e1 a0e2 = A1TyTensor (A0Literal (ALitList [a0e1, a0e2]))
 
-decomposeType1Equation :: Type1Equation -> (Ass1TypeExpr, Ass1TypeExpr)
+decomposeType1Equation :: Type1EquationF sv -> (Ass1TypeExprF sv, Ass1TypeExprF sv)
 decomposeType1Equation = \case
   TyEq1Prim ty1eqPrim ->
     case ty1eqPrim of
@@ -319,20 +336,50 @@ decomposeType1Equation = \case
   where
     prims p = (A1TyPrim p, A1TyPrim p)
 
-type AppContext = [AppContextEntry]
+type AppContextF sv = [AppContextEntryF sv]
 
-data AppContextEntry
-  = AppArg0 Ass0Expr Ass0TypeExpr
-  | AppArg1 Ass1TypeExpr
-  | AppArgOptGiven0 Ass0Expr Ass0TypeExpr
+data AppContextEntryF sv
+  = AppArg0 (Ass0ExprF sv) (Ass0TypeExprF sv)
+  | AppArg1 (Ass1TypeExprF sv)
+  | AppArgOptGiven0 (Ass0ExprF sv) (Ass0TypeExprF sv)
   | AppArgOptOmitted0
-  deriving (Eq, Show)
+  deriving (Eq, Show, Functor)
 
-data Result a
-  = Pure a
-  | Cast0 (Maybe Ass0Expr) Ass0TypeExpr (Result a)
-  | Cast1 (Maybe Ass0Expr) Ass1TypeExpr (Result a)
-  | CastGiven0 (Maybe Ass0Expr) Ass0TypeExpr (Result a)
-  | FillInferred0 Ass0Expr (Result a)
-  | InsertInferred0 Ass0Expr (Result a)
-  deriving (Eq, Show)
+data ResultF af sv
+  = Pure (af sv)
+  | Cast0 (Maybe (Ass0ExprF sv)) (Ass0TypeExprF sv) (ResultF af sv)
+  | Cast1 (Maybe (Ass0ExprF sv)) (Ass1TypeExprF sv) (ResultF af sv)
+  | CastGiven0 (Maybe (Ass0ExprF sv)) (Ass0TypeExprF sv) (ResultF af sv)
+  | FillInferred0 (Ass0ExprF sv) (ResultF af sv)
+  | InsertInferred0 (Ass0ExprF sv) (ResultF af sv)
+  deriving (Eq, Show, Functor)
+
+type AssVar = AssVarF StaticVar
+
+type Ass0Expr = Ass0ExprF StaticVar
+
+type Ass1Expr = Ass1ExprF StaticVar
+
+type AssBind = AssBindF StaticVar
+
+type Type1Equation = Type1EquationF StaticVar
+
+type Ass0TypeExpr = Ass0TypeExprF StaticVar
+
+type StrictAss0TypeExpr = StrictAss0TypeExprF StaticVar
+
+type Ass1TypeExpr = Ass1TypeExprF StaticVar
+
+type Ass1PrimType = Ass1PrimTypeF StaticVar
+
+type Ass0Val = Ass0ValF StaticVar
+
+type Ass1Val = Ass1ValF StaticVar
+
+type Ass0TypeVal = Ass0TypeValF StaticVar
+
+type AppContext = AppContextF StaticVar
+
+type Result0 = ResultF Ass0TypeExprF StaticVar
+
+type Result1 = ResultF Ass1TypeExprF StaticVar

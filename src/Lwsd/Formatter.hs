@@ -254,11 +254,12 @@ instance Disp String where
 instance Disp Int where
   dispGen _ = pretty
 
-instance Disp AssVar where
-  dispGen _ (AssVar x) = disp x
+instance (Disp sv) => Disp (AssVarF sv) where
+  dispGen _ (AssVarStatic x) = disp x
+  dispGen _ (AssVarDynamic n) = "#S" <> disp n
 
 instance Disp Symbol where
-  dispGen _ symb = disp (symbolToVar symb)
+  dispGen _ (Symbol n) = "#S" <> disp n
 
 instance (Disp e) => Disp (Literal e) where
   dispGen _ = \case
@@ -407,7 +408,7 @@ instance Disp Surface.ArgForType where
     Surface.ExprArg e -> dispGen req e
     Surface.TypeArg tye -> dispGen req tye
 
-instance (Disp e) => Disp (AssLiteral e) where
+instance (Disp sv, Disp (af sv)) => Disp (AssLiteralF af sv) where
   dispGen _ = \case
     ALitInt n -> pretty n
     ALitFloat r -> pretty r
@@ -418,7 +419,7 @@ instance (Disp e) => Disp (AssLiteral e) where
     ALitVec v -> dispVectorLiteral (Vector.toList v)
     ALitMat m -> dispMatrixLiteral (Matrix.toRows m)
 
-instance Disp Ass0Expr where
+instance (Disp sv) => Disp (Ass0ExprF sv) where
   dispGen req = \case
     A0Literal lit -> disp lit
     A0Var y -> disp y
@@ -437,7 +438,7 @@ instance Disp Ass0Expr where
       deepenParenWhen (req <= Atomic) $
         "ASSERT" <+> disp a0ePred <+> "FOR" <+> disp a0eTarget
 
-instance Disp Ass1Expr where
+instance (Disp sv) => Disp (Ass1ExprF sv) where
   dispGen req = \case
     A1Literal lit -> disp lit
     A1Var x -> disp x
@@ -459,7 +460,7 @@ instance Disp Ass0PrimType where
     A0TyTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
 
-instance Disp Ass0TypeExpr where
+instance (Disp sv) => Disp (Ass0TypeExprF sv) where
   dispGen req = \case
     A0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     A0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
@@ -469,7 +470,7 @@ instance Disp Ass0TypeExpr where
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
 
-instance Disp StrictAss0TypeExpr where
+instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
   dispGen req = \case
     SA0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     SA0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
@@ -478,7 +479,7 @@ instance Disp StrictAss0TypeExpr where
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
 
-instance Disp Ass1PrimType where
+instance (Disp sv) => Disp (Ass1PrimTypeF sv) where
   dispGen req = \case
     A1TyInt -> "Int"
     A1TyFloat -> "Float"
@@ -490,7 +491,7 @@ instance Disp Ass1PrimType where
         A0Literal (ALitList [a0e1, a0e2]) -> dispNameWithArgs req "Mat" dispPersistent [a0e1, a0e2]
         _ -> dispNameWithArgs req "Tensor" dispPersistent [a0eList]
 
-instance Disp Ass1TypeExpr where
+instance (Disp sv) => Disp (Ass1TypeExprF sv) where
   dispGen req = \case
     A1TyPrim a1tyPrim -> dispGen req a1tyPrim
     A1TyList a1tye -> dispListType req a1tye
@@ -508,7 +509,7 @@ instance Disp Matrix.ConstructionError where
         <> hardline
         <> dispRowContents row2
 
-instance Disp TypeError where
+instance (Disp sv) => Disp (TypeErrorF sv) where
   dispGen _ = \case
     UnboundVar spanInFile ms x ->
       "Unbound variable" <+> dispLongName ms x <+> disp spanInFile
@@ -652,21 +653,21 @@ instance Disp TypeError where
     NoBuiltInNameInExternal spanInFile ->
       "No built-in name specified for an external value" <+> disp spanInFile
 
-instance Disp ConditionalMergeError where
+instance (Disp sv) => Disp (ConditionalMergeErrorF sv) where
   dispGen _ = \case
     CannotMerge0 a0tye1 a0tye2 ->
       "types" <+> stage0Style (disp a0tye1) <+> "and" <+> stage0Style (disp a0tye2) <+> "are incompatible"
     CannotMerge1 a1tye1 a1tye2 ->
       "types" <+> stage1Style (disp a1tye1) <+> "and" <+> stage1Style (disp a1tye2) <+> "are incompatible"
 
-instance Disp AppContextEntry where
+instance (Disp sv) => Disp (AppContextEntryF sv) where
   dispGen _ = \case
     AppArg0 a0e a0tye -> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye)
     AppArg1 a1tye -> stage1Style (disp a1tye)
     AppArgOptGiven0 a0e a0tye -> "{" <> stage0Style (disp a0e) <+> ":" <+> stage0Style (disp a0tye) <> "}"
     AppArgOptOmitted0 -> "_"
 
-instance (Disp a) => Disp (Result a) where
+instance (Disp sv, Disp (af sv)) => Disp (ResultF af sv) where
   dispGen _ = \case
     Pure v -> disp v -- TODO (enhance): add `stage0Style` etc.
     Cast0 _ a0tye r -> "cast0 :" <+> stage0Style (disp a0tye) <> ";" <+> disp r
@@ -675,7 +676,7 @@ instance (Disp a) => Disp (Result a) where
     FillInferred0 a0e r -> "fill0" <+> disp a0e <> ";" <+> disp r
     InsertInferred0 a0e r -> "insert0" <+> disp a0e <> ";" <+> disp r
 
-instance Disp Ass0Val where
+instance (Disp sv) => Disp (Ass0ValF sv) where
   dispGen req = \case
     A0ValLiteral lit -> disp lit
     A0ValLam Nothing (x, a0tyv1) a0v2 _env -> dispNonrecLam req x a0tyv1 a0v2
@@ -731,7 +732,7 @@ instance Disp Ass1BuiltIn where
     where
       param doc = stagingOperatorStyle ("@{" <> doc <> "}")
 
-instance Disp Ass1Val where
+instance (Disp sv) => Disp (Ass1ValF sv) where
   dispGen req = \case
     A1ValLiteral lit -> disp lit
     A1ValConst c -> disp c
@@ -747,7 +748,7 @@ instance Disp Ass1Val where
     A1ValIfThenElse a1v0 a1v1 a1v2 ->
       dispIfThenElse req a1v0 a1v1 a1v2
 
-instance Disp Ass0TypeVal where
+instance (Disp sv) => Disp (Ass0TypeValF sv) where
   dispGen req = \case
     A0TyValPrim a0tyvPrim Nothing -> dispGen req a0tyvPrim
     A0TyValPrim a0tyvPrim (Just a0vPred) -> dispInternalRefinementType req a0tyvPrim a0vPred
@@ -800,10 +801,10 @@ instance Disp SpanInFile where
           indentation = disp (replicate (startColumn - 1) ' ')
           hats = disp (replicate (endColumn - startColumn) '^')
 
-instance Disp Bug where
+instance (Disp sv) => Disp (BugF sv) where
   dispGen _ = \case
     UnboundVarFound x ->
-      "Unbound variable:" <+> disp x
+      "Unbound variable" <+> disp x
     NotAClosure a0v ->
       "Not a closure:" <+> disp a0v
     NotACodeValue a0v ->
@@ -836,7 +837,7 @@ instance Disp Bug where
     BroadcastFailed ns1 ns2 ->
       "Broadcast failed:" <+> dispListLiteral ns1 <> "," <+> dispListLiteral ns2
 
-instance Disp EvalError where
+instance (Disp sv) => Disp (EvalErrorF sv) where
   dispGen _ = \case
     Bug bug ->
       "Bug:" <+> disp bug
