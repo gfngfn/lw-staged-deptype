@@ -70,18 +70,13 @@ flipFmapImpl :: MImpl err trav a -> (a -> b) -> MImpl err trav b
 flipFmapImpl sx vf = sx >>= mapRightOfM (pure . Right . vf)
 
 instance Functor (M' err trav) where
-  fmap :: (a -> b) -> M' err trav a -> M' err trav b
   fmap vf (M' sx) = M' $ flipFmapImpl sx vf
 
 instance Applicative (M' err trav) where
-  pure :: a -> M' err trav a
   pure v = M' $ pure $ Right v
-
-  (<*>) :: M' err trav (a -> b) -> M' err trav a -> M' err trav b
   (M' sf) <*> (M' sx) = M' $ sf >>= mapRightOfM (flipFmapImpl sx)
 
 instance Monad (M' err trav) where
-  (>>=) :: forall a b. M' err trav a -> (a -> M' err trav b) -> M' err trav b
   (M' sx) >>= f = M' $ sx >>= mapRightOfM (\v -> let M' s' = f v in s')
 
 type M trav a = M' TypeError trav a

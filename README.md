@@ -34,6 +34,7 @@ This work attempts to remedy the issue above by using *staging*. Based on the ob
 - [x] `let`- and `let rec`-expressions as syntax sugar
 - [ ] Type-checking in a bi-directional manner as to return types
 - [x] Generalize the `external` syntax for various backends
+- [x] Handle variable names correctly
 - [ ] Transpilation to Python or OCaml
 - [ ] ADTs and pattern matching
 - [ ] Add the `run`-primitive
