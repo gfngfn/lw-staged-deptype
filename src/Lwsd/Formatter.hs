@@ -634,8 +634,16 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
         <> hardline
         <+> "type:"
         <> nest 2 (hardline <> stage1Style (disp a1tye))
-    CannotInferOptional spanInFile x ->
-      "Cannot infer an optional argument for" <+> disp x <+> disp spanInFile
+    CannotInferOptional spanInFile x a0tye appCtx ->
+      "Cannot infer an optional argument for"
+        <+> disp x
+        <+> disp spanInFile
+        <> hardline
+        <+> "application context:"
+        <> nest 2 (hardline <> disps appCtx)
+        <> hardline
+        <+> "type:"
+        <> nest 2 (hardline <> stage0Style (disp a0tye))
     Stage1IfThenElseRestrictedToEmptyContext spanInFile appCtx ->
       "Stage-1 if-expressions are restricted to be used at empty application contexts"
         <+> disp spanInFile

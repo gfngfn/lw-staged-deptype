@@ -49,7 +49,7 @@ data TypeErrorF sv
   | CannotApplyLiteral SpanInFile
   | CannotInstantiateGuidedByAppContext0 SpanInFile (AppContextF sv) (Ass0TypeExprF sv)
   | CannotInstantiateGuidedByAppContext1 SpanInFile (AppContextF sv) (Ass1TypeExprF sv)
-  | CannotInferOptional SpanInFile (AssVarF sv)
+  | CannotInferOptional SpanInFile (AssVarF sv) (Ass0TypeExprF sv) (AppContextF sv)
   | Stage1IfThenElseRestrictedToEmptyContext SpanInFile (AppContextF sv)
   | BindingOverwritten SpanInFile Var
   | UnknownExternalName SpanInFile Text
