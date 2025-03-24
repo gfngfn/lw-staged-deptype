@@ -62,17 +62,17 @@ module Tensor = struct
     external (builtin = "tensor__gen_argmax", surface = "argmax")
   val ~gen_cross_entropy_for_logits :
     {m : Nat} -> {n : Nat} ->
-    &(Tensor %[m, n] -> Tensor %[m] -> Tensor %([] as List Nat))
+    &(Tensor %[m, n] -> Tensor %[m] -> Tensor %[])
     external (builtin = "tensor__gen_cross_entropy_for_logits", surface = "cross_entropy_for_logits")
   val ~gen_count_equal : {shape : List Nat} -> &(Tensor %shape -> Tensor %shape -> Int)
     external (builtin = "tensor__gen_count_equal", surface = "count_equal")
-  val f : Float -> Tensor %([] as List Nat)
+  val f : Float -> Tensor %[]
     external (builtin = "tensor__f", surface = "f")
-  val backward : Tensor %([] as List Nat) -> Unit
+  val backward : Tensor %[] -> Unit
     external (builtin = "tensor__backward", surface = "backward")
   val no_grad : (Unit -> Unit) -> Unit
     external (builtin = "tensor__no_grad", surface = "no_grad")
-  val float_value : Tensor %([] as List Nat) -> Float
+  val float_value : Tensor %[] -> Float
     external (builtin = "tensor__float_value", surface = "float_value")
 end
 
