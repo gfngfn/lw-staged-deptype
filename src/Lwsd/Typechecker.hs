@@ -609,11 +609,11 @@ forceExpr0 trav tyEnv a0tyeReq e@(Expr loc eMain) = do
           a0es <- mapM (forceExpr0 trav tyEnv a0tyeElem) es
           pure $ A0Literal (ALitList a0es)
         _ ->
-          error "TODO (error): typecheckExpr0, empty list literals"
+          error "TODO (error): forceExpr0, not a List type"
     _ -> do
       (result, a0e) <- typecheckExpr0 trav tyEnv [] e
       a0tye <- validateEmptyRetAppContext "forceExpr0" result
-      (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye a0tye
+      (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye a0tyeReq
       pure $ applyCast cast a0e
 
 typecheckExpr0 :: trav -> TypeEnv -> AppContext -> Expr -> M trav (Result0, Ass0Expr)
@@ -1136,11 +1136,6 @@ mapMPure f = go
     go (FillInferred0 a0e r) = FillInferred0 a0e <$> go r
     go (InsertInferred0 a0e r) = InsertInferred0 a0e <$> go r
 
-insertCastForExprArg :: trav -> (Ass0TypeExpr, Ass0Expr, Span) -> Ass0TypeExpr -> M trav Ass0Expr
-insertCastForExprArg trav (a0tye, a0e, loc) a0tyeReq = do
-  (cast, _) <- makeAssertiveCast trav loc Set.empty a0tye a0tyeReq
-  pure $ applyCast cast a0e
-
 validateIntLiteral :: trav -> (IntermediateArgForAss0Type, Span) -> M trav Int
 validateIntLiteral trav = \case
   (IA0ExprArg (A0Literal (ALitInt n)), _) ->
@@ -1277,48 +1272,41 @@ ass0exprAnd = A0BuiltInName (BuiltInArity2 BIAnd)
 ass0exprListMap :: Ass0Expr
 ass0exprListMap = A0BuiltInName (BuiltInArity2 BIListMap)
 
-data IntermediateArgForAss1Type
-  = IA1ExprArg Ass0Expr Ass0TypeExpr
-  | IA1TypeArg Ass1TypeExpr
-
 typecheckTypeExpr1 :: trav -> TypeEnv -> TypeExpr -> M trav Ass1TypeExpr
 typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
   spanInFile <- askSpanInFile loc
   case tyeMain of
     TyName tyName args -> do
-      results <-
-        mapM
-          ( \case
-              ExprArgPersistent e@(Expr loc' _) -> do
-                (result, a0e) <- typecheckExpr0 trav tyEnv [] e
-                a0tye <- validateEmptyRetAppContext "PersistentArg" result
-                pure (IA1ExprArg a0e a0tye, loc')
-              ExprArgNormal (Expr loc' _) -> do
-                spanInFile' <- askSpanInFile loc'
-                typeError trav $ CannotUseNormalArgAtStage1 spanInFile'
-              TypeArg tye@(TypeExpr loc' _) -> do
-                a1tye <- typecheckTypeExpr1 trav tyEnv tye
-                pure (IA1TypeArg a1tye, loc')
-          )
-          args
-      case (tyName, results) of
+      mapM_
+        ( \case
+            ExprArgPersistent _ ->
+              pure ()
+            ExprArgNormal (Expr loc' _) -> do
+              spanInFile' <- askSpanInFile loc'
+              typeError trav $ CannotUseNormalArgAtStage1 spanInFile'
+            TypeArg _ ->
+              pure ()
+        )
+        args
+      case (tyName, args) of
         ("Int", []) -> pure $ A1TyPrim A1TyInt
         ("Float", []) -> pure $ A1TyPrim A1TyFloat
         ("Bool", []) -> pure $ A1TyPrim A1TyBool
         ("Unit", []) -> pure $ A1TyPrim A1TyUnit
-        ("List", [(IA1TypeArg a1tye, _)]) -> do
+        ("List", [TypeArg tye]) -> do
+          a1tye <- typecheckTypeExpr1 trav tyEnv tye
           pure $ A1TyList a1tye
-        ("Vec", [(IA1ExprArg a0e' a0tye, loc')]) -> do
-          a0e <- insertCastForExprArg trav (a0tye, a0e', loc') BuiltIn.tyNat
+        ("Vec", [ExprArgPersistent e]) -> do
+          a0e <- forceExpr0 trav tyEnv BuiltIn.tyNat e
           pure $ A1TyPrim (a1TyVec a0e)
-        ("Mat", [(IA1ExprArg a0e1' a0tye1, loc1), (IA1ExprArg a0e2' a0tye2, loc2)]) -> do
-          a0e1 <- insertCastForExprArg trav (a0tye1, a0e1', loc1) BuiltIn.tyNat
-          a0e2 <- insertCastForExprArg trav (a0tye2, a0e2', loc2) BuiltIn.tyNat
+        ("Mat", [ExprArgPersistent e1, ExprArgPersistent e2]) -> do
+          a0e1 <- forceExpr0 trav tyEnv BuiltIn.tyNat e1
+          a0e2 <- forceExpr0 trav tyEnv BuiltIn.tyNat e2
           pure $ A1TyPrim (a1TyMat a0e1 a0e2)
-        ("Tensor", [(IA1ExprArg a0e' a0tye, loc')]) -> do
-          a0eList <- insertCastForExprArg trav (a0tye, a0e', loc') (A0TyList BuiltIn.tyNat Nothing)
+        ("Tensor", [ExprArgPersistent e]) -> do
+          a0eList <- forceExpr0 trav tyEnv (A0TyList BuiltIn.tyNat Nothing) e
           pure $ A1TyPrim (A1TyTensor a0eList)
-        _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length results)
+        _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length args)
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       () <-
