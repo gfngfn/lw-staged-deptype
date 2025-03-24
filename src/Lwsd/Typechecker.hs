@@ -554,7 +554,7 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                     pure entry
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
-                    typeError trav $ CannotInferOptional spanInFile x
+                    typeError trav $ CannotInferOptional spanInFile x a0tye appCtx
               (cast', _solution'') <-
                 makeAssertiveCast trav loc Set.empty a0tyeInferred (applySolution solution' a0tye1)
               pure (FillInferred0 (applyCast cast' a0eInferred) result', solution')
@@ -566,7 +566,7 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                     pure entry
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
-                    typeError trav $ CannotInferOptional spanInFile x
+                    typeError trav $ CannotInferOptional spanInFile x a0tye appCtx
               (cast', _solution) <-
                 makeAssertiveCast trav loc Set.empty a0tyeInferred (applySolution solution' a0tye1)
               pure (InsertInferred0 (applyCast cast' a0eInferred) result', solution')
