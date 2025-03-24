@@ -600,6 +600,22 @@ validateEmptyRetAppContext :: String -> ResultF af StaticVar -> M trav (af Stati
 validateEmptyRetAppContext _ (Pure v) = pure v
 validateEmptyRetAppContext msg _ = bug $ "non-empty RetAppContext; " ++ msg
 
+forceExpr0 :: trav -> TypeEnv -> Ass0TypeExpr -> Expr -> M trav Ass0Expr
+forceExpr0 trav tyEnv a0tyeReq e@(Expr loc eMain) = do
+  case eMain of
+    Literal (LitList es) ->
+      case a0tyeReq of
+        A0TyList a0tyeElem _maybePred -> do
+          a0es <- mapM (forceExpr0 trav tyEnv a0tyeElem) es
+          pure $ A0Literal (ALitList a0es)
+        _ ->
+          error "TODO (error): typecheckExpr0, empty list literals"
+    _ -> do
+      (result, a0e) <- typecheckExpr0 trav tyEnv [] e
+      a0tye <- validateEmptyRetAppContext "forceExpr0" result
+      (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye a0tye
+      pure $ applyCast cast a0e
+
 typecheckExpr0 :: trav -> TypeEnv -> AppContext -> Expr -> M trav (Result0, Ass0Expr)
 typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
   spanInFile <- askSpanInFile loc
@@ -620,19 +636,11 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 LitList es ->
                   case es of
                     [] ->
-                      error "TODO: typecheckExpr0, empty list literals"
+                      error "TODO (error): typecheckExpr0, empty list literals"
                     eFirst : esTail -> do
                       (resultFirst, a0eFirst) <- typecheckExpr0 trav tyEnv [] eFirst
                       a0tyeFirst <- validateEmptyRetAppContext "stage-0, LitList, first" resultFirst
-                      a0esTail <-
-                        mapM
-                          ( \e@(Expr locElem _) -> do
-                              (result, a0e) <- typecheckExpr0 trav tyEnv [] e
-                              a0tye <- validateEmptyRetAppContext "stage-0, LitList, tail" result
-                              (cast, _solution) <- makeAssertiveCast trav locElem Set.empty a0tye a0tyeFirst
-                              pure $ applyCast cast a0e
-                          )
-                          esTail
+                      a0esTail <- mapM (forceExpr0 trav tyEnv a0tyeFirst) esTail
                       pure (A0TyList a0tyeFirst Nothing, ALitList (a0eFirst : a0esTail))
                 LitVec ns -> do
                   let vec = Vector.fromList ns
@@ -812,22 +820,13 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             spanInFile0 <- askSpanInFile loc0
             typeError trav $ NotABoolTypeForStage0 spanInFile0 a0tye0
       As e1 tye2 ->
-        -- The following is a very ad-hoc branching.
-        -- TODO: fix this with "truly" bidirectional type-checking
-        case e1 of
-          Expr _loc1 (Literal (LitList [])) ->
-            case appCtx of
-              [] -> do
-                a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
-                pure (Pure a0tye2, A0Literal (ALitList []))
-              _ : _ ->
-                typeError trav $ CannotApplyLiteral spanInFile
-          _ -> do
-            (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
-            a0tye1 <- validateEmptyRetAppContext "stage-0, As, 1" result1
+        case appCtx of
+          [] -> do
             a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
-            (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye1 a0tye2
-            pure (Pure a0tye2, applyCast cast a0e1)
+            a0e1 <- forceExpr0 trav tyEnv a0tye2 e1
+            pure (Pure a0tye2, a0e1)
+          _ : _ ->
+            error "TODO: stage-0, As, non-empty AppContext"
       Bracket e1 -> do
         (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
         result <- mapMPure (pure . A0TyCode) result1
