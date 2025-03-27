@@ -1,5 +1,6 @@
 module Util.ParserUtil
   ( GenP,
+    ParseError (..),
     runParser,
     failure,
     eof,
@@ -30,9 +31,21 @@ import Prelude hiding (or)
 
 type GenP token a = Mp.Parsec Void [Located token] a
 
-runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> [Located token] -> Either String a
+data ParseError token
+  deriving stock (Show)
+
+runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> [Located token] -> Either [ParseError token] a
 runParser p locatedTokens =
-  Either.mapLeft Mp.errorBundlePretty $ Mp.parse p "input" locatedTokens
+  Either.mapLeft makeParseError $ Mp.parse p "input" locatedTokens
+
+{-
+instance (Ord token) => Mp.VisualStream [Located token] where
+  showTokens _ _ = error "TODO: showTokens"
+  tokensLength _ _ = error "TODO: tokensLength"
+-}
+
+makeParseError :: Mp.ParseErrorBundle [Located token] Void -> [ParseError token]
+makeParseError _bundle = error "TODO: makeParseError"
 
 eof :: (Ord token) => GenP token ()
 eof = Mp.eof

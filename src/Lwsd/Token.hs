@@ -62,10 +62,10 @@ data Token
   deriving stock (Ord, Eq, Show, Generic)
 
 instance Mp.VisualStream [Located Token] where
-  showTokens _proxy = show
+  showTokens _proxy = show -- TODO
 
 instance Mp.TraversableStream [Located Token] where
-  reachOffset _n posState = (Nothing, posState)
+  reachOffset _n posState = (Nothing, posState) -- TODO
 
 keywordMap :: Map Text Token
 keywordMap =

@@ -262,7 +262,7 @@ typeExpr = fun
 parse :: P a -> Text -> Either String a
 parse p source = do
   locatedTokens <- Token.lex source
-  runParser p locatedTokens
+  mapLeft show $ runParser p locatedTokens -- TODO
 
 parseExpr :: Text -> Either String Expr
 parseExpr = parse (expr <* eof)
