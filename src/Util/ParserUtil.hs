@@ -22,16 +22,22 @@ where
 import Data.Either.Extra qualified as Either
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set qualified as Set
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Text.Megaparsec ((<|>))
 import Text.Megaparsec qualified as Mp
 import Util.TokenUtil
-import Prelude hiding (or)
+import Prelude hiding (or, span)
 
 type GenP token a = Mp.Parsec Void [Located token] a
 
-data ParseError token
+data ParseError token = ParseError
+  { span :: Span,
+    message :: Text
+  }
   deriving stock (Show)
 
 runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> [Located token] -> Either [ParseError token] a
@@ -44,8 +50,30 @@ instance (Ord token) => Mp.VisualStream [Located token] where
   tokensLength _ _ = error "TODO: tokensLength"
 -}
 
-makeParseError :: Mp.ParseErrorBundle [Located token] Void -> [ParseError token]
-makeParseError _bundle = error "TODO: makeParseError"
+makeParseError :: (Ord token, Mp.VisualStream [Located token]) => Mp.ParseErrorBundle [Located token] Void -> [ParseError token]
+makeParseError bundle =
+  concatMap go (NonEmpty.toList (Mp.bundleErrors bundle))
+  where
+    go = \case
+      Mp.FancyError _ _ ->
+        []
+      e@(Mp.TrivialError _ unexpected _) ->
+        case unexpected of
+          Just (Mp.Tokens (token0 :| tokensRest)) ->
+            [ ParseError
+                { span = List.foldl' (\loc t -> mergeSpan loc (getSpan t)) (getSpan token0) tokensRest,
+                  message = Text.pack (Mp.parseErrorTextPretty e)
+                }
+            ]
+          Just Mp.EndOfInput ->
+            error "TODO: EndOfInput"
+          Just (Mp.Label _chars) ->
+            []
+          Nothing ->
+            []
+
+    getSpan (Located loc _) =
+      loc
 
 eof :: (Ord token) => GenP token ()
 eof = Mp.eof
