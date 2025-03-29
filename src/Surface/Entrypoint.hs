@@ -117,7 +117,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
           case Parser.parseExpr sourceSpecOfInput source of
             Left err -> do
               putSectionLine "parse error:"
-              putStrLn err
+              putRenderedLines err
               failure
             Right e -> do
               putSectionLine "parsed expression:"
