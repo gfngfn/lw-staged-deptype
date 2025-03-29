@@ -16,6 +16,7 @@ import Data.Text (Text)
 import Lwsd.SrcSyntax
 import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
+import Util.LocationInFile (SourceSpec)
 import Util.ParserUtil
 import Util.TokenUtil (Located (..), Span, mergeSpan)
 import Prelude hiding (or)
@@ -321,16 +322,16 @@ external =
     field :: P (Text, Text)
     field = (,) <$> (noLoc lower <* token TokEqual) <*> noLoc string
 
-parse :: P a -> Text -> Either String a
-parse p source = do
+parse :: P a -> SourceSpec -> Text -> Either String a
+parse p sourceSpec source = do
   locatedTokens <- Token.lex source
-  mapLeft show $ runParser p locatedTokens -- TODO
+  mapLeft show $ runParser p sourceSpec locatedTokens -- TODO
 
-parseExpr :: Text -> Either String Expr
+parseExpr :: SourceSpec -> Text -> Either String Expr
 parseExpr = parse (expr <* eof)
 
-parseTypeExpr :: Text -> Either String TypeExpr
+parseTypeExpr :: SourceSpec -> Text -> Either String TypeExpr
 parseTypeExpr = parse (typeExpr <* eof)
 
-parseBinds :: Text -> Either String [Bind]
+parseBinds :: SourceSpec -> Text -> Either String [Bind]
 parseBinds = parse (manyNoTry bind <* eof)

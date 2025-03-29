@@ -29,20 +29,21 @@ import Data.Text qualified as Text
 import Data.Void (Void)
 import Text.Megaparsec ((<|>))
 import Text.Megaparsec qualified as Mp
+import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.TokenUtil
 import Prelude hiding (or, span)
 
 type GenP token a = Mp.Parsec Void [Located token] a
 
 data ParseError token = ParseError
-  { span :: Span,
+  { spanInFile :: SpanInFile,
     message :: Text
   }
   deriving stock (Show)
 
-runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> [Located token] -> Either [ParseError token] a
-runParser p locatedTokens =
-  Either.mapLeft makeParseError $ Mp.parse p "input" locatedTokens
+runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> SourceSpec -> [Located token] -> Either [ParseError token] a
+runParser p sourceSpec locatedTokens =
+  Either.mapLeft (makeParseError sourceSpec) $ Mp.parse p "input" locatedTokens
 
 {-
 instance (Ord token) => Mp.VisualStream [Located token] where
@@ -50,8 +51,8 @@ instance (Ord token) => Mp.VisualStream [Located token] where
   tokensLength _ _ = error "TODO: tokensLength"
 -}
 
-makeParseError :: (Ord token, Mp.VisualStream [Located token]) => Mp.ParseErrorBundle [Located token] Void -> [ParseError token]
-makeParseError bundle =
+makeParseError :: (Ord token, Mp.VisualStream [Located token]) => SourceSpec -> Mp.ParseErrorBundle [Located token] Void -> [ParseError token]
+makeParseError sourceSpec bundle =
   concatMap go (NonEmpty.toList (Mp.bundleErrors bundle))
   where
     go = \case
@@ -60,8 +61,9 @@ makeParseError bundle =
       e@(Mp.TrivialError _ unexpected _) ->
         case unexpected of
           Just (Mp.Tokens (token0 :| tokensRest)) ->
+            let span = List.foldl' (\loc t -> mergeSpan loc (getSpan t)) (getSpan token0) tokensRest in
             [ ParseError
-                { span = List.foldl' (\loc t -> mergeSpan loc (getSpan t)) (getSpan token0) tokensRest,
+                { spanInFile = getSpanInFile sourceSpec span,
                   message = Text.pack (Mp.parseErrorTextPretty e)
                 }
             ]

@@ -15,6 +15,7 @@ import Data.Text (Text)
 import Surface.Syntax
 import Surface.Token (Token (..))
 import Surface.Token qualified as Token
+import Util.LocationInFile (SourceSpec)
 import Util.ParserUtil
 import Util.TokenUtil (Located (..), Span, mergeSpan)
 import Prelude hiding (or)
@@ -259,13 +260,13 @@ typeExpr = fun
       where
         makeFunDom isMandatory (Located loc (x, tyeDom)) = (Just (isMandatory, loc, x), tyeDom)
 
-parse :: P a -> Text -> Either String a
-parse p source = do
+parse :: P a -> SourceSpec -> Text -> Either String a
+parse p sourceSpec source = do
   locatedTokens <- Token.lex source
-  mapLeft show $ runParser p locatedTokens -- TODO
+  mapLeft show $ runParser p sourceSpec locatedTokens -- TODO
 
-parseExpr :: Text -> Either String Expr
+parseExpr :: SourceSpec -> Text -> Either String Expr
 parseExpr = parse (expr <* eof)
 
-parseTypeExpr :: Text -> Either String TypeExpr
+parseTypeExpr :: SourceSpec -> Text -> Either String TypeExpr
 parseTypeExpr = parse (typeExpr <* eof)
