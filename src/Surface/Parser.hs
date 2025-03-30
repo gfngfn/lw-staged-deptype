@@ -15,8 +15,6 @@ import Data.Text (Text)
 import Surface.Syntax
 import Surface.Token (Token (..))
 import Surface.Token qualified as Token
-import Text.Megaparsec ((<|>))
-import Text.Megaparsec qualified as Mp
 import Util.FrontError (FrontError (..))
 import Util.LocationInFile (SourceSpec)
 import Util.ParserUtil
@@ -104,8 +102,8 @@ exprAtom, expr :: P Expr
         <|> (located (Literal . LitVec) <$> vec)
         <|> (located (Literal . LitMat) <$> mat)
         <|> (located Var <$> longOrShortLower)
-        <|> Mp.try (located (\x -> Var ([], x)) <$> standaloneOp)
-        <|> Mp.try (makeLitUnit <$> token TokLeftParen <*> token TokRightParen)
+        <|> try (located (\x -> Var ([], x)) <$> standaloneOp)
+        <|> try (makeLitUnit <$> token TokLeftParen <*> token TokRightParen)
         <|> (makeEnclosed <$> paren expr)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
@@ -135,7 +133,7 @@ exprAtom, expr :: P Expr
 
     as :: P Expr
     as =
-      makeAs <$> app <*> Mp.optional (token TokAs *> typeExpr)
+      makeAs <$> app <*> optional (token TokAs *> typeExpr)
       where
         makeAs :: Expr -> Maybe TypeExpr -> Expr
         makeAs e1@(Expr loc1 _) = \case
@@ -181,7 +179,7 @@ exprAtom, expr :: P Expr
     letin :: P Expr
     letin =
       (makeLet <$> token TokLet <*> letInMain)
-        <|> Mp.try (makeSequential <$> (comp <* token TokSemicolon) <*> letin)
+        <|> try (makeSequential <$> (comp <* token TokSemicolon) <*> letin)
         <|> lam
       where
         makeLet locFirst (eMain, locLast) =
@@ -214,7 +212,7 @@ typeExpr = fun
 
     app :: P TypeExpr
     app =
-      Mp.try (makeTyName <$> upper <*> some argForType)
+      try (makeTyName <$> upper <*> some argForType)
         <|> atom
       where
         makeTyName (Located locFirst t) args =
@@ -227,12 +225,12 @@ typeExpr = fun
 
     argForType :: P ArgForType
     argForType =
-      Mp.try (ExprArg <$> exprAtom)
+      try (ExprArg <$> exprAtom)
         <|> (TypeArg <$> atom)
 
     fun :: P TypeExpr
     fun =
-      Mp.try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
+      try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
         <|> app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
@@ -248,7 +246,7 @@ typeExpr = fun
     funDom :: P (Maybe (Bool, Span, Var), TypeExpr)
     funDom =
       (makeFunDom False <$> brace ((,) <$> (noLoc lower <* token TokColon) <*> fun))
-        <|> Mp.try (makeFunDom True <$> paren ((,) <$> (noLoc lower <* token TokColon) <*> fun))
+        <|> try (makeFunDom True <$> paren ((,) <$> (noLoc lower <* token TokColon) <*> fun))
         <|> ((Nothing,) <$> app)
       where
         makeFunDom isMandatory (Located loc (x, tyeDom)) = (Just (isMandatory, loc, x), tyeDom)

@@ -3,7 +3,10 @@ module Util.ParserUtil
     ParseError (..),
     runParser,
     failure,
+    (<|>), -- Re-export
     eof,
+    try,
+    optional,
     some,
     many,
     sepBy,
@@ -42,12 +45,6 @@ runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [
 runParser p sourceSpec locatedTokens =
   Either.mapLeft (makeParseError sourceSpec) $ Mp.parse p "input" locatedTokens
 
-{-
-instance (Ord token) => Mp.VisualStream [Located token] where
-  showTokens _ _ = error "TODO: showTokens"
-  tokensLength _ _ = error "TODO: tokensLength"
--}
-
 makeParseError :: (Ord token, Mp.VisualStream [Located token]) => SourceSpec -> Mp.ParseErrorBundle [Located token] Void -> [ParseError]
 makeParseError sourceSpec bundle =
   concatMap go (NonEmpty.toList (Mp.bundleErrors bundle))
@@ -76,6 +73,12 @@ makeParseError sourceSpec bundle =
 
 eof :: (Ord token) => GenP token ()
 eof = Mp.eof
+
+try :: (Ord token) => GenP token a -> GenP token a
+try = Mp.try
+
+optional :: (Ord token) => GenP token a -> GenP token (Maybe a)
+optional = Mp.optional
 
 failure :: (Ord token) => Located token -> GenP token a
 failure unexpectedToken =
