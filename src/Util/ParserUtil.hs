@@ -38,7 +38,7 @@ data ParseError token = ParseError
   { spanInFile :: SpanInFile,
     message :: Text
   }
-  deriving stock (Show)
+  deriving stock (Eq, Show)
 
 runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> SourceSpec -> [Located token] -> Either [ParseError token] a
 runParser p sourceSpec locatedTokens =

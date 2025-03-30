@@ -170,7 +170,7 @@ handle' = do
   case Parser.parseBinds sourceSpecOfStub stub of
     Left err -> do
       putSectionLine "parse error of stub:"
-      lift $ putStrLn err
+      putRenderedLines err
       failure
     Right bindsInStub -> do
       source <- lift $ TextIO.readFile inputFilePath
@@ -182,7 +182,7 @@ handle' = do
       case Parser.parseExpr sourceSpecOfInput source of
         Left err -> do
           putSectionLine "parse error of source:"
-          lift $ putStrLn err
+          putRenderedLines err
           failure
         Right e -> do
           putSectionLine "parsed expression:"

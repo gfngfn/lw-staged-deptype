@@ -9,3 +9,4 @@ import Prelude
 data FrontError token
   = FrontLexingError String
   | FrontParseError [ParseError token]
+  deriving stock (Eq, Show)

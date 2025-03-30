@@ -18,6 +18,7 @@ import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
 import Text.Megaparsec qualified as Mp
 import Text.Megaparsec ((<|>))
+import Util.FrontError (FrontError (..))
 import Util.LocationInFile (SourceSpec)
 import Util.ParserUtil
 import Util.TokenUtil (Located (..), Span, mergeSpan)
@@ -318,16 +319,16 @@ external =
     field :: P (Text, Text)
     field = (,) <$> (noLoc lower <* token TokEqual) <*> noLoc string
 
-parse :: P a -> SourceSpec -> Text -> Either String a
+parse :: P a -> SourceSpec -> Text -> Either (FrontError Token) a
 parse p sourceSpec source = do
-  locatedTokens <- Token.lex source
-  mapLeft show $ runParser p sourceSpec locatedTokens -- TODO
+  locatedTokens <- mapLeft FrontLexingError $ Token.lex source
+  mapLeft FrontParseError $ runParser p sourceSpec locatedTokens
 
-parseExpr :: SourceSpec -> Text -> Either String Expr
+parseExpr :: SourceSpec -> Text -> Either (FrontError Token) Expr
 parseExpr = parse (expr <* eof)
 
-parseTypeExpr :: SourceSpec -> Text -> Either String TypeExpr
+parseTypeExpr :: SourceSpec -> Text -> Either (FrontError Token) TypeExpr
 parseTypeExpr = parse (typeExpr <* eof)
 
-parseBinds :: SourceSpec -> Text -> Either String [Bind]
+parseBinds :: SourceSpec -> Text -> Either (FrontError Token) [Bind]
 parseBinds = parse (many bind <* eof)

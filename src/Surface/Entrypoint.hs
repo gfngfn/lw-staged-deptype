@@ -96,7 +96,7 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
   case LwsdParser.parseBinds sourceSpecOfStub stub of
     Left err -> do
       putSectionLine "parse error of stub:"
-      putStrLn err
+      putRenderedLines err
       failure
     Right declsInStub -> do
       (r, stateAfterTraversingStub@TypecheckState {assVarDisplay}) <-

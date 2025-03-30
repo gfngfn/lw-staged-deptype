@@ -4,18 +4,20 @@ import Data.Functor
 import Data.Text (Text)
 import Lwsd.Parser qualified as Parser
 import Lwsd.SrcSyntax
+import Lwsd.Token (Token)
 import SyntaxUtil
 import Test.Hspec
+import Util.FrontError (FrontError)
 import Util.LocationInFile (SourceSpec (..))
 import Util.TokenUtil (Span (..))
 
-parseExpr :: Text -> Either String ExprVoid
+parseExpr :: Text -> Either (FrontError Token) ExprVoid
 parseExpr s = fmap void (Parser.parseExpr (SourceSpec s "test") s)
 
-parseExprWithLoc :: Text -> Either String Expr
+parseExprWithLoc :: Text -> Either (FrontError Token) Expr
 parseExprWithLoc s = Parser.parseExpr (SourceSpec s "test") s
 
-parseTypeExpr :: Text -> Either String TypeExprVoid
+parseTypeExpr :: Text -> Either (FrontError Token) TypeExprVoid
 parseTypeExpr s = fmap void (Parser.parseTypeExpr (SourceSpec s "test") s)
 
 exprLoc :: Int -> Int -> ExprMainF Span -> Expr
