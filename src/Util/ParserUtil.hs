@@ -6,7 +6,6 @@ module Util.ParserUtil
     eof,
     some,
     many,
-    manyNoTry,
     sepBy,
     tries,
     or,
@@ -92,10 +91,7 @@ some p = do
     x : xs' -> pure (x :| xs')
 
 many :: (Ord token) => GenP token a -> GenP token [a]
-many = Mp.many . Mp.try
-
-manyNoTry :: (Ord token) => GenP token a -> GenP token [a]
-manyNoTry = Mp.many
+many = Mp.many
 
 sepBy :: (Ord token) => GenP token a -> GenP token sep -> GenP token [a]
 sepBy = Mp.sepBy

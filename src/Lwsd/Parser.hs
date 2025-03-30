@@ -332,4 +332,4 @@ parseTypeExpr :: SourceSpec -> Text -> Either String TypeExpr
 parseTypeExpr = parse (typeExpr <* eof)
 
 parseBinds :: SourceSpec -> Text -> Either String [Bind]
-parseBinds = parse (manyNoTry bind <* eof)
+parseBinds = parse (many bind <* eof)
