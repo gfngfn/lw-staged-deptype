@@ -7,7 +7,6 @@ module Util.ParserUtil
     some,
     many,
     sepBy,
-    tries,
     expectToken,
     token,
     noLoc,
@@ -95,12 +94,6 @@ many = Mp.many
 sepBy :: (Ord token) => GenP token a -> GenP token sep -> GenP token [a]
 sepBy = Mp.sepBy
 
-tries :: (Ord token) => [GenP token a] -> GenP token a -> GenP token a
-tries ps pAcc0 = foldr or pAcc0 ps
-
-or :: (Ord token) => GenP token a -> GenP token a -> GenP token a
-or p1 p2 = Mp.try p1 <|> p2
-
 expectToken :: (Ord token) => (token -> Maybe a) -> GenP token (Located a)
 expectToken f =
   Mp.token
@@ -126,8 +119,8 @@ genVec :: (Ord token) => token -> token -> token -> GenP token entry -> GenP tok
 genVec tLeft tRight tSemicolon entry = makeVec <$> token tLeft <*> rest
   where
     rest =
-      (makeNonemptyVec <$> entry <*> many (token tSemicolon *> entry) <*> token tRight)
-        `or` (([],) <$> token tRight)
+      (([],) <$> token tRight)
+        <|> (makeNonemptyVec <$> entry <*> many (token tSemicolon *> entry) <*> token tRight)
 
     makeNonemptyVec elemFirst elemsTail locLast =
       (elemFirst : elemsTail, locLast)
@@ -139,8 +132,8 @@ genMat :: (Ord token) => token -> token -> token -> token -> GenP token entry ->
 genMat tLeft tRight tSemicolon tComma entry = makeMat <$> token tLeft <*> rest
   where
     rest =
-      (makeNonemptyMat <$> nonemptyRow <*> many (token tSemicolon *> nonemptyRow) <*> token tRight)
-        `or` (([],) <$> token tRight)
+      (([],) <$> token tRight)
+        <|> (makeNonemptyMat <$> nonemptyRow <*> many (token tSemicolon *> nonemptyRow) <*> token tRight)
 
     makeNonemptyMat rowFirst rowsTail locLast =
       (rowFirst : rowsTail, locLast)

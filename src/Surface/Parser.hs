@@ -180,25 +180,25 @@ exprAtom, expr :: P Expr
 
     letin :: P Expr
     letin =
-      tries
-        [ makeLetIn <$> token TokLet <*> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
-          makeLetRecIn <$> (token TokLet <* token TokRec) <*> noLoc boundIdent <*> many lamBinder <*> (token TokColon *> typeExpr) <*> (token TokEqual *> letin) <*> (token TokIn *> letin),
-          makeLetOpenIn <$> token TokLet <*> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin),
-          makeSequential <$> (comp <* token TokSemicolon) <*> letin
-        ]
-        lam
+      (makeLet <$> token TokLet <*> letInMain)
+        <|> Mp.try (makeSequential <$> (comp <* token TokSemicolon) <*> letin)
+        <|> lam
       where
-        makeLetIn locFirst x params e1 e2@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (LetIn x params e1 e2)
-
-        makeLetRecIn locFirst x params tye e1 e2@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (LetRecIn x params tye e1 e2)
-
-        makeLetOpenIn locFirst m e@(Expr locLast _) =
-          Expr (mergeSpan locFirst locLast) (LetOpenIn m e)
+        makeLet locFirst (eMain, locLast) =
+          Expr (mergeSpan locFirst locLast) eMain
 
         makeSequential e1@(Expr locFirst _) e2@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) (Sequential e1 e2)
+
+    letInMain :: P (ExprMain, Span)
+    letInMain =
+      (makeLetIn <$> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+        <|> (makeLetRecIn <$> (token TokRec *> noLoc boundIdent) <*> many lamBinder <*> (token TokColon *> typeExpr) <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+        <|> (makeLetOpenIn <$> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin))
+      where
+        makeLetIn x params e1 e2@(Expr locLast _) = (LetIn x params e1 e2, locLast)
+        makeLetRecIn x params tye e1 e2@(Expr locLast _) = (LetRecIn x params tye e1 e2, locLast)
+        makeLetOpenIn m e@(Expr locLast _) = (LetOpenIn m e, locLast)
 
 typeExpr :: P TypeExpr
 typeExpr = fun
