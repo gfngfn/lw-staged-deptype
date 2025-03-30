@@ -118,11 +118,9 @@ exprAtom, expr :: P Expr
 
     staged :: P Expr
     staged =
-      tries
-        [ makeStaged Bracket <$> token TokBracket <*> staged,
-          makeStaged Escape <$> token TokEscape <*> staged
-        ]
-        atom
+      (makeStaged Bracket <$> token TokBracket <*> staged)
+        <|> (makeStaged Escape <$> token TokEscape <*> staged)
+        <|> atom
       where
         makeStaged constructor loc1 e@(Expr loc2 _) =
           Expr (mergeSpan loc1 loc2) (constructor e)
@@ -168,12 +166,10 @@ exprAtom, expr :: P Expr
 
     lam :: P Expr
     lam =
-      tries
-        [ makeNonrecLam <$> token TokFun <*> (lamBinder <* token TokArrow) <*> expr,
-          makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr,
-          makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
-        ]
-        comp
+      (makeNonrecLam <$> token TokFun <*> (lamBinder <* token TokArrow) <*> expr)
+        <|> (makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr)
+        <|> (makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr))
+        <|> comp
       where
         makeNonrecLam locFirst xBinder' e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) $

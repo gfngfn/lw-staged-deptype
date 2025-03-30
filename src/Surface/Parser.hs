@@ -153,12 +153,10 @@ exprAtom, expr :: P Expr
 
     lam :: P Expr
     lam =
-      tries
-        [ makeNonrecLam <$> token TokFun <*> (lamBinder <* token TokArrow) <*> expr,
-          makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr,
-          makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr)
-        ]
-        comp
+      (makeNonrecLam <$> token TokFun <*> (lamBinder <* token TokArrow) <*> expr)
+        <|> (makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr)
+        <|> (makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr))
+        <|> comp
       where
         makeNonrecLam locFirst xBinder' e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) $
