@@ -16,6 +16,8 @@ import Data.Text (Text)
 import Lwsd.SrcSyntax
 import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
+import Text.Megaparsec qualified as Mp
+import Text.Megaparsec ((<|>))
 import Util.LocationInFile (SourceSpec)
 import Util.ParserUtil
 import Util.TokenUtil (Located (..), Span, mergeSpan)
@@ -132,11 +134,9 @@ exprAtom, expr :: P Expr
       where
         arg :: P FunArg
         arg =
-          tries
-            [ FunArgOptOmitted <$> token TokUnderscore,
-              FunArgOptGiven <$> brace letin
-            ]
-            (FunArgMandatory <$> staged)
+          (FunArgOptOmitted <$> token TokUnderscore)
+            <|> (FunArgOptGiven <$> brace letin)
+            <|> (FunArgMandatory <$> staged)
 
         makeApp :: NonEmpty FunArg -> P Expr
         makeApp (FunArgMandatory eFun :| args) = pure $ List.foldl' makeAppSingle eFun args
@@ -243,7 +243,7 @@ typeExpr = fun
 
     app :: P TypeExpr
     app =
-      (makeTyName <$> upper <*> some argForType)
+      (makeTyName <$> upper <*> some (Mp.try argForType))
         `or` staged
       where
         makeTyName (Located locFirst t) args =

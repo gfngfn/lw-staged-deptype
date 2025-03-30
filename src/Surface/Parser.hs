@@ -15,6 +15,7 @@ import Data.Text (Text)
 import Surface.Syntax
 import Surface.Token (Token (..))
 import Surface.Token qualified as Token
+import Text.Megaparsec ((<|>))
 import Util.FrontError (FrontError (..))
 import Util.LocationInFile (SourceSpec)
 import Util.ParserUtil
@@ -118,11 +119,9 @@ exprAtom, expr :: P Expr
       where
         arg :: P FunArg
         arg =
-          tries
-            [ FunArgOptOmitted <$> token TokUnderscore,
-              FunArgOptGiven <$> brace letin
-            ]
-            (FunArgMandatory <$> atom)
+          (FunArgOptOmitted <$> token TokUnderscore)
+            <|> (FunArgOptGiven <$> brace letin)
+            <|> (FunArgMandatory <$> atom)
 
         makeApp :: NonEmpty FunArg -> P Expr
         makeApp (FunArgMandatory eFun :| args) = pure $ List.foldl' makeAppSingle eFun args

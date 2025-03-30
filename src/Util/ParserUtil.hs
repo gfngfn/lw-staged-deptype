@@ -86,7 +86,7 @@ failure unexpectedToken =
 
 some :: (Ord token) => GenP token a -> GenP token (NonEmpty a)
 some p = do
-  xs <- Mp.some (Mp.try p)
+  xs <- Mp.some p
   case xs of
     [] -> error "bug: Text.Megaparsec.some returned the empty list"
     x : xs' -> pure (x :| xs')
