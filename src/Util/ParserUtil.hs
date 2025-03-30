@@ -60,12 +60,12 @@ makeParseError sourceSpec bundle =
       e@(Mp.TrivialError _ unexpected _) ->
         case unexpected of
           Just (Mp.Tokens (token0 :| tokensRest)) ->
-            let span = List.foldl' (\loc t -> mergeSpan loc (getSpan t)) (getSpan token0) tokensRest in
-            [ ParseError
-                { spanInFile = getSpanInFile sourceSpec span,
-                  message = Text.pack (Mp.parseErrorTextPretty e)
-                }
-            ]
+            let span = List.foldl' (\loc t -> mergeSpan loc (getSpan t)) (getSpan token0) tokensRest
+             in [ ParseError
+                    { spanInFile = getSpanInFile sourceSpec span,
+                      message = Text.pack (Mp.parseErrorTextPretty e)
+                    }
+                ]
           Just Mp.EndOfInput ->
             error "TODO: EndOfInput"
           Just (Mp.Label _chars) ->

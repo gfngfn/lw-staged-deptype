@@ -16,8 +16,8 @@ import Data.Text (Text)
 import Lwsd.SrcSyntax
 import Lwsd.Token (Token (..))
 import Lwsd.Token qualified as Token
-import Text.Megaparsec qualified as Mp
 import Text.Megaparsec ((<|>))
+import Text.Megaparsec qualified as Mp
 import Util.FrontError (FrontError (..))
 import Util.LocationInFile (SourceSpec)
 import Util.ParserUtil
