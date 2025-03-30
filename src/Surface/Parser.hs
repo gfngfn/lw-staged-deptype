@@ -70,7 +70,7 @@ mat :: P (Located [[Int]])
 mat = genMat TokMatLeft TokMatRight TokSemicolon TokComma (noLoc int)
 
 operator :: P (Located Var)
-operator = tries [compOp, addOp] multOp
+operator = compOp <|> addOp <|> multOp
 
 multOp :: P (Located Var)
 multOp = expectToken (^? #_TokOpMult)
@@ -208,18 +208,16 @@ typeExpr = fun
     atom :: P TypeExpr
     atom =
       -- TODO: support refinement types
-      tries
-        [ makeNamed <$> upper
-        ]
-        (makeEnclosed <$> paren fun)
+      (makeNamed <$> upper)
+        <|> (makeEnclosed <$> paren fun)
       where
         makeNamed (Located loc t) = TypeExpr loc (TyName t [])
         makeEnclosed (Located loc (TypeExpr _ tyeMain)) = TypeExpr loc tyeMain
 
     app :: P TypeExpr
     app =
-      (makeTyName <$> upper <*> some argForType)
-        `or` atom
+      Mp.try (makeTyName <$> upper <*> some argForType)
+        <|> atom
       where
         makeTyName (Located locFirst t) args =
           let loc =
@@ -251,11 +249,9 @@ typeExpr = fun
 
     funDom :: P (Maybe (Bool, Span, Var), TypeExpr)
     funDom =
-      tries
-        [ makeFunDom True <$> paren ((,) <$> (noLoc lower <* token TokColon) <*> fun),
-          makeFunDom False <$> brace ((,) <$> (noLoc lower <* token TokColon) <*> fun)
-        ]
-        ((Nothing,) <$> app)
+      (makeFunDom False <$> brace ((,) <$> (noLoc lower <* token TokColon) <*> fun))
+        <|> Mp.try (makeFunDom True <$> paren ((,) <$> (noLoc lower <* token TokColon) <*> fun))
+        <|> ((Nothing,) <$> app)
       where
         makeFunDom isMandatory (Located loc (x, tyeDom)) = (Just (isMandatory, loc, x), tyeDom)
 

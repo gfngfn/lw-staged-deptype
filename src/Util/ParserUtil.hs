@@ -8,7 +8,6 @@ module Util.ParserUtil
     many,
     sepBy,
     tries,
-    or,
     expectToken,
     token,
     noLoc,
