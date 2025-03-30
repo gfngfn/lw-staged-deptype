@@ -22,8 +22,10 @@ import Surface.BindingTime.Analyzer qualified as Bta
 import Surface.BindingTime.Core qualified as Bta
 import Surface.BindingTime.Stager qualified as Bta
 import Surface.Syntax qualified as Surface
+import Util.FrontError (FrontError (..))
 import Util.LocationInFile (LocationInFile (LocationInFile), SpanInFile (..))
 import Util.Matrix qualified as Matrix
+import Util.ParserUtil (ParseError (..))
 import Util.Vector qualified as Vector
 import Prelude
 
@@ -496,6 +498,19 @@ instance (Disp sv) => Disp (Ass1TypeExprF sv) where
     A1TyPrim a1tyPrim -> dispGen req a1tyPrim
     A1TyList a1tye -> dispListType req a1tye
     A1TyArrow a1tye1 a1tye2 -> dispNondepArrowType req a1tye1 a1tye2
+
+instance Disp FrontError where
+  dispGen _ = \case
+    FrontLexingError s ->
+      disp (Text.pack s)
+    FrontParseError parseErrors ->
+      List.foldl' (\doc parseError -> doc <> hardline <> disp parseError) mempty parseErrors
+
+instance Disp ParseError where
+  dispGen _ ParseError {spanInFile, message} =
+    disp spanInFile
+      <> hardline
+      <> disp message
 
 instance Disp Matrix.ConstructionError where
   dispGen _ = \case

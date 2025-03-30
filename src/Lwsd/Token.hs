@@ -6,9 +6,11 @@ where
 
 import Control.Monad.Combinators
 import Data.Either.Extra
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as Text
 import GHC.Base
 import GHC.Generics
 import Text.Megaparsec qualified as Mp
@@ -62,10 +64,57 @@ data Token
   deriving stock (Ord, Eq, Show, Generic)
 
 instance Mp.VisualStream [Located Token] where
-  showTokens _proxy = show
+  showTokens _proxy tokens =
+    unwords (map (\(Located _ t) -> showToken t) (NonEmpty.toList tokens))
+
+showToken :: Token -> String
+showToken = \case
+  TokLeftParen -> "("
+  TokRightParen -> ")"
+  TokLeftBrace -> "{"
+  TokRightBrace -> "}"
+  TokLeftSquare -> "["
+  TokRightSquare -> "]"
+  TokArrow -> "->"
+  TokEqual -> "="
+  TokColon -> ":"
+  TokComma -> ","
+  TokBracket -> "&"
+  TokEscape -> "~"
+  TokPersistent -> "%"
+  TokSemicolon -> ";"
+  TokUnderscore -> "_"
+  TokBar -> "|"
+  TokVecLeft -> "[|"
+  TokVecRight -> "|]"
+  TokMatLeft -> "[#"
+  TokMatRight -> "#]"
+  TokLower lower -> Text.unpack lower
+  TokUpper upper -> Text.unpack upper
+  TokLongLower (mods, lower) -> Text.unpack (Text.intercalate "." mods <> lower)
+  TokInt n -> show n
+  TokFloat r -> show r
+  TokString s -> show s
+  TokFun -> "fun"
+  TokRec -> "rec"
+  TokLet -> "let"
+  TokIn -> "in"
+  TokIf -> "if"
+  TokThen -> "then"
+  TokElse -> "else"
+  TokAs -> "as"
+  TokVal -> "val"
+  TokModule -> "module"
+  TokStruct -> "struct"
+  TokEnd -> "end"
+  TokExternal -> "external"
+  TokOpen -> "open"
+  TokOpAdd op -> Text.unpack op
+  TokOpMult op -> Text.unpack op
+  TokOpComp op -> Text.unpack op
 
 instance Mp.TraversableStream [Located Token] where
-  reachOffset _n posState = (Nothing, posState)
+  reachOffset _n posState = (Nothing, posState) -- TODO
 
 keywordMap :: Map Text Token
 keywordMap =

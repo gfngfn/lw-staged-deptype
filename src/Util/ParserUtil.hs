@@ -1,14 +1,15 @@
 module Util.ParserUtil
   ( GenP,
+    ParseError (..),
     runParser,
     failure,
+    (<|>), -- Re-export
     eof,
+    try,
+    optional,
     some,
     many,
-    manyNoTry,
     sepBy,
-    tries,
-    or,
     expectToken,
     token,
     noLoc,
@@ -21,21 +22,63 @@ where
 import Data.Either.Extra qualified as Either
 import Data.List qualified as List
 import Data.List.NonEmpty (NonEmpty (..))
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Set qualified as Set
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Text.Megaparsec ((<|>))
 import Text.Megaparsec qualified as Mp
+import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.TokenUtil
-import Prelude hiding (or)
+import Prelude hiding (or, span)
 
 type GenP token a = Mp.Parsec Void [Located token] a
 
-runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> [Located token] -> Either String a
-runParser p locatedTokens =
-  Either.mapLeft Mp.errorBundlePretty $ Mp.parse p "input" locatedTokens
+data ParseError = ParseError
+  { spanInFile :: SpanInFile,
+    message :: Text
+  }
+  deriving stock (Eq, Show)
+
+runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> SourceSpec -> [Located token] -> Either [ParseError] a
+runParser p sourceSpec locatedTokens =
+  Either.mapLeft (makeParseError sourceSpec) $ Mp.parse p "input" locatedTokens
+
+makeParseError :: (Ord token, Mp.VisualStream [Located token]) => SourceSpec -> Mp.ParseErrorBundle [Located token] Void -> [ParseError]
+makeParseError sourceSpec bundle =
+  concatMap go (NonEmpty.toList (Mp.bundleErrors bundle))
+  where
+    go = \case
+      Mp.FancyError _ _ ->
+        []
+      e@(Mp.TrivialError _ unexpected _) ->
+        case unexpected of
+          Just (Mp.Tokens (token0 :| tokensRest)) ->
+            let span = List.foldl' (\loc t -> mergeSpan loc (getSpan t)) (getSpan token0) tokensRest
+             in [ ParseError
+                    { spanInFile = getSpanInFile sourceSpec span,
+                      message = Text.pack (Mp.parseErrorTextPretty e)
+                    }
+                ]
+          Just Mp.EndOfInput ->
+            error "TODO: EndOfInput"
+          Just (Mp.Label _chars) ->
+            []
+          Nothing ->
+            []
+
+    getSpan (Located loc _) =
+      loc
 
 eof :: (Ord token) => GenP token ()
 eof = Mp.eof
+
+try :: (Ord token) => GenP token a -> GenP token a
+try = Mp.try
+
+optional :: (Ord token) => GenP token a -> GenP token (Maybe a)
+optional = Mp.optional
 
 failure :: (Ord token) => Located token -> GenP token a
 failure unexpectedToken =
@@ -43,25 +86,16 @@ failure unexpectedToken =
 
 some :: (Ord token) => GenP token a -> GenP token (NonEmpty a)
 some p = do
-  xs <- Mp.some (Mp.try p)
+  xs <- Mp.some p
   case xs of
     [] -> error "bug: Text.Megaparsec.some returned the empty list"
     x : xs' -> pure (x :| xs')
 
 many :: (Ord token) => GenP token a -> GenP token [a]
-many = Mp.many . Mp.try
-
-manyNoTry :: (Ord token) => GenP token a -> GenP token [a]
-manyNoTry = Mp.many
+many = Mp.many
 
 sepBy :: (Ord token) => GenP token a -> GenP token sep -> GenP token [a]
 sepBy = Mp.sepBy
-
-tries :: (Ord token) => [GenP token a] -> GenP token a -> GenP token a
-tries ps pAcc0 = foldr or pAcc0 ps
-
-or :: (Ord token) => GenP token a -> GenP token a -> GenP token a
-or p1 p2 = Mp.try p1 <|> p2
 
 expectToken :: (Ord token) => (token -> Maybe a) -> GenP token (Located a)
 expectToken f =
@@ -88,8 +122,8 @@ genVec :: (Ord token) => token -> token -> token -> GenP token entry -> GenP tok
 genVec tLeft tRight tSemicolon entry = makeVec <$> token tLeft <*> rest
   where
     rest =
-      (makeNonemptyVec <$> entry <*> many (token tSemicolon *> entry) <*> token tRight)
-        `or` (([],) <$> token tRight)
+      (([],) <$> token tRight)
+        <|> (makeNonemptyVec <$> entry <*> many (token tSemicolon *> entry) <*> token tRight)
 
     makeNonemptyVec elemFirst elemsTail locLast =
       (elemFirst : elemsTail, locLast)
@@ -101,8 +135,8 @@ genMat :: (Ord token) => token -> token -> token -> token -> GenP token entry ->
 genMat tLeft tRight tSemicolon tComma entry = makeMat <$> token tLeft <*> rest
   where
     rest =
-      (makeNonemptyMat <$> nonemptyRow <*> many (token tSemicolon *> nonemptyRow) <*> token tRight)
-        `or` (([],) <$> token tRight)
+      (([],) <$> token tRight)
+        <|> (makeNonemptyMat <$> nonemptyRow <*> many (token tSemicolon *> nonemptyRow) <*> token tRight)
 
     makeNonemptyMat rowFirst rowsTail locLast =
       (rowFirst : rowsTail, locLast)

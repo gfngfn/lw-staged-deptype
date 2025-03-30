@@ -6,13 +6,18 @@ import Lwsd.Parser qualified as Parser
 import Lwsd.SrcSyntax
 import SyntaxUtil
 import Test.Hspec
+import Util.FrontError (FrontError)
+import Util.LocationInFile (SourceSpec (..))
 import Util.TokenUtil (Span (..))
 
-parseExpr :: Text -> Either String ExprVoid
-parseExpr s = fmap void (Parser.parseExpr s)
+parseExpr :: Text -> Either FrontError ExprVoid
+parseExpr s = fmap void (Parser.parseExpr (SourceSpec s "test") s)
 
-parseTypeExpr :: Text -> Either String TypeExprVoid
-parseTypeExpr s = fmap void (Parser.parseTypeExpr s)
+parseExprWithLoc :: Text -> Either FrontError Expr
+parseExprWithLoc s = Parser.parseExpr (SourceSpec s "test") s
+
+parseTypeExpr :: Text -> Either FrontError TypeExprVoid
+parseTypeExpr s = fmap void (Parser.parseTypeExpr (SourceSpec s "test") s)
 
 exprLoc :: Int -> Int -> ExprMainF Span -> Expr
 exprLoc start end = Expr (Span start end)
@@ -229,25 +234,25 @@ spec = do
         `shouldBe` pure (tyRefinement "n" tyInt (app (app (var "<=") (litInt 0)) (var "n")))
   describe "Parser.parseExpr (with code locations)" $ do
     it "parses integer literals" $
-      Parser.parseExpr "42"
+      parseExprWithLoc "42"
         `shouldBe` pure (exprLoc 0 2 $ Literal (LitInt 42))
     it "parses float literals" $
-      Parser.parseExpr "5.7"
+      parseExprWithLoc "5.7"
         `shouldBe` pure (exprLoc 0 3 $ Literal (LitFloat 5.7))
     it "parses vector literals" $
-      Parser.parseExpr "[| 3; 14; 1592 |]"
+      parseExprWithLoc "[| 3; 14; 1592 |]"
         `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec [3, 14, 1592]))
     it "parses matrix literals" $
-      Parser.parseExpr "[# 3, 14; 159, 2; 653, 5 #]"
+      parseExprWithLoc "[# 3, 14; 159, 2; 653, 5 #]"
         `shouldBe` pure (exprLoc 0 27 $ Literal (LitMat [[3, 14], [159, 2], [653, 5]]))
     it "parses variables" $
-      Parser.parseExpr "foo_bar"
+      parseExprWithLoc "foo_bar"
         `shouldBe` pure (exprLoc 0 7 $ short "foo_bar")
     it "parses variables with module prefixes" $
-      Parser.parseExpr "Foo.Bar.x"
+      parseExprWithLoc "Foo.Bar.x"
         `shouldBe` pure (exprLoc 0 9 $ long ["Foo", "Bar"] "x")
     it "parses applications (1)" $
-      Parser.parseExpr "x y"
+      parseExprWithLoc "x y"
         `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))
     it "parses applications (2)" $ do
       let e =
@@ -255,7 +260,7 @@ spec = do
               App
                 (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))
                 (exprLoc 4 5 $ short "z")
-      Parser.parseExpr "x y z"
+      parseExprWithLoc "x y z"
         `shouldBe` pure e
     it "parses applications (3)" $ do
       let e =
@@ -263,7 +268,7 @@ spec = do
               App
                 (exprLoc 0 1 $ short "x")
                 (exprLoc 2 7 $ App (exprLoc 3 4 $ short "y") (exprLoc 5 6 $ short "z"))
-      Parser.parseExpr "x (y z)"
+      parseExprWithLoc "x (y z)"
         `shouldBe` pure e
     it "parses brackets" $ do
       let e =
@@ -271,7 +276,7 @@ spec = do
               App
                 (exprLoc 0 1 $ short "f")
                 (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ short "g") (exprLoc 6 7 $ short "x")))
-      Parser.parseExpr "f &(g x)"
+      parseExprWithLoc "f &(g x)"
         `shouldBe` pure e
     it "parses lambda abstractions" $ do
       let ty =
@@ -285,10 +290,10 @@ spec = do
                 Nothing
                 ("x", ty)
                 (exprLoc 31 34 $ App (exprLoc 31 32 $ short "x") (exprLoc 33 34 $ short "y"))
-      Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
+      parseExprWithLoc "fun (x : (n : Int) -> Bool) -> x y"
         `shouldBe` pure e
     it "parses optional applications (1)" $
-      Parser.parseExpr "x {y}"
+      parseExprWithLoc "x {y}"
         `shouldBe` pure (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ short "x") (exprLoc 3 4 $ short "y"))
     it "parses optional applications (2)" $ do
       let e =
@@ -296,5 +301,5 @@ spec = do
               AppOptGiven
                 (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ short "x") (exprLoc 3 4 $ short "y"))
                 (exprLoc 7 8 $ short "z")
-      Parser.parseExpr "x {y} {z}"
+      parseExprWithLoc "x {y} {z}"
         `shouldBe` pure e
