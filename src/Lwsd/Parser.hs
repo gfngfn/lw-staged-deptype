@@ -47,13 +47,13 @@ upper = expectToken (^? #_TokUpper)
 longOrShortLower :: P (Located ([Text], Text))
 longOrShortLower =
   expectToken (^? #_TokLongLower)
-    `or` (fmap ([],) <$> lower)
+    <|> (fmap ([],) <$> lower)
 
 standaloneOp :: P (Located Text)
 standaloneOp = paren (noLoc operator)
 
 boundIdent :: P (Located Text)
-boundIdent = lower `or` standaloneOp
+boundIdent = lower <|> standaloneOp
 
 int :: P (Located Int)
 int = expectToken (^? #_TokInt)
@@ -150,12 +150,12 @@ exprAtom, expr :: P Expr
 
     as :: P Expr
     as =
-      (makeAs <$> app <*> (token TokAs *> typeExpr))
-        `or` app
+      makeAs <$> app <*> Mp.optional (token TokAs *> typeExpr)
       where
-        makeAs :: Expr -> TypeExpr -> Expr
-        makeAs e1@(Expr loc1 _) tye2@(TypeExpr loc2 _) =
-          Expr (mergeSpan loc1 loc2) (As e1 tye2)
+        makeAs :: Expr -> Maybe TypeExpr -> Expr
+        makeAs e1@(Expr loc1 _) = \case
+          Nothing -> e1
+          Just tye2@(TypeExpr loc2 _) -> Expr (mergeSpan loc1 loc2) (As e1 tye2)
 
     mult :: P Expr
     mult = binSep makeBinOpApp multOp as
@@ -189,7 +189,7 @@ exprAtom, expr :: P Expr
 
     lamBinder :: P LamBinder
     lamBinder =
-      (MandatoryBinder <$> mandatoryBinder) `or` (OptionalBinder <$> optionalBinder)
+      (MandatoryBinder <$> mandatoryBinder) <|> (OptionalBinder <$> optionalBinder)
 
     mandatoryBinder, optionalBinder :: P (Var, TypeExpr)
     mandatoryBinder = noLoc (paren ((,) <$> noLoc lower <*> (token TokColon *> typeExpr)))
