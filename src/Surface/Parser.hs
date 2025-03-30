@@ -231,13 +231,13 @@ typeExpr = fun
 
     argForType :: P ArgForType
     argForType =
-      (ExprArg <$> exprAtom)
-        `or` (TypeArg <$> atom)
+      Mp.try (ExprArg <$> exprAtom)
+        <|> (TypeArg <$> atom)
 
     fun :: P TypeExpr
     fun =
-      (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
-        `or` app
+      Mp.try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
+        <|> app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
           case funDomSpec of

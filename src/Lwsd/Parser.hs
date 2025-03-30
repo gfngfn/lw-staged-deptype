@@ -235,14 +235,14 @@ typeExpr = fun
     staged :: P TypeExpr
     staged =
       (makeTyCode <$> token TokBracket <*> staged)
-        `or` atom
+        <|> atom
       where
         makeTyCode loc1 tye@(TypeExpr loc2 _) =
           TypeExpr (mergeSpan loc1 loc2) (TyCode tye)
 
     app :: P TypeExpr
     app =
-      (makeTyName <$> upper <*> some (Mp.try argForType))
+      (makeTyName <$> upper <*> some argForType)
         `or` staged
       where
         makeTyName (Located locFirst t) args =
@@ -256,16 +256,14 @@ typeExpr = fun
 
     argForType :: P ArgForType
     argForType =
-      tries
-        [ ExprArgPersistent <$> (token TokPersistent *> exprAtom),
-          ExprArgNormal <$> exprAtom
-        ]
-        (TypeArg <$> atom)
+      (ExprArgPersistent <$> (token TokPersistent *> exprAtom))
+        <|> Mp.try (ExprArgNormal <$> exprAtom)
+        <|> (TypeArg <$> atom)
 
     fun :: P TypeExpr
     fun =
-      (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
-        `or` app
+      Mp.try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
+        <|> app
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
           case funDomSpec of
