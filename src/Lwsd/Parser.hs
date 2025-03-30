@@ -101,17 +101,15 @@ exprAtom, expr :: P Expr
   where
     atom :: P Expr
     atom =
-      tries
-        [ located (Literal . LitInt) <$> int,
-          located (Literal . LitFloat) <$> float,
-          located (Literal . LitList) <$> list letin,
-          located (Literal . LitVec) <$> vec,
-          located (Literal . LitMat) <$> mat,
-          located Var <$> longOrShortLower,
-          located (\x -> Var ([], x)) <$> standaloneOp,
-          makeLitUnit <$> token TokLeftParen <*> token TokRightParen
-        ]
-        (makeEnclosed <$> paren expr)
+      (located (Literal . LitInt) <$> int)
+        <|> (located (Literal . LitFloat) <$> float)
+        <|> (located (Literal . LitList) <$> list letin)
+        <|> (located (Literal . LitVec) <$> vec)
+        <|> (located (Literal . LitMat) <$> mat)
+        <|> (located Var <$> longOrShortLower)
+        <|> Mp.try (located (\x -> Var ([], x)) <$> standaloneOp)
+        <|> Mp.try (makeLitUnit <$> token TokLeftParen <*> token TokRightParen)
+        <|> (makeEnclosed <$> paren expr)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
