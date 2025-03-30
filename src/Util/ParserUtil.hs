@@ -34,13 +34,13 @@ import Prelude hiding (or, span)
 
 type GenP token a = Mp.Parsec Void [Located token] a
 
-data ParseError token = ParseError
+data ParseError = ParseError
   { spanInFile :: SpanInFile,
     message :: Text
   }
   deriving stock (Eq, Show)
 
-runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> SourceSpec -> [Located token] -> Either [ParseError token] a
+runParser :: (Ord token, Mp.VisualStream [Located token], Mp.TraversableStream [Located token]) => GenP token a -> SourceSpec -> [Located token] -> Either [ParseError] a
 runParser p sourceSpec locatedTokens =
   Either.mapLeft (makeParseError sourceSpec) $ Mp.parse p "input" locatedTokens
 
@@ -50,7 +50,7 @@ instance (Ord token) => Mp.VisualStream [Located token] where
   tokensLength _ _ = error "TODO: tokensLength"
 -}
 
-makeParseError :: (Ord token, Mp.VisualStream [Located token]) => SourceSpec -> Mp.ParseErrorBundle [Located token] Void -> [ParseError token]
+makeParseError :: (Ord token, Mp.VisualStream [Located token]) => SourceSpec -> Mp.ParseErrorBundle [Located token] Void -> [ParseError]
 makeParseError sourceSpec bundle =
   concatMap go (NonEmpty.toList (Mp.bundleErrors bundle))
   where

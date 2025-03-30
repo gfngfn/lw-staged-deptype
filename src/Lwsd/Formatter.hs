@@ -499,14 +499,14 @@ instance (Disp sv) => Disp (Ass1TypeExprF sv) where
     A1TyList a1tye -> dispListType req a1tye
     A1TyArrow a1tye1 a1tye2 -> dispNondepArrowType req a1tye1 a1tye2
 
-instance Disp (FrontError token) where
+instance Disp FrontError where
   dispGen _ = \case
     FrontLexingError s ->
       disp (Text.pack s)
     FrontParseError parseErrors ->
       List.foldl' (\doc parseError -> doc <> hardline <> disp parseError) mempty parseErrors
 
-instance Disp (ParseError token) where
+instance Disp ParseError where
   dispGen _ ParseError {spanInFile, message} =
     disp spanInFile
       <> hardline

@@ -6,7 +6,7 @@ where
 import Util.ParserUtil (ParseError)
 import Prelude
 
-data FrontError token
+data FrontError
   = FrontLexingError String
-  | FrontParseError [ParseError token]
+  | FrontParseError [ParseError]
   deriving stock (Eq, Show)

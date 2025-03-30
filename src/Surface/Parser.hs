@@ -259,13 +259,13 @@ typeExpr = fun
       where
         makeFunDom isMandatory (Located loc (x, tyeDom)) = (Just (isMandatory, loc, x), tyeDom)
 
-parse :: P a -> SourceSpec -> Text -> Either (FrontError Token) a
+parse :: P a -> SourceSpec -> Text -> Either FrontError a
 parse p sourceSpec source = do
   locatedTokens <- mapLeft FrontLexingError $ Token.lex source
   mapLeft FrontParseError $ runParser p sourceSpec locatedTokens
 
-parseExpr :: SourceSpec -> Text -> Either (FrontError Token) Expr
+parseExpr :: SourceSpec -> Text -> Either FrontError Expr
 parseExpr = parse (expr <* eof)
 
-parseTypeExpr :: SourceSpec -> Text -> Either (FrontError Token) TypeExpr
+parseTypeExpr :: SourceSpec -> Text -> Either FrontError TypeExpr
 parseTypeExpr = parse (typeExpr <* eof)
