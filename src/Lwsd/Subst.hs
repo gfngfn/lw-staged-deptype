@@ -56,6 +56,7 @@ instance (Ord sv, HasVar sv af) => HasVar sv (AssLiteralF af) where
     ALitFloat _ -> (Set.empty, Set.empty)
     ALitBool _ -> (Set.empty, Set.empty)
     ALitUnit -> (Set.empty, Set.empty)
+    ALitString _ -> (Set.empty, Set.empty)
     ALitList es -> unionPairs (map frees es)
     ALitVec _ -> (Set.empty, Set.empty)
     ALitMat _ -> (Set.empty, Set.empty)
@@ -65,6 +66,7 @@ instance (Ord sv, HasVar sv af) => HasVar sv (AssLiteralF af) where
     ALitFloat r -> ALitFloat r
     ALitBool b -> ALitBool b
     ALitUnit -> ALitUnit
+    ALitString t -> ALitString t
     ALitList es -> ALitList (map (subst s) es)
     ALitVec vec -> ALitVec vec
     ALitMat mat -> ALitMat mat
@@ -358,6 +360,7 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         A1TyFloat -> (Set.empty, Set.empty)
         A1TyBool -> (Set.empty, Set.empty)
         A1TyUnit -> (Set.empty, Set.empty)
+        A1TyString -> (Set.empty, Set.empty)
         A1TyTensor a0eList -> frees a0eList
     A1TyList a1tye1 ->
       frees a1tye1
@@ -371,6 +374,7 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         A1TyFloat -> A1TyFloat
         A1TyBool -> A1TyBool
         A1TyUnit -> A1TyUnit
+        A1TyString -> A1TyString
         A1TyTensor a0eList -> A1TyTensor (go a0eList)
     A1TyList a1tye1 ->
       A1TyList (go a1tye1)
@@ -470,6 +474,7 @@ instance (Ord sv) => HasVar sv Type1EquationF where
         TyEq1Float -> (Set.empty, Set.empty)
         TyEq1Bool -> (Set.empty, Set.empty)
         TyEq1Unit -> (Set.empty, Set.empty)
+        TyEq1String -> (Set.empty, Set.empty)
         TyEq1TensorByLiteral zipped -> unionPairs (concatMap (\(a0e1, a0e2) -> [frees a0e1, frees a0e2]) zipped)
         TyEq1TensorByWhole a0eList1 a0eList2 -> unionPairs [frees a0eList1, frees a0eList2]
     TyEq1List ty1eqElem ->
@@ -485,6 +490,7 @@ instance (Ord sv) => HasVar sv Type1EquationF where
           TyEq1Float -> TyEq1Float
           TyEq1Bool -> TyEq1Bool
           TyEq1Unit -> TyEq1Unit
+          TyEq1String -> TyEq1String
           TyEq1TensorByLiteral zipped -> TyEq1TensorByLiteral (map (both go) zipped)
           TyEq1TensorByWhole a0eList1 a0eList2 -> TyEq1TensorByWhole (go a0eList1) (go a0eList2)
     TyEq1List ty1eqElem ->

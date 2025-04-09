@@ -417,6 +417,7 @@ evalTypeExpr0 env = \case
             A0TyFloat -> A0TyValFloat
             A0TyBool -> A0TyValBool
             A0TyUnit -> A0TyValUnit
+            A0TyString -> A0TyValString
             A0TyTensor n -> A0TyValTensor n
     maybeVPred <- mapM (evalExpr0 env) maybePred
     pure $ A0TyValPrim a0tyValPrim maybeVPred
@@ -440,6 +441,7 @@ evalTypeExpr1 env = \case
         A1TyFloat -> pure A1TyValFloat
         A1TyBool -> pure A1TyValBool
         A1TyUnit -> pure A1TyValUnit
+        A1TyString -> pure A1TyValString
         A1TyTensor a0eList -> do
           a0v <- evalExpr0 env a0eList
           a0vs <- validateListValue a0v
@@ -484,6 +486,7 @@ unliftTypeVal = \case
             A1TyValFloat -> A0TyFloat
             A1TyValBool -> A0TyBool
             A1TyValUnit -> A0TyUnit
+            A1TyValString -> A0TyString
             A1TyValTensor ns -> A0TyTensor ns
      in SA0TyPrim a0tyPrim Nothing
   A1TyValList a1tyv ->

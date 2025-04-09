@@ -38,6 +38,7 @@ data Literal e
   = LitInt Int
   | LitFloat Double
   | LitUnit
+  | LitString Text
   | LitList [e]
   | LitVec [Int]
   | LitMat [[Int]]

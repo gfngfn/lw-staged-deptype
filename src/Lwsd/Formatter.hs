@@ -167,6 +167,9 @@ dispIfThenElse req e0 e1 e2 =
     docThen = "then" <> nest 2 (line <> disp e1)
     docElse = "else" <> nest 2 (line <> disp e2)
 
+dispStringLiteral :: Text -> Doc Ann
+dispStringLiteral t = "\"" <> disp t <> "\"" -- TODO: escape special characters
+
 dispAs :: (Disp expr, Disp ty) => Associativity -> expr -> ty -> Doc Ann
 dispAs req e1 tye2 =
   deepenParenWhen (req <= FunDomain) $ group (disp e1 <+> "as" <+> disp tye2)
@@ -268,6 +271,7 @@ instance (Disp e) => Disp (Literal e) where
     LitInt n -> pretty n
     LitFloat r -> pretty r
     LitUnit -> "()"
+    LitString t -> dispStringLiteral t
     LitList es -> dispListLiteral es
     LitVec ns -> dispVectorLiteral ns
     LitMat nss -> dispMatrixLiteral nss
@@ -367,6 +371,7 @@ instance (Disp e) => Disp (Surface.Literal e) where
     Surface.LitInt n -> pretty n
     Surface.LitFloat r -> pretty r
     Surface.LitUnit -> "()"
+    Surface.LitString t -> dispStringLiteral t
     Surface.LitList es -> dispListLiteral es
     Surface.LitVec ns -> dispVectorLiteral ns
     Surface.LitMat nss -> dispMatrixLiteral nss
@@ -417,6 +422,7 @@ instance (Disp sv, Disp (af sv)) => Disp (AssLiteralF af sv) where
     ALitBool True -> "true"
     ALitBool False -> "false"
     ALitUnit -> "()"
+    ALitString t -> dispStringLiteral t
     ALitList es -> dispListLiteral es
     ALitVec v -> dispVectorLiteral (Vector.toList v)
     ALitMat m -> dispMatrixLiteral (Matrix.toRows m)
@@ -458,6 +464,7 @@ instance Disp Ass0PrimType where
     A0TyFloat -> "Float"
     A0TyBool -> "Bool"
     A0TyUnit -> "Unit"
+    A0TyString -> "String"
     A0TyTensor [n] -> dispNameWithArgs req "Vec" disp [n]
     A0TyTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
@@ -487,6 +494,7 @@ instance (Disp sv) => Disp (Ass1PrimTypeF sv) where
     A1TyFloat -> "Float"
     A1TyBool -> "Bool"
     A1TyUnit -> "Unit"
+    A1TyString -> "String"
     A1TyTensor a0eList ->
       case a0eList of
         A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
@@ -786,6 +794,7 @@ instance Disp Ass0PrimTypeVal where
     A0TyValFloat -> "Float"
     A0TyValBool -> "Bool"
     A0TyValUnit -> "Unit"
+    A0TyValString -> "String"
     A0TyValTensor [n] -> dispNameWithArgs req "Vec" disp [n]
     A0TyValTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
@@ -802,6 +811,7 @@ instance Disp Ass1PrimTypeVal where
     A1TyValFloat -> "Float"
     A1TyValBool -> "Bool"
     A1TyValUnit -> "Unit"
+    A1TyValString -> "String"
     A1TyValTensor [n] -> dispNameWithArgs req "Vec" dispPersistent [n]
     A1TyValTensor [m, n] -> dispNameWithArgs req "Mat" dispPersistent [m, n]
     A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispPersistentListLiteral [ns]

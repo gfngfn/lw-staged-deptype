@@ -58,6 +58,9 @@ int = expectToken (^? #_TokInt)
 float :: P (Located Double)
 float = expectToken (^? #_TokFloat)
 
+string :: P (Located Text)
+string = expectToken (^? #_TokString)
+
 list :: P a -> P (Located [a])
 list = genVec TokLeftSquare TokRightSquare TokComma
 
@@ -98,6 +101,7 @@ exprAtom, expr :: P Expr
     atom =
       (located (Literal . LitInt) <$> int)
         <|> (located (Literal . LitFloat) <$> float)
+        <|> (located (Literal . LitString) <$> string)
         <|> (located (Literal . LitList) <$> list letin)
         <|> (located (Literal . LitVec) <$> vec)
         <|> (located (Literal . LitMat) <$> mat)
