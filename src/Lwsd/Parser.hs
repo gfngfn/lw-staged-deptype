@@ -102,6 +102,7 @@ exprAtom, expr :: P Expr
     atom =
       (located (Literal . LitInt) <$> int)
         <|> (located (Literal . LitFloat) <$> float)
+        <|> (located (Literal . LitString) <$> string)
         <|> (located (Literal . LitList) <$> list letin)
         <|> (located (Literal . LitVec) <$> vec)
         <|> (located (Literal . LitMat) <$> mat)
