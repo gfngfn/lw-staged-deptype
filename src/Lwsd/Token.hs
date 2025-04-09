@@ -33,6 +33,7 @@ data Token
   | TokPersistent
   | TokSemicolon
   | TokUnderscore
+  | TokOpFlipApp
   | TokBar
   | TokVecLeft
   | TokVecRight
@@ -84,6 +85,7 @@ showToken = \case
   TokPersistent -> "%"
   TokSemicolon -> ";"
   TokUnderscore -> "_"
+  TokOpFlipApp -> "|>"
   TokBar -> "|"
   TokVecLeft -> "[|"
   TokVecRight -> "|]"
@@ -158,6 +160,7 @@ token =
       TokPersistent <$ Mp.single '%',
       TokSemicolon <$ Mp.single ';',
       TokUnderscore <$ Mp.single '_',
+      TokOpFlipApp <$ Mp.chunk "|>",
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",
       TokMatLeft <$ Mp.chunk "[#",
