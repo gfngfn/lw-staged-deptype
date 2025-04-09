@@ -162,6 +162,18 @@ spec = do
     it "parses sequentials (2)" $
       parseExpr "x; y; z"
         `shouldBe` pure (expr (Sequential (var "x") (expr (Sequential (var "y") (var "z")))))
+    it "parses tuples (1)" $
+      parseExpr "(x, y)"
+        `shouldBe` pure (expr (Tuple (var "x") (var "y")))
+    it "parses tuples (2)" $
+      parseExpr "(f x, y + 1)"
+        `shouldBe` pure (expr (Tuple (app (var "f") (var "x")) (add (var "y") (litInt 1))))
+    it "parses tuples (3)" $
+      parseExpr "(x, (y, z))"
+        `shouldBe` pure (expr (Tuple (var "x") (expr (Tuple (var "y") (var "z")))))
+    it "parses tuples (4)" $
+      parseExpr "((x, y), z)"
+        `shouldBe` pure (expr (Tuple (expr (Tuple (var "x") (var "y"))) (var "z")))
     it "parses |> (1)" $
       parseExpr "x |> f"
         `shouldBe` pure (app (var "f") (var "x"))

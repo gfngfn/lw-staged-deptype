@@ -400,6 +400,7 @@ instance Disp Surface.ExprMain where
     Surface.LetRecIn f params tyeBody eBody e2 -> dispLetRecIn req f params tyeBody eBody e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
+    Surface.Tuple e1 e2 -> dispTuple e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
     Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
@@ -954,6 +955,7 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.LetRecIn f params tyeBody eBody e2 -> dispLetRecIn req f params tyeBody eBody e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
+    Surface.Tuple e1 e2 -> dispTuple e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
     Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2

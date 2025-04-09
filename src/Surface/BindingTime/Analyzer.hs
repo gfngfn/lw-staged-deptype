@@ -71,6 +71,10 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         be1 <- assignBindingTimeVarToExpr e1
         be2 <- assignBindingTimeVarToExpr e2
         pure $ Sequential be1 be2
+      Tuple e1 e2 -> do
+        be1 <- assignBindingTimeVarToExpr e1
+        be2 <- assignBindingTimeVarToExpr e2
+        pure $ Tuple be1 be2
       IfThenElse e0 e1 e2 -> do
         be0 <- assignBindingTimeVarToExpr e0
         be1 <- assignBindingTimeVarToExpr e1
@@ -330,6 +334,13 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
           let Expr (_, ann1) _ = e1
           spanInFile1 <- askSpanInFile ann1
           analysisError $ NotABase spanInFile1 bity1
+    Tuple e1 e2 -> do
+      -- Not confident. TODO: check the validity of the following
+      (e1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromExpr btenv e1
+      (e2', bity2@(BIType bt2 _), constraints2) <- extractConstraintsFromExpr btenv e2
+      let e' = Expr (bt, ann) (Sequential e1' e2')
+      let bity = BIType bt (BITyProduct bity1 bity2)
+      pure (e', bity, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
     IfThenElse e0 e1 e2 -> do
       (e0', bity0@(BIType bt0 bityMain0), constraints0) <- extractConstraintsFromExpr btenv e0
       case bityMain0 of

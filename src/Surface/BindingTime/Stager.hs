@@ -54,6 +54,8 @@ stageExpr0Main = \case
     Lwsd.LetOpenIn m (stageExpr0 e)
   Sequential e1 e2 ->
     Lwsd.Sequential (stageExpr0 e1) (stageExpr0 e2)
+  Tuple e1 e2 ->
+    Lwsd.Tuple (stageExpr0 e1) (stageExpr0 e2)
   IfThenElse e0 e1 e2 ->
     Lwsd.IfThenElse (stageExpr0 e0) (stageExpr0 e1) (stageExpr0 e2)
   As e1 tye2 ->
@@ -93,6 +95,8 @@ stageExpr1Main = \case
     Lwsd.LetOpenIn m (stageExpr1 e)
   Sequential e1 e2 ->
     Lwsd.Sequential (stageExpr1 e1) (stageExpr1 e2)
+  Tuple e1 e2 ->
+    Lwsd.Tuple (stageExpr1 e1) (stageExpr1 e2)
   IfThenElse e0 e1 e2 ->
     Lwsd.IfThenElse (stageExpr1 e0) (stageExpr1 e1) (stageExpr1 e2)
   As e1 tye2 ->

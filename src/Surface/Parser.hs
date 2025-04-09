@@ -108,10 +108,12 @@ exprAtom, expr :: P Expr
         <|> (located Var <$> longOrShortLower)
         <|> try (located (\x -> Var ([], x)) <$> standaloneOp)
         <|> try (makeLitUnit <$> token TokLeftParen <*> token TokRightParen)
+        <|> try (makeTuple <$> paren ((,) <$> (expr <* token TokComma) <*> expr))
         <|> (makeEnclosed <$> paren expr)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
+        makeTuple (Located loc (e1, e2)) = Expr loc (Tuple e1 e2)
         makeEnclosed (Located loc (Expr _ eMain)) = Expr loc eMain
 
     app :: P Expr
