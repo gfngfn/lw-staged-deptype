@@ -58,6 +58,9 @@ int = expectToken (^? #_TokInt)
 float :: P (Located Double)
 float = expectToken (^? #_TokFloat)
 
+string :: P (Located Text)
+string = expectToken (^? #_TokString)
+
 list :: P a -> P (Located [a])
 list = genVec TokLeftSquare TokRightSquare TokComma
 
@@ -98,6 +101,7 @@ exprAtom, expr :: P Expr
     atom =
       (located (Literal . LitInt) <$> int)
         <|> (located (Literal . LitFloat) <$> float)
+        <|> (located (Literal . LitString) <$> string)
         <|> (located (Literal . LitList) <$> list letin)
         <|> (located (Literal . LitVec) <$> vec)
         <|> (located (Literal . LitMat) <$> mat)
@@ -149,12 +153,21 @@ exprAtom, expr :: P Expr
     comp :: P Expr
     comp = binSep makeBinOpApp compOp add
 
+    flipApp :: P Expr
+    flipApp = makeFlipApp <$> comp <*> many (token TokOpFlipApp *> comp)
+      where
+        makeFlipApp =
+          List.foldl'
+            ( \eArg@(Expr locArg _) eFun@(Expr locFun _) ->
+                Expr (mergeSpan locArg locFun) (App eFun eArg)
+            )
+
     lam :: P Expr
     lam =
       (makeNonrecLam <$> token TokFun <*> (lamBinder <* token TokArrow) <*> expr)
         <|> (makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr)
         <|> (makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr))
-        <|> comp
+        <|> flipApp
       where
         makeNonrecLam locFirst xBinder' e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) $

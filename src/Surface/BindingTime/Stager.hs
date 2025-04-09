@@ -143,6 +143,7 @@ convertLiteral conv = \case
   LitInt n -> Lwsd.LitInt n
   LitFloat r -> Lwsd.LitFloat r
   LitUnit -> Lwsd.LitUnit
+  LitString t -> Lwsd.LitString t
   LitList es -> Lwsd.LitList (map conv es)
   LitVec ns -> Lwsd.LitVec ns
   LitMat nss -> Lwsd.LitMat nss

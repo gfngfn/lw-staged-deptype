@@ -58,6 +58,7 @@ module Lwsd.Syntax
 where
 
 import Data.Map (Map)
+import Data.Text (Text)
 import Lwsd.BuiltIn.Core
 import Util.Matrix (Matrix)
 import Util.TokenUtil (Span)
@@ -84,6 +85,7 @@ data AssLiteralF af sv
   | ALitFloat Double
   | ALitBool Bool
   | ALitUnit
+  | ALitString Text
   | ALitList [af sv]
   | ALitVec Vector
   | ALitMat Matrix
@@ -160,6 +162,7 @@ data Ass0PrimType
   | A0TyFloat
   | A0TyBool
   | A0TyUnit
+  | A0TyString
   | A0TyTensor [Int]
   deriving stock (Eq, Show)
 
@@ -174,6 +177,7 @@ data Ass1PrimTypeF sv
   | A1TyFloat
   | A1TyBool
   | A1TyUnit
+  | A1TyString
   | A1TyTensor (Ass0ExprF sv)
   deriving stock (Eq, Show, Functor)
 
@@ -202,6 +206,7 @@ liftPrimType = \case
   A0TyFloat -> A1TyFloat
   A0TyBool -> A1TyBool
   A0TyUnit -> A1TyUnit
+  A0TyString -> A1TyString
   A0TyTensor ns -> A1TyTensor (A0Literal (ALitList (map (A0Literal . ALitInt) ns)))
 
 data Ass0ValF sv
@@ -233,6 +238,7 @@ data Ass0PrimTypeVal
   | A0TyValFloat
   | A0TyValBool
   | A0TyValUnit
+  | A0TyValString
   | A0TyValTensor [Int]
   deriving stock (Eq, Show)
 
@@ -247,6 +253,7 @@ data Ass1PrimTypeVal
   | A1TyValFloat
   | A1TyValBool
   | A1TyValUnit
+  | A1TyValString
   | A1TyValTensor [Int]
   deriving stock (Eq, Show)
 
@@ -261,6 +268,7 @@ data Type1PrimEquationF sv
   | TyEq1Float
   | TyEq1Bool
   | TyEq1Unit
+  | TyEq1String
   | TyEq1TensorByLiteral [(Ass0ExprF sv, Ass0ExprF sv)]
   | TyEq1TensorByWhole (Ass0ExprF sv) (Ass0ExprF sv) -- A Pair of ASTs of type `List Nat`
   deriving stock (Eq, Show, Functor)
@@ -278,6 +286,7 @@ mapAssLiteral f = \case
   ALitFloat r -> ALitFloat r
   ALitBool b -> ALitBool b
   ALitUnit -> ALitUnit
+  ALitString t -> ALitString t
   ALitList es -> ALitList (map f es)
   ALitVec vec -> ALitVec vec
   ALitMat mat -> ALitMat mat
@@ -288,6 +297,7 @@ mapMAssLiteral eval = \case
   ALitFloat r -> pure $ ALitFloat r
   ALitBool b -> pure $ ALitBool b
   ALitUnit -> pure ALitUnit
+  ALitString t -> pure $ ALitString t
   ALitList a0es -> ALitList <$> mapM eval a0es
   ALitVec vec -> pure $ ALitVec vec
   ALitMat mat -> pure $ ALitMat mat
@@ -320,6 +330,7 @@ decomposeType1Equation = \case
       TyEq1Float -> prims A1TyFloat
       TyEq1Bool -> prims A1TyBool
       TyEq1Unit -> prims A1TyUnit
+      TyEq1String -> prims A1TyString
       TyEq1TensorByLiteral zipped ->
         let a0eList1 = A0Literal (ALitList (map fst zipped))
             a0eList2 = A0Literal (ALitList (map snd zipped))

@@ -177,6 +177,7 @@ makeAssertiveCast trav loc =
               (A0TyFloat, A0TyFloat) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyFloat maybePred1)
               (A0TyBool, A0TyBool) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyBool maybePred1)
               (A0TyUnit, A0TyUnit) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyUnit maybePred1)
+              (A0TyString, A0TyString) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyString maybePred1)
               (A0TyTensor ns1, A0TyTensor ns2) ->
                 case zipExactMay ns1 ns2 of
                   Nothing ->
@@ -325,6 +326,8 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
               pure (True, TyEq1Prim TyEq1Bool, Map.empty)
             (A1TyUnit, A1TyUnit) ->
               pure (True, TyEq1Prim TyEq1Unit, Map.empty)
+            (A1TyString, A1TyString) ->
+              pure (True, TyEq1Prim TyEq1String, Map.empty)
             (A1TyTensor a0eList1, A1TyTensor a0eList2) -> do
               case (a0eList1, a0eList2) of
                 -- Enhancement for the argument inference 1:
@@ -433,6 +436,8 @@ mergeTypesByConditional1 trav distributeIfUnderTensorShape a0e0 = go1
                 pure A1TyBool
               (A1TyUnit, A1TyUnit) ->
                 pure A1TyUnit
+              (A1TyString, A1TyString) ->
+                pure A1TyString
               (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
                 case (a0eList1, a0eList2) of
                   -- Slight enhancement for the argument inference:
@@ -633,6 +638,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                   pure (A0TyPrim A0TyFloat Nothing, ALitFloat r)
                 LitUnit ->
                   pure (A0TyPrim A0TyUnit Nothing, ALitUnit)
+                LitString t ->
+                  pure (A0TyPrim A0TyString Nothing, ALitString t)
                 LitList es ->
                   case es of
                     [] ->
@@ -903,10 +910,12 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
                 pure (A1TyPrim A1TyFloat, ALitFloat r)
               LitUnit ->
                 pure (A1TyPrim A1TyUnit, ALitUnit)
+              LitString t ->
+                pure (A1TyPrim A1TyString, ALitString t)
               LitList es ->
                 case es of
                   [] ->
-                    error "TODO: typecheckExpr1, empty list literal"
+                    error "TODO (error): typecheckExpr1, empty list literal"
                   eFirst : esTail -> do
                     (resultFirst, a1eFirst) <- typecheckExpr1 trav tyEnv [] eFirst
                     a1tyeFirst <- validateEmptyRetAppContext "stage-1, LitList, first" resultFirst
@@ -981,7 +990,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
               (eq, _) <- makeEquation1 trav loc Set.empty a1tyeSynth a1tyeRec
               pure (Pure a1tyeRec, applyEquationCast loc eq (A1Lam (Just (af, a1tyeRec)) (ax1, a1tye1) a1e2))
         _ : _ ->
-          error "TODO: stage-1, Lam, non-empty AppContext"
+          error "TODO (error): stage-1, Lam, non-empty AppContext"
     App e1 e2 -> do
       (result2, a1e2) <- typecheckExpr1 trav tyEnv [] e2
       a1tye2 <- validateEmptyRetAppContext "stage-1, App, arg" result2
@@ -1192,6 +1201,7 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
         ("Float", []) -> pure $ A0TyPrim A0TyFloat Nothing
         ("Bool", []) -> pure $ A0TyPrim A0TyBool Nothing
         ("Unit", []) -> pure $ A0TyPrim A0TyUnit Nothing
+        ("String", []) -> pure $ A0TyPrim A0TyString Nothing
         ("List", [arg]) -> do
           case arg of
             (IA0TypeArg a0tye, _) -> pure $ A0TyList a0tye Nothing
@@ -1293,6 +1303,7 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
         ("Float", []) -> pure $ A1TyPrim A1TyFloat
         ("Bool", []) -> pure $ A1TyPrim A1TyBool
         ("Unit", []) -> pure $ A1TyPrim A1TyUnit
+        ("String", []) -> pure $ A1TyPrim A1TyString
         ("List", [TypeArg tye]) -> do
           a1tye <- typecheckTypeExpr1 trav tyEnv tye
           pure $ A1TyList a1tye

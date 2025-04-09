@@ -30,6 +30,7 @@ data Token
   | TokComma
   | TokSemicolon
   | TokUnderscore
+  | TokOpFlipApp
   | TokVecLeft
   | TokVecRight
   | TokMatLeft
@@ -72,6 +73,7 @@ showToken = \case
   TokComma -> ","
   TokSemicolon -> ";"
   TokUnderscore -> "_"
+  TokOpFlipApp -> "|>"
   TokVecLeft -> "[|"
   TokVecRight -> "|]"
   TokMatLeft -> "[#"
@@ -132,6 +134,7 @@ token =
       TokEqual <$ Mp.single '=',
       TokSemicolon <$ Mp.single ';',
       TokUnderscore <$ Mp.single '_',
+      TokOpFlipApp <$ Mp.chunk "|>",
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",
       TokMatLeft <$ Mp.chunk "[#",

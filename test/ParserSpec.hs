@@ -162,6 +162,12 @@ spec = do
     it "parses sequentials (2)" $
       parseExpr "x; y; z"
         `shouldBe` pure (expr (Sequential (var "x") (expr (Sequential (var "y") (var "z")))))
+    it "parses |> (1)" $
+      parseExpr "x |> f"
+        `shouldBe` pure (app (var "f") (var "x"))
+    it "parses |> (2)" $
+      parseExpr "x + 42 |> f |> g"
+        `shouldBe` pure (app (var "g") (app (var "f") (add (var "x") (litInt 42))))
     it "ignores first comments" $
       parseExpr "(* comment *) 42"
         `shouldBe` pure (litInt 42)

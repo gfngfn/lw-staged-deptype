@@ -28,6 +28,7 @@ data Literal e
   = LitInt Int
   | LitFloat Double
   | LitUnit
+  | LitString Text
   | LitList [e]
   | LitVec [Int]
   | LitMat [[Int]]
@@ -90,6 +91,7 @@ mapMLiteral f = \case
   LitInt n -> pure $ LitInt n
   LitFloat r -> pure $ LitFloat r
   LitUnit -> pure LitUnit
+  LitString t -> pure $ LitString t
   LitList es -> LitList <$> mapM f es
   LitVec ns -> pure $ LitVec ns
   LitMat nss -> pure $ LitMat nss
