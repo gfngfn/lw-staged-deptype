@@ -149,12 +149,21 @@ exprAtom, expr :: P Expr
     comp :: P Expr
     comp = binSep makeBinOpApp compOp add
 
+    flipApp :: P Expr
+    flipApp = makeFlipApp <$> comp <*> many (token TokOpFlipApp *> comp)
+      where
+        makeFlipApp =
+          List.foldl'
+            ( \eArg@(Expr locArg _) eFun@(Expr locFun _) ->
+                Expr (mergeSpan locArg locFun) (App eFun eArg)
+            )
+
     lam :: P Expr
     lam =
       (makeNonrecLam <$> token TokFun <*> (lamBinder <* token TokArrow) <*> expr)
         <|> (makeRecLam <$> token TokRec <*> (mandatoryBinder <* token TokArrow <* token TokFun) <*> (mandatoryBinder <* token TokArrow) <*> expr)
         <|> (makeIf <$> token TokIf <*> expr <*> (token TokThen *> expr) <*> (token TokElse *> expr))
-        <|> comp
+        <|> flipApp
       where
         makeNonrecLam locFirst xBinder' e@(Expr locLast _) =
           Expr (mergeSpan locFirst locLast) $
