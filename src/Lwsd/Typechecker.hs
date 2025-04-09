@@ -795,6 +795,26 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             typeError trav $ VarOccursFreelyInAss0Type spanInFile f result2
           else do
             pure (result2, A0LetIn (afOuter, strictify a0tye1Rec) a0e1 a0e2)
+      LetTupleIn xL xR e1 e2 -> do
+        (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
+        a0tye1 <- validateEmptyRetAppContext "stage-0, LetTupleIn" result1
+        case a0tye1 of
+          A0TyProduct a0tyeL a0tyeR -> do
+            svXL <- generateFreshVar (Just xL)
+            let axL = AssVarStatic svXL
+            svXR <- generateFreshVar (Just xR)
+            let axR = AssVarStatic svXR
+            (result2, a0e2) <- do
+              let tyEnv' =
+                    tyEnv
+                      & TypeEnv.addVal xL (Ass0Entry a0tyeL (Right svXL))
+                      & TypeEnv.addVal xR (Ass0Entry a0tyeR (Right svXR))
+              typecheckExpr0 trav tyEnv' appCtx e2
+            pure (result2, A0LetTupleIn axL axR a0e1 a0e2)
+          _ -> do
+            let Expr loc1 _ = e1
+            spanInFile1 <- askSpanInFile loc1
+            typeError trav $ NotATupleAtStage0 spanInFile1 a0tye1
       LetOpenIn m e -> do
         case TypeEnv.findModule m tyEnv of
           Nothing ->
@@ -1056,6 +1076,26 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       if afOuter `occurs1` result2
         then typeError trav $ VarOccursFreelyInAss1Type spanInFile f result2
         else pure (result2, a1LetIn (afOuter, a1tye1Rec) a1e1 a1e2)
+    LetTupleIn xL xR e1 e2 -> do
+      (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
+      a1tye1 <- validateEmptyRetAppContext "stage-1, LetTupleIn" result1
+      case a1tye1 of
+        A1TyProduct a1tyeL a1tyeR -> do
+          svXL <- generateFreshVar (Just xL)
+          let axL = AssVarStatic svXL
+          svXR <- generateFreshVar (Just xR)
+          let axR = AssVarStatic svXR
+          (result2, a1e2) <- do
+            let tyEnv' =
+                  tyEnv
+                    & TypeEnv.addVal xL (Ass1Entry a1tyeL (Right svXL))
+                    & TypeEnv.addVal xR (Ass1Entry a1tyeR (Right svXR))
+            typecheckExpr1 trav tyEnv' appCtx e2
+          pure (result2, A1LetTupleIn axL axR a1e1 a1e2)
+        _ -> do
+          let Expr loc1 _ = e1
+          spanInFile1 <- askSpanInFile loc1
+          typeError trav $ NotATupleAtStage1 spanInFile1 a1tye1
     LetOpenIn m e -> do
       case TypeEnv.findModule m tyEnv of
         Nothing ->

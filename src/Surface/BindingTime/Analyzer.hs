@@ -9,6 +9,7 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State
 import Data.Foldable (foldrM)
+import Data.Function ((&))
 import Data.Map qualified as Map
 import Safe.Exact (zipExactMay)
 import Surface.BindingTime.AnalysisError
@@ -64,6 +65,10 @@ assignBindingTimeVarToExpr (Expr ann exprMain) = do
         be1 <- makeRecLam f params tyeBody eBody
         be2 <- assignBindingTimeVarToExpr e2
         pure $ LetIn f [] be1 be2
+      LetTupleIn xL xR e1 e2 -> do
+        be1 <- assignBindingTimeVarToExpr e1
+        be2 <- assignBindingTimeVarToExpr e2
+        pure $ LetTupleIn xL xR be1 be2
       LetOpenIn m e -> do
         be <- assignBindingTimeVarToExpr e
         pure $ LetOpenIn m be
@@ -317,6 +322,20 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       pure (e', bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
     LetRecIn _x _params _tye _eBody _e2 ->
       error "Bug: Analyzer.extractConstraintsFromExpr, LetRecIn"
+    LetTupleIn xL xR e1 e2 -> do
+      (e1', bity1@(BIType bt1 bityMain1), constraints1) <- extractConstraintsFromExpr btenv e1
+      case bityMain1 of
+        BITyProduct bityL@(BIType btL _) bityR@(BIType btR _) -> do
+          (e2', bity2@(BIType bt2 _), constraints2) <-
+            extractConstraintsFromExpr
+              (btenv & Map.insert xL (EntryLocallyBound btL bityL) & Map.insert xR (EntryLocallyBound btR bityR))
+              e2
+          let e' = Expr (bt, ann) (LetTupleIn xL xR e1' e2')
+          pure (e', bity2, constraints1 ++ constraints2 ++ [CLeq ann bt bt1, CLeq ann bt bt2])
+        _ -> do
+          let Expr (_, ann1) _ = e1
+          spanInFile1 <- askSpanInFile ann1
+          analysisError $ NotATuple spanInFile1 bity1
     LetOpenIn m e1 -> do
       (e1', bity1@(BIType bt1 _), constraints) <- do
         btenv' <- openModule m btenv

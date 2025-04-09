@@ -50,6 +50,8 @@ stageExpr0Main = \case
     Lwsd.LetIn x [] (stageExpr0 e1) (stageExpr0 e2)
   LetRecIn _x _params _tye _e1 _e2 ->
     error "Bug: Stager.stageExpr0Main, LetRecIn"
+  LetTupleIn xL xR e1 e2 ->
+    Lwsd.LetTupleIn xL xR (stageExpr0 e1) (stageExpr0 e2)
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr0 e)
   Sequential e1 e2 ->
@@ -91,6 +93,8 @@ stageExpr1Main = \case
     Lwsd.LetIn x [] (stageExpr1 e1) (stageExpr1 e2)
   LetRecIn _x _params _tye _e1 _e2 ->
     error "Bug: Stager.stageExpr0Main, LetRecIn"
+  LetTupleIn xL xR e1 e2 ->
+    Lwsd.LetTupleIn xL xR (stageExpr1 e1) (stageExpr1 e2)
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr1 e)
   Sequential e1 e2 ->

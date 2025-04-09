@@ -44,6 +44,7 @@ data ExprMainF ann
   | App (ExprF ann) (ExprF ann)
   | LetIn Var [LamBinderF ann] (ExprF ann) (ExprF ann)
   | LetRecIn Var [LamBinderF ann] (TypeExprF ann) (ExprF ann) (ExprF ann)
+  | LetTupleIn Var Var (ExprF ann) (ExprF ann)
   | LetOpenIn Var (ExprF ann)
   | Sequential (ExprF ann) (ExprF ann)
   | Tuple (ExprF ann) (ExprF ann)

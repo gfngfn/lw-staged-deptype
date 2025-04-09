@@ -98,6 +98,7 @@ data Ass0ExprF sv
   | A0Lam (Maybe (AssVarF sv, StrictAss0TypeExprF sv)) (AssVarF sv, StrictAss0TypeExprF sv) (Ass0ExprF sv)
   | A0App (Ass0ExprF sv) (Ass0ExprF sv)
   | A0LetIn (AssVarF sv, StrictAss0TypeExprF sv) (Ass0ExprF sv) (Ass0ExprF sv)
+  | A0LetTupleIn (AssVarF sv) (AssVarF sv) (Ass0ExprF sv) (Ass0ExprF sv)
   | A0Sequential (Ass0ExprF sv) (Ass0ExprF sv)
   | A0Tuple (Ass0ExprF sv) (Ass0ExprF sv)
   | A0IfThenElse (Ass0ExprF sv) (Ass0ExprF sv) (Ass0ExprF sv)
@@ -112,6 +113,7 @@ data Ass1ExprF sv
   | A1BuiltInName Ass1BuiltIn
   | A1Lam (Maybe (AssVarF sv, Ass1TypeExprF sv)) (AssVarF sv, Ass1TypeExprF sv) (Ass1ExprF sv)
   | A1App (Ass1ExprF sv) (Ass1ExprF sv)
+  | A1LetTupleIn (AssVarF sv) (AssVarF sv) (Ass1ExprF sv) (Ass1ExprF sv)
   | A1Sequential (Ass1ExprF sv) (Ass1ExprF sv)
   | A1Tuple (Ass1ExprF sv) (Ass1ExprF sv) -- TODO: generalize tuples
   | A1IfThenElse (Ass1ExprF sv) (Ass1ExprF sv) (Ass1ExprF sv)
@@ -231,6 +233,7 @@ data Ass1ValF sv
   | A1ValVar Symbol
   | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) (Ass1ValF sv)
   | A1ValApp (Ass1ValF sv) (Ass1ValF sv)
+  | A1ValLetTupleIn Symbol Symbol (Ass1ValF sv) (Ass1ValF sv)
   | A1ValSequential (Ass1ValF sv) (Ass1ValF sv)
   | A1ValTuple (Ass1ValF sv) (Ass1ValF sv)
   | A1ValIfThenElse (Ass1ValF sv) (Ass1ValF sv) (Ass1ValF sv)

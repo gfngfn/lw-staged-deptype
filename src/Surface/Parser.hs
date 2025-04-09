@@ -205,10 +205,12 @@ exprAtom, expr :: P Expr
 
     letInMain :: P (ExprMain, Span)
     letInMain =
-      (makeLetIn <$> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+      try (makeLetTupleIn <$> paren ((,) <$> (noLoc boundIdent <* token TokComma) <*> noLoc boundIdent) <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+        <|> (makeLetIn <$> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         <|> (makeLetRecIn <$> (token TokRec *> noLoc boundIdent) <*> many lamBinder <*> (token TokColon *> typeExpr) <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         <|> (makeLetOpenIn <$> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin))
       where
+        makeLetTupleIn (Located _ (x1, x2)) e1 e2@(Expr locLast _) = (LetTupleIn x1 x2 e1 e2, locLast)
         makeLetIn x params e1 e2@(Expr locLast _) = (LetIn x params e1 e2, locLast)
         makeLetRecIn x params tye e1 e2@(Expr locLast _) = (LetRecIn x params tye e1 e2, locLast)
         makeLetOpenIn m e@(Expr locLast _) = (LetOpenIn m e, locLast)

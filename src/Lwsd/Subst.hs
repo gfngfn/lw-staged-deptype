@@ -106,6 +106,10 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
       unionPairs [frees a0e1, frees a0e2]
     A0LetIn (y, a0tye1) a0e1 a0e2 ->
       frees (A0App (A0Lam Nothing (y, a0tye1) a0e2) a0e1)
+    A0LetTupleIn xL xR a0e1 a0e2 ->
+      let (var0set1, var1set1) = frees a0e1
+          (var0set2, var1set2) = frees a0e2
+       in (Set.union var0set1 (Set.delete xL (Set.delete xR var0set2)), Set.union var1set1 var1set2)
     A0Sequential a0e1 a0e2 ->
       unionPairs [frees a0e1, frees a0e2]
     A0Tuple a0e1 a0e2 ->
@@ -145,6 +149,11 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
         case s of
           Subst0 x _ -> if y == x then a0e2 else go a0e2
           Subst1 _ _ -> go a0e2
+    A0LetTupleIn xL xR a0e1 a0e2 ->
+      A0LetTupleIn xL xR (go a0e1) $
+        case s of
+          Subst0 x _ -> if xL == x || xR == x then a0e2 else go a0e2
+          Subst1 _ _ -> go a0e2
     A0Sequential a0e1 a0e2 ->
       A0Sequential (go a0e1) (go a0e2)
     A0Tuple a0e1 a0e2 ->
@@ -179,6 +188,8 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
         go a0e11 a0e21 && go a0e12 a0e22
       (A0LetIn (x1, a0tye1) a0e11 a0e12, A0LetIn (x2, a0tye2) a0e21 a0e22) ->
         go a0tye1 a0tye2 && go a0e11 a0e21 && go a0e12 (subst0 (A0Var x1) x2 a0e22)
+      (A0LetTupleIn x1L x1R a0e11 a0e12, A0LetTupleIn x2L x2R a0e21 a0e22) ->
+        go a0e11 a0e21 && go a0e12 (subst0 (A0Var x1R) x2R (subst0 (A0Var x1L) x2L a0e22))
       (A0Sequential a0e11 a0e12, A0Sequential a0e21 a0e22) ->
         go a0e11 a0e21 && go a0e12 a0e22
       (A0Tuple a0e11 a0e12, A0Tuple a0e21 a0e22) ->
@@ -218,6 +229,10 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
        in (var0set, var1set)
     A1App a1e1 a1e2 ->
       unionPairs [frees a1e1, frees a1e2]
+    A1LetTupleIn xL xR a1e1 a1e2 ->
+      let (var0set1, var1set1) = frees a1e1
+          (var0set2, var1set2) = frees a1e2
+       in (Set.union var0set1 var0set2, Set.union var1set1 (Set.delete xL (Set.delete xR var1set2)))
     A1Sequential a1e1 a1e2 ->
       unionPairs [frees a1e1, frees a1e2]
     A1Tuple a1e1 a1e2 ->
@@ -248,6 +263,11 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
           Subst1 _ _ -> go a1e2
     A1App a1e1 a1e2 ->
       A1App (go a1e1) (go a1e2)
+    A1LetTupleIn xL xR a1e1 a1e2 ->
+      A1LetTupleIn xL xR (go a1e1) $
+        case s of
+          Subst0 x _ -> if x == xL || x == xR then a1e2 else go a1e2
+          Subst1 _ _ -> go a1e2
     A1Sequential a1e1 a1e2 ->
       A1Sequential (go a1e1) (go a1e2)
     A1Tuple a1e1 a1e2 ->
@@ -275,6 +295,8 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
           && go a1e12 (subst1 (A1Var x1) x2 (subst1 (A1Var f1) f2 a1e22))
       (A1App a1e11 a1e12, A1App a1e21 a1e22) ->
         go a1e11 a1e21 && go a1e12 a1e22
+      (A1LetTupleIn x1L x1R a1e11 a1e12, A1LetTupleIn x2L x2R a1e21 a1e22) ->
+        go a1e11 a1e21 && go a1e12 (subst0 (A0Var x1R) x2R (subst0 (A0Var x1L) x2L a1e22))
       (A1Sequential a1e11 a1e12, A1Sequential a1e21 a1e22) ->
         go a1e11 a1e21 && go a1e12 a1e22
       (A1Tuple a1e11 a1e12, A1Tuple a1e21 a1e22) ->
