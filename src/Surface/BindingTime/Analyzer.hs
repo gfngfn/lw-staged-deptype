@@ -186,6 +186,7 @@ enhanceBIType enhBt (BIType bt bityMain) =
   BIType (enhBt bt) $
     case bityMain of
       BITyBase bityBaseArgs -> BITyBase (map fBIType bityBaseArgs)
+      BITyProduct bity1 bity2 -> BITyProduct (fBIType bity1) (fBIType bity2)
       BITyArrow bity1 bity2 -> BITyArrow (fBIType bity1) (fBIType bity2)
       BITyOptArrow bity1 bity2 -> BITyOptArrow (fBIType bity1) (fBIType bity2)
   where

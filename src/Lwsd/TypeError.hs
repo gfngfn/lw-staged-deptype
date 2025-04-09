@@ -56,6 +56,7 @@ data TypeErrorF sv
   | InvalidPersistentType SpanInFile (Ass0TypeExprF sv)
   | InvalidTypeForRefinement SpanInFile (Ass0TypeExprF sv)
   | NoBuiltInNameInExternal SpanInFile
+  | CannotApplyTuple SpanInFile
   deriving stock (Eq, Show, Functor)
 
 data ConditionalMergeErrorF sv

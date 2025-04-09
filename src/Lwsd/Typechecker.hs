@@ -813,6 +813,16 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
             let Expr loc1 _ = e1
             spanInFile1 <- askSpanInFile loc1
             typeError trav $ NotAUnitTypeForStage0 spanInFile1 a0tye1
+      Tuple e1 e2 -> do
+        case appCtx of
+          [] -> do
+            (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
+            a0tye1 <- validateEmptyRetAppContext "stage-0, Tuple, 1" result1
+            (result2, a0e2) <- typecheckExpr0 trav tyEnv [] e2
+            a0tye2 <- validateEmptyRetAppContext "stage-0, Tuple, 2" result2
+            pure (Pure (A0TyProduct a0tye1 a0tye2), (A0Tuple a0e1 a0e2))
+          _ : _ -> do
+            typeError trav $ CannotApplyTuple spanInFile
       IfThenElse e0 e1 e2 -> do
         (result0, a0e0) <- typecheckExpr0 trav tyEnv [] e0
         a0tye0 <- validateEmptyRetAppContext "stage-0, IfThenElse, condition" result0
@@ -1064,6 +1074,16 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           let Expr loc1 _ = e1
           spanInFile1 <- askSpanInFile loc1
           typeError trav $ NotAUnitTypeForStage1 spanInFile1 a1tye1
+    Tuple e1 e2 -> do
+      case appCtx of
+        [] -> do
+          (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
+          a1tye1 <- validateEmptyRetAppContext "stage-1, Tuple, 1" result1
+          (result2, a1e2) <- typecheckExpr1 trav tyEnv [] e2
+          a1tye2 <- validateEmptyRetAppContext "stage-1, Tuple, 2" result2
+          pure (Pure (A1TyProduct a1tye1 a1tye2), A1Tuple a1e1 a1e2)
+        _ : _ ->
+          typeError trav $ CannotApplyTuple spanInFile
     IfThenElse e0 e1 e2 -> do
       (result0, a1e0) <- typecheckExpr1 trav tyEnv [] e0
       a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse, condition" result0
@@ -1351,6 +1371,8 @@ validatePersistentType trav loc a0tye =
         case maybePred of
           Nothing -> APersTyList <$> go a0tye'
           Just _ -> Nothing
+      A0TyProduct a0tye1 a0tye2 ->
+        APersTyProduct <$> go a0tye1 <*> go a0tye2
       A0TyArrow (Nothing, a0tye1) a0tye2 -> do
         aPtye1 <- go a0tye1
         aPtye2 <- go a0tye2

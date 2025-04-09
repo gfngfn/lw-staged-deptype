@@ -41,6 +41,7 @@ data BITypeF bt = BIType bt (BITypeMainF bt)
 
 data BITypeMainF bt
   = BITyBase [BITypeF bt]
+  | BITyProduct (BITypeF bt) (BITypeF bt) -- TODO: generalize product types
   | BITyArrow (BITypeF bt) (BITypeF bt)
   | BITyOptArrow (BITypeF bt) (BITypeF bt)
   deriving stock (Show)
@@ -71,6 +72,8 @@ fromStaged0 = \case
     wrap0 $ BITyBase []
   Lwsd.A0TyList a0tye' _maybePred ->
     wrap0 $ BITyBase [fromStaged0 a0tye']
+  Lwsd.A0TyProduct a0tye1 a0tye2 ->
+    wrap0 $ BITyProduct (fromStaged0 a0tye1) (fromStaged0 a0tye2)
   Lwsd.A0TyArrow (_, a0tye1) a0tye2 ->
     wrap0 $ BITyArrow (fromStaged0 a0tye1) (fromStaged0 a0tye2)
   Lwsd.A0TyOptArrow (_, a0tye1) a0tye2 ->
@@ -88,6 +91,8 @@ fromStaged1 a1tye =
         BITyBase []
       Lwsd.A1TyList a1tye' ->
         BITyBase [fromStaged1 a1tye']
+      Lwsd.A1TyProduct a1tye1 a1tye2 ->
+        BITyProduct (fromStaged1 a1tye1) (fromStaged1 a1tye2)
       Lwsd.A1TyArrow a1tye1 a1tye2 ->
         BITyArrow (fromStaged1 a1tye1) (fromStaged1 a1tye2)
 
@@ -99,5 +104,7 @@ fromStagedPers aPtye =
         BITyBase []
       Lwsd.APersTyList aPtye' ->
         BITyBase [fromStagedPers aPtye']
+      Lwsd.APersTyProduct aPtye1 aPtye2 ->
+        BITyProduct (fromStagedPers aPtye1) (fromStagedPers aPtye2)
       Lwsd.APersTyArrow aPtye1 aPtye2 ->
         BITyArrow (fromStagedPers aPtye1) (fromStagedPers aPtye2)

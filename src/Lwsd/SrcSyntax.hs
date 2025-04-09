@@ -65,6 +65,7 @@ data ExprMainF ann
   | AppOptOmitted (ExprF ann)
   | LetOpenIn Var (ExprF ann)
   | Sequential (ExprF ann) (ExprF ann)
+  | Tuple (ExprF ann) (ExprF ann) -- TODO: generalize tuples
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ExprMainF)
 
