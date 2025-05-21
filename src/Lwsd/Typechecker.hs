@@ -127,6 +127,15 @@ findValVar trav loc ms x tyEnv = do
       ModuleEntry sigr' <- SigRecord.findModule m sigr
       go sigr' ms'
 
+findTypeVar :: trav -> Span -> TypeVar -> TypeEnv -> M trav TypeVarEntry
+findTypeVar trav loc tyvar tyEnv = do
+  spanInFile <- askSpanInFile loc
+  case TypeEnv.findTypeVar tyvar tyEnv of
+    Nothing ->
+      typeError trav $ UnboundTypeVar spanInFile tyvar
+    Just tyVarEntry ->
+      pure tyVarEntry
+
 generateFreshVar :: Maybe Text -> M' err trav StaticVar
 generateFreshVar maybeName = do
   currentState@TypecheckState {nextVarIndex = n, assVarDisplay} <- getState
@@ -1290,7 +1299,8 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
           ns <- validateIntListLiteral trav arg
           pure $ A0TyPrim (A0TyTensor ns) Nothing
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
-    TyVar _tyvar ->
+    TyVar tyvar -> do
+      _tyVarEntry <- findTypeVar trav loc tyvar tyEnv
       error "TODO: typecheckTypeExpr0, TyVar"
     TyArrow (xOpt, tye1) tye2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
@@ -1393,7 +1403,8 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
           a0eList <- forceExpr0 trav tyEnv (A0TyList BuiltIn.tyNat Nothing) e
           pure $ A1TyPrim (A1TyTensor a0eList)
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length args)
-    TyVar _tyvar ->
+    TyVar tyvar -> do
+      _tyVarEntry <- findTypeVar trav loc tyvar tyEnv
       error "TODO: typecheckTypeExpr1, TyVar"
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1

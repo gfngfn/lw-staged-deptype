@@ -15,6 +15,7 @@ import Prelude
 
 data TypeErrorF sv
   = UnboundVar SpanInFile [Var] Var
+  | UnboundTypeVar SpanInFile TypeVar
   | UnboundModule SpanInFile Var
   | NotAStage0Var SpanInFile Var
   | NotAStage1Var SpanInFile Var
