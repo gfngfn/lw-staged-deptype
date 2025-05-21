@@ -15,7 +15,7 @@ where
 import Data.List.Extra qualified as List
 import Lwsd.Scope.SigRecord (ModuleEntry, SigRecord, ValEntry)
 import Lwsd.Scope.SigRecord qualified as SigRecord
-import Lwsd.SrcSyntax (Var, TypeVar)
+import Lwsd.SrcSyntax (TypeVar, Var)
 import Lwsd.Syntax (AssTypeVar)
 import Prelude
 
