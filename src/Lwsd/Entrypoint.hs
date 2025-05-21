@@ -80,7 +80,13 @@ putRenderedLinesAtStage1 v = do
 typecheckStub :: SourceSpec -> [Bind] -> M (Either TypeError (TypeEnv, SigRecord, [AssBind]), TypecheckState)
 typecheckStub sourceSpecOfStub bindsInStub = do
   tcConfig <- makeConfig sourceSpecOfStub
-  let tcState = TypecheckState {nextVarIndex = 0, assVarDisplay = Map.empty}
+  let tcState =
+        TypecheckState
+          { nextVarIndex = 0,
+            assVarDisplay = Map.empty,
+            nextTypeVarIndex = 0,
+            assTypeVarDisplay = Map.empty
+          }
       initialTypeEnv = TypeEnv.empty
   pure $
     first (mapLeft fst) $

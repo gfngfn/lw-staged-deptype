@@ -82,6 +82,7 @@ symbolToVar :: Symbol -> AssVarF sv
 symbolToVar (Symbol n) = AssVarDynamic n
 
 newtype AssTypeVar = AssTypeVar Int
+  deriving newtype (Eq, Ord, Show)
 
 data AssLiteralF af sv
   = ALitInt Int

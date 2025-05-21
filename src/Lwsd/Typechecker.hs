@@ -54,7 +54,9 @@ data TypecheckConfig = TypecheckConfig
 
 data TypecheckState = TypecheckState
   { nextVarIndex :: Int,
-    assVarDisplay :: Map StaticVar Text
+    assVarDisplay :: Map StaticVar Text,
+    nextTypeVarIndex :: Int,
+    assTypeVarDisplay :: Map AssTypeVar Text
   }
 
 type MImpl err trav a = StateT TypecheckState (Reader TypecheckConfig) (Either (err, trav) a)
@@ -133,9 +135,16 @@ generateFreshVar maybeName = do
   putState $ currentState {nextVarIndex = n + 1, assVarDisplay = Map.insert sv t assVarDisplay}
   pure sv
 
-generateFreshTypeVar :: M' err trav AssTypeVar
-generateFreshTypeVar =
-  error "TODO: generateFreshTypeVar"
+generateFreshTypeVar :: TypeVar -> M' err trav AssTypeVar
+generateFreshTypeVar (TypeVar name) = do
+  currentState@TypecheckState {nextTypeVarIndex = n, assTypeVarDisplay} <- getState
+  let atyvar = AssTypeVar n
+  putState $
+    currentState
+      { nextTypeVarIndex = n + 1,
+        assTypeVarDisplay = Map.insert atyvar name assTypeVarDisplay
+      }
+  pure atyvar
 
 makeIdentityLam :: Ass0TypeExpr -> M trav Ass0Expr
 makeIdentityLam a0tye = do
@@ -1451,7 +1460,7 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
       tyEnv' <-
         foldM
           ( \tyEnv0 tyvar -> do
-              atyvar <- generateFreshTypeVar
+              atyvar <- generateFreshTypeVar tyvar
               pure $ TypeEnv.addTypeVar tyvar (TypeVarEntry atyvar) tyEnv0
           )
           tyEnv
