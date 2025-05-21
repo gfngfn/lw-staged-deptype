@@ -108,10 +108,12 @@ exprAtom, expr :: P Expr
         <|> (located Var <$> longOrShortLower)
         <|> try (located (\x -> Var ([], x)) <$> standaloneOp)
         <|> try (makeLitUnit <$> token TokLeftParen <*> token TokRightParen)
+        <|> try (makeTuple <$> paren ((,) <$> (expr <* token TokComma) <*> expr))
         <|> (makeEnclosed <$> paren expr)
       where
         located constructor (Located loc e) = Expr loc (constructor e)
         makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
+        makeTuple (Located loc (e1, e2)) = Expr loc (Tuple e1 e2)
         makeEnclosed (Located loc (Expr _ eMain)) = Expr loc eMain
 
     app :: P Expr
@@ -203,10 +205,12 @@ exprAtom, expr :: P Expr
 
     letInMain :: P (ExprMain, Span)
     letInMain =
-      (makeLetIn <$> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+      try (makeLetTupleIn <$> paren ((,) <$> (noLoc boundIdent <* token TokComma) <*> noLoc boundIdent) <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
+        <|> (makeLetIn <$> noLoc boundIdent <*> many lamBinder <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         <|> (makeLetRecIn <$> (token TokRec *> noLoc boundIdent) <*> many lamBinder <*> (token TokColon *> typeExpr) <*> (token TokEqual *> letin) <*> (token TokIn *> letin))
         <|> (makeLetOpenIn <$> (token TokOpen *> noLoc upper) <*> (token TokIn *> letin))
       where
+        makeLetTupleIn (Located _ (x1, x2)) e1 e2@(Expr locLast _) = (LetTupleIn x1 x2 e1 e2, locLast)
         makeLetIn x params e1 e2@(Expr locLast _) = (LetIn x params e1 e2, locLast)
         makeLetRecIn x params tye e1 e2@(Expr locLast _) = (LetRecIn x params tye e1 e2, locLast)
         makeLetOpenIn m e@(Expr locLast _) = (LetOpenIn m e, locLast)

@@ -153,10 +153,19 @@ dispLetOpenIn req m e =
   deepenParenWhen (req <= FunDomain) $
     group ("let open" <+> disp m <+> "in" <> line <> disp e)
 
+dispLetTupleIn :: (Disp var, Disp expr) => Associativity -> var -> var -> expr -> expr -> Doc Ann
+dispLetTupleIn req xL xR e1 e2 =
+  deepenParenWhen (req <= FunDomain) $
+    group ("let (" <+> disp xL <> "," <+> disp xR <> ") =" <+> disp e1 <+> "in" <> line <> disp e2)
+
 dispSequential :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispSequential req e1 e2 =
   deepenParenWhen (req <= FunDomain) $
     group (disp e1 <> ";" <> line <> disp e2)
+
+dispTuple :: (Disp expr) => expr -> expr -> Doc Ann
+dispTuple e1 e2 =
+  "(" <> nest 2 (disp e1 <> "," <+> disp e2) <> ")"
 
 dispIfThenElse :: (Disp expr) => Associativity -> expr -> expr -> expr -> Doc Ann
 dispIfThenElse req e0 e1 e2 =
@@ -194,6 +203,11 @@ dispListType :: (Disp ty) => Associativity -> ty -> Doc Ann
 dispListType req tye =
   deepenParenWhen (req <= Atomic) $
     group ("List" <+> dispGen Atomic tye)
+
+dispProductType :: (Disp ty) => Associativity -> ty -> ty -> Doc Ann
+dispProductType req tye1 tye2 =
+  deepenParenWhen (req <= Atomic) $
+    group (dispGen Atomic tye1 <+> "*" <+> dispGen Atomic tye2)
 
 dispArrowType :: (Disp var, Disp ty1, Disp ty2) => Associativity -> Maybe var -> ty1 -> ty2 -> Doc Ann
 dispArrowType req xOpt tye1 tye2 =
@@ -291,8 +305,10 @@ instance Disp (ExprMainF ann) where
     AppOptOmitted e1 -> dispAppOptOmitted req e1
     LetIn x params e1 e2 -> dispLetIn req x params e1 e2
     LetRecIn x params tye e1 e2 -> dispLetRecIn req x params tye e1 e2
+    LetTupleIn xL xR e1 e2 -> dispLetTupleIn req xL xR e1 e2
     LetOpenIn m e -> dispLetOpenIn req m e
     Sequential e1 e2 -> dispSequential req e1 e2
+    Tuple e1 e2 -> dispTuple e1 e2
     IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     As e1 tye2 -> dispAs req e1 tye2
     Bracket e1 -> dispBracket e1
@@ -388,8 +404,10 @@ instance Disp Surface.ExprMain where
     Surface.App e1 e2 -> dispApp req e1 e2
     Surface.LetIn x params eBody e2 -> dispLetIn req x params eBody e2
     Surface.LetRecIn f params tyeBody eBody e2 -> dispLetRecIn req f params tyeBody eBody e2
+    Surface.LetTupleIn xL xR e1 e2 -> dispLetTupleIn req xL xR e1 e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
+    Surface.Tuple e1 e2 -> dispTuple e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
     Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2
@@ -436,7 +454,9 @@ instance (Disp sv) => Disp (Ass0ExprF sv) where
     A0Lam (Just (f, a0tyeRec)) (y, a0tye1) a0e2 -> dispRecLam req f a0tyeRec y a0tye1 a0e2
     A0App a0e1 a0e2 -> dispApp req a0e1 a0e2
     A0LetIn (y, a0tye1) a0e1 a0e2 -> dispLetInWithAnnot req y a0tye1 a0e1 a0e2
+    A0LetTupleIn xL xR a0e1 a0e2 -> dispLetTupleIn req xL xR a0e1 a0e2
     A0Sequential a0e1 a0e2 -> dispSequential req a0e1 a0e2
+    A0Tuple a0e1 a0e2 -> dispTuple a0e1 a0e2
     A0Bracket a1e1 -> dispBracket a1e1
     A0IfThenElse a0e0 a0e1 a0e2 -> dispIfThenElse req a0e0 a0e1 a0e2
     A0TyEqAssert _loc ty1eq ->
@@ -454,7 +474,9 @@ instance (Disp sv) => Disp (Ass1ExprF sv) where
     A1Lam Nothing (x, a1tye1) a1e2 -> dispNonrecLam req x a1tye1 a1e2
     A1Lam (Just (f, a1tyeRec)) (x, a1tye1) a1e2 -> dispRecLam req f a1tyeRec x a1tye1 a1e2
     A1App a1e1 a1e2 -> dispApp req a1e1 a1e2
+    A1LetTupleIn xL xR a1e1 a1e2 -> dispLetTupleIn req xL xR a1e1 a1e2
     A1Sequential a1e1 a1e2 -> dispSequential req a1e1 a1e2
+    A1Tuple a1e1 a1e2 -> dispTuple a1e1 a1e2
     A1IfThenElse a1e0 a1e1 a1e2 -> dispIfThenElse req a1e0 a1e1 a1e2
     A1Escape a0e1 -> dispEscape a0e1
 
@@ -475,6 +497,7 @@ instance (Disp sv) => Disp (Ass0TypeExprF sv) where
     A0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
     A0TyList a0tye Nothing -> dispListType req a0tye
     A0TyList a0tye (Just a0ePred) -> dispInternalRefinementListType req a0tye a0ePred
+    A0TyProduct a0tye1 a0tye2 -> dispProductType req a0tye1 a0tye2
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
@@ -485,6 +508,7 @@ instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
     SA0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
     SA0TyList sa0tye Nothing -> dispListType req sa0tye
     SA0TyList sa0tye (Just a0ePred) -> dispInternalRefinementListType req sa0tye a0ePred
+    SA0TyProduct sa0tye1 sa0tye2 -> dispProductType req sa0tye1 sa0tye2
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
 
@@ -505,6 +529,7 @@ instance (Disp sv) => Disp (Ass1TypeExprF sv) where
   dispGen req = \case
     A1TyPrim a1tyPrim -> dispGen req a1tyPrim
     A1TyList a1tye -> dispListType req a1tye
+    A1TyProduct a1tye1 a1tye2 -> dispProductType req a1tye1 a1tye2
     A1TyArrow a1tye1 a1tye2 -> dispNondepArrowType req a1tye1 a1tye2
 
 instance Disp FrontError where
@@ -683,6 +708,18 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
       "Invalid type for refinement:" <+> stage0Style (disp a0tye) <+> disp spanInFile
     NoBuiltInNameInExternal spanInFile ->
       "No built-in name specified for an external value" <+> disp spanInFile
+    CannotApplyTuple spanInFile ->
+      "Cannot apply a tuple" <> disp spanInFile
+    NotATupleAtStage0 spanInFile a0tye ->
+      "Not a tuple at stage 0"
+        <+> disp spanInFile
+        <> hardline
+        <+> stage0Style (disp a0tye)
+    NotATupleAtStage1 spanInFile a1tye ->
+      "Not a tuple at stage 1"
+        <+> disp spanInFile
+        <> hardline
+        <+> stage1Style (disp a1tye)
 
 instance (Disp sv) => Disp (ConditionalMergeErrorF sv) where
   dispGen _ = \case
@@ -710,6 +747,7 @@ instance (Disp sv, Disp (af sv)) => Disp (ResultF af sv) where
 instance (Disp sv) => Disp (Ass0ValF sv) where
   dispGen req = \case
     A0ValLiteral lit -> disp lit
+    A0ValTuple a1v1 a1v2 -> dispTuple a1v1 a1v2
     A0ValLam Nothing (x, a0tyv1) a0v2 _env -> dispNonrecLam req x a0tyv1 a0v2
     A0ValLam (Just (f, a0tyvRec)) (x, a0tyv1) a0v2 _env -> dispRecLam req f a0tyvRec x a0tyv1 a0v2
     A0ValBracket a1v1 -> dispBracket a1v1
@@ -774,8 +812,12 @@ instance (Disp sv) => Disp (Ass1ValF sv) where
       dispRecLam req symbF a1tyvRec symbX a1tyv1 a1v2
     A1ValApp a1v1 a1v2 ->
       dispApp req a1v1 a1v2
+    A1ValLetTupleIn xL xR a1v1 a1v2 ->
+      dispLetTupleIn req xL xR a1v1 a1v2
     A1ValSequential a1v1 a1v2 ->
       dispSequential req a1v1 a1v2
+    A1ValTuple a1v1 a1v2 ->
+      dispTuple a1v1 a1v2
     A1ValIfThenElse a1v0 a1v1 a1v2 ->
       dispIfThenElse req a1v0 a1v1 a1v2
 
@@ -785,6 +827,7 @@ instance (Disp sv) => Disp (Ass0TypeValF sv) where
     A0TyValPrim a0tyvPrim (Just a0vPred) -> dispInternalRefinementType req a0tyvPrim a0vPred
     A0TyValList a0tyv1 Nothing -> dispListType req a0tyv1
     A0TyValList a0tyv1 (Just a0vPred) -> dispInternalRefinementListType req a0tyv1 a0vPred
+    A0TyValProduct a0tyv1 a0tyv2 -> dispProductType req a0tyv1 a0tyv2
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
 
@@ -803,6 +846,7 @@ instance Disp Ass1TypeVal where
   dispGen req = \case
     A1TyValPrim a1tyvPrim -> dispGen req a1tyvPrim
     A1TyValList a1tyv -> dispListType req a1tyv
+    A1TyValProduct a1tyv1 a1tyv2 -> dispProductType req a1tyv1 a1tyv2
     A1TyValArrow a1tyv1 a1tyv2 -> dispNondepArrowType req a1tyv1 a1tyv2
 
 instance Disp Ass1PrimTypeVal where
@@ -854,6 +898,8 @@ instance (Disp sv) => Disp (BugF sv) where
       "Not a Boolean:" <+> disp a0v
     NotAUnit a0v ->
       "Not a unit:" <+> disp a0v
+    NotATuple a0v ->
+      "Not a tuple:" <+> disp a0v
     FoundSymbol x symb ->
       "Expected a stage-0 value, but found a symbol:" <+> disp symb <+> "(bound to:" <+> disp x <> ")"
     FoundAss0Val x a0v ->
@@ -895,11 +941,13 @@ instance Disp Bta.AnalysisError where
     Bta.UnboundVar spanInFile x ->
       "Unbound variable" <+> disp x <+> disp spanInFile
     Bta.NotAFunction spanInFile bity ->
-      "Not a function type;" <+> disp (show bity) <+> disp spanInFile
+      "Not a function;" <+> disp (show bity) <+> disp spanInFile
     Bta.NotAnOptFunction spanInFile bity ->
-      "Not an optional function type;" <+> disp (show bity) <+> disp spanInFile
+      "Not a function with optional parameter;" <+> disp (show bity) <+> disp spanInFile
     Bta.NotABase spanInFile bity ->
-      "Not a base type;" <+> disp (show bity) <+> disp spanInFile
+      "Not of base type;" <+> disp (show bity) <+> disp spanInFile
+    Bta.NotATuple spanInFile bity ->
+      "Not a tuple;" <+> disp (show bity) <+> disp spanInFile
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
     Bta.BITypeContradiction spanInFile bity1 bity2 ->
@@ -930,8 +978,10 @@ instance Disp (Bta.BCExprMainF ann) where
     Surface.App e1 e2 -> dispApp req e1 e2
     Surface.LetIn x params eBody e2 -> dispLetIn req x params eBody e2
     Surface.LetRecIn f params tyeBody eBody e2 -> dispLetRecIn req f params tyeBody eBody e2
+    Surface.LetTupleIn xL xR e1 e2 -> dispLetTupleIn req xL xR e1 e2
     Surface.LetOpenIn m e -> dispLetOpenIn req m e
     Surface.Sequential e1 e2 -> dispSequential req e1 e2
+    Surface.Tuple e1 e2 -> dispTuple e1 e2
     Surface.IfThenElse e0 e1 e2 -> dispIfThenElse req e0 e1 e2
     Surface.As e1 tye2 -> dispAs req e1 tye2
     Surface.LamOpt (x, tye1) e2 -> dispLamOpt req x tye1 e2

@@ -106,7 +106,13 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
       unionPairs [frees a0e1, frees a0e2]
     A0LetIn (y, a0tye1) a0e1 a0e2 ->
       frees (A0App (A0Lam Nothing (y, a0tye1) a0e2) a0e1)
+    A0LetTupleIn xL xR a0e1 a0e2 ->
+      let (var0set1, var1set1) = frees a0e1
+          (var0set2, var1set2) = frees a0e2
+       in (Set.union var0set1 (Set.delete xL (Set.delete xR var0set2)), Set.union var1set1 var1set2)
     A0Sequential a0e1 a0e2 ->
+      unionPairs [frees a0e1, frees a0e2]
+    A0Tuple a0e1 a0e2 ->
       unionPairs [frees a0e1, frees a0e2]
     A0IfThenElse a0e0 a0e1 a0e2 ->
       unionPairs [frees a0e0, frees a0e1, frees a0e2]
@@ -143,8 +149,15 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
         case s of
           Subst0 x _ -> if y == x then a0e2 else go a0e2
           Subst1 _ _ -> go a0e2
+    A0LetTupleIn xL xR a0e1 a0e2 ->
+      A0LetTupleIn xL xR (go a0e1) $
+        case s of
+          Subst0 x _ -> if xL == x || xR == x then a0e2 else go a0e2
+          Subst1 _ _ -> go a0e2
     A0Sequential a0e1 a0e2 ->
       A0Sequential (go a0e1) (go a0e2)
+    A0Tuple a0e1 a0e2 ->
+      A0Tuple (go a0e1) (go a0e2)
     A0IfThenElse a0e0 a0e1 a0e2 ->
       A0IfThenElse (go a0e0) (go a0e1) (go a0e2)
     A0Bracket a1e1 ->
@@ -175,7 +188,11 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
         go a0e11 a0e21 && go a0e12 a0e22
       (A0LetIn (x1, a0tye1) a0e11 a0e12, A0LetIn (x2, a0tye2) a0e21 a0e22) ->
         go a0tye1 a0tye2 && go a0e11 a0e21 && go a0e12 (subst0 (A0Var x1) x2 a0e22)
+      (A0LetTupleIn x1L x1R a0e11 a0e12, A0LetTupleIn x2L x2R a0e21 a0e22) ->
+        go a0e11 a0e21 && go a0e12 (subst0 (A0Var x1R) x2R (subst0 (A0Var x1L) x2L a0e22))
       (A0Sequential a0e11 a0e12, A0Sequential a0e21 a0e22) ->
+        go a0e11 a0e21 && go a0e12 a0e22
+      (A0Tuple a0e11 a0e12, A0Tuple a0e21 a0e22) ->
         go a0e11 a0e21 && go a0e12 a0e22
       (A0IfThenElse a0e10 a0e11 a0e12, A0IfThenElse a0e20 a0e21 a0e22) ->
         go a0e10 a0e20 && go a0e11 a0e21 && go a0e12 a0e22
@@ -212,7 +229,13 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
        in (var0set, var1set)
     A1App a1e1 a1e2 ->
       unionPairs [frees a1e1, frees a1e2]
+    A1LetTupleIn xL xR a1e1 a1e2 ->
+      let (var0set1, var1set1) = frees a1e1
+          (var0set2, var1set2) = frees a1e2
+       in (Set.union var0set1 var0set2, Set.union var1set1 (Set.delete xL (Set.delete xR var1set2)))
     A1Sequential a1e1 a1e2 ->
+      unionPairs [frees a1e1, frees a1e2]
+    A1Tuple a1e1 a1e2 ->
       unionPairs [frees a1e1, frees a1e2]
     A1IfThenElse a1e0 a1e1 a1e2 ->
       unionPairs [frees a1e0, frees a1e1, frees a1e2]
@@ -240,8 +263,15 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
           Subst1 _ _ -> go a1e2
     A1App a1e1 a1e2 ->
       A1App (go a1e1) (go a1e2)
+    A1LetTupleIn xL xR a1e1 a1e2 ->
+      A1LetTupleIn xL xR (go a1e1) $
+        case s of
+          Subst0 x _ -> if x == xL || x == xR then a1e2 else go a1e2
+          Subst1 _ _ -> go a1e2
     A1Sequential a1e1 a1e2 ->
       A1Sequential (go a1e1) (go a1e2)
+    A1Tuple a1e1 a1e2 ->
+      A1Tuple (go a1e1) (go a1e2)
     A1IfThenElse a1e0 a1e1 a1e2 ->
       A1IfThenElse (go a1e0) (go a1e1) (go a1e2)
     A1Escape a0e1 ->
@@ -264,12 +294,15 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
           && go a1tye11 a1tye21
           && go a1e12 (subst1 (A1Var x1) x2 (subst1 (A1Var f1) f2 a1e22))
       (A1App a1e11 a1e12, A1App a1e21 a1e22) ->
-        go a1e11 a1e21
-          && go a1e12 a1e22
+        go a1e11 a1e21 && go a1e12 a1e22
+      (A1LetTupleIn x1L x1R a1e11 a1e12, A1LetTupleIn x2L x2R a1e21 a1e22) ->
+        go a1e11 a1e21 && go a1e12 (subst0 (A0Var x1R) x2R (subst0 (A0Var x1L) x2L a1e22))
+      (A1Sequential a1e11 a1e12, A1Sequential a1e21 a1e22) ->
+        go a1e11 a1e21 && go a1e12 a1e22
+      (A1Tuple a1e11 a1e12, A1Tuple a1e21 a1e22) ->
+        go a1e11 a1e21 && go a1e12 a1e22
       (A1IfThenElse a1e10 a1e11 a1e12, A1IfThenElse a1e20 a1e21 a1e22) ->
-        go a1e10 a1e20
-          && go a1e11 a1e21
-          && go a1e12 a1e22
+        go a1e10 a1e20 && go a1e11 a1e21 && go a1e12 a1e22
       (A1Escape a0e1, A1Escape a0e2) ->
         go a0e1 a0e2
       (_, _) ->
@@ -284,6 +317,8 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
       frees (Maybe1 maybePred)
     A0TyList a0tye maybePred ->
       unionPairs [frees a0tye, frees (Maybe1 maybePred)]
+    A0TyProduct a0tye1 a0tye2 ->
+      unionPairs [frees a0tye1, frees a0tye2]
     A0TyArrow (yOpt, a0tye1) a0tye2 ->
       let (var0set1, var1set1) = frees a0tye1
           (var0set2, var1set2) = frees a0tye2
@@ -308,6 +343,8 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
       A0TyPrim a0tyPrim (unMaybe1 . go . Maybe1 $ maybePred)
     A0TyList a0tye maybePred ->
       A0TyList (go a0tye) (unMaybe1 . go . Maybe1 $ maybePred)
+    A0TyProduct a0tye1 a0tye2 ->
+      A0TyProduct (go a0tye1) (go a0tye2)
     A0TyArrow (yOpt, a0tye1) a0tye2 ->
       A0TyArrow (yOpt, go a0tye1) $
         case (yOpt, s) of
@@ -364,6 +401,8 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         A1TyTensor a0eList -> frees a0eList
     A1TyList a1tye1 ->
       frees a1tye1
+    A1TyProduct a1tye1 a1tye2 ->
+      unionPairs [frees a1tye1, frees a1tye2]
     A1TyArrow a1tye1 a1tye2 ->
       unionPairs [frees a1tye1, frees a1tye2]
 
@@ -378,6 +417,8 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         A1TyTensor a0eList -> A1TyTensor (go a0eList)
     A1TyList a1tye1 ->
       A1TyList (go a1tye1)
+    A1TyProduct a1tye1 a1tye2 ->
+      A1TyProduct (go a1tye1) (go a1tye2)
     A1TyArrow a1tye1 a1tye2 ->
       A1TyArrow (go a1tye1) (go a1tye2)
     where
@@ -412,6 +453,8 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
       frees (Maybe1 maybePred)
     SA0TyList a0tye maybePred ->
       unionPairs [frees a0tye, frees (Maybe1 maybePred)]
+    SA0TyProduct a0tye1 a0tye2 ->
+      unionPairs [frees a0tye1, frees a0tye2]
     SA0TyArrow (yOpt, a0tye1) a0tye2 ->
       let (var0set1, var1set1) = frees a0tye1
           (var0set2, var1set2) = frees a0tye2
@@ -430,6 +473,8 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
       SA0TyPrim a0tyPrim (unMaybe1 . go . Maybe1 $ maybePred)
     SA0TyList a0tye maybePred ->
       SA0TyList (go a0tye) (unMaybe1 . go . Maybe1 $ maybePred)
+    SA0TyProduct a0tye1 a0tye2 ->
+      SA0TyProduct (go a0tye1) (go a0tye2)
     SA0TyArrow (yOpt, sa0tye1) sa0tye2 ->
       SA0TyArrow (yOpt, go sa0tye1) $
         case (yOpt, s) of

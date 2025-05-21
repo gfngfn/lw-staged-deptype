@@ -11,6 +11,7 @@ where
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
+import Data.Function ((&))
 import Data.Map qualified as Map
 import Data.Maybe (isJust)
 import Lwsd.BuiltIn.Core
@@ -332,10 +333,23 @@ evalExpr0 env = \case
     reduceBeta a0v1 a0v2
   A0LetIn (x, a0tye1) a0e1 a0e2 ->
     evalExpr0 env (A0App (A0Lam Nothing (x, a0tye1) a0e2) a0e1)
+  A0LetTupleIn xL xR a0e1 a0e2 -> do
+    a0v1 <- evalExpr0 env a0e1
+    case a0v1 of
+      A0ValTuple a0vL a0vR ->
+        evalExpr0
+          (env & Map.insert xL (Ass0ValEntry a0vL) & Map.insert xR (Ass0ValEntry a0vR))
+          a0e2
+      _ ->
+        bug $ NotATuple a0v1
   A0Sequential a0e1 a0e2 -> do
     a0v1 <- evalExpr0 env a0e1
     () <- validateUnitLiteral a0v1
     evalExpr0 env a0e2
+  A0Tuple a0e1 a0e2 -> do
+    a0v1 <- evalExpr0 env a0e1
+    a0v2 <- evalExpr0 env a0e2
+    pure $ A0ValTuple a0v1 a0v2
   A0IfThenElse a0e0 a0e1 a0e2 -> do
     a0v0 <- evalExpr0 env a0e0
     b <- validateBoolLiteral a0v0
@@ -380,8 +394,8 @@ evalExpr1 env = \case
   A1Lam Nothing (x, a1tye1) a1e2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     symbX <- generateFreshSymbol
-    a1v1 <- evalExpr1 (Map.insert x (SymbolEntry symbX) env) a1e2
-    pure $ A1ValLam Nothing (symbX, a1tyv1) a1v1
+    a1v2 <- evalExpr1 (Map.insert x (SymbolEntry symbX) env) a1e2
+    pure $ A1ValLam Nothing (symbX, a1tyv1) a1v2
   A1Lam (Just (f, a1tyeRec)) (x, a1tye1) a1e2 -> do
     a1tyvRec <- evalTypeExpr1 env a1tyeRec
     a1tyv1 <- evalTypeExpr1 env a1tye1
@@ -393,10 +407,20 @@ evalExpr1 env = \case
     a1v1 <- evalExpr1 env a1e1
     a1v2 <- evalExpr1 env a1e2
     pure $ A1ValApp a1v1 a1v2
+  A1LetTupleIn xL xR a1e1 a1e2 -> do
+    a1v1 <- evalExpr1 env a1e1
+    symbXL <- generateFreshSymbol
+    symbXR <- generateFreshSymbol
+    a1v2 <- evalExpr1 (env & Map.insert xL (SymbolEntry symbXL) & Map.insert xR (SymbolEntry symbXR)) a1e2
+    pure $ A1ValLetTupleIn symbXL symbXR a1v1 a1v2
   A1Sequential a1e1 a1e2 -> do
     a1v1 <- evalExpr1 env a1e1
     a1v2 <- evalExpr1 env a1e2
     pure $ A1ValSequential a1v1 a1v2
+  A1Tuple a1e1 a1e2 -> do
+    a1v1 <- evalExpr1 env a1e1
+    a1v2 <- evalExpr1 env a1e2
+    pure $ A1ValTuple a1v1 a1v2
   A1IfThenElse a1e0 a1e1 a1e2 -> do
     a1v0 <- evalExpr1 env a1e0
     a1v1 <- evalExpr1 env a1e1
@@ -425,6 +449,10 @@ evalTypeExpr0 env = \case
     a0tyv1 <- evalTypeExpr0 env sa0tye1
     maybeVPred <- mapM (evalExpr0 env) maybePred
     pure $ A0TyValList a0tyv1 maybeVPred
+  SA0TyProduct sa0tye1 sa0tye2 -> do
+    a0tyv1 <- evalTypeExpr0 env sa0tye1
+    a0tyv2 <- evalTypeExpr0 env sa0tye2
+    pure $ A0TyValProduct a0tyv1 a0tyv2
   SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> do
     a0tyv1 <- evalTypeExpr0 env sa0tye1
     pure $ A0TyValArrow (xOpt, a0tyv1) sa0tye2
@@ -450,6 +478,10 @@ evalTypeExpr1 env = \case
   A1TyList a1tye -> do
     a1tyv <- evalTypeExpr1 env a1tye
     pure $ A1TyValList a1tyv
+  A1TyProduct a1tye1 a1tye2 -> do
+    a1tyv1 <- evalTypeExpr1 env a1tye1
+    a1tyv2 <- evalTypeExpr1 env a1tye2
+    pure $ A1TyValProduct a1tyv1 a1tyv2
   A1TyArrow a1tye1 a1tye2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
@@ -472,8 +504,12 @@ unliftVal = \case
     A0Lam (Just (symbolToVar symbF, unliftTypeVal a1tyvRec)) (symbolToVar symbX, unliftTypeVal a1tyv1) (unliftVal a1v2)
   A1ValApp a1v1 a1v2 ->
     A0App (unliftVal a1v1) (unliftVal a1v2)
+  A1ValLetTupleIn symbXL symbXR a1v1 a1v2 ->
+    A0LetTupleIn (symbolToVar symbXL) (symbolToVar symbXR) (unliftVal a1v1) (unliftVal a1v2)
   A1ValSequential a1v1 a1v2 ->
     A0Sequential (unliftVal a1v1) (unliftVal a1v2)
+  A1ValTuple a1v1 a1v2 ->
+    A0Tuple (unliftVal a1v1) (unliftVal a1v2)
   A1ValIfThenElse a1v0 a1v1 a1v2 ->
     A0IfThenElse (unliftVal a1v0) (unliftVal a1v1) (unliftVal a1v2)
 
@@ -491,5 +527,7 @@ unliftTypeVal = \case
      in SA0TyPrim a0tyPrim Nothing
   A1TyValList a1tyv ->
     SA0TyList (unliftTypeVal a1tyv) Nothing
+  A1TyValProduct a1tyv1 a1tyv2 ->
+    SA0TyProduct (unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
   A1TyValArrow a1tyv1 a1tyv2 ->
     SA0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)

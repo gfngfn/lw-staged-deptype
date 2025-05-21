@@ -16,4 +16,5 @@ data AnalysisError
   | BindingTimeContradiction SpanInFile
   | BITypeContradiction SpanInFile BIType BIType
   | UnknownTypeOrInvalidArgs SpanInFile TypeName [BArgForType]
+  | NotATuple SpanInFile BIType
   deriving stock (Show)
