@@ -315,6 +315,8 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
   frees = \case
     A0TyPrim _ maybePred ->
       frees (Maybe1 maybePred)
+    A0TyVar _ ->
+      (Set.empty, Set.empty)
     A0TyList a0tye maybePred ->
       unionPairs [frees a0tye, frees (Maybe1 maybePred)]
     A0TyProduct a0tye1 a0tye2 ->
@@ -341,6 +343,8 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
   subst s = \case
     A0TyPrim a0tyPrim maybePred ->
       A0TyPrim a0tyPrim (unMaybe1 . go . Maybe1 $ maybePred)
+    A0TyVar atyvar ->
+      A0TyVar atyvar
     A0TyList a0tye maybePred ->
       A0TyList (go a0tye) (unMaybe1 . go . Maybe1 $ maybePred)
     A0TyProduct a0tye1 a0tye2 ->
@@ -366,6 +370,8 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
       (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2) ->
         -- Exact match
         a0tyPrim1 == a0tyPrim2 && go (Maybe1 maybePred1) (Maybe1 maybePred2)
+      (A0TyVar atyvar1, A0TyVar atyvar2) ->
+        atyvar1 == atyvar2
       (A0TyList a0tye1' maybePred1, A0TyList a0tye2' maybePred2) ->
         go a0tye1' a0tye2' && go (Maybe1 maybePred1) (Maybe1 maybePred2)
       (A0TyArrow (y1opt, a0tye11) a0tye12, A0TyArrow (y2opt, a0tye21) a0tye22) ->
@@ -451,6 +457,8 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
   frees = \case
     SA0TyPrim _ maybePred ->
       frees (Maybe1 maybePred)
+    SA0TyVar _ ->
+      (Set.empty, Set.empty)
     SA0TyList a0tye maybePred ->
       unionPairs [frees a0tye, frees (Maybe1 maybePred)]
     SA0TyProduct a0tye1 a0tye2 ->
@@ -471,6 +479,8 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
   subst s = \case
     SA0TyPrim a0tyPrim maybePred ->
       SA0TyPrim a0tyPrim (unMaybe1 . go . Maybe1 $ maybePred)
+    SA0TyVar atyvar ->
+      SA0TyVar atyvar
     SA0TyList a0tye maybePred ->
       SA0TyList (go a0tye) (unMaybe1 . go . Maybe1 $ maybePred)
     SA0TyProduct a0tye1 a0tye2 ->
@@ -492,6 +502,8 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
       (SA0TyPrim a0tyPrim1 maybePred1, SA0TyPrim a0tyPrim2 maybePred2) ->
         -- Exact match
         a0tyPrim1 == a0tyPrim2 && go (Maybe1 maybePred1) (Maybe1 maybePred2)
+      (SA0TyVar atyvar1, SA0TyVar atyvar2) ->
+        atyvar1 == atyvar2
       (SA0TyArrow (y1opt, sa0tye11) sa0tye12, SA0TyArrow (y2opt, sa0tye21) sa0tye22) ->
         (go sa0tye11 sa0tye21 &&) $
           case (y1opt, y2opt) of

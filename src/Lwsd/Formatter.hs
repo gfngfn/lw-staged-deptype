@@ -199,6 +199,9 @@ dispEscape :: (Disp expr) => expr -> Doc Ann
 dispEscape e =
   stagingOperatorStyle "~" <> stage0Style (dispGen Atomic e)
 
+dispTypeVar :: AssTypeVar -> Doc Ann
+dispTypeVar (AssTypeVar n) = "'a" <> disp n
+
 dispListType :: (Disp ty) => Associativity -> ty -> Doc Ann
 dispListType req tye =
   deepenParenWhen (req <= Atomic) $
@@ -325,6 +328,7 @@ instance Disp (TypeExprF ann) where
 instance Disp (TypeExprMainF ann) where
   dispGen req = \case
     TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
+    TyVar (TypeVar tyvar) -> disp tyvar
     TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     TyCode tye1 -> dispBracket tye1
     TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
@@ -495,6 +499,7 @@ instance (Disp sv) => Disp (Ass0TypeExprF sv) where
   dispGen req = \case
     A0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     A0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
+    A0TyVar atyvar -> dispTypeVar atyvar
     A0TyList a0tye Nothing -> dispListType req a0tye
     A0TyList a0tye (Just a0ePred) -> dispInternalRefinementListType req a0tye a0ePred
     A0TyProduct a0tye1 a0tye2 -> dispProductType req a0tye1 a0tye2
@@ -506,6 +511,7 @@ instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
   dispGen req = \case
     SA0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     SA0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
+    SA0TyVar atyvar -> dispTypeVar atyvar
     SA0TyList sa0tye Nothing -> dispListType req sa0tye
     SA0TyList sa0tye (Just a0ePred) -> dispInternalRefinementListType req sa0tye a0ePred
     SA0TyProduct sa0tye1 sa0tye2 -> dispProductType req sa0tye1 sa0tye2
@@ -561,6 +567,8 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
   dispGen _ = \case
     UnboundVar spanInFile ms x ->
       "Unbound variable" <+> dispLongName ms x <+> disp spanInFile
+    UnboundTypeVar spanInFile (TypeVar a) ->
+      "Unbound type variable" <+> disp a <+> disp spanInFile
     UnboundModule spanInFile m ->
       "Unbound module" <+> disp m <+> disp spanInFile
     NotAStage0Var spanInFile x ->
@@ -625,6 +633,8 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
       "Cannot use persistent arguments at stage 0" <+> disp spanInFile
     CannotUseNormalArgAtStage1 spanInFile ->
       "Cannot use normal arguments at stage 1" <+> disp spanInFile
+    CannotUseTypeVarAtStage1 spanInFile ->
+      "Cannot use type variables at stage 1" <+> disp spanInFile
     VarOccursFreelyInAss0Type spanInFile x a0result ->
       "Variable" <+> disp x <+> "occurs in stage-0 type" <+> stage0Style (disp a0result) <+> disp spanInFile
     VarOccursFreelyInAss1Type spanInFile x a1result ->
@@ -825,6 +835,7 @@ instance (Disp sv) => Disp (Ass0TypeValF sv) where
   dispGen req = \case
     A0TyValPrim a0tyvPrim Nothing -> dispGen req a0tyvPrim
     A0TyValPrim a0tyvPrim (Just a0vPred) -> dispInternalRefinementType req a0tyvPrim a0vPred
+    A0TyValVar atyvar -> dispTypeVar atyvar
     A0TyValList a0tyv1 Nothing -> dispListType req a0tyv1
     A0TyValList a0tyv1 (Just a0vPred) -> dispInternalRefinementListType req a0tyv1 a0vPred
     A0TyValProduct a0tyv1 a0tyv2 -> dispProductType req a0tyv1 a0tyv2

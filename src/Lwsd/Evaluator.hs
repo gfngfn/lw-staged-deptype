@@ -445,6 +445,8 @@ evalTypeExpr0 env = \case
             A0TyTensor n -> A0TyValTensor n
     maybeVPred <- mapM (evalExpr0 env) maybePred
     pure $ A0TyValPrim a0tyValPrim maybeVPred
+  SA0TyVar atyvar ->
+    pure $ A0TyValVar atyvar
   SA0TyList sa0tye1 maybePred -> do
     a0tyv1 <- evalTypeExpr0 env sa0tye1
     maybeVPred <- mapM (evalExpr0 env) maybePred

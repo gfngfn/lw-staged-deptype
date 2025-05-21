@@ -70,6 +70,9 @@ fromStaged0 :: Lwsd.Ass0TypeExpr -> BITypeVoid
 fromStaged0 = \case
   Lwsd.A0TyPrim _a0tyPrim _maybePred ->
     wrap0 $ BITyBase []
+  Lwsd.A0TyVar _atyvar ->
+    -- Handles order-0 type variables only:
+    wrap0 $ BITyBase []
   Lwsd.A0TyList a0tye' _maybePred ->
     wrap0 $ BITyBase [fromStaged0 a0tye']
   Lwsd.A0TyProduct a0tye1 a0tye2 ->

@@ -162,6 +162,7 @@ data Ass0TypeExprF sv
 -- For type annotations in target terms.
 data StrictAss0TypeExprF sv
   = SA0TyPrim Ass0PrimType (Maybe (Ass0ExprF sv)) -- Possibly equipped with a refinement predicate.
+  | SA0TyVar AssTypeVar
   | SA0TyList (StrictAss0TypeExprF sv) (Maybe (Ass0ExprF sv)) -- Possibly equipped with a refinement predicate.
   | SA0TyProduct (StrictAss0TypeExprF sv) (StrictAss0TypeExprF sv) -- TODO: generalize product types
   | SA0TyArrow (Maybe (AssVarF sv), StrictAss0TypeExprF sv) (StrictAss0TypeExprF sv)
@@ -246,6 +247,7 @@ data Ass1ValF sv
 
 data Ass0TypeValF sv
   = A0TyValPrim Ass0PrimTypeVal (Maybe (Ass0ValF sv)) -- Possibly equipped with a refinement predicate.
+  | A0TyValVar AssTypeVar
   | A0TyValList (Ass0TypeValF sv) (Maybe (Ass0ValF sv)) -- Possibly equipped with a refinement predicate.
   | A0TyValProduct (Ass0TypeValF sv) (Ass0TypeValF sv)
   | A0TyValArrow (Maybe (AssVarF sv), Ass0TypeValF sv) (StrictAss0TypeExprF sv)
@@ -325,6 +327,7 @@ mapMAssLiteral eval = \case
 strictify :: Ass0TypeExprF sv -> StrictAss0TypeExprF sv
 strictify = \case
   A0TyPrim a0tyPrim maybePred -> SA0TyPrim a0tyPrim maybePred
+  A0TyVar atyvar -> SA0TyVar atyvar
   A0TyList a0tye maybePred -> SA0TyList (strictify a0tye) maybePred
   A0TyProduct a0tye1 a0tye2 -> SA0TyProduct (strictify a0tye1) (strictify a0tye2)
   A0TyArrow (x1opt, a0tye1) a0tye2 -> SA0TyArrow (x1opt, strictify a0tye1) (strictify a0tye2)
