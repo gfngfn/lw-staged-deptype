@@ -3,6 +3,7 @@ module Lwsd.Syntax
     AssVarF (..),
     Symbol (..),
     symbolToVar,
+    AssTypeVar (..),
     AssLiteralF (..),
     Ass0ExprF (..),
     Ass1ExprF (..),
@@ -79,6 +80,8 @@ newtype Symbol = Symbol Int
 
 symbolToVar :: Symbol -> AssVarF sv
 symbolToVar (Symbol n) = AssVarDynamic n
+
+newtype AssTypeVar = AssTypeVar Int
 
 data AssLiteralF af sv
   = ALitInt Int

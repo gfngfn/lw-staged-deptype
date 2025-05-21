@@ -33,7 +33,7 @@ import Lwsd.BuiltIn qualified as BuiltIn
 import Lwsd.BuiltIn.Core
 import Lwsd.Scope.SigRecord (Ass0Metadata (..), Ass1Metadata (..), AssPersMetadata (..), ModuleEntry (..), SigRecord, ValEntry (..))
 import Lwsd.Scope.SigRecord qualified as SigRecord
-import Lwsd.Scope.TypeEnv (TypeEnv)
+import Lwsd.Scope.TypeEnv (TypeEnv, TypeVarEntry (..))
 import Lwsd.Scope.TypeEnv qualified as TypeEnv
 import Lwsd.SrcSyntax
 import Lwsd.Subst
@@ -132,6 +132,10 @@ generateFreshVar maybeName = do
   let sv = StaticVar n
   putState $ currentState {nextVarIndex = n + 1, assVarDisplay = Map.insert sv t assVarDisplay}
   pure sv
+
+generateFreshTypeVar :: M' err trav AssTypeVar
+generateFreshTypeVar =
+  error "TODO: generateFreshTypeVar"
 
 makeIdentityLam :: Ass0TypeExpr -> M trav Ass0Expr
 makeIdentityLam a0tye = do
@@ -1435,7 +1439,7 @@ extractFromExternal field0 =
 typecheckBind :: trav -> TypeEnv -> Bind -> M trav (SigRecord, [AssBind])
 typecheckBind trav tyEnv (Bind loc bindMain) =
   case bindMain of
-    BindVal stage x (BindValExternal _tyvars tye ext) -> do -- TODO: use `tyvars`
+    BindVal stage x (BindValExternal tyvars tye ext) -> do
       extName <-
         case extractFromExternal "builtin" ext of
           Just s ->
@@ -1444,9 +1448,17 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
             spanInFile <- askSpanInFile loc
             typeError trav $ NoBuiltInNameInExternal spanInFile
       let surfaceName = extractFromExternal "surface" ext
+      tyEnv' <-
+        foldM
+          ( \tyEnv0 tyvar -> do
+              atyvar <- generateFreshTypeVar
+              pure $ TypeEnv.addTypeVar tyvar (TypeVarEntry atyvar) tyEnv0
+          )
+          tyEnv
+          tyvars
       case stage of
         Stage0 -> do
-          a0tye <- typecheckTypeExpr0 trav tyEnv tye
+          a0tye <- typecheckTypeExpr0 trav tyEnv' tye
           ass0builtInName <-
             case validateExternalName0 extName of
               Just a0builtInName' ->
@@ -1464,7 +1476,7 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
               Nothing -> do
                 spanInFile <- askSpanInFile loc
                 typeError trav $ UnknownExternalName spanInFile extName
-          a1tye <- typecheckTypeExpr1 trav tyEnv tye
+          a1tye <- typecheckTypeExpr1 trav tyEnv' tye
           let a1metadata = Ass1Metadata {ass1builtInName, ass1surfaceName = surfaceName}
           pure (SigRecord.singletonVal x (Ass1Entry a1tye (Left a1metadata)), [])
         StagePers -> do
