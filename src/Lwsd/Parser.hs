@@ -231,10 +231,12 @@ typeExpr = fun
     atom :: P TypeExpr
     atom =
       (makeNamed <$> upper)
+        <|> (makeTypeVar <$> typeVar)
         <|> try (makeRefinement <$> paren ((,,) <$> (noLoc boundIdent <* token TokColon) <*> (fun <* token TokBar) <*> expr))
         <|> (makeEnclosed <$> paren fun)
       where
         makeNamed (Located loc t) = TypeExpr loc (TyName t [])
+        makeTypeVar (Located loc a) = TypeExpr loc (TyVar a)
         makeRefinement (Located loc (x, tye, e)) = TypeExpr loc (TyRefinement x tye e)
         makeEnclosed (Located loc (TypeExpr _ tyeMain)) = TypeExpr loc tyeMain
 
@@ -306,12 +308,16 @@ valBinder =
     <|> ((StagePers,) <$> (token TokPersistent *> noLoc boundIdent))
     <|> ((Stage1,) <$> noLoc boundIdent)
 
+typeVar :: P (Located TypeVar)
+typeVar =
+  (\(Located loc a) -> Located loc (TypeVar a)) <$> lower
+
 bindVal :: P (BindVal, Span)
 bindVal =
-  (makeBindValExternal <$> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+  (makeBindValExternal <$> many (noLoc typeVar) <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
     <|> (makeBindValNormal <$> (token TokEqual *> expr))
   where
-    makeBindValExternal ty (Located locLast ext) = (BindValExternal ty ext, locLast)
+    makeBindValExternal tyvars ty (Located locLast ext) = (BindValExternal tyvars ty ext, locLast)
     makeBindValNormal e@(Expr locLast _) = (BindValNormal e, locLast)
 
 external :: P (Located External)

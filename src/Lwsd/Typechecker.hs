@@ -1277,6 +1277,8 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
           ns <- validateIntListLiteral trav arg
           pure $ A0TyPrim (A0TyTensor ns) Nothing
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
+    TyVar _tyvar ->
+      error "TODO: typecheckTypeExpr0, TyVar"
     TyArrow (xOpt, tye1) tye2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
       (tyEnv', svXOpt) <-
@@ -1378,6 +1380,8 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
           a0eList <- forceExpr0 trav tyEnv (A0TyList BuiltIn.tyNat Nothing) e
           pure $ A1TyPrim (A1TyTensor a0eList)
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length args)
+    TyVar _tyvar ->
+      error "TODO: typecheckTypeExpr1, TyVar"
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       () <-
@@ -1431,7 +1435,7 @@ extractFromExternal field0 =
 typecheckBind :: trav -> TypeEnv -> Bind -> M trav (SigRecord, [AssBind])
 typecheckBind trav tyEnv (Bind loc bindMain) =
   case bindMain of
-    BindVal stage x (BindValExternal tye ext) -> do
+    BindVal stage x (BindValExternal _tyvars tye ext) -> do -- TODO: use `tyvars`
       extName <-
         case extractFromExternal "builtin" ext of
           Just s ->

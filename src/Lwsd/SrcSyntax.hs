@@ -8,6 +8,7 @@ module Lwsd.SrcSyntax
     ExprMain,
     LamBinder,
     TypeName,
+    TypeVar (..),
     TypeExprF (..),
     TypeExprMainF (..),
     TypeExpr,
@@ -85,12 +86,16 @@ type LamBinder = LamBinderF Span
 
 type TypeName = Text
 
+newtype TypeVar = TypeVar Text
+  deriving stock (Eq, Show)
+
 data TypeExprF ann = TypeExpr ann (TypeExprMainF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 TypeExprF)
 
 data TypeExprMainF ann
   = TyName TypeName [ArgForTypeF ann]
+  | TyVar TypeVar
   | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
   | TyCode (TypeExprF ann)
   | TyOptArrow (Var, TypeExprF ann) (TypeExprF ann)
@@ -125,7 +130,7 @@ data BindMainF ann
 type Bind = BindF Span
 
 data BindValF ann
-  = BindValExternal (TypeExprF ann) External
+  = BindValExternal [TypeVar] (TypeExprF ann) External
   | BindValNormal (ExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 BindValF)
