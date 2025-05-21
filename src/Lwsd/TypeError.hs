@@ -41,6 +41,7 @@ data TypeErrorF sv
   | CannotUseRefinementTypeAtStage1 SpanInFile
   | CannotUsePersistentArgAtStage0 SpanInFile
   | CannotUseNormalArgAtStage1 SpanInFile
+  | CannotUseTypeVarAtStage1 SpanInFile
   | VarOccursFreelyInAss0Type SpanInFile Var (ResultF Ass0TypeExprF sv)
   | VarOccursFreelyInAss1Type SpanInFile Var (ResultF Ass1TypeExprF sv)
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError

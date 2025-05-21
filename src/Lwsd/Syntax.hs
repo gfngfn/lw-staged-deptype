@@ -151,6 +151,7 @@ makeExprFromBinds abinds' a0eFinal = go0 abinds'
 -- For type-checking.
 data Ass0TypeExprF sv
   = A0TyPrim Ass0PrimType (Maybe (Ass0ExprF sv)) -- Possibly equipped with a refinement predicate.
+  | A0TyVar AssTypeVar
   | A0TyList (Ass0TypeExprF sv) (Maybe (Ass0ExprF sv)) -- Possibly equipped with a refinement predicate.
   | A0TyProduct (Ass0TypeExprF sv) (Ass0TypeExprF sv) -- TODO: generalize product types
   | A0TyArrow (Maybe (AssVarF sv), Ass0TypeExprF sv) (Ass0TypeExprF sv)

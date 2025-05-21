@@ -1300,8 +1300,8 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
           pure $ A0TyPrim (A0TyTensor ns) Nothing
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
     TyVar tyvar -> do
-      _tyVarEntry <- findTypeVar trav loc tyvar tyEnv
-      error "TODO: typecheckTypeExpr0, TyVar"
+      TypeVarEntry atyvar <- findTypeVar trav loc tyvar tyEnv
+      pure $ A0TyVar atyvar
     TyArrow (xOpt, tye1) tye2 -> do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
       (tyEnv', svXOpt) <-
@@ -1403,9 +1403,8 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
           a0eList <- forceExpr0 trav tyEnv (A0TyList BuiltIn.tyNat Nothing) e
           pure $ A1TyPrim (A1TyTensor a0eList)
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length args)
-    TyVar tyvar -> do
-      _tyVarEntry <- findTypeVar trav loc tyvar tyEnv
-      error "TODO: typecheckTypeExpr1, TyVar"
+    TyVar _tyvar ->
+      typeError trav $ CannotUseTypeVarAtStage1 spanInFile
     TyArrow (xOpt, tye1) tye2 -> do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       () <-
@@ -1435,6 +1434,8 @@ validatePersistentType trav loc a0tye =
         case maybePred of
           Nothing -> pure $ APersTyPrim a0tyPrim
           Just _ -> Nothing
+      A0TyVar _atyvar ->
+        error "TODO: validatePersistentType, A0TyVar"
       A0TyList a0tye' maybePred ->
         case maybePred of
           Nothing -> APersTyList <$> go a0tye'
