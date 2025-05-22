@@ -236,24 +236,24 @@ extractConstraintsFromLiteral btenv (btLit, annLit) = \case
     pure (LitMat nss, [], [])
 
 findVal :: BindingTimeEnv -> [Var] -> Var -> Maybe BindingTimeEnvEntry
-findVal btenv ms x =
-  case ms of
-    [] ->
-      Map.lookup x btenv
-    m : ms' ->
-      case Map.lookup m btenv of
-        Just (EntryModule btenv') ->
-          findVal btenv' ms' x
-        _ ->
-          error "TODO (error): Surface.BindingTime.Analyzer.findVal"
+findVal = go
+  where
+    go btenv ms x =
+      case ms of
+        [] ->
+          Map.lookup x btenv
+        m : ms' ->
+          case Map.lookup m btenv of
+            Just (EntryModule btenv') -> go btenv' ms' x
+            _ -> Nothing
 
-openModule :: Var -> BindingTimeEnv -> M BindingTimeEnv
-openModule m btenv =
+openModule :: SpanInFile -> Var -> BindingTimeEnv -> M BindingTimeEnv
+openModule spanInFile m btenv =
   case Map.lookup m btenv of
     Just (EntryModule btenv') ->
       pure $ Map.union btenv' btenv
     _ ->
-      error "TODO (error): Surface.BindingTime.Analyzer.openModule"
+      analysisError $ NotAModule spanInFile m
 
 extractConstraintsFromExpr :: BindingTimeEnv -> BExpr -> M (BExpr, BIType, [Constraint Span])
 extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
@@ -266,7 +266,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
       (x', bity, constraints) <-
         case findVal btenv ms x of
           Nothing ->
-            analysisError $ UnboundVar spanInFile x
+            analysisError $ UnboundVar spanInFile ms x
           Just (EntryBuiltInPersistent x' bityVoid) ->
             pure (x', enhanceBIType (\() -> bt) bityVoid, [])
           Just (EntryBuiltInFixed x' btc' bityConst) ->
@@ -274,7 +274,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
           Just (EntryLocallyBound bt' bity) ->
             pure (x, bity, [CEqual ann bt bt'])
           Just (EntryModule _) ->
-            error "TODO (error): extractConstraintsFromExpr, Var, EntryModule"
+            analysisError $ NotAVal spanInFile ms x
       pure (Expr (bt, ann) (Var (ms, x')), bity, constraints)
     Lam Nothing (x1, btye1) e2 -> do
       (btye1', bity1@(BIType bt1 _), constraints1) <- extractConstraintsFromTypeExpr btenv btye1
@@ -338,7 +338,7 @@ extractConstraintsFromExpr btenv (Expr (bt, ann) exprMain) = do
           analysisError $ NotATuple spanInFile1 bity1
     LetOpenIn m e1 -> do
       (e1', bity1@(BIType bt1 _), constraints) <- do
-        btenv' <- openModule m btenv
+        btenv' <- openModule spanInFile m btenv
         extractConstraintsFromExpr btenv' e1
       pure (Expr (bt, ann) (LetOpenIn m e1'), bity1, constraints ++ [CEqual ann bt bt1])
     Sequential e1 e2 -> do

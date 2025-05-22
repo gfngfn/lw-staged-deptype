@@ -1501,7 +1501,7 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
           let a1metadata = Ass1Metadata {ass1builtInName, ass1surfaceName = surfaceName}
           pure (SigRecord.singletonVal x (Ass1Entry a1tye (Left a1metadata)), [])
         StagePers -> do
-          a0tye <- typecheckTypeExpr0 trav tyEnv tye
+          a0tye <- typecheckTypeExpr0 trav tyEnv' tye
           aPtye <- validatePersistentType trav loc a0tye
           assPbuiltInName <-
             case validateExternalName1 extName of

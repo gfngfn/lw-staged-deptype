@@ -949,8 +949,12 @@ instance (Disp sv) => Disp (EvalErrorF sv) where
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case
-    Bta.UnboundVar spanInFile x ->
-      "Unbound variable" <+> disp x <+> disp spanInFile
+    Bta.UnboundVar spanInFile ms x ->
+      "Unbound variable" <+> disp (Text.intercalate "." (ms ++ [x])) <+> disp spanInFile
+    Bta.NotAVal spanInFile ms x ->
+      "Not a value:" <+> disp (Text.intercalate "." (ms ++ [x])) <+> disp spanInFile
+    Bta.NotAModule spanInFile m ->
+      "Not a module:" <+> disp m <+> disp spanInFile
     Bta.NotAFunction spanInFile bity ->
       "Not a function;" <+> disp (show bity) <+> disp spanInFile
     Bta.NotAnOptFunction spanInFile bity ->

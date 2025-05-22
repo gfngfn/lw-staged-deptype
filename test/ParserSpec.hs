@@ -168,6 +168,9 @@ spec = do
     it "parses sequentials (4)" $
       parseExpr "f 42; let x = y in z"
         `shouldBe` pure (expr (Sequential (app (var "f") (litInt 42)) (expr (LetIn "x" [] (var "y") (var "z")))))
+    it "parses sequentials (5)" $
+      parseExpr "f 42; if p 57 then x else y"
+        `shouldBe` pure (expr (Sequential (app (var "f") (litInt 42)) (expr (IfThenElse (app (var "p") (litInt 57)) (var "x") (var "y")))))
     it "parses tuples (1)" $
       parseExpr "(x, y)"
         `shouldBe` pure (expr (Tuple (var "x") (var "y")))
