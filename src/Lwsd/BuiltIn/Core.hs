@@ -3,6 +3,7 @@ module Lwsd.BuiltIn.Core
     BuiltInArity1 (..),
     BuiltInArity2 (..),
     BuiltInArity3 (..),
+    BuiltInArity4 (..),
     Ass0PartialBuiltInApp (..),
     Ass1BuiltIn (..),
     validateExternalName0,
@@ -18,11 +19,13 @@ data BuiltIn
   = BuiltInArity1 BuiltInArity1
   | BuiltInArity2 BuiltInArity2
   | BuiltInArity3 BuiltInArity3
+  | BuiltInArity4 BuiltInArity4
   deriving stock (Eq, Show)
 
 data BuiltInArity1
   = BIGenVadd
   | BIMtranspose Int Int
+  | BIDeviceCudaIfAvailable
   | BITensorGenZeros
   | BITensorGenGrad
   | BITensorGenZeroGrad
@@ -60,6 +63,10 @@ data BuiltInArity3
   | BITensorGenMm
   deriving stock (Eq, Show)
 
+data BuiltInArity4
+  = BIDatasetHelperGenTrainBatch
+  deriving stock (Eq, Show)
+
 data Ass0PartialBuiltInApp val
   = A0PartialBuiltInApp1With0 BuiltInArity1
   | A0PartialBuiltInApp2With0 BuiltInArity2
@@ -67,6 +74,10 @@ data Ass0PartialBuiltInApp val
   | A0PartialBuiltInApp3With0 BuiltInArity3
   | A0PartialBuiltInApp3With1 BuiltInArity3 val
   | A0PartialBuiltInApp3With2 BuiltInArity3 val val
+  | A0PartialBuiltInApp4With0 BuiltInArity4
+  | A0PartialBuiltInApp4With1 BuiltInArity4 val
+  | A0PartialBuiltInApp4With2 BuiltInArity4 val val
+  | A0PartialBuiltInApp4With3 BuiltInArity4 val val val
   deriving stock (Eq, Show, Functor)
 
 data Ass1BuiltIn
@@ -98,6 +109,7 @@ data Ass1BuiltIn
   | A1BITensorBackward
   | A1BITensorNoGrad
   | A1BITensorFloatValue
+  | A1BIDatasetHelperTrainBatch Int Int Int Int
   | A1BIMnistHelperTrainImages
   | A1BIMnistHelperTrainLabels
   | A1BIMnistHelperTestImages
@@ -141,6 +153,7 @@ validateExternalName0 = \case
   "broadcast" -> arity2 BIBroadcast
   "list__append" -> arity2 BIListAppend
   "list__iter" -> arity2 BIListIter
+  "device__cuda_if_available" -> arity1 BIDeviceCudaIfAvailable
   "tensor__gen_zeros" -> arity1 BITensorGenZeros
   "tensor__gen_add" -> arity2 BITensorGenAdd
   "tensor__gen_mult" -> arity2 BITensorGenMult
@@ -151,11 +164,13 @@ validateExternalName0 = \case
   "tensor__gen_argmax" -> arity2 BITensorGenArgmax
   "tensor__gen_cross_entropy_for_logits" -> arity2 BITensorGenCrossEntropyForLogits
   "tensor__gen_count_equal" -> arity1 BITensorGenCountEqual
+  "dataset_helper__gen_train_batch" -> arity4 BIDatasetHelperGenTrainBatch
   _ -> Nothing
   where
     arity1 = pure . BuiltInArity1
     arity2 = pure . BuiltInArity2
     arity3 = pure . BuiltInArity3
+    arity4 = pure . BuiltInArity4
 
 validateExternalName1 :: Text -> Maybe Ass1BuiltIn
 validateExternalName1 = \case

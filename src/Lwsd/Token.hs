@@ -35,6 +35,7 @@ data Token
   | TokUnderscore
   | TokOpFlipApp
   | TokBar
+  | TokProd
   | TokVecLeft
   | TokVecRight
   | TokMatLeft
@@ -88,6 +89,7 @@ showToken = \case
   TokUnderscore -> "_"
   TokOpFlipApp -> "|>"
   TokBar -> "|"
+  TokProd -> "*"
   TokVecLeft -> "[|"
   TokVecRight -> "|]"
   TokMatLeft -> "[#"
@@ -173,7 +175,8 @@ token =
       TokBar <$ Mp.single '|',
       TokOpAdd <$> operator '+',
       TokOpAdd <$> operator '-',
-      TokOpMult <$> operator '*',
+      Mp.try (TokOpMult <$> operatorLong '*'),
+      TokProd <$ Mp.single '*',
       TokOpMult <$> operator '/',
       TokOpComp <$> operator '<',
       TokOpComp <$> operator '>',

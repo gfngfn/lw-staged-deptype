@@ -333,6 +333,7 @@ instance Disp (TypeExprMainF ann) where
     TyCode tye1 -> dispBracket tye1
     TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
     TyRefinement x tye1 e2 -> "(" <> disp x <+> ":" <+> disp tye1 <+> "|" <+> disp e2 <+> ")"
+    TyProduct tye1 tye2 -> dispProductType req tye1 tye2
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
@@ -344,6 +345,7 @@ instance Disp BuiltInArity1 where
   dispGen _ = \case
     BIGenVadd -> "GEN_VADD"
     BIMtranspose m n -> "MTRANSPOSE@{" <> disps [m, n] <> "}"
+    BIDeviceCudaIfAvailable -> "DEVICE.CUDA_IF_AVAILABLE"
     BITensorGenZeros -> "TENSOR.GEN_ZEROS"
     BITensorGenGrad -> "TENSOR.GEN_GRAD"
     BITensorGenZeroGrad -> "TENSOR.GEN_ZERO_GRAD"
@@ -380,11 +382,16 @@ instance Disp BuiltInArity3 where
     BIGenMconcatVert -> "GEN_MCONCAT_VERT"
     BITensorGenMm -> "TENSOR.GEN_MM"
 
+instance Disp BuiltInArity4 where
+  dispGen _ = \case
+    BIDatasetHelperGenTrainBatch -> "DATASET_HELPER.GEN_TRAIN_BATCH"
+
 instance Disp BuiltIn where
   dispGen req = \case
     BuiltInArity1 bi1 -> dispGen req bi1
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
+    BuiltInArity4 bi4 -> dispGen req bi4
 
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
@@ -771,6 +778,10 @@ instance (Disp v) => Disp (Ass0PartialBuiltInApp v) where
     A0PartialBuiltInApp3With0 bi3 -> disp bi3
     A0PartialBuiltInApp3With1 bi3 a0v1 -> f (disp bi3 <+> disp a0v1)
     A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> f (disp bi3 <+> disp a0v1 <+> disp a0v2)
+    A0PartialBuiltInApp4With0 bi4 -> disp bi4
+    A0PartialBuiltInApp4With1 bi4 a0v1 -> f (disp bi4 <+> disp a0v1)
+    A0PartialBuiltInApp4With2 bi4 a0v1 a0v2 -> f (disp bi4 <+> disp a0v1 <+> disp a0v2)
+    A0PartialBuiltInApp4With3 bi4 a0v1 a0v2 a0v3 -> f (disp bi4 <+> disp a0v1 <+> disp a0v2 <+> disp a0v3)
     where
       f = deepenParenWhen (req <= Atomic)
 
@@ -804,6 +815,7 @@ instance Disp Ass1BuiltIn where
     A1BITensorBackward -> "Tensor.backward"
     A1BITensorNoGrad -> "Tensor.no_grad"
     A1BITensorFloatValue -> "Tensor.float_value"
+    A1BIDatasetHelperTrainBatch n1 n2 n3 n4 -> "Dataset_helper.train_batch" <> param (disps [n1, n2, n3, n4])
     A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
     A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
     A1BIMnistHelperTestImages -> "Mnist_helper.test_images"

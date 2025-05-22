@@ -31,12 +31,23 @@ val print_float : Float -> Unit
   external (builtin = "print_float", surface = "print_float")
 val %range : Int -> Int -> List Int
   external (builtin = "range", surface = "range")
+(*
+  val ~( |> ) a b : a -> (a -> b) -> b
+    external (builtin = "flip_app", surface = "|>")
+*)
 
 module List = struct
+
   val %append : List Int -> List Int -> List Int
+(*  val %append 'a : List 'a -> List 'a -> List 'a  *)
     external (builtin = "list__append", surface = "append") (* TODO: generalize the type *)
   val %iter : (Int -> Unit) -> List Int -> Unit
     external (builtin = "list__iter", surface = "iter") (* TODO: generalize the type *)
+end
+
+module Device = struct
+  val ~cuda_if_available : Unit -> Unit (* TODO: introduce `Device` *)
+    external (builtin = "device__cuda_if_available", surface = "cuda_if_available")
 end
 
 module Tensor = struct
@@ -74,6 +85,22 @@ module Tensor = struct
     external (builtin = "tensor__no_grad", surface = "no_grad")
   val float_value : Tensor %[] -> Float
     external (builtin = "tensor__float_value", surface = "float_value")
+end
+
+module Dataset_helper = struct
+  val ~gen_train_batch :
+    {ntrain : Nat} ->
+    {ntest : Nat} ->
+    {imgdim : Nat} ->
+    (batch_size : Nat) ->
+    &(Tensor %[ntrain, imgdim] ->
+      Tensor %[ntrain] ->
+      Tensor %[ntest, imgdim] ->
+      Tensor %[ntest] ->
+      Int ->
+      Tensor %[batch_size, imgdim] * Tensor %[batch_size]
+    )
+    external (builtin = "dataset_helper__gen_train_batch", surface = "train_batch")
 end
 
 module Mnist_helper = struct

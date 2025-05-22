@@ -1360,6 +1360,10 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
           let Expr loc2 _ = e2
           spanInFile2 <- askSpanInFile loc2
           typeError trav $ NotABoolTypeForStage0 spanInFile2 a0tye2
+    TyProduct tye1 tye2 -> do
+      a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
+      a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
+      pure $ A0TyProduct a0tye1 a0tye2
 
 ass0exprAnd :: Ass0Expr
 ass0exprAnd = A0BuiltInName (BuiltInArity2 BIAnd)
@@ -1419,6 +1423,10 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       typeError trav $ CannotUseCodeTypeAtStage1 spanInFile
     TyRefinement _ _ _ -> do
       typeError trav $ CannotUseRefinementTypeAtStage1 spanInFile
+    TyProduct tye1 tye2 -> do
+      a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
+      a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
+      pure $ A1TyProduct a1tye1 a1tye2
 
 validatePersistentType :: trav -> Span -> Ass0TypeExpr -> M trav AssPersTypeExpr
 validatePersistentType trav loc a0tye =

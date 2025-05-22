@@ -78,7 +78,9 @@ operator :: P (Located Var)
 operator = compOp <|> addOp <|> multOp
 
 multOp :: P (Located Var)
-multOp = expectToken (^? #_TokOpMult)
+multOp =
+  fmap (const "*") <$> expectToken (^? #_TokProd)
+    <|> expectToken (^? #_TokOpMult)
 
 addOp :: P (Located Var)
 addOp = expectToken (^? #_TokOpAdd)
@@ -271,10 +273,18 @@ typeExpr = fun
         <|> try (ExprArgNormal <$> exprAtom)
         <|> (TypeArg <$> atom)
 
+    prod :: P TypeExpr
+    prod =
+      try (makeProduct <$> app <*> (token TokProd *> app))
+        <|> app
+      where
+        makeProduct ty1@(TypeExpr loc1 _) ty2@(TypeExpr loc2 _) =
+          TypeExpr (mergeSpan loc1 loc2) (TyProduct ty1 ty2)
+
     fun :: P TypeExpr
     fun =
       try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
-        <|> app
+        <|> prod
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
           case funDomSpec of
@@ -290,7 +300,7 @@ typeExpr = fun
     funDom =
       (makeFunDom False <$> brace ((,) <$> (noLoc lower <* token TokColon) <*> fun))
         <|> try (makeFunDom True <$> paren ((,) <$> (noLoc lower <* token TokColon) <*> fun))
-        <|> ((Nothing,) <$> app)
+        <|> ((Nothing,) <$> prod)
       where
         makeFunDom isMandatory (Located loc (x, tyeDom)) = (Just (isMandatory, loc, x), tyeDom)
 

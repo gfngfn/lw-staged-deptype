@@ -135,6 +135,9 @@ reduceDeltaArity1 bi1 a0v1 =
       case Matrix.transpose m n mat1 of
         Just mat -> pure $ A0ValLiteral (ALitMat mat)
         Nothing -> bug $ InconsistentAppBuiltInArity1 bi1 a0v1
+    BIDeviceCudaIfAvailable -> do
+      () <- validateUnitLiteral a0v1
+      pure $ A0ValLiteral ALitUnit -- TODO: return a value of type `Device`
     BITensorGenZeros -> do
       ns1 <- validateIntListLiteral a0v1
       pure $ A0ValBracket (A1ValConst (A1BITensorZeros ns1))
@@ -280,6 +283,16 @@ reduceDeltaArity3 bi3 a0v1 a0v2 a0v3 =
       n3 <- validateIntLiteral a0v3
       pure $ A0ValBracket (A1ValConst (A1BITensorMm n1 n2 n3))
 
+reduceDeltaArity4:: BuiltInArity4 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
+reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0v4 =
+  case bi4 of
+    BIDatasetHelperGenTrainBatch -> do
+      n1 <- validateIntLiteral a0v1
+      n2 <- validateIntLiteral a0v2
+      n3 <- validateIntLiteral a0v3
+      n4 <- validateIntLiteral a0v4
+      pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperTrainBatch n1 n2 n3 n4))
+
 reduceDelta :: Ass0PartialBuiltInApp Ass0Val -> Ass0Val -> M Ass0Val
 reduceDelta pba a0vArg =
   case pba of
@@ -289,6 +302,10 @@ reduceDelta pba a0vArg =
     A0PartialBuiltInApp3With0 bi3 -> partial $ A0PartialBuiltInApp3With1 bi3 a0vArg
     A0PartialBuiltInApp3With1 bi3 a0v1 -> partial $ A0PartialBuiltInApp3With2 bi3 a0v1 a0vArg
     A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> reduceDeltaArity3 bi3 a0v1 a0v2 a0vArg
+    A0PartialBuiltInApp4With0 bi4 -> partial $ A0PartialBuiltInApp4With1 bi4 a0vArg
+    A0PartialBuiltInApp4With1 bi4 a0v1 -> partial $ A0PartialBuiltInApp4With2 bi4 a0v1 a0vArg
+    A0PartialBuiltInApp4With2 bi4 a0v1 a0v2 -> partial $ A0PartialBuiltInApp4With3 bi4 a0v1 a0v2 a0vArg
+    A0PartialBuiltInApp4With3 bi4 a0v1 a0v2 a0v3 -> reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0vArg
   where
     partial = pure . A0ValPartialBuiltInApp
 
@@ -320,6 +337,7 @@ evalExpr0 env = \case
         BuiltInArity1 bi1 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp1With0 bi1)
         BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp2With0 bi2)
         BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp3With0 bi3)
+        BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp4With0 bi4)
   A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam Nothing (x, a0tyv1) a0e2 env
