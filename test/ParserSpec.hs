@@ -144,6 +144,12 @@ spec = do
     it "parses binary operators (6)" $
       parseExpr "2 +=+ f 3"
         `shouldBe` pure (app (app (var "+=+") (litInt 2)) (app (var "f") (litInt 3)))
+    it "parses binary operators (7)" $
+      parseExpr "2 == f 3"
+        `shouldBe` pure (app (app (var "==") (litInt 2)) (app (var "f") (litInt 3)))
+    it "parses binary operators (8)" $
+      parseExpr "2 <= f 3"
+        `shouldBe` pure (app (app (var "<=") (litInt 2)) (app (var "f") (litInt 3)))
     it "parses upcasts" $
       parseExpr "[| |] as Vec %n"
         `shouldBe` pure (upcast (litVec []) (tyPersVec (var "n")))
