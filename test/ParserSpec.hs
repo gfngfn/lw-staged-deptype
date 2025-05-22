@@ -357,7 +357,7 @@ spec = do
                 BindValExternal
                   []
                   (tyNondepFun tyInt tyBool)
-                  [ ("builtin", "bar"), ("surface", "qux") ]
+                  [("builtin", "bar"), ("surface", "qux")]
           ]
     it "parses single, stage-0 external binding (polymorphic)" $
       parseBinds "val ~app a b : (a -> b) -> a -> b external (builtin = \"app\", surface = \"app\")"
@@ -367,5 +367,5 @@ spec = do
                 BindValExternal
                   [TypeVar "a", TypeVar "b"]
                   (tyNondepFun (tyNondepFun (tyVar "a") (tyVar "b")) (tyNondepFun (tyVar "a") (tyVar "b")))
-                  [ ("builtin", "app"), ("surface", "app") ]
+                  [("builtin", "app"), ("surface", "app")]
           ]
