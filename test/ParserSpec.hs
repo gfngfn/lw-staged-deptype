@@ -19,6 +19,9 @@ parseExprWithLoc s = Parser.parseExpr (SourceSpec s "test") s
 parseTypeExpr :: Text -> Either FrontError TypeExprVoid
 parseTypeExpr s = fmap void (Parser.parseTypeExpr (SourceSpec s "test") s)
 
+parseBinds :: Text -> Either FrontError [BindVoid]
+parseBinds s = fmap (map void) (Parser.parseBinds (SourceSpec s "test") s)
+
 exprLoc :: Int -> Int -> ExprMainF Span -> Expr
 exprLoc start end = Expr (Span start end)
 
@@ -339,3 +342,30 @@ spec = do
                 (exprLoc 7 8 $ short "z")
       parseExprWithLoc "x {y} {z}"
         `shouldBe` pure e
+  describe "parseBinds (without code locations)" $ do
+    it "parses single, stage-1 normal binding" $
+      parseBinds "val n = 42"
+        `shouldBe` pure [Bind () (BindVal Stage1 "n" (BindValNormal (litInt 42)))]
+    it "parses single, stage-0 normal binding" $
+      parseBinds "val ~n = 42"
+        `shouldBe` pure [Bind () (BindVal Stage0 "n" (BindValNormal (litInt 42)))]
+    it "parses single, stage-0 external binding" $
+      parseBinds "val ~foo : Int -> Bool external (builtin = \"bar\", surface = \"qux\")"
+        `shouldBe` pure
+          [ Bind () $
+              BindVal Stage0 "foo" $
+                BindValExternal
+                  []
+                  (tyNondepFun tyInt tyBool)
+                  [ ("builtin", "bar"), ("surface", "qux") ]
+          ]
+    it "parses single, stage-0 external binding (polymorphic)" $
+      parseBinds "val ~app a b : (a -> b) -> a -> b external (builtin = \"app\", surface = \"app\")"
+        `shouldBe` pure
+          [ Bind () $
+              BindVal Stage0 "app" $
+                BindValExternal
+                  [TypeVar "a", TypeVar "b"]
+                  (tyNondepFun (tyNondepFun (tyVar "a") (tyVar "b")) (tyNondepFun (tyVar "a") (tyVar "b")))
+                  [ ("builtin", "app"), ("surface", "app") ]
+          ]

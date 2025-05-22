@@ -122,7 +122,7 @@ data BindF ann = Bind ann (BindMainF ann)
   deriving (Eq1, Show1) via (Generically1 BindF)
 
 data BindMainF ann
-  = BindVal Stage Var BindVal
+  = BindVal Stage Var (BindValF ann)
   | BindModule Var [BindF ann]
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 BindMainF)

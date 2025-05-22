@@ -8,6 +8,8 @@ type TypeExprVoid = TypeExprF ()
 
 type ExprVoid = ExprF ()
 
+type BindVoid = BindF ()
+
 typ :: TypeExprMainF () -> TypeExprVoid
 typ = TypeExpr ()
 
@@ -16,6 +18,9 @@ tyInt = typ (TyName "Int" [])
 
 tyBool :: TypeExprVoid
 tyBool = typ (TyName "Bool" [])
+
+tyVar :: Text -> TypeExprVoid
+tyVar a = typ (TyVar (TypeVar a))
 
 tyNormalVec :: ExprVoid -> TypeExprVoid
 tyNormalVec e = typ (TyName "Vec" [ExprArgNormal e])
