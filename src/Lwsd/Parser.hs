@@ -79,7 +79,7 @@ operator = compOp <|> addOp <|> multOp
 
 multOp :: P (Located Var)
 multOp =
-  fmap (const "*") <$> expectToken (^? #_TokProd)
+  (fmap (const "*") <$> expectToken (^? #_TokProd))
     <|> expectToken (^? #_TokOpMult)
 
 addOp :: P (Located Var)
