@@ -47,6 +47,9 @@ longOrShortLower =
   expectToken (^? #_TokLongLower)
     <|> (fmap ([],) <$> lower)
 
+typeVar :: P (Located TypeVar)
+typeVar = fmap TypeVar <$> expectToken (^? #_TokTypeVar)
+
 standaloneOp :: P (Located Text)
 standaloneOp = paren (noLoc operator)
 
@@ -307,10 +310,6 @@ valBinder =
   ((Stage0,) <$> (token TokEscape *> noLoc boundIdent))
     <|> ((StagePers,) <$> (token TokPersistent *> noLoc boundIdent))
     <|> ((Stage1,) <$> noLoc boundIdent)
-
-typeVar :: P (Located TypeVar)
-typeVar =
-  (\(Located loc a) -> Located loc (TypeVar a)) <$> lower
 
 bindVal :: P (BindVal, Span)
 bindVal =

@@ -1434,8 +1434,8 @@ validatePersistentType trav loc a0tye =
         case maybePred of
           Nothing -> pure $ APersTyPrim a0tyPrim
           Just _ -> Nothing
-      A0TyVar _atyvar ->
-        error "TODO: validatePersistentType, A0TyVar"
+      A0TyVar atyvar ->
+        pure $ APersTyVar atyvar
       A0TyList a0tye' maybePred ->
         case maybePred of
           Nothing -> APersTyList <$> go a0tye'

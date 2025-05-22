@@ -105,6 +105,9 @@ fromStagedPers aPtye =
     case aPtye of
       Lwsd.APersTyPrim _a0tyPrim ->
         BITyBase []
+      Lwsd.APersTyVar _atyvar ->
+        -- Handles order-0 type variables only:
+        BITyBase []
       Lwsd.APersTyList aPtye' ->
         BITyBase [fromStagedPers aPtye']
       Lwsd.APersTyProduct aPtye1 aPtye2 ->

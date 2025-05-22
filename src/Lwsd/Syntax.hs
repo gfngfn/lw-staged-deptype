@@ -197,6 +197,7 @@ data Ass1PrimTypeF sv
 -- Types for persistent value items.
 data AssPersTypeExpr
   = APersTyPrim Ass0PrimType
+  | APersTyVar AssTypeVar
   | APersTyList AssPersTypeExpr
   | APersTyProduct AssPersTypeExpr AssPersTypeExpr
   | APersTyArrow AssPersTypeExpr AssPersTypeExpr
@@ -205,6 +206,7 @@ data AssPersTypeExpr
 persistentTypeTo0 :: AssPersTypeExpr -> Ass0TypeExprF sv
 persistentTypeTo0 = \case
   APersTyPrim a0tyPrim -> A0TyPrim a0tyPrim Nothing
+  APersTyVar atyvar -> A0TyVar atyvar
   APersTyList aPtye -> A0TyList (persistentTypeTo0 aPtye) Nothing
   APersTyProduct aPtye1 aPtye2 -> A0TyProduct (persistentTypeTo0 aPtye1) (persistentTypeTo0 aPtye2)
   APersTyArrow aPtye1 aPtye2 -> A0TyArrow (Nothing, persistentTypeTo0 aPtye1) (persistentTypeTo0 aPtye2)
@@ -212,6 +214,7 @@ persistentTypeTo0 = \case
 persistentTypeTo1 :: AssPersTypeExpr -> Ass1TypeExprF sv
 persistentTypeTo1 = \case
   APersTyPrim a0tyPrim -> A1TyPrim (liftPrimType a0tyPrim)
+  APersTyVar _atyvar -> error "TODO: persistentTypeTo1, APersTyVar"
   APersTyList aPtye -> A1TyList (persistentTypeTo1 aPtye)
   APersTyProduct aPtye1 aPtye2 -> A1TyProduct (persistentTypeTo1 aPtye1) (persistentTypeTo1 aPtye2)
   APersTyArrow aPtye1 aPtye2 -> A1TyArrow (persistentTypeTo1 aPtye1) (persistentTypeTo1 aPtye2)

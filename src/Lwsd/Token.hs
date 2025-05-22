@@ -42,6 +42,7 @@ data Token
   | TokLower Text
   | TokUpper Text
   | TokLongLower ([Text], Text)
+  | TokTypeVar Text
   | TokInt Int
   | TokFloat Double
   | TokString Text
@@ -94,6 +95,7 @@ showToken = \case
   TokLower lower -> Text.unpack lower
   TokUpper upper -> Text.unpack upper
   TokLongLower (mods, lower) -> Text.unpack (Text.intercalate "." mods <> lower)
+  TokTypeVar a -> '\'' : Text.unpack a
   TokInt n -> show n
   TokFloat r -> show r
   TokString s -> show s
@@ -175,6 +177,7 @@ token =
       TokOpMult <$> operator '/',
       TokOpComp <$> operator '<',
       TokOpComp <$> operator '>',
+      TokTypeVar <$> (Mp.single '\'' *> lowerIdent),
       lowerIdentOrKeyword,
       Mp.try (TokLongLower <$> longLowerIdent),
       TokUpper <$> upperIdent,
