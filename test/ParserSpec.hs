@@ -360,7 +360,7 @@ spec = do
                   [("builtin", "bar"), ("surface", "qux")]
           ]
     it "parses single, stage-0 external binding (polymorphic)" $
-      parseBinds "val ~app a b : (a -> b) -> a -> b external (builtin = \"app\", surface = \"app\")"
+      parseBinds "val ~app 'a 'b : ('a -> 'b) -> 'a -> 'b external (builtin = \"app\", surface = \"app\")"
         `shouldBe` pure
           [ Bind () $
               BindVal Stage0 "app" $
