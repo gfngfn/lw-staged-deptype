@@ -296,18 +296,45 @@ reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0v4 =
 reduceDelta :: Ass0PartialBuiltInApp Ass0Val -> Ass0Val -> M Ass0Val
 reduceDelta pba a0vArg =
   case pba of
-    A0PartialBuiltInApp1With0 bi1 -> reduceDeltaArity1 bi1 a0vArg
-    A0PartialBuiltInApp2With0 bi2 -> partial $ A0PartialBuiltInApp2With1 bi2 a0vArg
-    A0PartialBuiltInApp2With1 bi2 a0v1 -> reduceDeltaArity2 bi2 a0v1 a0vArg
-    A0PartialBuiltInApp3With0 bi3 -> partial $ A0PartialBuiltInApp3With1 bi3 a0vArg
-    A0PartialBuiltInApp3With1 bi3 a0v1 -> partial $ A0PartialBuiltInApp3With2 bi3 a0v1 a0vArg
-    A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> reduceDeltaArity3 bi3 a0v1 a0v2 a0vArg
-    A0PartialBuiltInApp4With0 bi4 -> partial $ A0PartialBuiltInApp4With1 bi4 a0vArg
-    A0PartialBuiltInApp4With1 bi4 a0v1 -> partial $ A0PartialBuiltInApp4With2 bi4 a0v1 a0vArg
-    A0PartialBuiltInApp4With2 bi4 a0v1 a0v2 -> partial $ A0PartialBuiltInApp4With3 bi4 a0v1 a0v2 a0vArg
-    A0PartialBuiltInApp4With3 bi4 a0v1 a0v2 a0v3 -> reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0vArg
+    A0PartialBuiltInAppArity1 pba1 ->
+      go pba1 a0vArg
+    A0PartialBuiltInAppArity2 pba2 ->
+      partial $ A0PartialBuiltInAppArity1 (PartialBuiltInAppArity1Cons pba2 a0vArg)
+    A0PartialBuiltInAppArity3 pba3 ->
+      partial $ A0PartialBuiltInAppArity2 (PartialBuiltInAppArity2Cons pba3 a0vArg)
+    A0PartialBuiltInAppArity4 pba4 ->
+      partial $ A0PartialBuiltInAppArity3 (PartialBuiltInAppArity3Cons pba4 a0vArg)
+    A0PartialBuiltInAppArity5 pba5 ->
+      partial $ A0PartialBuiltInAppArity4 (PartialBuiltInAppArity4Cons pba5 a0vArg)
+    A0PartialBuiltInAppArity6 pba6 ->
+      partial $ A0PartialBuiltInAppArity5 (PartialBuiltInAppArity5Cons pba6 a0vArg)
+    A0PartialBuiltInAppArity7 pba7 ->
+      partial $ A0PartialBuiltInAppArity6 (PartialBuiltInAppArity6Cons pba7 a0vArg)
+    A0PartialBuiltInAppArity8 pba8 ->
+      partial $ A0PartialBuiltInAppArity7 (PartialBuiltInAppArity7Cons pba8 a0vArg)
+    A0PartialBuiltInAppArity9 pba9 ->
+      partial $ A0PartialBuiltInAppArity8 (PartialBuiltInAppArity8Cons pba9 a0vArg)
   where
     partial = pure . A0ValPartialBuiltInApp
+
+    go pba1 v1 =
+      case pba1 of
+        PartialBuiltInAppArity1Nil bi1 ->
+          reduceDeltaArity1 bi1 v1
+        PartialBuiltInAppArity1Cons pba2 v2 ->
+          case pba2 of
+            PartialBuiltInAppArity2Nil bi2 ->
+              reduceDeltaArity2 bi2 v2 v1
+            PartialBuiltInAppArity2Cons pba3 v3 ->
+              case pba3 of
+                PartialBuiltInAppArity3Nil bi3 ->
+                  reduceDeltaArity3 bi3 v3 v2 v1
+                PartialBuiltInAppArity3Cons pba4 v4 ->
+                  case pba4 of
+                    PartialBuiltInAppArity4Nil bi4 ->
+                      reduceDeltaArity4 bi4 v4 v3 v2 v1
+                    PartialBuiltInAppArity4Cons _pba5 _v5 ->
+                      error "TODO: PartialBuiltInAppArity4Cons"
 
 reduceBeta :: Ass0Val -> Ass0Val -> M Ass0Val
 reduceBeta a0vFun a0vArg =
@@ -334,10 +361,11 @@ evalExpr0 env = \case
   A0BuiltInName bi ->
     pure $
       case bi of
-        BuiltInArity1 bi1 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp1With0 bi1)
-        BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp2With0 bi2)
-        BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp3With0 bi3)
-        BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInApp4With0 bi4)
+        BuiltInArity1 bi1 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity1 (PartialBuiltInAppArity1Nil bi1))
+        BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity2 (PartialBuiltInAppArity2Nil bi2))
+        BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity3 (PartialBuiltInAppArity3Nil bi3))
+        BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity4 (PartialBuiltInAppArity4Nil bi4))
+        BuiltInArity9 bi9 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity9 (PartialBuiltInAppArity9Nil bi9))
   A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam Nothing (x, a0tyv1) a0e2 env

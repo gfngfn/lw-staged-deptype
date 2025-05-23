@@ -87,6 +87,29 @@ module Tensor = struct
     external (builtin = "tensor__float_value", surface = "float_value")
 end
 
+module Layer = struct
+  val ~gen_conv2d_ :
+    Unit -> (* TODO: replace the return type with `VarStore` *)
+    {m : Nat} ->
+    {n : Nat} ->
+    {p : Nat} ->
+    (ksize : Int) ->
+    (stride : Int) ->
+    (padding : Int) ->
+    (input_dim : Nat) ->
+    (output_dim : Nat) ->
+    &(Tensor %[m, input_dim, n, p] ->
+      Tensor %[m, output_dim, (n + 2 * padding - ksize) // stride + 1, (p + 2 * padding - ksize) // stride + 1]
+    )
+    external (builtin = "layer__gen_conv2d_", surface = "conv2d_")
+end
+
+module Var_store = struct
+  val create : String -> Unit ->
+    Unit (* TODO: replace the return type with `VarStore` *)
+    external (builtin = "var_store__create", surface = "create")
+end
+
 module Dataset_helper = struct
   val ~gen_train_batch :
     {ntrain : Nat} ->

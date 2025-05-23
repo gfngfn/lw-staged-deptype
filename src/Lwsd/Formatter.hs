@@ -386,12 +386,17 @@ instance Disp BuiltInArity4 where
   dispGen _ = \case
     BIDatasetHelperGenTrainBatch -> "DATASET_HELPER.GEN_TRAIN_BATCH"
 
+instance Disp BuiltInArity9 where
+  dispGen _ = \case
+    BILayerGenConv2d -> "LAYER.GEN_CONV2D"
+
 instance Disp BuiltIn where
   dispGen req = \case
     BuiltInArity1 bi1 -> dispGen req bi1
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
     BuiltInArity4 bi4 -> dispGen req bi4
+    BuiltInArity9 bi9 -> dispGen req bi9
 
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
@@ -772,18 +777,44 @@ instance (Disp sv) => Disp (Ass0ValF sv) where
 
 instance (Disp v) => Disp (Ass0PartialBuiltInApp v) where
   dispGen req = \case
-    A0PartialBuiltInApp1With0 bi1 -> disp bi1
-    A0PartialBuiltInApp2With0 bi2 -> disp bi2
-    A0PartialBuiltInApp2With1 bi2 a0v1 -> f (disp bi2 <+> disp a0v1)
-    A0PartialBuiltInApp3With0 bi3 -> disp bi3
-    A0PartialBuiltInApp3With1 bi3 a0v1 -> f (disp bi3 <+> disp a0v1)
-    A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> f (disp bi3 <+> disp a0v1 <+> disp a0v2)
-    A0PartialBuiltInApp4With0 bi4 -> disp bi4
-    A0PartialBuiltInApp4With1 bi4 a0v1 -> f (disp bi4 <+> disp a0v1)
-    A0PartialBuiltInApp4With2 bi4 a0v1 a0v2 -> f (disp bi4 <+> disp a0v1 <+> disp a0v2)
-    A0PartialBuiltInApp4With3 bi4 a0v1 a0v2 a0v3 -> f (disp bi4 <+> disp a0v1 <+> disp a0v2 <+> disp a0v3)
+    A0PartialBuiltInAppArity1 pba1 -> dispGen req pba1
+    A0PartialBuiltInAppArity2 pba2 -> dispGen req pba2
+    A0PartialBuiltInAppArity3 pba3 -> dispGen req pba3
+    A0PartialBuiltInAppArity4 pba4 -> dispGen req pba4
+    A0PartialBuiltInAppArity5 pba5 -> dispGen req pba5
+    _ -> "TODO: Disp (Ass0PartialBuiltInApp v)"
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity1 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity1Nil bi1 -> disp bi1
+    PartialBuiltInAppArity1Cons pba2 v -> f (disp pba2 <+> dispGen Atomic v)
     where
       f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity2 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity2Nil bi2 -> disp bi2
+    PartialBuiltInAppArity2Cons pba3 v -> f (disp pba3 <+> dispGen Atomic v)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity3 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity3Nil bi3 -> disp bi3
+    PartialBuiltInAppArity3Cons pba4 v -> f (disp pba4 <+> dispGen Atomic v)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity4 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity4Nil bi4 -> disp bi4
+    PartialBuiltInAppArity4Cons pba5 v -> f (disp pba5 <+> dispGen Atomic v)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity5 v) where
+  dispGen _req = \case
+    PartialBuiltInAppArity5Cons _pba6 _v -> "TODO: Disp (Ass0PartialBuiltInAppArity5 v)"
 
 instance Disp Ass1BuiltIn where
   dispGen _ = \case
@@ -815,6 +846,7 @@ instance Disp Ass1BuiltIn where
     A1BITensorBackward -> "Tensor.backward"
     A1BITensorNoGrad -> "Tensor.no_grad"
     A1BITensorFloatValue -> "Tensor.float_value"
+    A1BIVarStoreCreate -> "Var_store.create"
     A1BIDatasetHelperTrainBatch n1 n2 n3 n4 -> "Dataset_helper.train_batch" <> param (disps [n1, n2, n3, n4])
     A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
     A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
