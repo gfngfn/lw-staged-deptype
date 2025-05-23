@@ -163,6 +163,8 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
       arithmetic (\n1 n2 -> A0ValLiteral (ALitInt (n1 - n2)))
     BIMult ->
       arithmetic (\n1 n2 -> A0ValLiteral (ALitInt (n1 * n2)))
+    BIDiv ->
+      arithmetic (\n1 n2 -> A0ValLiteral (ALitInt (n1 `div` n2)))
     BILeq ->
       arithmetic (\n1 n2 -> A0ValLiteral (ALitBool (n1 <= n2)))
     BIAnd ->

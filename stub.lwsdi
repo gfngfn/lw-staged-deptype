@@ -4,6 +4,8 @@ val %( - ) : Int -> Int -> Int
   external (builtin = "int_sub", surface = "-")
 val %( * ) : Int -> Int -> Int
   external (builtin = "int_mult", surface = "*")
+val %( // ) : Int -> Int -> Int
+  external (builtin = "int_div", surface = "//")
 val %( / ) : Float -> Float -> Float
   external (builtin = "float_div", surface = "/")
 val %( <= ) : Int -> Int -> Bool

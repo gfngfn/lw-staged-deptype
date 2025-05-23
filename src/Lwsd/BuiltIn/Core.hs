@@ -48,6 +48,7 @@ data BuiltInArity2
   = BIAdd
   | BISub
   | BIMult
+  | BIDiv
   | BILeq
   | BIAnd
   | BIListMap
@@ -152,6 +153,7 @@ data Ass1BuiltIn
   | A1BIAdd
   | A1BISub
   | A1BIMult
+  | A1BIDiv
   | A1BIFloatDiv
   | A1BILeq
   | A1BIFloat
@@ -198,6 +200,7 @@ validateExternalName0 = \case
   "int_add" -> arity2 BIAdd
   "int_sub" -> arity2 BISub
   "int_mult" -> arity2 BIMult
+  "int_div" -> arity2 BIDiv
   "int_leq" -> arity2 BILeq
   "gen_vadd" -> arity1 BIGenVadd
   "gen_vconcat" -> arity2 BIGenVconcat
@@ -234,6 +237,7 @@ validateExternalName1 = \case
   "int_add" -> pure A1BIAdd
   "int_sub" -> pure A1BISub
   "int_mult" -> pure A1BIMult
+  "int_div" -> pure A1BIDiv
   "float_div" -> pure A1BIFloatDiv
   "int_leq" -> pure A1BILeq
   "float" -> pure A1BIFloat
