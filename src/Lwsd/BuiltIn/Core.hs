@@ -30,6 +30,7 @@ data BuiltIn
   | BuiltInArity2 BuiltInArity2
   | BuiltInArity3 BuiltInArity3
   | BuiltInArity4 BuiltInArity4
+  | BuiltInArity6 BuiltInArity6
   | BuiltInArity9 BuiltInArity9
   deriving stock (Eq, Show)
 
@@ -61,6 +62,7 @@ data BuiltInArity2
   | BIDropAt
   | BIBroadcastable
   | BIBroadcast
+  | BIReshapeable
   | BIListAppend
   | BIListIter
   | BITensorGenAdd
@@ -69,6 +71,7 @@ data BuiltInArity2
   | BITensorGenArgmax
   | BITensorAdd [Int]
   | BITensorMm Int Int Int
+  | BITensorGenReshape
   | BILayerGenForward
   deriving stock (Eq, Show)
 
@@ -80,6 +83,10 @@ data BuiltInArity3
 data BuiltInArity4
   = BIDatasetHelperGenTrainBatch
   | BILayerGenLinear
+  deriving stock (Eq, Show)
+
+data BuiltInArity6
+  = BITensorGenMaxPool2d
   deriving stock (Eq, Show)
 
 data BuiltInArity9
@@ -123,7 +130,8 @@ data Ass0PartialBuiltInAppArity5 val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity6 val
-  = PartialBuiltInAppArity6Cons (Ass0PartialBuiltInAppArity7 val) val
+  = PartialBuiltInAppArity6Nil BuiltInArity6
+  | PartialBuiltInAppArity6Cons (Ass0PartialBuiltInAppArity7 val) val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity7 val
@@ -214,6 +222,7 @@ validateExternalName0 = \case
   "drop_at" -> arity2 BIDropAt
   "broadcastable" -> arity2 BIBroadcastable
   "broadcast" -> arity2 BIBroadcast
+  "reshapeable" -> arity2 BIReshapeable
   "list__append" -> arity2 BIListAppend
   "list__iter" -> arity2 BIListIter
   "device__cuda_if_available" -> arity1 BIDeviceCudaIfAvailable
@@ -231,6 +240,8 @@ validateExternalName0 = \case
   "tensor__gen_cross_entropy_for_logits" -> arity2 BITensorGenCrossEntropyForLogits
   "tensor__gen_count_equal" -> arity1 BITensorGenCountEqual
   "tensor__gen_dropout" -> arity1 BITensorGenDropout
+  "tensor__gen_reshape" -> arity2 BITensorGenReshape
+  "tensor__gen_max_pool2d" -> arity6 BITensorGenMaxPool2d
   "dataset_helper__gen_train_batch" -> arity4 BIDatasetHelperGenTrainBatch
   _ -> Nothing
   where
@@ -238,6 +249,7 @@ validateExternalName0 = \case
     arity2 = pure . BuiltInArity2
     arity3 = pure . BuiltInArity3
     arity4 = pure . BuiltInArity4
+    arity6 = pure . BuiltInArity6
     arity9 = pure . BuiltInArity9
 
 validateExternalName1 :: Text -> Maybe Ass1BuiltIn

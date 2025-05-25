@@ -12,6 +12,7 @@ import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Data.Function ((&))
+import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Maybe (isJust)
 import Lwsd.BuiltIn.Core
@@ -153,6 +154,8 @@ reduceDeltaArity1 bi1 a0v1 =
     BITensorGenCountEqual -> do
       ns1 <- validateIntListLiteral a0v1
       pure $ A0ValBracket (A1ValConst (A1BITensorCountEqual ns1))
+    BITensorGenDropout -> do
+      error "TODO: reduceDeltaArity1, BITensorGenDropout"
 
 reduceDeltaArity2 :: BuiltInArity2 -> Ass0Val -> Ass0Val -> M Ass0Val
 reduceDeltaArity2 bi2 a0v1 a0v2 =
@@ -206,7 +209,7 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
     BIBroadcastable -> do
       ns1 <- validateIntListLiteral a0v1
       ns2 <- validateIntListLiteral a0v2
-      let b = isJust (broadcast ns1 ns2)
+      let b = List.foldl' (*) 1 ns1 == List.foldl' (*) 1 ns2
       pure $ A0ValLiteral (ALitBool b)
     BIBroadcast -> do
       ns1 <- validateIntListLiteral a0v1
@@ -216,6 +219,11 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
           Just ns' -> pure ns'
           Nothing -> bug $ BroadcastFailed ns1 ns2
       pure $ A0ValLiteral (ALitList (map (A0ValLiteral . ALitInt) ns))
+    BIReshapeable -> do
+      ns1 <- validateIntListLiteral a0v1
+      ns2 <- validateIntListLiteral a0v2
+      let b = isJust (broadcast ns1 ns2)
+      pure $ A0ValLiteral (ALitBool b)
     BIListAppend -> do
       a0vs1 <- validateListValue a0v1
       a0vs2 <- validateListValue a0v2
@@ -258,6 +266,10 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
       case Matrix.mult k m n mat1 mat2 of
         Just mat -> pure $ A0ValLiteral (ALitMat mat)
         Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
+    BITensorGenReshape ->
+      error "TODO: reduceDeltaArity2, BILayerGenReshape"
+    BILayerGenForward ->
+      error "TODO: reduceDeltaArity2, BILayerGenForward"
   where
     arithmetic :: (Int -> Int -> Ass0Val) -> M Ass0Val
     arithmetic f = do
@@ -342,7 +354,7 @@ reduceDelta pba a0vArg =
                     PartialBuiltInAppArity4Nil bi4 ->
                       reduceDeltaArity4 bi4 v4 v3 v2 v1
                     PartialBuiltInAppArity4Cons _pba5 _v5 ->
-                      error "TODO: PartialBuiltInAppArity4Cons"
+                      error "TODO: reduceDelta, PartialBuiltInAppArity4Cons"
 
 reduceBeta :: Ass0Val -> Ass0Val -> M Ass0Val
 reduceBeta a0vFun a0vArg =
@@ -373,6 +385,7 @@ evalExpr0 env = \case
         BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity2 (PartialBuiltInAppArity2Nil bi2))
         BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity3 (PartialBuiltInAppArity3Nil bi3))
         BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity4 (PartialBuiltInAppArity4Nil bi4))
+        BuiltInArity6 bi6 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity6 (PartialBuiltInAppArity6Nil bi6))
         BuiltInArity9 bi9 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity9 (PartialBuiltInAppArity9Nil bi9))
   A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1

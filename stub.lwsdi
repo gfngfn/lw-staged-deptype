@@ -27,10 +27,9 @@ val ~broadcastable : List Nat -> List Nat -> Bool
   external (builtin = "broadcastable", surface = "broadcastable")
 val ~broadcast : List Nat -> List Nat -> List Nat
   external (builtin = "broadcast", surface = "broadcast")
+(* TODO: make `reshapeable` support `-1` *)
 val ~reshapeable : List Nat -> List Nat -> Bool
   external (builtin = "reshapeable", surface = "reshapeable")
-val ~reshape : List Nat -> List Nat -> List Nat
-  external (builtin = "reshape", surface = "reshape")
 val %float : Int -> Float
   external (builtin = "float", surface = "float")
 val print_float : Float -> Unit
@@ -94,13 +93,25 @@ module Tensor = struct
       Tensor %shape
     )
     external (builtin = "tensor__gen_dropout", surface = "dropout")
+  (* TODO: make `gen_reshape` support `-1` *)
   val ~gen_reshape :
     {shape1 : List Nat} ->
     (shape2 : ( sh : List Nat | reshapeable shape1 sh )) ->
     &(Tensor %shape1 ->
-      Tensor %(reshape shape1 shape2)
+      Tensor %shape2
     )
     external (builtin = "tensor__gen_reshape", surface = "reshape")
+  val ~gen_max_pool2d :
+    {k : Nat} ->
+    {l : Nat} ->
+    {m : Nat} ->
+    {n : Nat} ->
+    (ksize1 : Int) -> (* ksize, 1st *)
+    (ksize2 : Int) -> (* ksize, 2nd *)
+    &(Tensor %[k, l, m, n] ->
+      Tensor %[k, l, (m - ksize1) // ksize1 + 1, (n - ksize2) // ksize2 + 1]
+    )
+    external (builtin = "tensor__gen_max_pool2d", surface = "max_pool2d")
 end
 
 module Layer = struct
