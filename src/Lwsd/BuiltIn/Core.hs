@@ -77,6 +77,7 @@ data BuiltInArity3
 
 data BuiltInArity4
   = BIDatasetHelperGenTrainBatch
+  | BILayerGenLinear
   deriving stock (Eq, Show)
 
 data BuiltInArity9
@@ -165,7 +166,9 @@ data Ass1BuiltIn
   | A1BITensorBackward
   | A1BITensorNoGrad
   | A1BITensorFloatValue
+  | A1BILayerLinear [Int] Int Int
   | A1BIVarStoreCreate
+  | A1BIOptimizerAdam
   | A1BIDatasetHelperTrainBatch Int Int Int Int
   | A1BIMnistHelperTrainImages
   | A1BIMnistHelperTrainLabels
@@ -213,6 +216,7 @@ validateExternalName0 = \case
   "list__iter" -> arity2 BIListIter
   "device__cuda_if_available" -> arity1 BIDeviceCudaIfAvailable
   "layer__gen_conv2d_" -> arity9 BILayerGenConv2d
+  "layer__gen_linear" -> arity4 BILayerGenLinear
   "tensor__gen_zeros" -> arity1 BITensorGenZeros
   "tensor__gen_add" -> arity2 BITensorGenAdd
   "tensor__gen_mult" -> arity2 BITensorGenMult
@@ -250,6 +254,7 @@ validateExternalName1 = \case
   "tensor__no_grad" -> pure A1BITensorNoGrad
   "tensor__float_value" -> pure A1BITensorFloatValue
   "var_store__create" -> pure A1BIVarStoreCreate
+  "optimizer__adam" -> pure A1BIOptimizerAdam
   "mnist_helper__train_images" -> pure A1BIMnistHelperTrainImages
   "mnist_helper__train_labels" -> pure A1BIMnistHelperTrainLabels
   "mnist_helper__test_images" -> pure A1BIMnistHelperTestImages

@@ -213,8 +213,9 @@ extractConstraintsFromLiteral btenv (btLit, annLit) = \case
     pure (LitString t, [], [])
   LitList es ->
     case es of
-      [] ->
-        pure (LitList [], [], [])
+      [] -> do
+        let bity = error "TODO: generate fresh binding-time variable"
+        pure (LitList [], [bity], [])
       eFirst : esTail -> do
         (eFirst', bityFirst@(BIType btElem _), constraintsFirst) <- extractConstraintsFromExpr btenv eFirst
         let constraintsLit = [CLeq annLit btLit btElem]
@@ -435,6 +436,10 @@ makeConstraintsFromBITypeEquation ann = go
                 analysisError $ BITypeContradiction spanInFile bity1 bity2
               Just zipped -> do
                 concat <$> mapM (uncurry go) zipped
+          (BITyProduct bity11 bity12, BITyProduct bity21 bity22) -> do
+            constraints1 <- go bity11 bity21
+            constraints2 <- go bity12 bity22
+            pure $ constraints1 ++ constraints2
           (BITyArrow bity11 bity12, BITyArrow bity21 bity22) -> do
             constraints1 <- go bity11 bity21
             constraints2 <- go bity12 bity22

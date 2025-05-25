@@ -288,6 +288,12 @@ reduceDeltaArity3 bi3 a0v1 a0v2 a0v3 =
 reduceDeltaArity4 :: BuiltInArity4 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
 reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0v4 =
   case bi4 of
+    BILayerGenLinear -> do
+      ns <- validateIntListLiteral a0v1
+      () <- validateUnitLiteral a0v2
+      input_dim <- validateIntLiteral a0v3
+      output_dim <- validateIntLiteral a0v4
+      pure $ A0ValBracket (A1ValConst (A1BILayerLinear ns input_dim output_dim))
     BIDatasetHelperGenTrainBatch -> do
       n1 <- validateIntLiteral a0v1
       n2 <- validateIntLiteral a0v2

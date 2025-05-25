@@ -1010,10 +1010,33 @@ instance Disp Bta.AnalysisError where
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
     Bta.BITypeContradiction spanInFile bity1 bity2 ->
-      "Basic type contradiction;" <+> disp (show bity1) <> "," <+> disp (show bity2) <+> disp spanInFile
+      "Basic type contradiction;" <+> disp bity1 <> "," <+> disp bity2 <+> disp spanInFile
     Bta.UnknownTypeOrInvalidArgs spanInFile _tyName _args ->
       -- TODO (enhance): detailed report
       "Unknown type or invalid arguments" <+> disp spanInFile
+
+instance Disp Bta.BindingTime where
+  dispGen _req = \case
+    Bta.BTConst Bta.BT0 -> "0"
+    Bta.BTConst Bta.BT1 -> "1"
+    Bta.BTVar (Bta.BindingTimeVar n) -> "β" <> disp n
+
+instance (Disp bt) => Disp (Bta.BITypeF bt) where
+  dispGen _req (Bta.BIType bt btMain) =
+    dispGen Atomic btMain <> "^" <> dispGen Atomic bt
+
+instance (Disp bt) => Disp (Bta.BITypeMainF bt) where
+  dispGen req = \case
+    Bta.BITyBase [] ->
+      "●"
+    Bta.BITyBase (bt0 : bts) ->
+      deepenParenWhen (req <= Atomic) ("●" <+> List.foldl' (\doc bt -> doc <+> disp bt) (disp bt0) bts)
+    Bta.BITyProduct bt1 bt2 ->
+      deepenParenWhen (req <= Atomic) (dispGen Atomic bt1 <+> "*" <+> dispGen Atomic bt2)
+    Bta.BITyArrow bt1 bt2 ->
+      deepenParenWhen (req <= Atomic) (dispGen Atomic bt1 <+> "->" <+> dispGen Atomic bt2)
+    Bta.BITyOptArrow bt1 bt2 ->
+      deepenParenWhen (req <= Atomic) ("{" <> dispGen Atomic bt1 <> "} ->" <+> dispGen Atomic bt2)
 
 dispWithBindingTime :: (Disp exprMain) => Bta.BindingTimeConst -> exprMain -> Doc Ann
 dispWithBindingTime btc eMain =
