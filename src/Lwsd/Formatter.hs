@@ -389,17 +389,17 @@ instance Disp BuiltInArity3 where
   dispGen _ = \case
     BIGenMconcatVert -> "GEN_MCONCAT_VERT"
     BITensorGenMm -> "TENSOR.GEN_MM"
+    BILayerGenLinear -> "LAYER.GEN_LINEAR"
 
 instance Disp BuiltInArity4 where
   dispGen _ = \case
     BIDatasetHelperGenTrainBatch -> "DATASET_HELPER.GEN_TRAIN_BATCH"
-    BILayerGenLinear -> "LAYER.GEN_LINEAR"
 
 instance Disp BuiltInArity6 where
   dispGen _ = \case
     BIDatasetHelperGenBatchAccuracy -> "DATASET_HELPER.GEN_BATCH_ACCURACY"
 
-instance Disp BuiltInArity9 where
+instance Disp BuiltInArity8 where
   dispGen _ = \case
     BILayerGenConv2d -> "LAYER.GEN_CONV2D"
 
@@ -414,7 +414,7 @@ instance Disp BuiltIn where
     BuiltInArity3 bi3 -> dispGen req bi3
     BuiltInArity4 bi4 -> dispGen req bi4
     BuiltInArity6 bi6 -> dispGen req bi6
-    BuiltInArity9 bi9 -> dispGen req bi9
+    BuiltInArity8 bi8 -> dispGen req bi8
     BuiltInArity10 bi10 -> dispGen req bi10
 
 instance (Disp e) => Disp (Surface.Literal e) where

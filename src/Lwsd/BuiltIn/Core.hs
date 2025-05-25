@@ -5,7 +5,7 @@ module Lwsd.BuiltIn.Core
     BuiltInArity3 (..),
     BuiltInArity4 (..),
     BuiltInArity6 (..),
-    BuiltInArity9 (..),
+    BuiltInArity8 (..),
     BuiltInArity10 (..),
     Ass0PartialBuiltInApp (..),
     Ass0PartialBuiltInAppArity1 (..),
@@ -34,7 +34,7 @@ data BuiltIn
   | BuiltInArity3 BuiltInArity3
   | BuiltInArity4 BuiltInArity4
   | BuiltInArity6 BuiltInArity6
-  | BuiltInArity9 BuiltInArity9
+  | BuiltInArity8 BuiltInArity8
   | BuiltInArity10 BuiltInArity10
   deriving stock (Eq, Show)
 
@@ -84,18 +84,18 @@ data BuiltInArity2
 data BuiltInArity3
   = BIGenMconcatVert
   | BITensorGenMm
+  | BILayerGenLinear
   deriving stock (Eq, Show)
 
 data BuiltInArity4
   = BIDatasetHelperGenTrainBatch
-  | BILayerGenLinear
   deriving stock (Eq, Show)
 
 data BuiltInArity6
   = BIDatasetHelperGenBatchAccuracy
   deriving stock (Eq, Show)
 
-data BuiltInArity9
+data BuiltInArity8
   = BILayerGenConv2d
   deriving stock (Eq, Show)
 
@@ -150,12 +150,12 @@ data Ass0PartialBuiltInAppArity7 val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity8 val
-  = PartialBuiltInAppArity8Cons (Ass0PartialBuiltInAppArity9 val) val
+  = PartialBuiltInAppArity8Nil BuiltInArity8
+  | PartialBuiltInAppArity8Cons (Ass0PartialBuiltInAppArity9 val) val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity9 val
-  = PartialBuiltInAppArity9Nil BuiltInArity9
-  | PartialBuiltInAppArity9Cons (Ass0PartialBuiltInAppArity10 val) val
+  = PartialBuiltInAppArity9Cons (Ass0PartialBuiltInAppArity10 val) val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity10 val
@@ -249,8 +249,8 @@ validateExternalName0 = \case
   "list__iter" -> arity2 BIListIter
   "device__cuda_if_available" -> arity1 BIDeviceCudaIfAvailable
   "layer__gen_forward" -> arity2 BILayerGenForward
-  "layer__gen_conv2d_" -> arity9 BILayerGenConv2d
-  "layer__gen_linear" -> arity4 BILayerGenLinear
+  "layer__gen_conv2d_" -> arity8 BILayerGenConv2d
+  "layer__gen_linear" -> arity3 BILayerGenLinear
   "tensor__gen_zeros" -> arity1 BITensorGenZeros
   "tensor__gen_add" -> arity2 BITensorGenAdd
   "tensor__gen_mult" -> arity2 BITensorGenMult
@@ -273,7 +273,7 @@ validateExternalName0 = \case
     arity3 = pure . BuiltInArity3
     arity4 = pure . BuiltInArity4
     arity6 = pure . BuiltInArity6
-    arity9 = pure . BuiltInArity9
+    arity8 = pure . BuiltInArity8
     arity10 = pure . BuiltInArity10
 
 validateExternalName1 :: Text -> Maybe Ass1BuiltIn

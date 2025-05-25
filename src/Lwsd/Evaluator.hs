@@ -306,16 +306,15 @@ reduceDeltaArity3 bi3 a0v1 a0v2 a0v3 =
       n2 <- validateIntLiteral a0v2
       n3 <- validateIntLiteral a0v3
       pure $ A0ValBracket (A1ValConst (A1BITensorMm n1 n2 n3))
+    BILayerGenLinear -> do
+      ns <- validateIntListLiteral a0v1
+      input_dim <- validateIntLiteral a0v2
+      output_dim <- validateIntLiteral a0v3
+      pure $ A0ValBracket (A1ValConst (A1BILayerLinear ns input_dim output_dim))
 
 reduceDeltaArity4 :: BuiltInArity4 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
 reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0v4 =
   case bi4 of
-    BILayerGenLinear -> do
-      ns <- validateIntListLiteral a0v1
-      () <- validateUnitLiteral a0v2
-      input_dim <- validateIntLiteral a0v3
-      output_dim <- validateIntLiteral a0v4
-      pure $ A0ValBracket (A1ValConst (A1BILayerLinear ns input_dim output_dim))
     BIDatasetHelperGenTrainBatch -> do
       n1 <- validateIntLiteral a0v1
       n2 <- validateIntLiteral a0v2
@@ -416,7 +415,7 @@ evalExpr0 env = \case
         BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity3 (PartialBuiltInAppArity3Nil bi3))
         BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity4 (PartialBuiltInAppArity4Nil bi4))
         BuiltInArity6 bi6 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity6 (PartialBuiltInAppArity6Nil bi6))
-        BuiltInArity9 bi9 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity9 (PartialBuiltInAppArity9Nil bi9))
+        BuiltInArity8 bi8 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity8 (PartialBuiltInAppArity8Nil bi8))
         BuiltInArity10 bi10 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity10 (PartialBuiltInAppArity10Nil bi10))
   A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1

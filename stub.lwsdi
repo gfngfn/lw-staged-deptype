@@ -134,23 +134,23 @@ module Layer = struct
     {l : Nat} ->
     {m : Nat} ->
     {n : Nat} ->
-    Unit -> (* TODO: replace this type with `VarStore` *)
     (ksize : Int) ->
     (stride : Int) ->
     (padding : Int) ->
     (input_dim : Nat) ->
     (output_dim : Nat) ->
-    &(Tensor %[l, input_dim, m, n] ->
+    &(Unit -> (* TODO: replace this type with `VarStore` *)
+      Tensor %[l, input_dim, m, n] ->
       Tensor %[l, output_dim, (m + 2 * padding - ksize) // stride + 1, (n + 2 * padding - ksize) // stride + 1]
     )
     external (builtin = "layer__gen_conv2d_", surface = "conv2d_")
   val ~gen_linear :
     {ns : List Nat} ->
-    Unit -> (* TODO: replace this type with `VarStore` *)
-    Unit -> (* TODO: replace this type with `Activation` *)
     (input_dim : Nat) ->
     (output_dim : Nat) ->
-    &(Tensor %(List.append ns [input_dim]) ->
+    &(Unit -> (* TODO: replace this type with `VarStore` *)
+      Unit -> (* TODO: replace this type with `Activation` *)
+      Tensor %(List.append ns [input_dim]) ->
       Tensor %(List.append ns [output_dim])
     )
     external (builtin = "layer__gen_linear", surface = "linear")
