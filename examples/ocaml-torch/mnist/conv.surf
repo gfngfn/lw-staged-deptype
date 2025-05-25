@@ -7,6 +7,7 @@ let relu = () in (* TODO *)
 let vs = Var_store.create "cnn" () in
 let conv2d1 =
   Layer.conv2d_
+    {4242} {5757} {4423} (* TODO *)
     5 (* ksize *)
     1 (* stride *)
     0 (* padding *)
@@ -16,6 +17,7 @@ let conv2d1 =
 in
 let conv2d2 =
   Layer.conv2d_
+    {4242} {5757} {4423} (* TODO *)
     5 (* ksize *)
     1 (* stride *)
     0 (* padding *)
@@ -25,6 +27,7 @@ let conv2d2 =
 in
 let linear1 =
   Layer.linear
+    {[batch_size]} (* TODO *)
     1024 (* input_dim *)
     1024 (* output_dim *)
     vs
@@ -32,13 +35,14 @@ let linear1 =
 in
 let linear2 =
   Layer.linear
+    {[batch_size]} (* TODO *)
     1024 (* input_dim *)
     Mnist_helper.label_count (* output_dim *)
     vs
     ()
 in
 let adam = Optimizer.adam vs learning_rate in
-let model (is_training : Bool) (xs : Tensor [1]) = (* TODO *)
+let model (is_training : Bool) (xs : Tensor [batch_size, Mnist_helper.image_dim]) = (* TODO *)
   Tensor.reshape [0 - 1, 1, 28, 28] xs
   |> Layer.forward conv2d1
   |> Tensor.max_pool2d
@@ -68,12 +72,15 @@ let test_model = model false in
       batch_idx
   in
   let loss =
-    Tensor.cross_entropy_for_logits (train_model batch_images) batch_labels
+    Tensor.cross_entropy_for_logits
+      _ {Mnist_helper.label_count}
+      (train_model batch_images) batch_labels
   in
   Optimizer.backward_step adam loss;
   if mod batch_idx 50 == 0 then
     let test_accuracy =
       Dataset_helper.batch_accuracy
+        _ _ _ {Mnist_helper.label_count}
         batch_size
         "test"
         Mnist_helper.train_images
@@ -84,7 +91,7 @@ let test_model = model false in
     in
     (* print_int batch_idx *)
     print_float (Tensor.float_value loss);
-    print_float (100.0 * test_accuracy)
+    print_float test_accuracy
   else
     ()
 )

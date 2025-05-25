@@ -215,12 +215,15 @@ unliftBuiltInName = \case
   A1BITensorAdd ns1 ns2 ->
     if ns1 == ns2
       then arity2 (BITensorAdd ns1)
-      else error $ "TODO: unliftVal, A1BITensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
+      else error $ "TODO: unliftBuiltInName, A1BITensorAdd, broadcast, " ++ show ns1 ++ " and " ++ show ns2
   A1BITensorMm k m n -> arity2 (BITensorMm k m n)
   A1BIAdd -> arity2 BIAdd
   A1BISub -> arity2 BISub
   A1BIMult -> arity2 BIMult
+  A1BIDiv -> arity2 BIDiv
+  A1BIMod -> arity2 BIMod
   A1BILeq -> arity2 BILeq
+  A1BIEqual -> arity2 BIEqual
   A1BIListAppend -> arity2 BIListAppend
   A1BIListIter -> arity2 BIListIter
   a1builtInName -> error $ "TODO: unliftBuiltInName, " ++ show a1builtInName
