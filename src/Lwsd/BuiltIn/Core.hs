@@ -42,6 +42,7 @@ data BuiltInArity1
   | BITensorGenZeroGrad
   | BITensorGenSubUpdate
   | BITensorGenCountEqual
+  | BITensorGenDropout
   deriving stock (Eq, Show)
 
 data BuiltInArity2
@@ -68,6 +69,7 @@ data BuiltInArity2
   | BITensorGenArgmax
   | BITensorAdd [Int]
   | BITensorMm Int Int Int
+  | BILayerGenForward
   deriving stock (Eq, Show)
 
 data BuiltInArity3
@@ -215,6 +217,7 @@ validateExternalName0 = \case
   "list__append" -> arity2 BIListAppend
   "list__iter" -> arity2 BIListIter
   "device__cuda_if_available" -> arity1 BIDeviceCudaIfAvailable
+  "layer__gen_forward" -> arity2 BILayerGenForward
   "layer__gen_conv2d_" -> arity9 BILayerGenConv2d
   "layer__gen_linear" -> arity4 BILayerGenLinear
   "tensor__gen_zeros" -> arity1 BITensorGenZeros
@@ -227,6 +230,7 @@ validateExternalName0 = \case
   "tensor__gen_argmax" -> arity2 BITensorGenArgmax
   "tensor__gen_cross_entropy_for_logits" -> arity2 BITensorGenCrossEntropyForLogits
   "tensor__gen_count_equal" -> arity1 BITensorGenCountEqual
+  "tensor__gen_dropout" -> arity1 BITensorGenDropout
   "dataset_helper__gen_train_batch" -> arity4 BIDatasetHelperGenTrainBatch
   _ -> Nothing
   where

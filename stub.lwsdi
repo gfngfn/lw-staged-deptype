@@ -27,16 +27,16 @@ val ~broadcastable : List Nat -> List Nat -> Bool
   external (builtin = "broadcastable", surface = "broadcastable")
 val ~broadcast : List Nat -> List Nat -> List Nat
   external (builtin = "broadcast", surface = "broadcast")
+val ~reshapeable : List Nat -> List Nat -> Bool
+  external (builtin = "reshapeable", surface = "reshapeable")
+val ~reshape : List Nat -> List Nat -> List Nat
+  external (builtin = "reshape", surface = "reshape")
 val %float : Int -> Float
   external (builtin = "float", surface = "float")
 val print_float : Float -> Unit
   external (builtin = "print_float", surface = "print_float")
 val %range : Int -> Int -> List Int
   external (builtin = "range", surface = "range")
-(*
-  val ~( |> ) a b : a -> (a -> b) -> b
-    external (builtin = "flip_app", surface = "|>")
-*)
 
 module List = struct
   val %append : List Int -> List Int -> List Int
@@ -86,9 +86,31 @@ module Tensor = struct
     external (builtin = "tensor__no_grad", surface = "no_grad")
   val float_value : Tensor %[] -> Float
     external (builtin = "tensor__float_value", surface = "float_value")
+  val ~gen_dropout :
+    {shape : List Nat} ->
+    &(Float -> (* dropout prob *)
+      Bool -> (* is_training *)
+      Tensor %shape ->
+      Tensor %shape
+    )
+    external (builtin = "tensor__gen_dropout", surface = "dropout")
+  val ~gen_reshape :
+    {shape1 : List Nat} ->
+    (shape2 : ( sh : List Nat | reshapeable shape1 sh )) ->
+    &(Tensor %shape1 ->
+      Tensor %(reshape shape1 shape2)
+    )
+    external (builtin = "tensor__gen_reshape", surface = "reshape")
 end
 
 module Layer = struct
+  val ~gen_forward :
+    {shape1 : List Nat} ->
+    {shape2 : List Nat} ->
+    &((Tensor %shape1 -> Tensor %shape2) ->
+      Tensor %shape1 -> Tensor %shape2
+    )
+    external (builtin = "layer__gen_forward", surface = "forward")
   val ~gen_conv2d_ :
     {m : Nat} ->
     {n : Nat} ->
@@ -106,6 +128,7 @@ module Layer = struct
   val ~gen_linear :
     {ns : List Nat} ->
     Unit -> (* TODO: replace this type with `VarStore` *)
+    Unit -> (* TODO: replace this type with `Activation` *)
     (input_dim : Nat) ->
     (output_dim : Nat) ->
     &(Tensor %(List.append ns [input_dim]) ->
