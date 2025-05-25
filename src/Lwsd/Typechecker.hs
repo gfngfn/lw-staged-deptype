@@ -660,6 +660,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                   pure (A0TyPrim A0TyFloat Nothing, ALitFloat r)
                 LitUnit ->
                   pure (A0TyPrim A0TyUnit Nothing, ALitUnit)
+                LitBool b ->
+                  pure (A0TyPrim A0TyBool Nothing, ALitBool b)
                 LitString t ->
                   pure (A0TyPrim A0TyString Nothing, ALitString t)
                 LitList es ->
@@ -962,6 +964,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
                 pure (A1TyPrim A1TyFloat, ALitFloat r)
               LitUnit ->
                 pure (A1TyPrim A1TyUnit, ALitUnit)
+              LitBool b ->
+                pure (A1TyPrim A1TyBool, ALitBool b)
               LitString t ->
                 pure (A1TyPrim A1TyString, ALitString t)
               LitList es ->

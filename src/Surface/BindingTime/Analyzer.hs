@@ -209,6 +209,8 @@ extractConstraintsFromLiteral btenv (btLit, annLit) = \case
     pure (LitFloat r, [], [])
   LitUnit ->
     pure (LitUnit, [], [])
+  LitBool b ->
+    pure (LitBool b, [], [])
   LitString t ->
     pure (LitString t, [], [])
   LitList es ->
