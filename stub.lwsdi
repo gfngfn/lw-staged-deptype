@@ -8,8 +8,12 @@ val %( // ) : Int -> Int -> Int
   external (builtin = "int_div", surface = "//")
 val %( / ) : Float -> Float -> Float
   external (builtin = "float_div", surface = "/")
+val %mod : Int -> Int -> Int
+  external (builtin = "int_mod", surface = "mod")
 val %( <= ) : Int -> Int -> Bool
   external (builtin = "int_leq", surface = "<=")
+val %( == ) : Int -> Int -> Bool
+  external (builtin = "int_equal", surface = "==")
 val ~gen_vadd : {a : Nat} -> &(Vec %a -> Vec %a -> Vec %a)
   external (builtin = "gen_vadd", surface = "vadd")
 val ~gen_vconcat : {a : Nat} -> {b : Nat} -> &(Vec %a -> Vec %b -> Vec %(a + b))
@@ -164,6 +168,11 @@ module Optimizer = struct
     Float ->
     Unit (* TODO: replace the return type with `Optimizer` *)
     external (builtin = "optimizer__adam", surface = "adam")
+  val backward_step :
+    Unit -> (* TODO: replace this type with `Optimizer` *)
+    Tensor %[] ->
+    Unit
+    external (builtin = "optimizer__backward_step", surface = "backward_step")
 end
 
 module Dataset_helper = struct
@@ -180,6 +189,21 @@ module Dataset_helper = struct
       Tensor %[batch_size, imgdim] * Tensor %[batch_size]
     )
     external (builtin = "dataset_helper__gen_train_batch", surface = "train_batch")
+  val ~gen_batch_accuracy :
+    {ntrain : Nat} ->
+    {ntest : Nat} ->
+    {imgdim : Nat} ->
+    {n : Nat} ->
+    (batch_size : Nat) ->
+    String -> (* [ `test | `train ] *)
+    &(Tensor %[ntrain, imgdim] ->
+      Tensor %[ntrain] ->
+      Tensor %[ntest, imgdim] ->
+      Tensor %[ntest] ->
+      (Tensor %[batch_size, imgdim] -> Tensor %[batch_size, n]) ->
+      Float
+    )
+    external (builtin = "dataset_helper__gen_batch_accuracy", surface = "batch_accuracy")
 end
 
 module Mnist_helper = struct

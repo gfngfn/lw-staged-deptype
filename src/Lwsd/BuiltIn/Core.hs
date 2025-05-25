@@ -4,6 +4,7 @@ module Lwsd.BuiltIn.Core
     BuiltInArity2 (..),
     BuiltInArity3 (..),
     BuiltInArity4 (..),
+    BuiltInArity6 (..),
     BuiltInArity9 (..),
     BuiltInArity10 (..),
     Ass0PartialBuiltInApp (..),
@@ -32,6 +33,7 @@ data BuiltIn
   | BuiltInArity2 BuiltInArity2
   | BuiltInArity3 BuiltInArity3
   | BuiltInArity4 BuiltInArity4
+  | BuiltInArity6 BuiltInArity6
   | BuiltInArity9 BuiltInArity9
   | BuiltInArity10 BuiltInArity10
   deriving stock (Eq, Show)
@@ -53,7 +55,9 @@ data BuiltInArity2
   | BISub
   | BIMult
   | BIDiv
+  | BIMod
   | BILeq
+  | BIEqual
   | BIAnd
   | BIListMap
   | BIGenVconcat
@@ -85,6 +89,10 @@ data BuiltInArity3
 data BuiltInArity4
   = BIDatasetHelperGenTrainBatch
   | BILayerGenLinear
+  deriving stock (Eq, Show)
+
+data BuiltInArity6
+  = BIDatasetHelperGenBatchAccuracy
   deriving stock (Eq, Show)
 
 data BuiltInArity9
@@ -133,7 +141,8 @@ data Ass0PartialBuiltInAppArity5 val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity6 val
-  = PartialBuiltInAppArity6Cons (Ass0PartialBuiltInAppArity7 val) val
+  = PartialBuiltInAppArity6Nil BuiltInArity6
+  | PartialBuiltInAppArity6Cons (Ass0PartialBuiltInAppArity7 val) val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity7 val
@@ -173,7 +182,9 @@ data Ass1BuiltIn
   | A1BIMult
   | A1BIDiv
   | A1BIFloatDiv
+  | A1BIMod
   | A1BILeq
+  | A1BIEqual
   | A1BIFloat
   | A1BIPrintFloat
   | A1BIRange
@@ -186,7 +197,9 @@ data Ass1BuiltIn
   | A1BILayerLinear [Int] Int Int
   | A1BIVarStoreCreate
   | A1BIOptimizerAdam
+  | A1BIOptimizerBackwardStep
   | A1BIDatasetHelperTrainBatch Int Int Int Int
+  | A1BIDatasetHelperBatchAccuracy Int Int Int Int Int Text
   | A1BIMnistHelperTrainImages
   | A1BIMnistHelperTrainLabels
   | A1BIMnistHelperTestImages
@@ -221,7 +234,9 @@ validateExternalName0 = \case
   "int_sub" -> arity2 BISub
   "int_mult" -> arity2 BIMult
   "int_div" -> arity2 BIDiv
+  "int_mod" -> arity2 BIMod
   "int_leq" -> arity2 BILeq
+  "int_equal" -> arity2 BIEqual
   "gen_vadd" -> arity1 BIGenVadd
   "gen_vconcat" -> arity2 BIGenVconcat
   "gen_mtranspose" -> arity2 BIGenMtranspose
@@ -250,12 +265,14 @@ validateExternalName0 = \case
   "tensor__gen_reshape" -> arity2 BITensorGenReshape
   "tensor__gen_max_pool2d" -> arity10 BITensorGenMaxPool2d
   "dataset_helper__gen_train_batch" -> arity4 BIDatasetHelperGenTrainBatch
+  "dataset_helper__gen_batch_accuracy" -> arity6 BIDatasetHelperGenBatchAccuracy
   _ -> Nothing
   where
     arity1 = pure . BuiltInArity1
     arity2 = pure . BuiltInArity2
     arity3 = pure . BuiltInArity3
     arity4 = pure . BuiltInArity4
+    arity6 = pure . BuiltInArity6
     arity9 = pure . BuiltInArity9
     arity10 = pure . BuiltInArity10
 
@@ -266,7 +283,9 @@ validateExternalName1 = \case
   "int_mult" -> pure A1BIMult
   "int_div" -> pure A1BIDiv
   "float_div" -> pure A1BIFloatDiv
+  "int_mod" -> pure A1BIMod
   "int_leq" -> pure A1BILeq
+  "int_equal" -> pure A1BIEqual
   "float" -> pure A1BIFloat
   "print_float" -> pure A1BIPrintFloat
   "range" -> pure A1BIRange
@@ -278,6 +297,7 @@ validateExternalName1 = \case
   "tensor__float_value" -> pure A1BITensorFloatValue
   "var_store__create" -> pure A1BIVarStoreCreate
   "optimizer__adam" -> pure A1BIOptimizerAdam
+  "optimizer__backward_step" -> pure A1BIOptimizerBackwardStep
   "mnist_helper__train_images" -> pure A1BIMnistHelperTrainImages
   "mnist_helper__train_labels" -> pure A1BIMnistHelperTrainLabels
   "mnist_helper__test_images" -> pure A1BIMnistHelperTestImages

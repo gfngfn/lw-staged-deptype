@@ -288,6 +288,7 @@ instance (Disp e) => Disp (Literal e) where
     LitInt n -> pretty n
     LitFloat r -> pretty r
     LitUnit -> "()"
+    LitBool b -> if b then "true" else "false"
     LitString t -> dispStringLiteral t
     LitList es -> dispListLiteral es
     LitVec ns -> dispVectorLiteral ns
@@ -351,13 +352,17 @@ instance Disp BuiltInArity1 where
     BITensorGenZeroGrad -> "TENSOR.GEN_ZERO_GRAD"
     BITensorGenSubUpdate -> "TENSOR.GEN_SUB_UPDATE"
     BITensorGenCountEqual -> "TENSOR.GEN_COUNT_EQUAL"
+    BITensorGenDropout -> "TENSOR.GEN_DROPOUT"
 
 instance Disp BuiltInArity2 where
   dispGen _ = \case
     BIAdd -> "+"
     BISub -> "-"
     BIMult -> "*"
+    BIDiv -> "//"
+    BIMod -> "mod"
     BILeq -> "<="
+    BIEqual -> "=="
     BIAnd -> "&&"
     BIListMap -> "LIST.MAP"
     BIGenVconcat -> "GEN_VCONCAT"
@@ -368,6 +373,7 @@ instance Disp BuiltInArity2 where
     BIDropAt -> "DROP_AT"
     BIBroadcastable -> "BROADCASTABLE"
     BIBroadcast -> "BROADCAST"
+    BIReshapeable -> "RESHAPEABLE"
     BIListAppend -> "LIST.APPEND"
     BIListIter -> "LIST.ITER"
     BITensorGenAdd -> "TENSOR.GEN_ADD"
@@ -376,6 +382,8 @@ instance Disp BuiltInArity2 where
     BITensorGenCrossEntropyForLogits -> "TENSOR.GEN_CROSS_ENTROPY_FOR_LOGITS"
     BITensorAdd ns -> "TENSOR.ADD@{" <> dispListLiteral ns <> "}"
     BITensorMm k m n -> "TENSOR.MM@{" <> disps [k, m, n] <> "}"
+    BITensorGenReshape -> "TENSOR.GEN_RESHAPE"
+    BILayerGenForward -> "LAYER.GEN_FORWARD"
 
 instance Disp BuiltInArity3 where
   dispGen _ = \case
@@ -385,10 +393,19 @@ instance Disp BuiltInArity3 where
 instance Disp BuiltInArity4 where
   dispGen _ = \case
     BIDatasetHelperGenTrainBatch -> "DATASET_HELPER.GEN_TRAIN_BATCH"
+    BILayerGenLinear -> "LAYER.GEN_LINEAR"
+
+instance Disp BuiltInArity6 where
+  dispGen _ = \case
+    BIDatasetHelperGenBatchAccuracy -> "DATASET_HELPER.GEN_BATCH_ACCURACY"
 
 instance Disp BuiltInArity9 where
   dispGen _ = \case
     BILayerGenConv2d -> "LAYER.GEN_CONV2D"
+
+instance Disp BuiltInArity10 where
+  dispGen _ = \case
+    BITensorGenMaxPool2d -> "TENSOR.GEN_MAX_POOL2D"
 
 instance Disp BuiltIn where
   dispGen req = \case
@@ -396,13 +413,16 @@ instance Disp BuiltIn where
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
     BuiltInArity4 bi4 -> dispGen req bi4
+    BuiltInArity6 bi6 -> dispGen req bi6
     BuiltInArity9 bi9 -> dispGen req bi9
+    BuiltInArity10 bi10 -> dispGen req bi10
 
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
     Surface.LitInt n -> pretty n
     Surface.LitFloat r -> pretty r
     Surface.LitUnit -> "()"
+    Surface.LitBool b -> if b then "true" else "false"
     Surface.LitString t -> dispStringLiteral t
     Surface.LitList es -> dispListLiteral es
     Surface.LitVec ns -> dispVectorLiteral ns
@@ -781,7 +801,7 @@ instance (Disp v) => Disp (Ass0PartialBuiltInApp v) where
     A0PartialBuiltInAppArity2 pba2 -> dispGen req pba2
     A0PartialBuiltInAppArity3 pba3 -> dispGen req pba3
     A0PartialBuiltInAppArity4 pba4 -> dispGen req pba4
-    A0PartialBuiltInAppArity5 pba5 -> dispGen req pba5
+    A0PartialBuiltInAppArity6 pba6 -> dispGen req pba6
     _ -> "TODO: Disp (Ass0PartialBuiltInApp v)"
 
 instance (Disp v) => Disp (Ass0PartialBuiltInAppArity1 v) where
@@ -813,8 +833,15 @@ instance (Disp v) => Disp (Ass0PartialBuiltInAppArity4 v) where
       f = deepenParenWhen (req <= Atomic)
 
 instance (Disp v) => Disp (Ass0PartialBuiltInAppArity5 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity5Cons pba6 v -> f (disp pba6 <+> dispGen Atomic v)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity6 v) where
   dispGen _req = \case
-    PartialBuiltInAppArity5Cons _pba6 _v -> "TODO: Disp (Ass0PartialBuiltInAppArity5 v)"
+    PartialBuiltInAppArity6Nil bi6 -> disp bi6
+    PartialBuiltInAppArity6Cons _pba7 _v -> "TODO: Disp (Ass0PartialBuiltInAppArity6 v)"
 
 instance Disp Ass1BuiltIn where
   dispGen _ = \case
@@ -835,8 +862,11 @@ instance Disp Ass1BuiltIn where
     A1BIAdd -> "+"
     A1BISub -> "-"
     A1BIMult -> "*"
+    A1BIDiv -> "//"
     A1BIFloatDiv -> "/"
+    A1BIMod -> "mod"
     A1BILeq -> "<="
+    A1BIEqual -> "=="
     A1BIFloat -> "float"
     A1BIPrintFloat -> "print_float"
     A1BIListAppend -> "List.append"
@@ -846,8 +876,12 @@ instance Disp Ass1BuiltIn where
     A1BITensorBackward -> "Tensor.backward"
     A1BITensorNoGrad -> "Tensor.no_grad"
     A1BITensorFloatValue -> "Tensor.float_value"
+    A1BILayerLinear ns input_dim output_dim -> "Layer.linear" <> param (dispListLiteral ns <> "," <+> disps [input_dim, output_dim])
     A1BIVarStoreCreate -> "Var_store.create"
+    A1BIOptimizerAdam -> "Optimizer.adam"
+    A1BIOptimizerBackwardStep -> "Optimizer.backward_step"
     A1BIDatasetHelperTrainBatch n1 n2 n3 n4 -> "Dataset_helper.train_batch" <> param (disps [n1, n2, n3, n4])
+    A1BIDatasetHelperBatchAccuracy ntrain ntest imgdim n batchSize testOrTrain -> "Dataset_helper.batch_accuracy" <> param (disps [ntrain, ntest, imgdim, n, batchSize] <> "," <+> dispStringLiteral testOrTrain)
     A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
     A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
     A1BIMnistHelperTestImages -> "Mnist_helper.test_images"
@@ -953,6 +987,8 @@ instance (Disp sv) => Disp (BugF sv) where
       "Not a Boolean:" <+> disp a0v
     NotAUnit a0v ->
       "Not a unit:" <+> disp a0v
+    NotAString a0v ->
+      "Not a string:" <+> disp a0v
     NotATuple a0v ->
       "Not a tuple:" <+> disp a0v
     FoundSymbol x symb ->
