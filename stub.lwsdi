@@ -106,10 +106,14 @@ module Tensor = struct
     {l : Nat} ->
     {m : Nat} ->
     {n : Nat} ->
-    (ksize1 : Int) -> (* ksize, 1st *)
-    (ksize2 : Int) -> (* ksize, 2nd *)
+    (padding1 : Int) ->
+    (padding2 : Int) ->
+    (ksize1 : Int) ->
+    (ksize2 : Int) ->
+    (stride1 : Int) ->
+    (stride2 : Int) ->
     &(Tensor %[k, l, m, n] ->
-      Tensor %[k, l, (m - ksize1) // ksize1 + 1, (n - ksize2) // ksize2 + 1]
+      Tensor %[k, l, (m + 2 * padding1 - ksize1) // stride1 + 1, (n + 2 * padding2 - ksize2) // stride2 + 1]
     )
     external (builtin = "tensor__gen_max_pool2d", surface = "max_pool2d")
 end
@@ -123,17 +127,17 @@ module Layer = struct
     )
     external (builtin = "layer__gen_forward", surface = "forward")
   val ~gen_conv2d_ :
+    {l : Nat} ->
     {m : Nat} ->
     {n : Nat} ->
-    {p : Nat} ->
     Unit -> (* TODO: replace this type with `VarStore` *)
     (ksize : Int) ->
     (stride : Int) ->
     (padding : Int) ->
     (input_dim : Nat) ->
     (output_dim : Nat) ->
-    &(Tensor %[m, input_dim, n, p] ->
-      Tensor %[m, output_dim, (n + 2 * padding - ksize) // stride + 1, (p + 2 * padding - ksize) // stride + 1]
+    &(Tensor %[l, input_dim, m, n] ->
+      Tensor %[l, output_dim, (m + 2 * padding - ksize) // stride + 1, (n + 2 * padding - ksize) // stride + 1]
     )
     external (builtin = "layer__gen_conv2d_", surface = "conv2d_")
   val ~gen_linear :

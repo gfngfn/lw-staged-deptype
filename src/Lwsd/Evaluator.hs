@@ -334,6 +334,8 @@ reduceDelta pba a0vArg =
       partial $ A0PartialBuiltInAppArity7 (PartialBuiltInAppArity7Cons pba8 a0vArg)
     A0PartialBuiltInAppArity9 pba9 ->
       partial $ A0PartialBuiltInAppArity8 (PartialBuiltInAppArity8Cons pba9 a0vArg)
+    A0PartialBuiltInAppArity10 pba10 ->
+      partial $ A0PartialBuiltInAppArity9 (PartialBuiltInAppArity9Cons pba10 a0vArg)
   where
     partial = pure . A0ValPartialBuiltInApp
 
@@ -385,8 +387,8 @@ evalExpr0 env = \case
         BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity2 (PartialBuiltInAppArity2Nil bi2))
         BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity3 (PartialBuiltInAppArity3Nil bi3))
         BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity4 (PartialBuiltInAppArity4Nil bi4))
-        BuiltInArity6 bi6 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity6 (PartialBuiltInAppArity6Nil bi6))
         BuiltInArity9 bi9 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity9 (PartialBuiltInAppArity9Nil bi9))
+        BuiltInArity10 bi10 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity10 (PartialBuiltInAppArity10Nil bi10))
   A0Lam Nothing (x, a0tye1) a0e2 -> do
     a0tyv1 <- evalTypeExpr0 env a0tye1
     pure $ A0ValLam Nothing (x, a0tyv1) a0e2 env
