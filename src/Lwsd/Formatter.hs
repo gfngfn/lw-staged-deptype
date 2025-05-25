@@ -857,6 +857,7 @@ instance Disp Ass1BuiltIn where
     A1BITensorArgmax ns1 n2 -> "Tensor.argmax" <> param (dispListLiteral ns1 <> "," <+> disp n2)
     A1BITensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits" <> param (disps [n1, n2])
     A1BITensorCountEqual ns -> "Tensor.count_equal" <> param (dispListLiteral ns)
+    A1BITensorDropout shape -> "Tensor.dropout" <> param (dispListLiteral shape)
     A1BITensorAdd ns1 ns2 -> "Tensor.add" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
     A1BITensorMm k m n -> "Tensor.mm" <> param (disps [k, m, n])
     A1BIAdd -> "+"
@@ -877,6 +878,7 @@ instance Disp Ass1BuiltIn where
     A1BITensorNoGrad -> "Tensor.no_grad"
     A1BITensorFloatValue -> "Tensor.float_value"
     A1BILayerLinear ns input_dim output_dim -> "Layer.linear" <> param (dispListLiteral ns <> "," <+> disps [input_dim, output_dim])
+    A1BILayerForward shape1 shape2 -> "Layber.forward" <> param (dispListLiteral shape1 <> "," <+> dispListLiteral shape2)
     A1BIVarStoreCreate -> "Var_store.create"
     A1BIOptimizerAdam -> "Optimizer.adam"
     A1BIOptimizerBackwardStep -> "Optimizer.backward_step"

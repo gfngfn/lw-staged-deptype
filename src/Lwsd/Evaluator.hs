@@ -161,7 +161,8 @@ reduceDeltaArity1 bi1 a0v1 =
       ns1 <- validateIntListLiteral a0v1
       pure $ A0ValBracket (A1ValConst (A1BITensorCountEqual ns1))
     BITensorGenDropout -> do
-      error "TODO: reduceDeltaArity1, BITensorGenDropout"
+      shape <- validateIntListLiteral a0v1
+      pure $ A0ValBracket (A1ValConst (A1BITensorDropout shape))
 
 reduceDeltaArity2 :: BuiltInArity2 -> Ass0Val -> Ass0Val -> M Ass0Val
 reduceDeltaArity2 bi2 a0v1 a0v2 =
@@ -278,8 +279,10 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
         Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
     BITensorGenReshape ->
       error "TODO: reduceDeltaArity2, BILayerGenReshape"
-    BILayerGenForward ->
-      error "TODO: reduceDeltaArity2, BILayerGenForward"
+    BILayerGenForward -> do
+      shape1 <- validateIntListLiteral a0v1
+      shape2 <- validateIntListLiteral a0v2
+      pure $ A0ValBracket (A1ValConst (A1BILayerForward shape1 shape2))
   where
     arithmetic :: (Int -> Int -> Ass0Val) -> M Ass0Val
     arithmetic f = do

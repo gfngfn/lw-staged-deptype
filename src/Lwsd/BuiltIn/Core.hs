@@ -177,6 +177,7 @@ data Ass1BuiltIn
   | A1BITensorArgmax [Int] Int
   | A1BITensorCrossEntropyForLogits Int Int
   | A1BITensorCountEqual [Int]
+  | A1BITensorDropout [Int]
   | A1BIAdd
   | A1BISub
   | A1BIMult
@@ -195,6 +196,7 @@ data Ass1BuiltIn
   | A1BITensorNoGrad
   | A1BITensorFloatValue
   | A1BILayerLinear [Int] Int Int
+  | A1BILayerForward [Int] [Int]
   | A1BIVarStoreCreate
   | A1BIOptimizerAdam
   | A1BIOptimizerBackwardStep
