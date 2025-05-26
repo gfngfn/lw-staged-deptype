@@ -278,8 +278,10 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
       case Matrix.mult k m n mat1 mat2 of
         Just mat -> pure $ A0ValLiteral (ALitMat mat)
         Nothing -> bug $ InconsistentAppBuiltInArity2 bi2 a0v1 a0v2
-    BITensorGenReshape ->
-      error "TODO: reduceDeltaArity2, BILayerGenReshape"
+    BITensorGenReshape -> do
+      shape1 <- validateIntListLiteral a0v1
+      shape2 <- validateIntListLiteral a0v2
+      pure $ A0ValBracket (A1ValConst (A1BITensorReshape shape1 shape2))
     BILayerGenForward -> do
       shape1 <- validateIntListLiteral a0v1
       shape2 <- validateIntListLiteral a0v2
@@ -327,8 +329,8 @@ reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0v4 =
       pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperTrainBatch n1 n2 n3 n4))
 
 reduceDeltaArity5 :: BuiltInArity5 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
-reduceDeltaArity5 bi6 a0v1 a0v2 a0v3 a0v4 a0v5 =
-  case bi6 of
+reduceDeltaArity5 bi5 a0v1 a0v2 a0v3 a0v4 a0v5 =
+  case bi5 of
     BIDatasetHelperGenBatchAccuracy -> do
       ntest <- validateIntLiteral a0v1
       imgdim <- validateIntLiteral a0v2
@@ -336,6 +338,36 @@ reduceDeltaArity5 bi6 a0v1 a0v2 a0v3 a0v4 a0v5 =
       batchSize <- validateIntLiteral a0v4
       let _f = a0v5
       pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperBatchAccuracy ntest imgdim n batchSize))
+
+reduceDeltaArity8 :: BuiltInArity8 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
+reduceDeltaArity8 bi8 a0v1 a0v2 a0v3 a0v4 a0v5 a0v6 a0v7 a0v8 =
+  case bi8 of
+    BILayerGenConv2d -> do
+      l <- validateIntLiteral a0v1
+      m <- validateIntLiteral a0v2
+      n <- validateIntLiteral a0v3
+      ksize <- validateIntLiteral a0v4
+      stride <- validateIntLiteral a0v5
+      padding <- validateIntLiteral a0v6
+      input_dim <- validateIntLiteral a0v7
+      output_dim <- validateIntLiteral a0v8
+      pure $ A0ValBracket (A1ValConst (A1BILayerConv2d l m n ksize stride padding input_dim output_dim))
+
+reduceDeltaArity10 :: BuiltInArity10 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
+reduceDeltaArity10 bi10 a0v1 a0v2 a0v3 a0v4 a0v5 a0v6 a0v7 a0v8 a0v9 a0v10 =
+  case bi10 of
+    BITensorGenMaxPool2d -> do
+      k <- validateIntLiteral a0v1
+      l <- validateIntLiteral a0v2
+      m <- validateIntLiteral a0v3
+      n <- validateIntLiteral a0v4
+      padding1 <- validateIntLiteral a0v5
+      padding2 <- validateIntLiteral a0v6
+      ksize1 <- validateIntLiteral a0v7
+      ksize2 <- validateIntLiteral a0v8
+      stride1 <- validateIntLiteral a0v9
+      stride2 <- validateIntLiteral a0v10
+      pure $ A0ValBracket (A1ValConst (A1BITensorMaxPool2d k l m n padding1 padding2 ksize1 ksize2 stride1 stride2))
 
 reduceDelta :: Ass0PartialBuiltInApp Ass0Val -> Ass0Val -> M Ass0Val
 reduceDelta pba a0vArg =
@@ -383,10 +415,20 @@ reduceDelta pba a0vArg =
                       case pba5 of
                         PartialBuiltInAppArity5Nil bi5 ->
                           reduceDeltaArity5 bi5 v5 v4 v3 v2 v1
-                        PartialBuiltInAppArity5Cons pba6 _v6 ->
+                        PartialBuiltInAppArity5Cons pba6 v6 ->
                           case pba6 of
-                            PartialBuiltInAppArity6Cons _pba7 _v7 ->
-                              error "TODO: reduceDelta, PartialBuiltInAppArity5Cons"
+                            PartialBuiltInAppArity6Cons pba7 v7 ->
+                              case pba7 of
+                                PartialBuiltInAppArity7Cons pba8 v8 ->
+                                  case pba8 of
+                                    PartialBuiltInAppArity8Nil bi8 ->
+                                      reduceDeltaArity8 bi8 v8 v7 v6 v5 v4 v3 v2 v1
+                                    PartialBuiltInAppArity8Cons pba9 v9 ->
+                                      case pba9 of
+                                        PartialBuiltInAppArity9Cons pba10 v10 ->
+                                          case pba10 of
+                                            PartialBuiltInAppArity10Nil bi10 ->
+                                              reduceDeltaArity10 bi10 v10 v9 v8 v7 v6 v5 v4 v3 v2 v1
 
 reduceBeta :: Ass0Val -> Ass0Val -> M Ass0Val
 reduceBeta a0vFun a0vArg =

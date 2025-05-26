@@ -178,6 +178,7 @@ data Ass1BuiltIn
   | A1BITensorCrossEntropyForLogits Int Int
   | A1BITensorCountEqual [Int]
   | A1BITensorDropout [Int]
+  | A1BITensorReshape [Int] [Int]
   | A1BIAdd
   | A1BISub
   | A1BIMult
@@ -195,8 +196,10 @@ data Ass1BuiltIn
   | A1BITensorBackward
   | A1BITensorNoGrad
   | A1BITensorFloatValue
+  | A1BITensorMaxPool2d Int Int Int Int Int Int Int Int Int Int
   | A1BILayerLinear [Int] Int Int
   | A1BILayerForward [Int] [Int]
+  | A1BILayerConv2d Int Int Int Int Int Int Int Int
   | A1BIVarStoreCreate
   | A1BIOptimizerAdam
   | A1BIOptimizerBackwardStep

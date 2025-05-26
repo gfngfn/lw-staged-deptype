@@ -858,6 +858,7 @@ instance Disp Ass1BuiltIn where
     A1BITensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits" <> param (disps [n1, n2])
     A1BITensorCountEqual ns -> "Tensor.count_equal" <> param (dispListLiteral ns)
     A1BITensorDropout shape -> "Tensor.dropout" <> param (dispListLiteral shape)
+    A1BITensorReshape shape1 shape2 -> "Tensor.reshape" <> param (dispListLiteral shape1 <> "," <+> dispListLiteral shape2)
     A1BITensorAdd ns1 ns2 -> "Tensor.add" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
     A1BITensorMm k m n -> "Tensor.mm" <> param (disps [k, m, n])
     A1BIAdd -> "+"
@@ -877,8 +878,10 @@ instance Disp Ass1BuiltIn where
     A1BITensorBackward -> "Tensor.backward"
     A1BITensorNoGrad -> "Tensor.no_grad"
     A1BITensorFloatValue -> "Tensor.float_value"
+    A1BITensorMaxPool2d k l m n padding1 padding2 ksize1 ksize2 stride1 stride2 -> "Tensor.max_pool2d" <> param (disps [k, l, m, n, padding1, padding2, ksize1, ksize2, stride1, stride2])
     A1BILayerLinear ns input_dim output_dim -> "Layer.linear" <> param (dispListLiteral ns <> "," <+> disps [input_dim, output_dim])
     A1BILayerForward shape1 shape2 -> "Layber.forward" <> param (dispListLiteral shape1 <> "," <+> dispListLiteral shape2)
+    A1BILayerConv2d l m n ksize stride padding input_dim output_dim -> "Layer.conv2d" <> param (disps [l, m, n, ksize, stride, padding, input_dim, output_dim])
     A1BIVarStoreCreate -> "Var_store.create"
     A1BIOptimizerAdam -> "Optimizer.adam"
     A1BIOptimizerBackwardStep -> "Optimizer.backward_step"
