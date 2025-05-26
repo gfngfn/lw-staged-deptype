@@ -1022,12 +1022,15 @@ instance (Disp sv) => Disp (EvalErrorF sv) where
         <> hardline
         <> "expected:"
         <> nest 2 (hardline <> disp a1tyv2)
-    RefinementAssertionFailure spanInFile a0v ->
+    RefinementAssertionFailure spanInFile a0vPred a0vTarget ->
       "Assertion failure of downcast"
         <+> disp spanInFile
         <> hardline
+        <> "predicate:"
+        <+> stage0Style (disp a0vPred)
+        <> hardline
         <> "got:"
-        <+> stage0Style (disp a0v)
+        <+> stage0Style (disp a0vTarget)
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case

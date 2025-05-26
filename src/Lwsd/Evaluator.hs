@@ -480,7 +480,7 @@ evalExpr0 env = \case
       else do
         EvalState {sourceSpec} <- get
         let spanInFile = getSpanInFile sourceSpec loc
-        evalError $ RefinementAssertionFailure spanInFile a0vTarget
+        evalError $ RefinementAssertionFailure spanInFile a0vPred a0vTarget
 
 evalExpr1 :: EvalEnv -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
