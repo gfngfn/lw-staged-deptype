@@ -395,7 +395,7 @@ instance Disp BuiltInArity4 where
   dispGen _ = \case
     BIDatasetHelperGenTrainBatch -> "DATASET_HELPER.GEN_TRAIN_BATCH"
 
-instance Disp BuiltInArity6 where
+instance Disp BuiltInArity5 where
   dispGen _ = \case
     BIDatasetHelperGenBatchAccuracy -> "DATASET_HELPER.GEN_BATCH_ACCURACY"
 
@@ -413,7 +413,7 @@ instance Disp BuiltIn where
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
     BuiltInArity4 bi4 -> dispGen req bi4
-    BuiltInArity6 bi6 -> dispGen req bi6
+    BuiltInArity5 bi5 -> dispGen req bi5
     BuiltInArity8 bi8 -> dispGen req bi8
     BuiltInArity10 bi10 -> dispGen req bi10
 
@@ -834,13 +834,13 @@ instance (Disp v) => Disp (Ass0PartialBuiltInAppArity4 v) where
 
 instance (Disp v) => Disp (Ass0PartialBuiltInAppArity5 v) where
   dispGen req = \case
+    PartialBuiltInAppArity5Nil bi5 -> disp bi5
     PartialBuiltInAppArity5Cons pba6 v -> f (disp pba6 <+> dispGen Atomic v)
     where
       f = deepenParenWhen (req <= Atomic)
 
 instance (Disp v) => Disp (Ass0PartialBuiltInAppArity6 v) where
   dispGen _req = \case
-    PartialBuiltInAppArity6Nil bi6 -> disp bi6
     PartialBuiltInAppArity6Cons _pba7 _v -> "TODO: Disp (Ass0PartialBuiltInAppArity6 v)"
 
 instance Disp Ass1BuiltIn where
@@ -883,7 +883,7 @@ instance Disp Ass1BuiltIn where
     A1BIOptimizerAdam -> "Optimizer.adam"
     A1BIOptimizerBackwardStep -> "Optimizer.backward_step"
     A1BIDatasetHelperTrainBatch n1 n2 n3 n4 -> "Dataset_helper.train_batch" <> param (disps [n1, n2, n3, n4])
-    A1BIDatasetHelperBatchAccuracy ntrain ntest imgdim n batchSize testOrTrain -> "Dataset_helper.batch_accuracy" <> param (disps [ntrain, ntest, imgdim, n, batchSize] <> "," <+> dispStringLiteral testOrTrain)
+    A1BIDatasetHelperBatchAccuracy ntest imgdim n batchSize -> "Dataset_helper.batch_accuracy" <> param (disps [ntest, imgdim, n, batchSize])
     A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
     A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
     A1BIMnistHelperTestImages -> "Mnist_helper.test_images"
@@ -999,11 +999,11 @@ instance (Disp sv) => Disp (BugF sv) where
       "Expected a symbol, but found a stage-0 value:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     InconsistentAppBuiltInArity1 bi1 a0v1 ->
       "Inconsistent application of a built-in function:"
-        <+> disp (Text.pack (show bi1))
+        <+> disp bi1
         <+> disp a0v1
     InconsistentAppBuiltInArity2 bi2 a0v1 a0v2 ->
       "Inconsistent application of a built-in function:"
-        <+> disp (Text.pack (show bi2))
+        <+> disp bi2
         <+> disp a0v1
         <+> disp a0v2
     BroadcastFailed ns1 ns2 ->
@@ -1041,13 +1041,13 @@ instance Disp Bta.AnalysisError where
     Bta.NotAModule spanInFile m ->
       "Not a module:" <+> disp m <+> disp spanInFile
     Bta.NotAFunction spanInFile bity ->
-      "Not a function;" <+> disp (show bity) <+> disp spanInFile
+      "Not a function;" <+> disp bity <+> disp spanInFile
     Bta.NotAnOptFunction spanInFile bity ->
-      "Not a function with optional parameter;" <+> disp (show bity) <+> disp spanInFile
+      "Not a function with optional parameter;" <+> disp bity <+> disp spanInFile
     Bta.NotABase spanInFile bity ->
-      "Not of base type;" <+> disp (show bity) <+> disp spanInFile
+      "Not of base type;" <+> disp bity <+> disp spanInFile
     Bta.NotATuple spanInFile bity ->
-      "Not a tuple;" <+> disp (show bity) <+> disp spanInFile
+      "Not a tuple;" <+> disp bity <+> disp spanInFile
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
     Bta.BITypeContradiction spanInFile bity1 bity2 ->

@@ -190,19 +190,14 @@ module Dataset_helper = struct
     )
     external (builtin = "dataset_helper__gen_train_batch", surface = "train_batch")
   val ~gen_batch_accuracy :
-    {ntrain : Nat} ->
     {ntest : Nat} ->
     {imgdim : Nat} ->
     {n : Nat} ->
     (batch_size : Nat) ->
-    String -> (* [ `test | `train ] *)
-    &(Tensor %[ntrain, imgdim] ->
-      Tensor %[ntrain] ->
-      Tensor %[ntest, imgdim] ->
-      Tensor %[ntest] ->
-      (Tensor %[batch_size, imgdim] -> Tensor %[batch_size, n]) ->
-      Float
-    )
+    ((actual_batch_size : Nat) ->
+      &(Tensor %[actual_batch_size, imgdim] -> Tensor %[actual_batch_size, n])
+    ) ->
+    &(Tensor %[ntest, imgdim] -> Tensor %[ntest] -> Float)
     external (builtin = "dataset_helper__gen_batch_accuracy", surface = "batch_accuracy")
 end
 

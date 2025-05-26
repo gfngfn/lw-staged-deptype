@@ -15,7 +15,6 @@ import Data.Function ((&))
 import Data.List qualified as List
 import Data.Map qualified as Map
 import Data.Maybe (isJust)
-import Data.Text (Text)
 import Lwsd.BuiltIn.Core
 import Lwsd.EvalError
 import Lwsd.Syntax
@@ -89,10 +88,12 @@ validateUnitLiteral = \case
   A0ValLiteral ALitUnit -> pure ()
   a0v -> bug $ NotAUnit a0v
 
+{-
 validateStringLiteral :: Ass0Val -> M Text
 validateStringLiteral = \case
   A0ValLiteral (ALitString s) -> pure s
   a0v -> bug $ NotAString a0v
+-}
 
 validateListValue :: Ass0Val -> M [Ass0Val]
 validateListValue = \case
@@ -220,7 +221,7 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
     BIBroadcastable -> do
       ns1 <- validateIntListLiteral a0v1
       ns2 <- validateIntListLiteral a0v2
-      let b = List.foldl' (*) 1 ns1 == List.foldl' (*) 1 ns2
+      let b = isJust (broadcast ns1 ns2)
       pure $ A0ValLiteral (ALitBool b)
     BIBroadcast -> do
       ns1 <- validateIntListLiteral a0v1
@@ -233,7 +234,7 @@ reduceDeltaArity2 bi2 a0v1 a0v2 =
     BIReshapeable -> do
       ns1 <- validateIntListLiteral a0v1
       ns2 <- validateIntListLiteral a0v2
-      let b = isJust (broadcast ns1 ns2)
+      let b = List.foldl' (*) 1 ns1 == List.foldl' (*) 1 ns2
       pure $ A0ValLiteral (ALitBool b)
     BIListAppend -> do
       a0vs1 <- validateListValue a0v1
@@ -325,17 +326,16 @@ reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0v4 =
       n4 <- validateIntLiteral a0v4
       pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperTrainBatch n1 n2 n3 n4))
 
-reduceDeltaArity6 :: BuiltInArity6 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
-reduceDeltaArity6 bi6 a0v1 a0v2 a0v3 a0v4 a0v5 a0v6 =
+reduceDeltaArity5 :: BuiltInArity5 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
+reduceDeltaArity5 bi6 a0v1 a0v2 a0v3 a0v4 a0v5 =
   case bi6 of
     BIDatasetHelperGenBatchAccuracy -> do
-      ntrain <- validateIntLiteral a0v1
-      ntest <- validateIntLiteral a0v2
-      imgdim <- validateIntLiteral a0v3
-      n <- validateIntLiteral a0v4
-      batchSize <- validateIntLiteral a0v5
-      testOrTrain <- validateStringLiteral a0v6
-      pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperBatchAccuracy ntrain ntest imgdim n batchSize testOrTrain))
+      ntest <- validateIntLiteral a0v1
+      imgdim <- validateIntLiteral a0v2
+      n <- validateIntLiteral a0v3
+      batchSize <- validateIntLiteral a0v4
+      let _f = a0v5
+      pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperBatchAccuracy ntest imgdim n batchSize))
 
 reduceDelta :: Ass0PartialBuiltInApp Ass0Val -> Ass0Val -> M Ass0Val
 reduceDelta pba a0vArg =
@@ -381,10 +381,10 @@ reduceDelta pba a0vArg =
                       reduceDeltaArity4 bi4 v4 v3 v2 v1
                     PartialBuiltInAppArity4Cons pba5 v5 ->
                       case pba5 of
-                        PartialBuiltInAppArity5Cons pba6 v6 ->
+                        PartialBuiltInAppArity5Nil bi5 ->
+                          reduceDeltaArity5 bi5 v5 v4 v3 v2 v1
+                        PartialBuiltInAppArity5Cons pba6 _v6 ->
                           case pba6 of
-                            PartialBuiltInAppArity6Nil bi6 ->
-                              reduceDeltaArity6 bi6 v6 v5 v4 v3 v2 v1
                             PartialBuiltInAppArity6Cons _pba7 _v7 ->
                               error "TODO: reduceDelta, PartialBuiltInAppArity5Cons"
 
@@ -417,7 +417,7 @@ evalExpr0 env = \case
         BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity2 (PartialBuiltInAppArity2Nil bi2))
         BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity3 (PartialBuiltInAppArity3Nil bi3))
         BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity4 (PartialBuiltInAppArity4Nil bi4))
-        BuiltInArity6 bi6 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity6 (PartialBuiltInAppArity6Nil bi6))
+        BuiltInArity5 bi5 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity5 (PartialBuiltInAppArity5Nil bi5))
         BuiltInArity8 bi8 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity8 (PartialBuiltInAppArity8Nil bi8))
         BuiltInArity10 bi10 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity10 (PartialBuiltInAppArity10Nil bi10))
   A0Lam Nothing (x, a0tye1) a0e2 -> do

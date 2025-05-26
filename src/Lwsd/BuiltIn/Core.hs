@@ -4,7 +4,7 @@ module Lwsd.BuiltIn.Core
     BuiltInArity2 (..),
     BuiltInArity3 (..),
     BuiltInArity4 (..),
-    BuiltInArity6 (..),
+    BuiltInArity5 (..),
     BuiltInArity8 (..),
     BuiltInArity10 (..),
     Ass0PartialBuiltInApp (..),
@@ -33,7 +33,7 @@ data BuiltIn
   | BuiltInArity2 BuiltInArity2
   | BuiltInArity3 BuiltInArity3
   | BuiltInArity4 BuiltInArity4
-  | BuiltInArity6 BuiltInArity6
+  | BuiltInArity5 BuiltInArity5
   | BuiltInArity8 BuiltInArity8
   | BuiltInArity10 BuiltInArity10
   deriving stock (Eq, Show)
@@ -91,7 +91,7 @@ data BuiltInArity4
   = BIDatasetHelperGenTrainBatch
   deriving stock (Eq, Show)
 
-data BuiltInArity6
+data BuiltInArity5
   = BIDatasetHelperGenBatchAccuracy
   deriving stock (Eq, Show)
 
@@ -137,12 +137,12 @@ data Ass0PartialBuiltInAppArity4 val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity5 val
-  = PartialBuiltInAppArity5Cons (Ass0PartialBuiltInAppArity6 val) val
+  = PartialBuiltInAppArity5Nil BuiltInArity5
+  | PartialBuiltInAppArity5Cons (Ass0PartialBuiltInAppArity6 val) val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity6 val
-  = PartialBuiltInAppArity6Nil BuiltInArity6
-  | PartialBuiltInAppArity6Cons (Ass0PartialBuiltInAppArity7 val) val
+  = PartialBuiltInAppArity6Cons (Ass0PartialBuiltInAppArity7 val) val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity7 val
@@ -201,7 +201,7 @@ data Ass1BuiltIn
   | A1BIOptimizerAdam
   | A1BIOptimizerBackwardStep
   | A1BIDatasetHelperTrainBatch Int Int Int Int
-  | A1BIDatasetHelperBatchAccuracy Int Int Int Int Int Text
+  | A1BIDatasetHelperBatchAccuracy Int Int Int Int
   | A1BIMnistHelperTrainImages
   | A1BIMnistHelperTrainLabels
   | A1BIMnistHelperTestImages
@@ -270,14 +270,14 @@ validateExternalName0 = \case
   "tensor__gen_reshape" -> arity2 BITensorGenReshape
   "tensor__gen_max_pool2d" -> arity10 BITensorGenMaxPool2d
   "dataset_helper__gen_train_batch" -> arity4 BIDatasetHelperGenTrainBatch
-  "dataset_helper__gen_batch_accuracy" -> arity6 BIDatasetHelperGenBatchAccuracy
+  "dataset_helper__gen_batch_accuracy" -> arity5 BIDatasetHelperGenBatchAccuracy
   _ -> Nothing
   where
     arity1 = pure . BuiltInArity1
     arity2 = pure . BuiltInArity2
     arity3 = pure . BuiltInArity3
     arity4 = pure . BuiltInArity4
-    arity6 = pure . BuiltInArity6
+    arity5 = pure . BuiltInArity5
     arity8 = pure . BuiltInArity8
     arity10 = pure . BuiltInArity10
 
