@@ -139,7 +139,7 @@ module Layer = struct
     (padding : Int) ->
     (input_dim : Nat) ->
     (output_dim : Nat) ->
-    &(Unit -> (* TODO: replace this type with `VarStore` *)
+    &(VarStore ->
       Tensor %[l, input_dim, m, n] ->
       Tensor %[l, output_dim, (m + 2 * padding - ksize) // stride + 1, (n + 2 * padding - ksize) // stride + 1]
     )
@@ -148,7 +148,7 @@ module Layer = struct
     {ns : List Nat} ->
     (input_dim : Nat) ->
     (output_dim : Nat) ->
-    &(Unit -> (* TODO: replace this type with `VarStore` *)
+    &(VarStore ->
       Unit -> (* TODO: replace this type with `Activation` *)
       Tensor %(List.append ns [input_dim]) ->
       Tensor %(List.append ns [output_dim])
@@ -157,19 +157,18 @@ module Layer = struct
 end
 
 module Var_store = struct
-  val create : String -> Unit ->
-    Unit (* TODO: replace the return type with `VarStore` *)
+  val create : String -> Unit -> VarStore
     external (builtin = "var_store__create", surface = "create")
 end
 
 module Optimizer = struct
   val adam :
-    Unit -> (* TODO: replace this type with `VarStore` *)
+    VarStore ->
     Float ->
-    Unit (* TODO: replace the return type with `Optimizer` *)
+    Optimizer
     external (builtin = "optimizer__adam", surface = "adam")
   val backward_step :
-    Unit -> (* TODO: replace this type with `Optimizer` *)
+    Optimizer ->
     Tensor %[] ->
     Unit
     external (builtin = "optimizer__backward_step", surface = "backward_step")

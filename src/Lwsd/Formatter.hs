@@ -156,7 +156,7 @@ dispLetOpenIn req m e =
 dispLetTupleIn :: (Disp var, Disp expr) => Associativity -> var -> var -> expr -> expr -> Doc Ann
 dispLetTupleIn req xL xR e1 e2 =
   deepenParenWhen (req <= FunDomain) $
-    group ("let (" <+> disp xL <> "," <+> disp xR <> ") =" <+> disp e1 <+> "in" <> line <> disp e2)
+    group ("let (" <> disp xL <> "," <+> disp xR <> ") =" <+> disp e1 <+> "in" <> line <> disp e2)
 
 dispSequential :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispSequential req e1 e2 =
@@ -523,6 +523,8 @@ instance Disp AssPrimBaseType where
     ATyPrimBool -> "Bool"
     ATyPrimUnit -> "Unit"
     ATyPrimString -> "String"
+    ATyPrimVarStore -> "VarStore"
+    ATyPrimOptimizer -> "Optimizer"
 
 instance Disp Ass0PrimType where
   dispGen req = \case
