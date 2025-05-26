@@ -4,29 +4,26 @@ let learning_rate = 0.001 in
 
 (* let device = Device.cuda_if_available () in *)
 let vs = Var_store.create "cnn" () in
-let conv2d1 {size : Nat} =
+let conv2d1 {size : Nat} (t : Tensor [size, 1, 28, 28]) =
   Layer.conv2d_
-    {size} {28} {28}
     5 (* ksize *)
     1 (* stride *)
     0 (* padding *)
     1 (* input_dim *)
     32 (* output_dim *)
     vs
+    t
 in
-(* conv2d1 : Tensor %[batch_size, 1, 28, 28] -> Tensor %[batch_size, 32, 24, 24] *)
-let conv2d2 {size : Nat} =
+let conv2d2 {size : Nat} (t : Tensor [size, 32, 12, 12]) =
   Layer.conv2d_
-    {size} {12} {12}
     5 (* ksize *)
     1 (* stride *)
     0 (* padding *)
     32 (* input_dim *)
     64 (* output_dim *)
     vs
+    t
 in
-(* conv2d2 : Tensor %[batch_size, 32, 12, 12] -> Tensor %[batch_size, 64, 8, 8] *)
-(* let a = if true then conv2d2 else (fun(b : Int) -> 0) in *)
 let linear1 {q : Nat} =
   Layer.linear
     {[q]}
@@ -35,7 +32,6 @@ let linear1 {q : Nat} =
     vs
     Layer.Activation.relu
 in
-(* let a = if true then linear1 else (fun(b : Int) -> 0) in *)
 let linear2 {q : Nat} =
   Layer.linear
     {[q]}
@@ -45,22 +41,18 @@ let linear2 {q : Nat} =
     Layer.Activation.none
 in
 let adam = Optimizer.adam vs learning_rate in
-let model (size : Nat) (is_training : Bool) (xs : Tensor [size, Mnist_helper.image_dim]) = (* TODO *)
+let model (size : Nat) (is_training : Bool) (xs : Tensor [size, Mnist_helper.image_dim]) =
   Tensor.reshape [size, 1, 28, 28] xs
   |> Layer.forward (conv2d1 {size})
-        (* Tensor [size, 32, 24, 24] *)
   |> Tensor.max_pool2d
       0 0 (* padding *)
       2 2 (* ksize *)
       2 2 (* stride *)
-        (* Tensor [size, 32, 12, 12] *)
   |> Layer.forward (conv2d2 {size})
-        (* Tensor [size, 64, 8, 8] *)
   |> Tensor.max_pool2d
       0 0 (* padding *)
       2 2 (* ksize *)
       2 2 (* stride *)
-        (* Tensor [size, 64, 4, 4] *)
   |> Tensor.reshape [size, 1024]
   |> Layer.forward (linear1 {size})
   |> Tensor.dropout 0.5 is_training
@@ -68,7 +60,6 @@ let model (size : Nat) (is_training : Bool) (xs : Tensor [size, Mnist_helper.ima
 in
 let train_model (size : Nat) = model size true in
 let test_model (size : Nat) = model size false in
-(* let a = if true then test_model else (fun(b : Int) -> 0) in *)
 (range 1 epochs) |> List.iter (fun(batch_idx : Int) ->
   let (batch_images, batch_labels) =
     Dataset_helper.train_batch
