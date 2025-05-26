@@ -14,6 +14,8 @@ module Lwsd.Syntax
     Type1PrimEquationF (..),
     Ass0TypeExprF (..),
     StrictAss0TypeExprF (..),
+    AssPrimBaseType (..),
+    validatePrimBaseType,
     Ass0PrimType (..),
     Ass1TypeExprF (..),
     Ass1PrimTypeF (..),
@@ -169,12 +171,25 @@ data StrictAss0TypeExprF sv
   | SA0TyCode (Ass1TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
+data AssPrimBaseType
+  = ATyPrimInt
+  | ATyPrimFloat
+  | ATyPrimUnit
+  | ATyPrimBool
+  | ATyPrimString
+  deriving stock (Eq, Show)
+
+validatePrimBaseType :: Text -> Maybe AssPrimBaseType
+validatePrimBaseType = \case
+  "Int" -> Just ATyPrimInt
+  "Float" -> Just ATyPrimFloat
+  "Unit" -> Just ATyPrimUnit
+  "Bool" -> Just ATyPrimBool
+  "String" -> Just ATyPrimString
+  _ -> Nothing
+
 data Ass0PrimType
-  = A0TyInt
-  | A0TyFloat
-  | A0TyBool
-  | A0TyUnit
-  | A0TyString
+  = A0TyPrimBase AssPrimBaseType
   | A0TyTensor [Int]
   deriving stock (Eq, Show)
 
@@ -186,11 +201,7 @@ data Ass1TypeExprF sv
   deriving stock (Eq, Show, Functor)
 
 data Ass1PrimTypeF sv
-  = A1TyInt
-  | A1TyFloat
-  | A1TyBool
-  | A1TyUnit
-  | A1TyString
+  = A1TyPrimBase AssPrimBaseType
   | A1TyTensor (Ass0ExprF sv)
   deriving stock (Eq, Show, Functor)
 
@@ -221,11 +232,7 @@ persistentTypeTo1 = \case
 
 liftPrimType :: Ass0PrimType -> Ass1PrimTypeF sv
 liftPrimType = \case
-  A0TyInt -> A1TyInt
-  A0TyFloat -> A1TyFloat
-  A0TyBool -> A1TyBool
-  A0TyUnit -> A1TyUnit
-  A0TyString -> A1TyString
+  A0TyPrimBase tyPrimBase -> A1TyPrimBase tyPrimBase
   A0TyTensor ns -> A1TyTensor (A0Literal (ALitList (map (A0Literal . ALitInt) ns)))
 
 data Ass0ValF sv
@@ -258,11 +265,7 @@ data Ass0TypeValF sv
   deriving stock (Eq, Show, Functor)
 
 data Ass0PrimTypeVal
-  = A0TyValInt
-  | A0TyValFloat
-  | A0TyValBool
-  | A0TyValUnit
-  | A0TyValString
+  = A0TyValPrimBase AssPrimBaseType
   | A0TyValTensor [Int]
   deriving stock (Eq, Show)
 
@@ -274,11 +277,7 @@ data Ass1TypeVal
   deriving stock (Eq, Show)
 
 data Ass1PrimTypeVal
-  = A1TyValInt
-  | A1TyValFloat
-  | A1TyValBool
-  | A1TyValUnit
-  | A1TyValString
+  = A1TyValPrimBase AssPrimBaseType
   | A1TyValTensor [Int]
   deriving stock (Eq, Show)
 
@@ -289,11 +288,7 @@ data Type1EquationF sv
   deriving stock (Eq, Show, Functor)
 
 data Type1PrimEquationF sv
-  = TyEq1Int
-  | TyEq1Float
-  | TyEq1Bool
-  | TyEq1Unit
-  | TyEq1String
+  = TyEq1PrimBase AssPrimBaseType
   | TyEq1TensorByLiteral [(Ass0ExprF sv, Ass0ExprF sv)]
   | TyEq1TensorByWhole (Ass0ExprF sv) (Ass0ExprF sv) -- A Pair of ASTs of type `List Nat`
   deriving stock (Eq, Show, Functor)
@@ -353,11 +348,8 @@ decomposeType1Equation :: Type1EquationF sv -> (Ass1TypeExprF sv, Ass1TypeExprF 
 decomposeType1Equation = \case
   TyEq1Prim ty1eqPrim ->
     case ty1eqPrim of
-      TyEq1Int -> prims A1TyInt
-      TyEq1Float -> prims A1TyFloat
-      TyEq1Bool -> prims A1TyBool
-      TyEq1Unit -> prims A1TyUnit
-      TyEq1String -> prims A1TyString
+      TyEq1PrimBase tyPrimBase ->
+        prims $ A1TyPrimBase tyPrimBase
       TyEq1TensorByLiteral zipped ->
         let a0eList1 = A0Literal (ALitList (map fst zipped))
             a0eList2 = A0Literal (ALitList (map snd zipped))

@@ -399,11 +399,7 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
   frees = \case
     A1TyPrim a1tyPrim ->
       case a1tyPrim of
-        A1TyInt -> (Set.empty, Set.empty)
-        A1TyFloat -> (Set.empty, Set.empty)
-        A1TyBool -> (Set.empty, Set.empty)
-        A1TyUnit -> (Set.empty, Set.empty)
-        A1TyString -> (Set.empty, Set.empty)
+        A1TyPrimBase _ -> (Set.empty, Set.empty)
         A1TyTensor a0eList -> frees a0eList
     A1TyList a1tye1 ->
       frees a1tye1
@@ -415,11 +411,7 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
   subst s = \case
     A1TyPrim a1tyPrim ->
       A1TyPrim $ case a1tyPrim of
-        A1TyInt -> A1TyInt
-        A1TyFloat -> A1TyFloat
-        A1TyBool -> A1TyBool
-        A1TyUnit -> A1TyUnit
-        A1TyString -> A1TyString
+        A1TyPrimBase tyPrimBase -> A1TyPrimBase tyPrimBase
         A1TyTensor a0eList -> A1TyTensor (go a0eList)
     A1TyList a1tye1 ->
       A1TyList (go a1tye1)
@@ -435,10 +427,8 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
     case (a1tye1, a1tye2) of
       (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
         case (a1tyPrim1, a1tyPrim2) of
-          (A1TyInt, A1TyInt) ->
-            True
-          (A1TyBool, A1TyBool) ->
-            True
+          (A1TyPrimBase tyPrimBase1, A1TyPrimBase tyPrimBase2) ->
+            tyPrimBase1 == tyPrimBase2
           (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
             go a0eList1 a0eList2
           (_, _) ->
@@ -527,11 +517,7 @@ instance (Ord sv) => HasVar sv Type1EquationF where
   frees = \case
     TyEq1Prim ty1eqPrim ->
       case ty1eqPrim of
-        TyEq1Int -> (Set.empty, Set.empty)
-        TyEq1Float -> (Set.empty, Set.empty)
-        TyEq1Bool -> (Set.empty, Set.empty)
-        TyEq1Unit -> (Set.empty, Set.empty)
-        TyEq1String -> (Set.empty, Set.empty)
+        TyEq1PrimBase _ -> (Set.empty, Set.empty)
         TyEq1TensorByLiteral zipped -> unionPairs (concatMap (\(a0e1, a0e2) -> [frees a0e1, frees a0e2]) zipped)
         TyEq1TensorByWhole a0eList1 a0eList2 -> unionPairs [frees a0eList1, frees a0eList2]
     TyEq1List ty1eqElem ->
@@ -543,11 +529,7 @@ instance (Ord sv) => HasVar sv Type1EquationF where
     TyEq1Prim ty1eqPrim ->
       TyEq1Prim $
         case ty1eqPrim of
-          TyEq1Int -> TyEq1Int
-          TyEq1Float -> TyEq1Float
-          TyEq1Bool -> TyEq1Bool
-          TyEq1Unit -> TyEq1Unit
-          TyEq1String -> TyEq1String
+          TyEq1PrimBase tyPrimBase -> TyEq1PrimBase tyPrimBase
           TyEq1TensorByLiteral zipped -> TyEq1TensorByLiteral (map (both go) zipped)
           TyEq1TensorByWhole a0eList1 a0eList2 -> TyEq1TensorByWhole (go a0eList1) (go a0eList2)
     TyEq1List ty1eqElem ->
@@ -562,10 +544,8 @@ instance (Ord sv) => HasVar sv Type1EquationF where
     case (ty1eq1, ty1eq2) of
       (TyEq1Prim ty1eqPrim1, TyEq1Prim ty1eqPrim2) ->
         case (ty1eqPrim1, ty1eqPrim2) of
-          (TyEq1Int, TyEq1Int) ->
-            True
-          (TyEq1Bool, TyEq1Bool) ->
-            True
+          (TyEq1PrimBase tyPrimBase1, TyEq1PrimBase tyPrimBase2) ->
+            tyPrimBase1 == tyPrimBase2
           (TyEq1TensorByLiteral zipped1, TyEq1TensorByLiteral zipped2) ->
             case zipExactMay zipped1 zipped2 of
               Nothing ->

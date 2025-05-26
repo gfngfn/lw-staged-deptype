@@ -516,13 +516,17 @@ instance (Disp sv) => Disp (Ass1ExprF sv) where
     A1IfThenElse a1e0 a1e1 a1e2 -> dispIfThenElse req a1e0 a1e1 a1e2
     A1Escape a0e1 -> dispEscape a0e1
 
+instance Disp AssPrimBaseType where
+  dispGen _req = \case
+    ATyPrimInt -> "Int"
+    ATyPrimFloat -> "Float"
+    ATyPrimBool -> "Bool"
+    ATyPrimUnit -> "Unit"
+    ATyPrimString -> "String"
+
 instance Disp Ass0PrimType where
   dispGen req = \case
-    A0TyInt -> "Int"
-    A0TyFloat -> "Float"
-    A0TyBool -> "Bool"
-    A0TyUnit -> "Unit"
-    A0TyString -> "String"
+    A0TyPrimBase tyPrimBase -> disp tyPrimBase
     A0TyTensor [n] -> dispNameWithArgs req "Vec" disp [n]
     A0TyTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
@@ -552,11 +556,8 @@ instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
 
 instance (Disp sv) => Disp (Ass1PrimTypeF sv) where
   dispGen req = \case
-    A1TyInt -> "Int"
-    A1TyFloat -> "Float"
-    A1TyBool -> "Bool"
-    A1TyUnit -> "Unit"
-    A1TyString -> "String"
+    A1TyPrimBase tyPrimBase ->
+      disp tyPrimBase
     A1TyTensor a0eList ->
       case a0eList of
         A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
@@ -927,11 +928,7 @@ instance (Disp sv) => Disp (Ass0TypeValF sv) where
 
 instance Disp Ass0PrimTypeVal where
   dispGen req = \case
-    A0TyValInt -> "Int"
-    A0TyValFloat -> "Float"
-    A0TyValBool -> "Bool"
-    A0TyValUnit -> "Unit"
-    A0TyValString -> "String"
+    A0TyValPrimBase tyPrimBase -> disp tyPrimBase
     A0TyValTensor [n] -> dispNameWithArgs req "Vec" disp [n]
     A0TyValTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
@@ -945,11 +942,7 @@ instance Disp Ass1TypeVal where
 
 instance Disp Ass1PrimTypeVal where
   dispGen req = \case
-    A1TyValInt -> "Int"
-    A1TyValFloat -> "Float"
-    A1TyValBool -> "Bool"
-    A1TyValUnit -> "Unit"
-    A1TyValString -> "String"
+    A1TyValPrimBase tyPrimBase -> disp tyPrimBase
     A1TyValTensor [n] -> dispNameWithArgs req "Vec" dispPersistent [n]
     A1TyValTensor [m, n] -> dispNameWithArgs req "Mat" dispPersistent [m, n]
     A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispPersistentListLiteral [ns]

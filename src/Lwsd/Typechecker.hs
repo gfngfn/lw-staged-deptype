@@ -195,11 +195,10 @@ makeAssertiveCast trav loc =
                   else maybePred2'
           cast <-
             case (a0tyPrim1, a0tyPrim2) of
-              (A0TyInt, A0TyInt) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyInt maybePred1)
-              (A0TyFloat, A0TyFloat) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyFloat maybePred1)
-              (A0TyBool, A0TyBool) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyBool maybePred1)
-              (A0TyUnit, A0TyUnit) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyUnit maybePred1)
-              (A0TyString, A0TyString) -> castOrIdentityLam maybePred2 (A0TyPrim A0TyString maybePred1)
+              (A0TyPrimBase tyPrimBase1, A0TyPrimBase tyPrimBase2) ->
+                if tyPrimBase1 == tyPrimBase2
+                  then castOrIdentityLam maybePred2 (A0TyPrim (A0TyPrimBase tyPrimBase1) maybePred1)
+                  else typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
               (A0TyTensor ns1, A0TyTensor ns2) ->
                 case zipExactMay ns1 ns2 of
                   Nothing ->
@@ -340,16 +339,10 @@ makeEquation1 trav loc varsToInfer' a1tye1' a1tye2' = do
       case (a1tye1, a1tye2) of
         (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
           case (a1tyPrim1, a1tyPrim2) of
-            (A1TyInt, A1TyInt) ->
-              pure (True, TyEq1Prim TyEq1Int, Map.empty)
-            (A1TyFloat, A1TyFloat) ->
-              pure (True, TyEq1Prim TyEq1Float, Map.empty)
-            (A1TyBool, A1TyBool) ->
-              pure (True, TyEq1Prim TyEq1Bool, Map.empty)
-            (A1TyUnit, A1TyUnit) ->
-              pure (True, TyEq1Prim TyEq1Unit, Map.empty)
-            (A1TyString, A1TyString) ->
-              pure (True, TyEq1Prim TyEq1String, Map.empty)
+            (A1TyPrimBase tyPrimBase1, A1TyPrimBase tyPrimBase2) ->
+              if tyPrimBase1 == tyPrimBase2
+                then pure (True, TyEq1Prim (TyEq1PrimBase tyPrimBase1), Map.empty)
+                else Left ()
             (A1TyTensor a0eList1, A1TyTensor a0eList2) -> do
               case (a0eList1, a0eList2) of
                 -- Enhancement for the argument inference 1:
@@ -450,16 +443,10 @@ mergeTypesByConditional1 trav distributeIfUnderTensorShape a0e0 = go1
         (A1TyPrim a1tyePrim1, A1TyPrim a1tyePrim2) ->
           A1TyPrim
             <$> case (a1tyePrim1, a1tyePrim2) of
-              (A1TyInt, A1TyInt) ->
-                pure A1TyInt
-              (A1TyFloat, A1TyFloat) ->
-                pure A1TyFloat
-              (A1TyBool, A1TyBool) ->
-                pure A1TyBool
-              (A1TyUnit, A1TyUnit) ->
-                pure A1TyUnit
-              (A1TyString, A1TyString) ->
-                pure A1TyString
+              (A1TyPrimBase tyPrimBase1, A1TyPrimBase tyPrimBase2) ->
+                if tyPrimBase1 == tyPrimBase2
+                  then pure a1tyePrim1
+                  else typeError trav $ CannotMerge1 a1tye1 a1tye2
               (A1TyTensor a0eList1, A1TyTensor a0eList2) ->
                 case (a0eList1, a0eList2) of
                   -- Slight enhancement for the argument inference:
@@ -655,15 +642,15 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
               case lit of
                 LitInt n ->
                   -- Ad hoc optimization about `Nat`
-                  pure (if n >= 0 then BuiltIn.tyNat else A0TyPrim A0TyInt Nothing, ALitInt n)
+                  pure (if n >= 0 then BuiltIn.tyNat else A0TyPrim (A0TyPrimBase ATyPrimInt) Nothing, ALitInt n)
                 LitFloat r ->
-                  pure (A0TyPrim A0TyFloat Nothing, ALitFloat r)
+                  pure (A0TyPrim (A0TyPrimBase ATyPrimFloat) Nothing, ALitFloat r)
                 LitUnit ->
-                  pure (A0TyPrim A0TyUnit Nothing, ALitUnit)
+                  pure (A0TyPrim (A0TyPrimBase ATyPrimUnit) Nothing, ALitUnit)
                 LitBool b ->
-                  pure (A0TyPrim A0TyBool Nothing, ALitBool b)
+                  pure (A0TyPrim (A0TyPrimBase ATyPrimBool) Nothing, ALitBool b)
                 LitString t ->
-                  pure (A0TyPrim A0TyString Nothing, ALitString t)
+                  pure (A0TyPrim (A0TyPrimBase ATyPrimString) Nothing, ALitString t)
                 LitList es ->
                   case es of
                     [] ->
@@ -850,7 +837,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         (result1, a0e1) <- typecheckExpr0 trav tyEnv [] e1
         a0tye1 <- validateEmptyRetAppContext "stage-0, Sequential" result1
         case a0tye1 of
-          A0TyPrim A0TyUnit _maybePred -> do
+          A0TyPrim (A0TyPrimBase ATyPrimUnit) _maybePred -> do
             (result2, a0e2) <- typecheckExpr0 trav tyEnv appCtx e2
             pure (result2, A0Sequential a0e1 a0e2)
           _ -> do
@@ -871,7 +858,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         (result0, a0e0) <- typecheckExpr0 trav tyEnv [] e0
         a0tye0 <- validateEmptyRetAppContext "stage-0, IfThenElse, condition" result0
         case a0tye0 of
-          A0TyPrim A0TyBool _maybePred -> do
+          A0TyPrim (A0TyPrimBase ATyPrimBool) _maybePred -> do
             (result1, a0e1) <- typecheckExpr0 trav tyEnv appCtx e1
             (result2, a0e2) <- typecheckExpr0 trav tyEnv appCtx e2
             result <- mergeResultsByConditional0 trav loc a0e0 result1 result2
@@ -959,15 +946,15 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
           (a1tye, alit) <-
             case lit of
               LitInt n ->
-                pure (A1TyPrim A1TyInt, ALitInt n)
+                pure (A1TyPrim (A1TyPrimBase ATyPrimInt), ALitInt n)
               LitFloat r ->
-                pure (A1TyPrim A1TyFloat, ALitFloat r)
+                pure (A1TyPrim (A1TyPrimBase ATyPrimFloat), ALitFloat r)
               LitUnit ->
-                pure (A1TyPrim A1TyUnit, ALitUnit)
+                pure (A1TyPrim (A1TyPrimBase ATyPrimUnit), ALitUnit)
               LitBool b ->
-                pure (A1TyPrim A1TyBool, ALitBool b)
+                pure (A1TyPrim (A1TyPrimBase ATyPrimBool), ALitBool b)
               LitString t ->
-                pure (A1TyPrim A1TyString, ALitString t)
+                pure (A1TyPrim (A1TyPrimBase ATyPrimString), ALitString t)
               LitList es ->
                 case es of
                   [] ->
@@ -1133,7 +1120,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       (result1, a1e1) <- typecheckExpr1 trav tyEnv [] e1
       a1tye1 <- validateEmptyRetAppContext "stage-1, Sequential" result1
       case a1tye1 of
-        A1TyPrim A1TyUnit -> do
+        A1TyPrim (A1TyPrimBase ATyPrimUnit) -> do
           (result2, a1e2) <- typecheckExpr1 trav tyEnv appCtx e2
           pure (result2, A1Sequential a1e1 a1e2)
         _ -> do
@@ -1154,7 +1141,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       (result0, a1e0) <- typecheckExpr1 trav tyEnv [] e0
       a1tye0 <- validateEmptyRetAppContext "stage-1, IfThenElse, condition" result0
       case a1tye0 of
-        A1TyPrim A1TyBool ->
+        A1TyPrim (A1TyPrimBase ATyPrimBool) ->
           case appCtx of
             [] -> do
               (result1, a1e1) <- typecheckExpr1 trav tyEnv appCtx e1
@@ -1282,12 +1269,12 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
           )
           args
       case (tyName, results) of
-        ("Int", []) -> pure $ A0TyPrim A0TyInt Nothing
-        ("Nat", []) -> pure BuiltIn.tyNat
-        ("Float", []) -> pure $ A0TyPrim A0TyFloat Nothing
-        ("Bool", []) -> pure $ A0TyPrim A0TyBool Nothing
-        ("Unit", []) -> pure $ A0TyPrim A0TyUnit Nothing
-        ("String", []) -> pure $ A0TyPrim A0TyString Nothing
+        ("Nat", []) ->
+          pure BuiltIn.tyNat
+        (_, []) ->
+          case validatePrimBaseType tyName of
+            Just tyPrimBase -> pure $ A0TyPrim (A0TyPrimBase tyPrimBase) Nothing
+            Nothing -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName 0
         ("List", [arg]) -> do
           case arg of
             (IA0TypeArg a0tye, _) -> pure $ A0TyList a0tye Nothing
@@ -1335,7 +1322,7 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       (result2, a0e2) <- typecheckExpr0 trav (TypeEnv.addVal x (Ass0Entry a0tye1 (Right svX)) tyEnv) [] e2
       a0tye2 <- validateEmptyRetAppContext "TyRefinement" result2
       case a0tye2 of
-        A0TyPrim A0TyBool _maybePredForBool -> do
+        A0TyPrim (A0TyPrimBase ATyPrimBool) _maybePredForBool -> do
           let ax = AssVarStatic svX
           case a0tye1 of
             A0TyPrim a0tyPrim Nothing -> do
@@ -1392,11 +1379,10 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
         )
         args
       case (tyName, args) of
-        ("Int", []) -> pure $ A1TyPrim A1TyInt
-        ("Float", []) -> pure $ A1TyPrim A1TyFloat
-        ("Bool", []) -> pure $ A1TyPrim A1TyBool
-        ("Unit", []) -> pure $ A1TyPrim A1TyUnit
-        ("String", []) -> pure $ A1TyPrim A1TyString
+        (_, []) ->
+          case validatePrimBaseType tyName of
+            Just tyPrimBase -> pure $ A1TyPrim (A1TyPrimBase tyPrimBase)
+            Nothing -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName 0
         ("List", [TypeArg tye]) -> do
           a1tye <- typecheckTypeExpr1 trav tyEnv tye
           pure $ A1TyList a1tye
