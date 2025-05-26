@@ -122,6 +122,11 @@ module Tensor = struct
     external (builtin = "tensor__gen_max_pool2d", surface = "max_pool2d")
 end
 
+module VarStore = struct
+  val create : String -> Unit -> VarStore
+    external (builtin = "var_store__create", surface = "create")
+end
+
 module Layer = struct
   module Activation = struct
     val relu : Activation
@@ -162,11 +167,6 @@ module Layer = struct
     external (builtin = "layer__gen_linear", surface = "linear")
 end
 
-module Var_store = struct
-  val create : String -> Unit -> VarStore
-    external (builtin = "var_store__create", surface = "create")
-end
-
 module Optimizer = struct
   val adam :
     VarStore ->
@@ -180,7 +180,7 @@ module Optimizer = struct
     external (builtin = "optimizer__backward_step", surface = "backward_step")
 end
 
-module Dataset_helper = struct
+module DatasetHelper = struct
   val ~gen_train_batch :
     {ntrain : Nat} ->
     {ntest : Nat} ->
@@ -206,7 +206,7 @@ module Dataset_helper = struct
     external (builtin = "dataset_helper__gen_batch_accuracy", surface = "batch_accuracy")
 end
 
-module Mnist_helper = struct
+module MnistHelper = struct
   val ~image_dim = (28 * 28) as Nat
   val ~label_count = 10
   val train_images : Tensor %[60000, image_dim]

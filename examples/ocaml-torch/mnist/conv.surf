@@ -3,7 +3,7 @@ let epochs = 5000 in
 let learning_rate = 0.001 in
 
 (* let device = Device.cuda_if_available () in *)
-let vs = Var_store.create "cnn" () in
+let vs = VarStore.create "cnn" () in
 let conv2d1 {size : Nat} (t : Tensor [size, 1, 28, 28]) =
   Layer.conv2d_
     5 (* ksize *)
@@ -36,12 +36,12 @@ let linear2 {q : Nat} =
   Layer.linear
     {[q]}
     1024 (* input_dim *)
-    Mnist_helper.label_count (* output_dim *)
+    MnistHelper.label_count (* output_dim *)
     vs
     Layer.Activation.none
 in
 let adam = Optimizer.adam vs learning_rate in
-let model (size : Nat) (is_training : Bool) (xs : Tensor [size, Mnist_helper.image_dim]) =
+let model (size : Nat) (is_training : Bool) (xs : Tensor [size, MnistHelper.image_dim]) =
   Tensor.reshape [size, 1, 28, 28] xs
   |> Layer.forward (conv2d1 {size})
   |> Tensor.max_pool2d
@@ -62,28 +62,28 @@ let train_model (size : Nat) = model size true in
 let test_model (size : Nat) = model size false in
 (range 1 epochs) |> List.iter (fun(batch_idx : Int) ->
   let (batch_images, batch_labels) =
-    Dataset_helper.train_batch
+    DatasetHelper.train_batch
       batch_size
-      Mnist_helper.train_images
-      Mnist_helper.train_labels
-      Mnist_helper.test_images
-      Mnist_helper.test_labels
+      MnistHelper.train_images
+      MnistHelper.train_labels
+      MnistHelper.test_images
+      MnistHelper.test_labels
       batch_idx
   in
   let loss =
     Tensor.cross_entropy_for_logits
-      _ {Mnist_helper.label_count}
+      _ {MnistHelper.label_count}
       (train_model batch_size batch_images) batch_labels
   in
   Optimizer.backward_step adam loss;
   if mod batch_idx 50 == 0 then
     let test_accuracy =
-      Dataset_helper.batch_accuracy
-        _ _ {Mnist_helper.label_count}
+      DatasetHelper.batch_accuracy
+        _ _ {MnistHelper.label_count}
         batch_size
         test_model
-        Mnist_helper.test_images
-        Mnist_helper.test_labels
+        MnistHelper.test_images
+        MnistHelper.test_labels
     in
     (* print_int batch_idx *)
     print_float (Tensor.float_value loss);
