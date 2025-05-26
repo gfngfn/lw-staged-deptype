@@ -11,6 +11,7 @@ import Control.Monad.Trans.State
 import Data.Foldable (foldrM)
 import Data.Function ((&))
 import Data.Map qualified as Map
+import Lwsd.Syntax qualified as LwsdSyntax
 import Safe.Exact (zipExactMay)
 import Surface.BindingTime.AnalysisError
 import Surface.BindingTime.Constraint
@@ -470,16 +471,18 @@ extractConstraintsFromExprArgsForType btenv bt ann argsWithBityReq = do
   pure (args', constraints)
 
 extractConstraintsFromTypeExpr :: BindingTimeEnv -> BTypeExpr -> M (BTypeExpr, BIType, [Constraint Span])
-extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
+extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) = do
+  spanInFile <- askSpanInFile ann
   case typeExprMain of
     TyName tyName args -> do
       (args', bityBaseArgs, constraints) <-
         case (tyName, args) of
-          ("Nat", []) -> pure ([], [], [CEqual ann bt (BTConst BT0)])
-          ("Int", []) -> pure ([], [], [])
-          ("Float", []) -> pure ([], [], [])
-          ("Bool", []) -> pure ([], [], [])
-          ("Unit", []) -> pure ([], [], [])
+          ("Nat", []) ->
+            pure ([], [], [CEqual ann bt (BTConst BT0)])
+          (_, []) ->
+            case LwsdSyntax.validatePrimBaseType tyName of
+              Just _tyPrimBase -> pure ([], [], [])
+              Nothing -> analysisError $ UnknownTypeOrInvalidArgs spanInFile tyName args
           ("List", [TypeArg tye]) -> do
             (tyeElem, bity@(BIType btElem _), cs) <- extractConstraintsFromTypeExpr btenv tye
             pure ([TypeArg tyeElem], [bity], cs ++ [CLeq ann bt btElem])
@@ -492,8 +495,7 @@ extractConstraintsFromTypeExpr btenv (TypeExpr (bt, ann) typeExprMain) =
           ("Tensor", [ExprArg eList]) -> do
             (exprArgs, cs) <- extractConstraintsFromExprArgsForType btenv bt ann [(eList, bityNatList)]
             pure (map ExprArg exprArgs, [], cs)
-          (_, _) -> do
-            spanInFile <- askSpanInFile ann
+          (_, _) ->
             analysisError $ UnknownTypeOrInvalidArgs spanInFile tyName args
       let tye' = TypeExpr (bt, ann) (TyName tyName args')
       pure (tye', BIType bt (BITyBase bityBaseArgs), constraints)
