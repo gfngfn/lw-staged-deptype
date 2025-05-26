@@ -1,7 +1,6 @@
 let batch_size = 256 in
 let epochs = 5000 in
 let learning_rate = 0.001 in
-let relu = () in (* TODO *)
 
 (* let device = Device.cuda_if_available () in *)
 let vs = Var_store.create "cnn" () in
@@ -34,7 +33,7 @@ let linear1 {q : Nat} =
     1024 (* input_dim *)
     1024 (* output_dim *)
     vs
-    relu
+    Layer.Activation.relu
 in
 (* let a = if true then linear1 else (fun(b : Int) -> 0) in *)
 let linear2 {q : Nat} =
@@ -43,7 +42,7 @@ let linear2 {q : Nat} =
     1024 (* input_dim *)
     Mnist_helper.label_count (* output_dim *)
     vs
-    ()
+    Layer.Activation.none
 in
 let adam = Optimizer.adam vs learning_rate in
 let model (size : Nat) (is_training : Bool) (xs : Tensor [size, Mnist_helper.image_dim]) = (* TODO *)

@@ -177,6 +177,7 @@ data AssPrimBaseType
   | ATyPrimUnit
   | ATyPrimBool
   | ATyPrimString
+  | ATyPrimActivation
   | ATyPrimVarStore
   | ATyPrimOptimizer
   deriving stock (Eq, Show)
@@ -188,6 +189,7 @@ validatePrimBaseType = \case
   "Unit" -> Just ATyPrimUnit
   "Bool" -> Just ATyPrimBool
   "String" -> Just ATyPrimString
+  "Activation" -> Just ATyPrimActivation
   "VarStore" -> Just ATyPrimVarStore
   "Optimizer" -> Just ATyPrimOptimizer
   _ -> Nothing

@@ -523,6 +523,7 @@ instance Disp AssPrimBaseType where
     ATyPrimBool -> "Bool"
     ATyPrimUnit -> "Unit"
     ATyPrimString -> "String"
+    ATyPrimActivation -> "Activation"
     ATyPrimVarStore -> "VarStore"
     ATyPrimOptimizer -> "Optimizer"
 
@@ -882,6 +883,8 @@ instance Disp Ass1BuiltIn where
     A1BITensorNoGrad -> "Tensor.no_grad"
     A1BITensorFloatValue -> "Tensor.float_value"
     A1BITensorMaxPool2d k l m n padding1 padding2 ksize1 ksize2 stride1 stride2 -> "Tensor.max_pool2d" <> param (disps [k, l, m, n, padding1, padding2, ksize1, ksize2, stride1, stride2])
+    A1BILayerActivationRelu -> "Layer.Activation.relu"
+    A1BILayerActivationNone -> "Layer.Activation.none"
     A1BILayerLinear ns input_dim output_dim -> "Layer.linear" <> param (dispListLiteral ns <> "," <+> disps [input_dim, output_dim])
     A1BILayerForward shape1 shape2 -> "Layber.forward" <> param (dispListLiteral shape1 <> "," <+> dispListLiteral shape2)
     A1BILayerConv2d l m n ksize stride padding input_dim output_dim -> "Layer.conv2d" <> param (disps [l, m, n, ksize, stride, padding, input_dim, output_dim])

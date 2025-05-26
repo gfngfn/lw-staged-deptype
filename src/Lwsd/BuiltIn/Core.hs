@@ -197,6 +197,8 @@ data Ass1BuiltIn
   | A1BITensorNoGrad
   | A1BITensorFloatValue
   | A1BITensorMaxPool2d Int Int Int Int Int Int Int Int Int Int
+  | A1BILayerActivationRelu
+  | A1BILayerActivationNone
   | A1BILayerLinear [Int] Int Int
   | A1BILayerForward [Int] [Int]
   | A1BILayerConv2d Int Int Int Int Int Int Int Int
@@ -303,6 +305,8 @@ validateExternalName1 = \case
   "tensor__backward" -> pure A1BITensorBackward
   "tensor__no_grad" -> pure A1BITensorNoGrad
   "tensor__float_value" -> pure A1BITensorFloatValue
+  "layer__activation__relu" -> pure A1BILayerActivationRelu
+  "layer__activation__none" -> pure A1BILayerActivationNone
   "var_store__create" -> pure A1BIVarStoreCreate
   "optimizer__adam" -> pure A1BIOptimizerAdam
   "optimizer__backward_step" -> pure A1BIOptimizerBackwardStep
