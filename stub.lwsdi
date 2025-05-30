@@ -50,7 +50,7 @@ module List = struct
 end
 
 module Device = struct
-  val ~cuda_if_available : Unit -> Unit (* TODO: introduce `Device` *)
+  val ~cuda_if_available : Unit -> Device
     external (builtin = "device__cuda_if_available", surface = "cuda_if_available")
 end
 
@@ -123,7 +123,7 @@ module Tensor = struct
 end
 
 module VarStore = struct
-  val create : String -> Unit -> VarStore
+  val create : String -> Device -> Unit -> VarStore
     external (builtin = "var_store__create", surface = "create")
 end
 
@@ -185,11 +185,10 @@ module DatasetHelper = struct
     {ntrain : Nat} ->
     {ntest : Nat} ->
     {imgdim : Nat} ->
+    Device ->
     (batch_size : Nat) ->
     &(Tensor %[ntrain, imgdim] ->
       Tensor %[ntrain] ->
-      Tensor %[ntest, imgdim] ->
-      Tensor %[ntest] ->
       Int ->
       Tensor %[batch_size, imgdim] * Tensor %[batch_size]
     )

@@ -1225,8 +1225,9 @@ validateIntLiteral trav = \case
   (IA0ExprArg a0e, loc) -> do
     spanInFile <- askSpanInFile loc
     typeError trav $ NotAnIntLitArgAtStage0 spanInFile a0e
-  (IA0TypeArg _a0tye, _loc) -> do
-    error "TODO (error): validateIntLiteral, IA0TypeArg"
+  (IA0TypeArg a0tye, loc) -> do
+    spanInFile <- askSpanInFile loc
+    typeError trav $ NotAValueArgAtStage0 spanInFile a0tye
 
 validateIntListLiteral :: trav -> (IntermediateArgForAss0Type, Span) -> M trav [Int]
 validateIntListLiteral trav = \case
@@ -1241,8 +1242,9 @@ validateIntListLiteral trav = \case
   (IA0ExprArg a0e, loc) -> do
     spanInFile <- askSpanInFile loc
     typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
-  (IA0TypeArg _a0tye, _loc) -> do
-    error "TODO (error): validateIntLiteral, IA0TypeArg"
+  (IA0TypeArg a0tye, loc) -> do
+    spanInFile <- askSpanInFile loc
+    typeError trav $ NotAValueArgAtStage0 spanInFile a0tye
 
 data IntermediateArgForAss0Type
   = IA0ExprArg Ass0Expr

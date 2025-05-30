@@ -23,6 +23,7 @@ data TypeErrorF sv
   | UnknownTypeOrInvalidArityAtStage1 SpanInFile TypeName Int
   | NotAnIntLitArgAtStage0 SpanInFile (Ass0ExprF sv)
   | NotAnIntListLitArgAtStage0 SpanInFile (Ass0ExprF sv)
+  | NotAValueArgAtStage0 SpanInFile (Ass0TypeExprF sv)
   | TypeContradictionAtStage0 SpanInFile (Ass0TypeExprF sv) (Ass0TypeExprF sv)
   | TypeContradictionAtStage1 SpanInFile (Ass1TypeExprF sv) (Ass1TypeExprF sv)
   | NotABoolTypeForStage0 SpanInFile (Ass0TypeExprF sv)

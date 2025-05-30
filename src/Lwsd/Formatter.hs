@@ -523,6 +523,7 @@ instance Disp AssPrimBaseType where
     ATyPrimBool -> "Bool"
     ATyPrimUnit -> "Unit"
     ATyPrimString -> "String"
+    ATyPrimDevice -> "Device"
     ATyPrimActivation -> "Activation"
     ATyPrimVarStore -> "VarStore"
     ATyPrimOptimizer -> "Optimizer"
@@ -619,6 +620,8 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
       "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
     NotAnIntListLitArgAtStage0 spanInFile a0e ->
       "An argument expression at stage 0 is not an integer list literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
+    NotAValueArgAtStage0 spanInFile a0tye ->
+      "Not a value argument:" <+> disp a0tye <+> disp spanInFile
     TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
       "Type contradiction at stage 0"
         <+> disp spanInFile

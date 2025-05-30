@@ -2,8 +2,8 @@ let batch_size = 256 in
 let epochs = 5000 in
 let learning_rate = 0.001 in
 
-(* let device = Device.cuda_if_available () in *)
-let vs = VarStore.create "cnn" () in
+let device = Device.cuda_if_available () in
+let vs = VarStore.create "cnn" device () in
 let conv2d1 {size : Nat} (t : Tensor [size, 1, 28, 28]) =
   Layer.conv2d_
     5 (* ksize *)
@@ -24,17 +24,17 @@ let conv2d2 {size : Nat} (t : Tensor [size, 32, 12, 12]) =
     vs
     t
 in
-let linear1 {q : Nat} =
+let linear1 {size : Nat} =
   Layer.linear
-    {[q]}
+    {[size]}
     1024 (* input_dim *)
     1024 (* output_dim *)
     vs
     Layer.Activation.relu
 in
-let linear2 {q : Nat} =
+let linear2 {size : Nat} =
   Layer.linear
-    {[q]}
+    {[size]}
     1024 (* input_dim *)
     MnistHelper.label_count (* output_dim *)
     vs
@@ -64,10 +64,9 @@ let test_model (size : Nat) = model size false in
   let (batch_images, batch_labels) =
     DatasetHelper.train_batch
       batch_size
+      device
       MnistHelper.train_images
       MnistHelper.train_labels
-      MnistHelper.test_images
-      MnistHelper.test_labels
       batch_idx
   in
   let loss =
@@ -80,6 +79,7 @@ let test_model (size : Nat) = model size false in
     let test_accuracy =
       DatasetHelper.batch_accuracy
         _ _ {MnistHelper.label_count}
+        device
         batch_size
         test_model
         MnistHelper.test_images
