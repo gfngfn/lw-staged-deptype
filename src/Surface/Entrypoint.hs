@@ -88,17 +88,17 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
             Lwsd.Entrypoint.compileTimeOnly = compileTimeOnly
           }
   stub <- TextIO.readFile stubFilePath
-  case LwsdParser.parseBinds stub of
+  let sourceSpecOfStub =
+        SourceSpec
+          { LocationInFile.source = stub,
+            LocationInFile.inputFilePath = stubFilePath
+          }
+  case LwsdParser.parseBinds sourceSpecOfStub stub of
     Left err -> do
       putSectionLine "parse error of stub:"
-      putStrLn err
+      putRenderedLines err
       failure
     Right declsInStub -> do
-      let sourceSpecOfStub =
-            SourceSpec
-              { LocationInFile.source = stub,
-                LocationInFile.inputFilePath = stubFilePath
-              }
       (r, stateAfterTraversingStub@TypecheckState {assVarDisplay}) <-
         runReaderT (Lwsd.Entrypoint.typecheckStub sourceSpecOfStub declsInStub) lwArg
       case r of
@@ -114,10 +114,10 @@ handle Argument {inputFilePath, stubFilePath, optimize, distributeIf, displayWid
                   { LocationInFile.source = source,
                     LocationInFile.inputFilePath = inputFilePath
                   }
-          case Parser.parseExpr source of
+          case Parser.parseExpr sourceSpecOfInput source of
             Left err -> do
               putSectionLine "parse error:"
-              putStrLn err
+              putRenderedLines err
               failure
             Right e -> do
               putSectionLine "parsed expression:"

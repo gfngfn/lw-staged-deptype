@@ -8,6 +8,7 @@ module Lwsd.SrcSyntax
     ExprMain,
     LamBinder,
     TypeName,
+    TypeVar (..),
     TypeExprF (..),
     TypeExprMainF (..),
     TypeExpr,
@@ -38,6 +39,8 @@ data Literal e
   = LitInt Int
   | LitFloat Double
   | LitUnit
+  | LitBool Bool
+  | LitString Text
   | LitList [e]
   | LitVec [Int]
   | LitMat [[Int]]
@@ -55,6 +58,7 @@ data ExprMainF ann
   | App (ExprF ann) (ExprF ann)
   | LetIn Var [LamBinderF ann] (ExprF ann) (ExprF ann)
   | LetRecIn Var [LamBinderF ann] (TypeExprF ann) (ExprF ann) (ExprF ann)
+  | LetTupleIn Var Var (ExprF ann) (ExprF ann)
   | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)
   | As (ExprF ann) (TypeExprF ann)
   | Bracket (ExprF ann)
@@ -64,6 +68,7 @@ data ExprMainF ann
   | AppOptOmitted (ExprF ann)
   | LetOpenIn Var (ExprF ann)
   | Sequential (ExprF ann) (ExprF ann)
+  | Tuple (ExprF ann) (ExprF ann) -- TODO: generalize tuples
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 ExprMainF)
 
@@ -82,16 +87,21 @@ type LamBinder = LamBinderF Span
 
 type TypeName = Text
 
+newtype TypeVar = TypeVar Text
+  deriving stock (Eq, Show)
+
 data TypeExprF ann = TypeExpr ann (TypeExprMainF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 TypeExprF)
 
 data TypeExprMainF ann
   = TyName TypeName [ArgForTypeF ann]
+  | TyVar TypeVar
   | TyArrow (Maybe Var, TypeExprF ann) (TypeExprF ann)
   | TyCode (TypeExprF ann)
   | TyOptArrow (Var, TypeExprF ann) (TypeExprF ann)
   | TyRefinement Var (TypeExprF ann) (ExprF ann)
+  | TyProduct (TypeExprF ann) (TypeExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 TypeExprMainF)
 
@@ -114,7 +124,7 @@ data BindF ann = Bind ann (BindMainF ann)
   deriving (Eq1, Show1) via (Generically1 BindF)
 
 data BindMainF ann
-  = BindVal Stage Var BindVal
+  = BindVal Stage Var (BindValF ann)
   | BindModule Var [BindF ann]
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 BindMainF)
@@ -122,7 +132,7 @@ data BindMainF ann
 type Bind = BindF Span
 
 data BindValF ann
-  = BindValExternal (TypeExprF ann) External
+  = BindValExternal [TypeVar] (TypeExprF ann) External
   | BindValNormal (ExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 BindValF)

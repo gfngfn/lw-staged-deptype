@@ -80,7 +80,13 @@ putRenderedLinesAtStage1 v = do
 typecheckStub :: SourceSpec -> [Bind] -> M (Either TypeError (TypeEnv, SigRecord, [AssBind]), TypecheckState)
 typecheckStub sourceSpecOfStub bindsInStub = do
   tcConfig <- makeConfig sourceSpecOfStub
-  let tcState = TypecheckState {nextVarIndex = 0, assVarDisplay = Map.empty}
+  let tcState =
+        TypecheckState
+          { nextVarIndex = 0,
+            assVarDisplay = Map.empty,
+            nextTypeVarIndex = 0,
+            assTypeVarDisplay = Map.empty
+          }
       initialTypeEnv = TypeEnv.empty
   pure $
     first (mapLeft fst) $
@@ -162,31 +168,31 @@ handle' = do
   Argument {inputFilePath, stubFilePath} <- ask
   lift $ putStrLn "Lightweight Dependent Types via Staging"
   stub <- lift $ TextIO.readFile stubFilePath
-  case Parser.parseBinds stub of
+  let sourceSpecOfStub =
+        SourceSpec
+          { LocationInFile.source = stub,
+            LocationInFile.inputFilePath = stubFilePath
+          }
+  case Parser.parseBinds sourceSpecOfStub stub of
     Left err -> do
       putSectionLine "parse error of stub:"
-      lift $ putStrLn err
+      putRenderedLines err
       failure
     Right bindsInStub -> do
       source <- lift $ TextIO.readFile inputFilePath
-      case Parser.parseExpr source of
+      let sourceSpecOfInput =
+            SourceSpec
+              { LocationInFile.source = source,
+                LocationInFile.inputFilePath = inputFilePath
+              }
+      case Parser.parseExpr sourceSpecOfInput source of
         Left err -> do
           putSectionLine "parse error of source:"
-          lift $ putStrLn err
+          putRenderedLines err
           failure
         Right e -> do
           putSectionLine "parsed expression:"
           putRenderedLinesAtStage0 e
-          let sourceSpecOfInput =
-                SourceSpec
-                  { LocationInFile.source = source,
-                    LocationInFile.inputFilePath = inputFilePath
-                  }
-              sourceSpecOfStub =
-                SourceSpec
-                  { LocationInFile.source = stub,
-                    LocationInFile.inputFilePath = stubFilePath
-                  }
           typecheckAndEval sourceSpecOfStub bindsInStub sourceSpecOfInput e
 
 -- Returns a boolean that represents success or failure

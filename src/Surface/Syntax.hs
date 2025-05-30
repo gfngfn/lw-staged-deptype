@@ -28,6 +28,8 @@ data Literal e
   = LitInt Int
   | LitFloat Double
   | LitUnit
+  | LitBool Bool
+  | LitString Text
   | LitList [e]
   | LitVec [Int]
   | LitMat [[Int]]
@@ -43,8 +45,10 @@ data ExprMainF ann
   | App (ExprF ann) (ExprF ann)
   | LetIn Var [LamBinderF ann] (ExprF ann) (ExprF ann)
   | LetRecIn Var [LamBinderF ann] (TypeExprF ann) (ExprF ann) (ExprF ann)
+  | LetTupleIn Var Var (ExprF ann) (ExprF ann)
   | LetOpenIn Var (ExprF ann)
   | Sequential (ExprF ann) (ExprF ann)
+  | Tuple (ExprF ann) (ExprF ann)
   | IfThenElse (ExprF ann) (ExprF ann) (ExprF ann)
   | As (ExprF ann) (TypeExprF ann)
   | LamOpt (Var, TypeExprF ann) (ExprF ann)
@@ -90,6 +94,8 @@ mapMLiteral f = \case
   LitInt n -> pure $ LitInt n
   LitFloat r -> pure $ LitFloat r
   LitUnit -> pure LitUnit
+  LitBool b -> pure $ LitBool b
+  LitString t -> pure $ LitString t
   LitList es -> LitList <$> mapM f es
   LitVec ns -> pure $ LitVec ns
   LitMat nss -> pure $ LitMat nss

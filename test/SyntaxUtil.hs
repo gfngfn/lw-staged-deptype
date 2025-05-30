@@ -8,6 +8,8 @@ type TypeExprVoid = TypeExprF ()
 
 type ExprVoid = ExprF ()
 
+type BindVoid = BindF ()
+
 typ :: TypeExprMainF () -> TypeExprVoid
 typ = TypeExpr ()
 
@@ -16,6 +18,9 @@ tyInt = typ (TyName "Int" [])
 
 tyBool :: TypeExprVoid
 tyBool = typ (TyName "Bool" [])
+
+tyVar :: Text -> TypeExprVoid
+tyVar a = typ (TyVar (TypeVar a))
 
 tyNormalVec :: ExprVoid -> TypeExprVoid
 tyNormalVec e = typ (TyName "Vec" [ExprArgNormal e])
@@ -120,7 +125,7 @@ a0bracket :: Ass1ExprText -> Ass0ExprText
 a0bracket = A0Bracket
 
 sa0tyInt :: StrictAss0TypeExprText
-sa0tyInt = SA0TyPrim A0TyInt Nothing
+sa0tyInt = SA0TyPrim (A0TyPrimBase ATyPrimInt) Nothing
 
 sa0nondepTyArrow :: StrictAss0TypeExprText -> StrictAss0TypeExprText -> StrictAss0TypeExprText
 sa0nondepTyArrow sa0tye1 = SA0TyArrow (Nothing, sa0tye1)
@@ -138,7 +143,7 @@ a1escape :: Ass0ExprText -> Ass1ExprText
 a1escape = A1Escape
 
 a1tyInt :: Ass1TypeExprText
-a1tyInt = A1TyPrim A1TyInt
+a1tyInt = A1TyPrim (A1TyPrimBase ATyPrimInt)
 
 a1tyVec :: Ass0ExprText -> Ass1TypeExprText
 a1tyVec a0e = A1TyPrim (a1TyVec a0e)

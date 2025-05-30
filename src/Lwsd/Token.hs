@@ -6,9 +6,11 @@ where
 
 import Control.Monad.Combinators
 import Data.Either.Extra
+import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as Text
 import GHC.Base
 import GHC.Generics
 import Text.Megaparsec qualified as Mp
@@ -31,7 +33,9 @@ data Token
   | TokPersistent
   | TokSemicolon
   | TokUnderscore
+  | TokOpFlipApp
   | TokBar
+  | TokProd
   | TokVecLeft
   | TokVecRight
   | TokMatLeft
@@ -39,6 +43,7 @@ data Token
   | TokLower Text
   | TokUpper Text
   | TokLongLower ([Text], Text)
+  | TokTypeVar Text
   | TokInt Int
   | TokFloat Double
   | TokString Text
@@ -56,16 +61,70 @@ data Token
   | TokEnd
   | TokExternal
   | TokOpen
+  | TokTrue
+  | TokFalse
   | TokOpAdd Text
   | TokOpMult Text
   | TokOpComp Text
   deriving stock (Ord, Eq, Show, Generic)
 
 instance Mp.VisualStream [Located Token] where
-  showTokens _proxy = show
+  showTokens _proxy tokens =
+    unwords (map (\(Located _ t) -> showToken t) (NonEmpty.toList tokens))
+
+showToken :: Token -> String
+showToken = \case
+  TokLeftParen -> "("
+  TokRightParen -> ")"
+  TokLeftBrace -> "{"
+  TokRightBrace -> "}"
+  TokLeftSquare -> "["
+  TokRightSquare -> "]"
+  TokArrow -> "->"
+  TokEqual -> "="
+  TokColon -> ":"
+  TokComma -> ","
+  TokBracket -> "&"
+  TokEscape -> "~"
+  TokPersistent -> "%"
+  TokSemicolon -> ";"
+  TokUnderscore -> "_"
+  TokOpFlipApp -> "|>"
+  TokBar -> "|"
+  TokProd -> "*"
+  TokVecLeft -> "[|"
+  TokVecRight -> "|]"
+  TokMatLeft -> "[#"
+  TokMatRight -> "#]"
+  TokLower lower -> Text.unpack lower
+  TokUpper upper -> Text.unpack upper
+  TokLongLower (mods, lower) -> Text.unpack (Text.intercalate "." mods <> lower)
+  TokTypeVar a -> '\'' : Text.unpack a
+  TokInt n -> show n
+  TokFloat r -> show r
+  TokString s -> show s
+  TokFun -> "fun"
+  TokRec -> "rec"
+  TokLet -> "let"
+  TokIn -> "in"
+  TokIf -> "if"
+  TokThen -> "then"
+  TokElse -> "else"
+  TokAs -> "as"
+  TokVal -> "val"
+  TokModule -> "module"
+  TokStruct -> "struct"
+  TokEnd -> "end"
+  TokExternal -> "external"
+  TokOpen -> "open"
+  TokTrue -> "true"
+  TokFalse -> "false"
+  TokOpAdd op -> Text.unpack op
+  TokOpMult op -> Text.unpack op
+  TokOpComp op -> Text.unpack op
 
 instance Mp.TraversableStream [Located Token] where
-  reachOffset _n posState = (Nothing, posState)
+  reachOffset _n posState = (Nothing, posState) -- TODO
 
 keywordMap :: Map Text Token
 keywordMap =
@@ -83,7 +142,9 @@ keywordMap =
       ("struct", TokStruct),
       ("end", TokEnd),
       ("external", TokExternal),
-      ("open", TokOpen)
+      ("open", TokOpen),
+      ("true", TokTrue),
+      ("false", TokFalse)
     ]
 
 lowerIdentOrKeyword :: Tokenizer Token
@@ -103,12 +164,14 @@ token =
       TokArrow <$ Mp.chunk "->",
       TokColon <$ Mp.single ':',
       TokComma <$ Mp.single ',',
+      Mp.try (TokOpComp <$> operatorLong '='),
       TokEqual <$ Mp.single '=',
       TokBracket <$ Mp.single '&',
       TokEscape <$ Mp.single '~',
       TokPersistent <$ Mp.single '%',
       TokSemicolon <$ Mp.single ';',
       TokUnderscore <$ Mp.single '_',
+      TokOpFlipApp <$ Mp.chunk "|>",
       TokVecLeft <$ Mp.chunk "[|",
       TokVecRight <$ Mp.chunk "|]",
       TokMatLeft <$ Mp.chunk "[#",
@@ -118,11 +181,12 @@ token =
       TokBar <$ Mp.single '|',
       TokOpAdd <$> operator '+',
       TokOpAdd <$> operator '-',
-      TokOpMult <$> operator '*',
+      Mp.try (TokOpMult <$> operatorLong '*'),
+      TokProd <$ Mp.single '*',
       TokOpMult <$> operator '/',
-      TokOpComp <$> operator '=',
       TokOpComp <$> operator '<',
       TokOpComp <$> operator '>',
+      TokTypeVar <$> (Mp.single '\'' *> lowerIdent),
       lowerIdentOrKeyword,
       Mp.try (TokLongLower <$> longLowerIdent),
       TokUpper <$> upperIdent,

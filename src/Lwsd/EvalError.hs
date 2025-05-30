@@ -21,6 +21,8 @@ data BugF sv
   | NotAMatrix (Ass0ValF sv)
   | NotABoolean (Ass0ValF sv)
   | NotAUnit (Ass0ValF sv)
+  | NotAString (Ass0ValF sv)
+  | NotATuple (Ass0ValF sv)
   | FoundSymbol (AssVarF sv) Symbol
   | FoundAss0Val (AssVarF sv) (Ass0ValF sv)
   | InconsistentAppBuiltInArity1 BuiltInArity1 (Ass0ValF sv)
@@ -31,7 +33,7 @@ data BugF sv
 data EvalErrorF sv
   = Bug (BugF sv)
   | AssertionFailure SpanInFile Ass1TypeVal Ass1TypeVal
-  | RefinementAssertionFailure SpanInFile (Ass0ValF sv)
+  | RefinementAssertionFailure SpanInFile (Ass0ValF sv) (Ass0ValF sv)
   deriving stock (Eq, Show, Functor)
 
 type Bug = BugF StaticVar

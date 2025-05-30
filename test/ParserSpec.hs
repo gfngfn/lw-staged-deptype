@@ -6,13 +6,21 @@ import Lwsd.Parser qualified as Parser
 import Lwsd.SrcSyntax
 import SyntaxUtil
 import Test.Hspec
+import Util.FrontError (FrontError)
+import Util.LocationInFile (SourceSpec (..))
 import Util.TokenUtil (Span (..))
 
-parseExpr :: Text -> Either String ExprVoid
-parseExpr s = fmap void (Parser.parseExpr s)
+parseExpr :: Text -> Either FrontError ExprVoid
+parseExpr s = fmap void (Parser.parseExpr (SourceSpec s "test") s)
 
-parseTypeExpr :: Text -> Either String TypeExprVoid
-parseTypeExpr s = fmap void (Parser.parseTypeExpr s)
+parseExprWithLoc :: Text -> Either FrontError Expr
+parseExprWithLoc s = Parser.parseExpr (SourceSpec s "test") s
+
+parseTypeExpr :: Text -> Either FrontError TypeExprVoid
+parseTypeExpr s = fmap void (Parser.parseTypeExpr (SourceSpec s "test") s)
+
+parseBinds :: Text -> Either FrontError [BindVoid]
+parseBinds s = fmap (map void) (Parser.parseBinds (SourceSpec s "test") s)
 
 exprLoc :: Int -> Int -> ExprMainF Span -> Expr
 exprLoc start end = Expr (Span start end)
@@ -139,6 +147,12 @@ spec = do
     it "parses binary operators (6)" $
       parseExpr "2 +=+ f 3"
         `shouldBe` pure (app (app (var "+=+") (litInt 2)) (app (var "f") (litInt 3)))
+    it "parses binary operators (7)" $
+      parseExpr "2 == f 3"
+        `shouldBe` pure (app (app (var "==") (litInt 2)) (app (var "f") (litInt 3)))
+    it "parses binary operators (8)" $
+      parseExpr "2 <= f 3"
+        `shouldBe` pure (app (app (var "<=") (litInt 2)) (app (var "f") (litInt 3)))
     it "parses upcasts" $
       parseExpr "[| |] as Vec %n"
         `shouldBe` pure (upcast (litVec []) (tyPersVec (var "n")))
@@ -157,6 +171,36 @@ spec = do
     it "parses sequentials (2)" $
       parseExpr "x; y; z"
         `shouldBe` pure (expr (Sequential (var "x") (expr (Sequential (var "y") (var "z")))))
+    it "parses sequentials (3)" $
+      parseExpr "let x = y in f 42; z"
+        `shouldBe` pure (expr (LetIn "x" [] (var "y") (expr (Sequential (app (var "f") (litInt 42)) (var "z")))))
+    it "parses sequentials (4)" $
+      parseExpr "f 42; let x = y in z"
+        `shouldBe` pure (expr (Sequential (app (var "f") (litInt 42)) (expr (LetIn "x" [] (var "y") (var "z")))))
+    it "parses sequentials (5)" $
+      parseExpr "f 42; if p 57 then x else y"
+        `shouldBe` pure (expr (Sequential (app (var "f") (litInt 42)) (expr (IfThenElse (app (var "p") (litInt 57)) (var "x") (var "y")))))
+    it "parses tuples (1)" $
+      parseExpr "(x, y)"
+        `shouldBe` pure (expr (Tuple (var "x") (var "y")))
+    it "parses tuples (2)" $
+      parseExpr "(f x, y + 1)"
+        `shouldBe` pure (expr (Tuple (app (var "f") (var "x")) (add (var "y") (litInt 1))))
+    it "parses tuples (3)" $
+      parseExpr "(x, (y, z))"
+        `shouldBe` pure (expr (Tuple (var "x") (expr (Tuple (var "y") (var "z")))))
+    it "parses tuples (4)" $
+      parseExpr "((x, y), z)"
+        `shouldBe` pure (expr (Tuple (expr (Tuple (var "x") (var "y"))) (var "z")))
+    it "parses let-tuples" $
+      parseExpr "let (x, y) = s in t"
+        `shouldBe` pure (expr (LetTupleIn "x" "y" (var "s") (var "t")))
+    it "parses |> (1)" $
+      parseExpr "x |> f"
+        `shouldBe` pure (app (var "f") (var "x"))
+    it "parses |> (2)" $
+      parseExpr "x + 42 |> f |> g"
+        `shouldBe` pure (app (var "g") (app (var "f") (add (var "x") (litInt 42))))
     it "ignores first comments" $
       parseExpr "(* comment *) 42"
         `shouldBe` pure (litInt 42)
@@ -229,25 +273,25 @@ spec = do
         `shouldBe` pure (tyRefinement "n" tyInt (app (app (var "<=") (litInt 0)) (var "n")))
   describe "Parser.parseExpr (with code locations)" $ do
     it "parses integer literals" $
-      Parser.parseExpr "42"
+      parseExprWithLoc "42"
         `shouldBe` pure (exprLoc 0 2 $ Literal (LitInt 42))
     it "parses float literals" $
-      Parser.parseExpr "5.7"
+      parseExprWithLoc "5.7"
         `shouldBe` pure (exprLoc 0 3 $ Literal (LitFloat 5.7))
     it "parses vector literals" $
-      Parser.parseExpr "[| 3; 14; 1592 |]"
+      parseExprWithLoc "[| 3; 14; 1592 |]"
         `shouldBe` pure (exprLoc 0 17 $ Literal (LitVec [3, 14, 1592]))
     it "parses matrix literals" $
-      Parser.parseExpr "[# 3, 14; 159, 2; 653, 5 #]"
+      parseExprWithLoc "[# 3, 14; 159, 2; 653, 5 #]"
         `shouldBe` pure (exprLoc 0 27 $ Literal (LitMat [[3, 14], [159, 2], [653, 5]]))
     it "parses variables" $
-      Parser.parseExpr "foo_bar"
+      parseExprWithLoc "foo_bar"
         `shouldBe` pure (exprLoc 0 7 $ short "foo_bar")
     it "parses variables with module prefixes" $
-      Parser.parseExpr "Foo.Bar.x"
+      parseExprWithLoc "Foo.Bar.x"
         `shouldBe` pure (exprLoc 0 9 $ long ["Foo", "Bar"] "x")
     it "parses applications (1)" $
-      Parser.parseExpr "x y"
+      parseExprWithLoc "x y"
         `shouldBe` pure (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))
     it "parses applications (2)" $ do
       let e =
@@ -255,7 +299,7 @@ spec = do
               App
                 (exprLoc 0 3 $ App (exprLoc 0 1 $ short "x") (exprLoc 2 3 $ short "y"))
                 (exprLoc 4 5 $ short "z")
-      Parser.parseExpr "x y z"
+      parseExprWithLoc "x y z"
         `shouldBe` pure e
     it "parses applications (3)" $ do
       let e =
@@ -263,7 +307,7 @@ spec = do
               App
                 (exprLoc 0 1 $ short "x")
                 (exprLoc 2 7 $ App (exprLoc 3 4 $ short "y") (exprLoc 5 6 $ short "z"))
-      Parser.parseExpr "x (y z)"
+      parseExprWithLoc "x (y z)"
         `shouldBe` pure e
     it "parses brackets" $ do
       let e =
@@ -271,7 +315,7 @@ spec = do
               App
                 (exprLoc 0 1 $ short "f")
                 (exprLoc 2 8 $ Bracket (exprLoc 3 8 $ App (exprLoc 4 5 $ short "g") (exprLoc 6 7 $ short "x")))
-      Parser.parseExpr "f &(g x)"
+      parseExprWithLoc "f &(g x)"
         `shouldBe` pure e
     it "parses lambda abstractions" $ do
       let ty =
@@ -285,10 +329,10 @@ spec = do
                 Nothing
                 ("x", ty)
                 (exprLoc 31 34 $ App (exprLoc 31 32 $ short "x") (exprLoc 33 34 $ short "y"))
-      Parser.parseExpr "fun (x : (n : Int) -> Bool) -> x y"
+      parseExprWithLoc "fun (x : (n : Int) -> Bool) -> x y"
         `shouldBe` pure e
     it "parses optional applications (1)" $
-      Parser.parseExpr "x {y}"
+      parseExprWithLoc "x {y}"
         `shouldBe` pure (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ short "x") (exprLoc 3 4 $ short "y"))
     it "parses optional applications (2)" $ do
       let e =
@@ -296,5 +340,32 @@ spec = do
               AppOptGiven
                 (exprLoc 0 5 $ AppOptGiven (exprLoc 0 1 $ short "x") (exprLoc 3 4 $ short "y"))
                 (exprLoc 7 8 $ short "z")
-      Parser.parseExpr "x {y} {z}"
+      parseExprWithLoc "x {y} {z}"
         `shouldBe` pure e
+  describe "parseBinds (without code locations)" $ do
+    it "parses single, stage-1 normal binding" $
+      parseBinds "val n = 42"
+        `shouldBe` pure [Bind () (BindVal Stage1 "n" (BindValNormal (litInt 42)))]
+    it "parses single, stage-0 normal binding" $
+      parseBinds "val ~n = 42"
+        `shouldBe` pure [Bind () (BindVal Stage0 "n" (BindValNormal (litInt 42)))]
+    it "parses single, stage-0 external binding" $
+      parseBinds "val ~foo : Int -> Bool external (builtin = \"bar\", surface = \"qux\")"
+        `shouldBe` pure
+          [ Bind () $
+              BindVal Stage0 "foo" $
+                BindValExternal
+                  []
+                  (tyNondepFun tyInt tyBool)
+                  [("builtin", "bar"), ("surface", "qux")]
+          ]
+    it "parses single, stage-0 external binding (polymorphic)" $
+      parseBinds "val ~app 'a 'b : ('a -> 'b) -> 'a -> 'b external (builtin = \"app\", surface = \"app\")"
+        `shouldBe` pure
+          [ Bind () $
+              BindVal Stage0 "app" $
+                BindValExternal
+                  [TypeVar "a", TypeVar "b"]
+                  (tyNondepFun (tyNondepFun (tyVar "a") (tyVar "b")) (tyNondepFun (tyVar "a") (tyVar "b")))
+                  [("builtin", "app"), ("surface", "app")]
+          ]

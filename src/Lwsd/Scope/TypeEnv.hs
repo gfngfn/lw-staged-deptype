@@ -1,8 +1,11 @@
 module Lwsd.Scope.TypeEnv
   ( TypeEnv,
+    TypeVarEntry (..),
     empty,
     addVal,
     findVal,
+    addTypeVar,
+    findTypeVar,
     addModule,
     findModule,
     appendSigRecord,
@@ -12,37 +15,52 @@ where
 import Data.List.Extra qualified as List
 import Lwsd.Scope.SigRecord (ModuleEntry, SigRecord, ValEntry)
 import Lwsd.Scope.SigRecord qualified as SigRecord
-import Lwsd.SrcSyntax (Var)
+import Lwsd.SrcSyntax (TypeVar, Var)
+import Lwsd.Syntax (AssTypeVar)
 import Prelude
 
 -- TODO (enhance): optimize internal representation
 data TypeEnv = TypeEnv
   { envVals :: [(Var, ValEntry)],
+    envTypeVars :: [(TypeVar, TypeVarEntry)],
     envModules :: [(Var, ModuleEntry)]
   }
 
+newtype TypeVarEntry = TypeVarEntry AssTypeVar
+
 empty :: TypeEnv
-empty = TypeEnv {envVals = [], envModules = []}
+empty = TypeEnv {envVals = [], envTypeVars = [], envModules = []}
 
 addVal :: Var -> ValEntry -> TypeEnv -> TypeEnv
-addVal x valEntry (TypeEnv revValEntries revModEntries) =
-  TypeEnv ((x, valEntry) : revValEntries) revModEntries
+addVal x valEntry tyEnv =
+  tyEnv {envVals = (x, valEntry) : tyEnv.envVals}
 
 findVal :: Var -> TypeEnv -> Maybe ValEntry
-findVal x0 (TypeEnv revValEntries _revModEntries) =
+findVal x0 tyEnv =
   List.firstJust
     (\(x, valEntry) -> if x == x0 then Just valEntry else Nothing)
-    revValEntries
+    tyEnv.envVals
+
+-- TODO: eliminate the duplication of same names
+addTypeVar :: TypeVar -> TypeVarEntry -> TypeEnv -> TypeEnv
+addTypeVar tyvar tyVarEntry tyEnv =
+  tyEnv {envTypeVars = (tyvar, tyVarEntry) : tyEnv.envTypeVars}
+
+findTypeVar :: TypeVar -> TypeEnv -> Maybe TypeVarEntry
+findTypeVar tyvar0 tyEnv =
+  List.firstJust
+    (\(tyvar, tyVarEntry) -> if tyvar == tyvar0 then Just tyVarEntry else Nothing)
+    tyEnv.envTypeVars
 
 addModule :: Var -> ModuleEntry -> TypeEnv -> TypeEnv
-addModule m modEntry (TypeEnv revValEntries revModEntries) =
-  TypeEnv revValEntries ((m, modEntry) : revModEntries)
+addModule m modEntry tyEnv =
+  tyEnv {envModules = (m, modEntry) : tyEnv.envModules}
 
 findModule :: Var -> TypeEnv -> Maybe ModuleEntry
-findModule m0 (TypeEnv _revValEntries revModEntries) =
+findModule m0 tyEnv =
   List.firstJust
     (\(m, modEntry) -> if m == m0 then Just modEntry else Nothing)
-    revModEntries
+    tyEnv.envModules
 
 appendSigRecord :: TypeEnv -> SigRecord -> TypeEnv
 appendSigRecord =

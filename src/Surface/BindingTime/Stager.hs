@@ -50,10 +50,14 @@ stageExpr0Main = \case
     Lwsd.LetIn x [] (stageExpr0 e1) (stageExpr0 e2)
   LetRecIn _x _params _tye _e1 _e2 ->
     error "Bug: Stager.stageExpr0Main, LetRecIn"
+  LetTupleIn xL xR e1 e2 ->
+    Lwsd.LetTupleIn xL xR (stageExpr0 e1) (stageExpr0 e2)
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr0 e)
   Sequential e1 e2 ->
     Lwsd.Sequential (stageExpr0 e1) (stageExpr0 e2)
+  Tuple e1 e2 ->
+    Lwsd.Tuple (stageExpr0 e1) (stageExpr0 e2)
   IfThenElse e0 e1 e2 ->
     Lwsd.IfThenElse (stageExpr0 e0) (stageExpr0 e1) (stageExpr0 e2)
   As e1 tye2 ->
@@ -89,10 +93,14 @@ stageExpr1Main = \case
     Lwsd.LetIn x [] (stageExpr1 e1) (stageExpr1 e2)
   LetRecIn _x _params _tye _e1 _e2 ->
     error "Bug: Stager.stageExpr0Main, LetRecIn"
+  LetTupleIn xL xR e1 e2 ->
+    Lwsd.LetTupleIn xL xR (stageExpr1 e1) (stageExpr1 e2)
   LetOpenIn m e ->
     Lwsd.LetOpenIn m (stageExpr1 e)
   Sequential e1 e2 ->
     Lwsd.Sequential (stageExpr1 e1) (stageExpr1 e2)
+  Tuple e1 e2 ->
+    Lwsd.Tuple (stageExpr1 e1) (stageExpr1 e2)
   IfThenElse e0 e1 e2 ->
     Lwsd.IfThenElse (stageExpr1 e0) (stageExpr1 e1) (stageExpr1 e2)
   As e1 tye2 ->
@@ -143,6 +151,8 @@ convertLiteral conv = \case
   LitInt n -> Lwsd.LitInt n
   LitFloat r -> Lwsd.LitFloat r
   LitUnit -> Lwsd.LitUnit
+  LitBool b -> Lwsd.LitBool b
+  LitString t -> Lwsd.LitString t
   LitList es -> Lwsd.LitList (map conv es)
   LitVec ns -> Lwsd.LitVec ns
   LitMat nss -> Lwsd.LitMat nss
