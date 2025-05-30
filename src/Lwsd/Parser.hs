@@ -47,6 +47,9 @@ longOrShortLower =
   expectToken (^? #_TokLongLower)
     <|> (fmap ([],) <$> lower)
 
+typeVar :: P (Located TypeVar)
+typeVar = fmap TypeVar <$> expectToken (^? #_TokTypeVar)
+
 standaloneOp :: P (Located Text)
 standaloneOp = paren (noLoc operator)
 
@@ -75,7 +78,9 @@ operator :: P (Located Var)
 operator = compOp <|> addOp <|> multOp
 
 multOp :: P (Located Var)
-multOp = expectToken (^? #_TokOpMult)
+multOp =
+  (fmap (const "*") <$> expectToken (^? #_TokProd))
+    <|> expectToken (^? #_TokOpMult)
 
 addOp :: P (Located Var)
 addOp = expectToken (^? #_TokOpAdd)
@@ -106,6 +111,8 @@ exprAtom, expr :: P Expr
         <|> (located (Literal . LitList) <$> list letin)
         <|> (located (Literal . LitVec) <$> vec)
         <|> (located (Literal . LitMat) <$> mat)
+        <|> (makeBool True <$> token TokTrue)
+        <|> (makeBool False <$> token TokFalse)
         <|> (located Var <$> longOrShortLower)
         <|> try (located (\x -> Var ([], x)) <$> standaloneOp)
         <|> try (makeLitUnit <$> token TokLeftParen <*> token TokRightParen)
@@ -116,6 +123,7 @@ exprAtom, expr :: P Expr
         makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
         makeTuple (Located loc (e1, e2)) = Expr loc (Tuple e1 e2)
         makeEnclosed (Located loc (Expr _ eMain)) = Expr loc eMain
+        makeBool b loc = Expr loc (Literal (LitBool b))
 
     staged :: P Expr
     staged =
@@ -231,10 +239,12 @@ typeExpr = fun
     atom :: P TypeExpr
     atom =
       (makeNamed <$> upper)
+        <|> (makeTypeVar <$> typeVar)
         <|> try (makeRefinement <$> paren ((,,) <$> (noLoc boundIdent <* token TokColon) <*> (fun <* token TokBar) <*> expr))
         <|> (makeEnclosed <$> paren fun)
       where
         makeNamed (Located loc t) = TypeExpr loc (TyName t [])
+        makeTypeVar (Located loc a) = TypeExpr loc (TyVar a)
         makeRefinement (Located loc (x, tye, e)) = TypeExpr loc (TyRefinement x tye e)
         makeEnclosed (Located loc (TypeExpr _ tyeMain)) = TypeExpr loc tyeMain
 
@@ -266,10 +276,18 @@ typeExpr = fun
         <|> try (ExprArgNormal <$> exprAtom)
         <|> (TypeArg <$> atom)
 
+    prod :: P TypeExpr
+    prod =
+      try (makeProduct <$> app <*> (token TokProd *> app))
+        <|> app
+      where
+        makeProduct ty1@(TypeExpr loc1 _) ty2@(TypeExpr loc2 _) =
+          TypeExpr (mergeSpan loc1 loc2) (TyProduct ty1 ty2)
+
     fun :: P TypeExpr
     fun =
       try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
-        <|> app
+        <|> prod
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
           case funDomSpec of
@@ -285,7 +303,7 @@ typeExpr = fun
     funDom =
       (makeFunDom False <$> brace ((,) <$> (noLoc lower <* token TokColon) <*> fun))
         <|> try (makeFunDom True <$> paren ((,) <$> (noLoc lower <* token TokColon) <*> fun))
-        <|> ((Nothing,) <$> app)
+        <|> ((Nothing,) <$> prod)
       where
         makeFunDom isMandatory (Located loc (x, tyeDom)) = (Just (isMandatory, loc, x), tyeDom)
 
@@ -308,10 +326,10 @@ valBinder =
 
 bindVal :: P (BindVal, Span)
 bindVal =
-  (makeBindValExternal <$> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+  (makeBindValExternal <$> many (noLoc typeVar) <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
     <|> (makeBindValNormal <$> (token TokEqual *> expr))
   where
-    makeBindValExternal ty (Located locLast ext) = (BindValExternal ty ext, locLast)
+    makeBindValExternal tyvars ty (Located locLast ext) = (BindValExternal tyvars ty ext, locLast)
     makeBindValNormal e@(Expr locLast _) = (BindValNormal e, locLast)
 
 external :: P (Located External)

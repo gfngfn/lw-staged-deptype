@@ -156,7 +156,7 @@ dispLetOpenIn req m e =
 dispLetTupleIn :: (Disp var, Disp expr) => Associativity -> var -> var -> expr -> expr -> Doc Ann
 dispLetTupleIn req xL xR e1 e2 =
   deepenParenWhen (req <= FunDomain) $
-    group ("let (" <+> disp xL <> "," <+> disp xR <> ") =" <+> disp e1 <+> "in" <> line <> disp e2)
+    group ("let (" <> disp xL <> "," <+> disp xR <> ") =" <+> disp e1 <+> "in" <> line <> disp e2)
 
 dispSequential :: (Disp expr) => Associativity -> expr -> expr -> Doc Ann
 dispSequential req e1 e2 =
@@ -198,6 +198,9 @@ dispBracket e =
 dispEscape :: (Disp expr) => expr -> Doc Ann
 dispEscape e =
   stagingOperatorStyle "~" <> stage0Style (dispGen Atomic e)
+
+dispTypeVar :: AssTypeVar -> Doc Ann
+dispTypeVar (AssTypeVar n) = "'a" <> disp n
 
 dispListType :: (Disp ty) => Associativity -> ty -> Doc Ann
 dispListType req tye =
@@ -285,6 +288,7 @@ instance (Disp e) => Disp (Literal e) where
     LitInt n -> pretty n
     LitFloat r -> pretty r
     LitUnit -> "()"
+    LitBool b -> if b then "true" else "false"
     LitString t -> dispStringLiteral t
     LitList es -> dispListLiteral es
     LitVec ns -> dispVectorLiteral ns
@@ -325,10 +329,12 @@ instance Disp (TypeExprF ann) where
 instance Disp (TypeExprMainF ann) where
   dispGen req = \case
     TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
+    TyVar (TypeVar tyvar) -> disp tyvar
     TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     TyCode tye1 -> dispBracket tye1
     TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
     TyRefinement x tye1 e2 -> "(" <> disp x <+> ":" <+> disp tye1 <+> "|" <+> disp e2 <+> ")"
+    TyProduct tye1 tye2 -> dispProductType req tye1 tye2
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
@@ -340,18 +346,23 @@ instance Disp BuiltInArity1 where
   dispGen _ = \case
     BIGenVadd -> "GEN_VADD"
     BIMtranspose m n -> "MTRANSPOSE@{" <> disps [m, n] <> "}"
+    BIDeviceCudaIfAvailable -> "DEVICE.CUDA_IF_AVAILABLE"
     BITensorGenZeros -> "TENSOR.GEN_ZEROS"
     BITensorGenGrad -> "TENSOR.GEN_GRAD"
     BITensorGenZeroGrad -> "TENSOR.GEN_ZERO_GRAD"
     BITensorGenSubUpdate -> "TENSOR.GEN_SUB_UPDATE"
     BITensorGenCountEqual -> "TENSOR.GEN_COUNT_EQUAL"
+    BITensorGenDropout -> "TENSOR.GEN_DROPOUT"
 
 instance Disp BuiltInArity2 where
   dispGen _ = \case
     BIAdd -> "+"
     BISub -> "-"
     BIMult -> "*"
+    BIDiv -> "//"
+    BIMod -> "mod"
     BILeq -> "<="
+    BIEqual -> "=="
     BIAnd -> "&&"
     BIListMap -> "LIST.MAP"
     BIGenVconcat -> "GEN_VCONCAT"
@@ -362,6 +373,7 @@ instance Disp BuiltInArity2 where
     BIDropAt -> "DROP_AT"
     BIBroadcastable -> "BROADCASTABLE"
     BIBroadcast -> "BROADCAST"
+    BIReshapeable -> "RESHAPEABLE"
     BIListAppend -> "LIST.APPEND"
     BIListIter -> "LIST.ITER"
     BITensorGenAdd -> "TENSOR.GEN_ADD"
@@ -370,23 +382,47 @@ instance Disp BuiltInArity2 where
     BITensorGenCrossEntropyForLogits -> "TENSOR.GEN_CROSS_ENTROPY_FOR_LOGITS"
     BITensorAdd ns -> "TENSOR.ADD@{" <> dispListLiteral ns <> "}"
     BITensorMm k m n -> "TENSOR.MM@{" <> disps [k, m, n] <> "}"
+    BITensorGenReshape -> "TENSOR.GEN_RESHAPE"
+    BILayerGenForward -> "LAYER.GEN_FORWARD"
 
 instance Disp BuiltInArity3 where
   dispGen _ = \case
     BIGenMconcatVert -> "GEN_MCONCAT_VERT"
     BITensorGenMm -> "TENSOR.GEN_MM"
+    BILayerGenLinear -> "LAYER.GEN_LINEAR"
+
+instance Disp BuiltInArity4 where
+  dispGen _ = \case
+    BIDatasetHelperGenTrainBatch -> "DATASET_HELPER.GEN_TRAIN_BATCH"
+
+instance Disp BuiltInArity5 where
+  dispGen _ = \case
+    BIDatasetHelperGenBatchAccuracy -> "DATASET_HELPER.GEN_BATCH_ACCURACY"
+
+instance Disp BuiltInArity8 where
+  dispGen _ = \case
+    BILayerGenConv2d -> "LAYER.GEN_CONV2D"
+
+instance Disp BuiltInArity10 where
+  dispGen _ = \case
+    BITensorGenMaxPool2d -> "TENSOR.GEN_MAX_POOL2D"
 
 instance Disp BuiltIn where
   dispGen req = \case
     BuiltInArity1 bi1 -> dispGen req bi1
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
+    BuiltInArity4 bi4 -> dispGen req bi4
+    BuiltInArity5 bi5 -> dispGen req bi5
+    BuiltInArity8 bi8 -> dispGen req bi8
+    BuiltInArity10 bi10 -> dispGen req bi10
 
 instance (Disp e) => Disp (Surface.Literal e) where
   dispGen _ = \case
     Surface.LitInt n -> pretty n
     Surface.LitFloat r -> pretty r
     Surface.LitUnit -> "()"
+    Surface.LitBool b -> if b then "true" else "false"
     Surface.LitString t -> dispStringLiteral t
     Surface.LitList es -> dispListLiteral es
     Surface.LitVec ns -> dispVectorLiteral ns
@@ -480,13 +516,21 @@ instance (Disp sv) => Disp (Ass1ExprF sv) where
     A1IfThenElse a1e0 a1e1 a1e2 -> dispIfThenElse req a1e0 a1e1 a1e2
     A1Escape a0e1 -> dispEscape a0e1
 
+instance Disp AssPrimBaseType where
+  dispGen _req = \case
+    ATyPrimInt -> "Int"
+    ATyPrimFloat -> "Float"
+    ATyPrimBool -> "Bool"
+    ATyPrimUnit -> "Unit"
+    ATyPrimString -> "String"
+    ATyPrimDevice -> "Device"
+    ATyPrimActivation -> "Activation"
+    ATyPrimVarStore -> "VarStore"
+    ATyPrimOptimizer -> "Optimizer"
+
 instance Disp Ass0PrimType where
   dispGen req = \case
-    A0TyInt -> "Int"
-    A0TyFloat -> "Float"
-    A0TyBool -> "Bool"
-    A0TyUnit -> "Unit"
-    A0TyString -> "String"
+    A0TyPrimBase tyPrimBase -> disp tyPrimBase
     A0TyTensor [n] -> dispNameWithArgs req "Vec" disp [n]
     A0TyTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
@@ -495,6 +539,7 @@ instance (Disp sv) => Disp (Ass0TypeExprF sv) where
   dispGen req = \case
     A0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     A0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
+    A0TyVar atyvar -> dispTypeVar atyvar
     A0TyList a0tye Nothing -> dispListType req a0tye
     A0TyList a0tye (Just a0ePred) -> dispInternalRefinementListType req a0tye a0ePred
     A0TyProduct a0tye1 a0tye2 -> dispProductType req a0tye1 a0tye2
@@ -506,6 +551,7 @@ instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
   dispGen req = \case
     SA0TyPrim a0tyPrim Nothing -> disp a0tyPrim
     SA0TyPrim a0tyPrim (Just a0ePred) -> dispInternalRefinementType req a0tyPrim a0ePred
+    SA0TyVar atyvar -> dispTypeVar atyvar
     SA0TyList sa0tye Nothing -> dispListType req sa0tye
     SA0TyList sa0tye (Just a0ePred) -> dispInternalRefinementListType req sa0tye a0ePred
     SA0TyProduct sa0tye1 sa0tye2 -> dispProductType req sa0tye1 sa0tye2
@@ -514,11 +560,8 @@ instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
 
 instance (Disp sv) => Disp (Ass1PrimTypeF sv) where
   dispGen req = \case
-    A1TyInt -> "Int"
-    A1TyFloat -> "Float"
-    A1TyBool -> "Bool"
-    A1TyUnit -> "Unit"
-    A1TyString -> "String"
+    A1TyPrimBase tyPrimBase ->
+      disp tyPrimBase
     A1TyTensor a0eList ->
       case a0eList of
         A0Literal (ALitList [a0e]) -> dispNameWithArgs req "Vec" dispPersistent [a0e]
@@ -561,6 +604,8 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
   dispGen _ = \case
     UnboundVar spanInFile ms x ->
       "Unbound variable" <+> dispLongName ms x <+> disp spanInFile
+    UnboundTypeVar spanInFile (TypeVar a) ->
+      "Unbound type variable" <+> disp a <+> disp spanInFile
     UnboundModule spanInFile m ->
       "Unbound module" <+> disp m <+> disp spanInFile
     NotAStage0Var spanInFile x ->
@@ -575,6 +620,8 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
       "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
     NotAnIntListLitArgAtStage0 spanInFile a0e ->
       "An argument expression at stage 0 is not an integer list literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
+    NotAValueArgAtStage0 spanInFile a0tye ->
+      "Not a value argument:" <+> disp a0tye <+> disp spanInFile
     TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
       "Type contradiction at stage 0"
         <+> disp spanInFile
@@ -625,6 +672,8 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
       "Cannot use persistent arguments at stage 0" <+> disp spanInFile
     CannotUseNormalArgAtStage1 spanInFile ->
       "Cannot use normal arguments at stage 1" <+> disp spanInFile
+    CannotUseTypeVarAtStage1 spanInFile ->
+      "Cannot use type variables at stage 1" <+> disp spanInFile
     VarOccursFreelyInAss0Type spanInFile x a0result ->
       "Variable" <+> disp x <+> "occurs in stage-0 type" <+> stage0Style (disp a0result) <+> disp spanInFile
     VarOccursFreelyInAss1Type spanInFile x a1result ->
@@ -755,14 +804,51 @@ instance (Disp sv) => Disp (Ass0ValF sv) where
 
 instance (Disp v) => Disp (Ass0PartialBuiltInApp v) where
   dispGen req = \case
-    A0PartialBuiltInApp1With0 bi1 -> disp bi1
-    A0PartialBuiltInApp2With0 bi2 -> disp bi2
-    A0PartialBuiltInApp2With1 bi2 a0v1 -> f (disp bi2 <+> disp a0v1)
-    A0PartialBuiltInApp3With0 bi3 -> disp bi3
-    A0PartialBuiltInApp3With1 bi3 a0v1 -> f (disp bi3 <+> disp a0v1)
-    A0PartialBuiltInApp3With2 bi3 a0v1 a0v2 -> f (disp bi3 <+> disp a0v1 <+> disp a0v2)
+    A0PartialBuiltInAppArity1 pba1 -> dispGen req pba1
+    A0PartialBuiltInAppArity2 pba2 -> dispGen req pba2
+    A0PartialBuiltInAppArity3 pba3 -> dispGen req pba3
+    A0PartialBuiltInAppArity4 pba4 -> dispGen req pba4
+    A0PartialBuiltInAppArity6 pba6 -> dispGen req pba6
+    _ -> "TODO: Disp (Ass0PartialBuiltInApp v)"
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity1 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity1Nil bi1 -> disp bi1
+    PartialBuiltInAppArity1Cons pba2 v -> f (disp pba2 <+> dispGen Atomic v)
     where
       f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity2 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity2Nil bi2 -> disp bi2
+    PartialBuiltInAppArity2Cons pba3 v -> f (disp pba3 <+> dispGen Atomic v)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity3 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity3Nil bi3 -> disp bi3
+    PartialBuiltInAppArity3Cons pba4 v -> f (disp pba4 <+> dispGen Atomic v)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity4 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity4Nil bi4 -> disp bi4
+    PartialBuiltInAppArity4Cons pba5 v -> f (disp pba5 <+> dispGen Atomic v)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity5 v) where
+  dispGen req = \case
+    PartialBuiltInAppArity5Nil bi5 -> disp bi5
+    PartialBuiltInAppArity5Cons pba6 v -> f (disp pba6 <+> dispGen Atomic v)
+    where
+      f = deepenParenWhen (req <= Atomic)
+
+instance (Disp v) => Disp (Ass0PartialBuiltInAppArity6 v) where
+  dispGen _req = \case
+    PartialBuiltInAppArity6Cons _pba7 _v -> "TODO: Disp (Ass0PartialBuiltInAppArity6 v)"
 
 instance Disp Ass1BuiltIn where
   dispGen _ = \case
@@ -778,13 +864,18 @@ instance Disp Ass1BuiltIn where
     A1BITensorArgmax ns1 n2 -> "Tensor.argmax" <> param (dispListLiteral ns1 <> "," <+> disp n2)
     A1BITensorCrossEntropyForLogits n1 n2 -> "Tensor.cross_entropy_for_logits" <> param (disps [n1, n2])
     A1BITensorCountEqual ns -> "Tensor.count_equal" <> param (dispListLiteral ns)
+    A1BITensorDropout shape -> "Tensor.dropout" <> param (dispListLiteral shape)
+    A1BITensorReshape shape1 shape2 -> "Tensor.reshape" <> param (dispListLiteral shape1 <> "," <+> dispListLiteral shape2)
     A1BITensorAdd ns1 ns2 -> "Tensor.add" <> param (dispListLiteral ns1 <> "," <+> dispListLiteral ns2)
     A1BITensorMm k m n -> "Tensor.mm" <> param (disps [k, m, n])
     A1BIAdd -> "+"
     A1BISub -> "-"
     A1BIMult -> "*"
+    A1BIDiv -> "//"
     A1BIFloatDiv -> "/"
+    A1BIMod -> "mod"
     A1BILeq -> "<="
+    A1BIEqual -> "=="
     A1BIFloat -> "float"
     A1BIPrintFloat -> "print_float"
     A1BIListAppend -> "List.append"
@@ -794,6 +885,17 @@ instance Disp Ass1BuiltIn where
     A1BITensorBackward -> "Tensor.backward"
     A1BITensorNoGrad -> "Tensor.no_grad"
     A1BITensorFloatValue -> "Tensor.float_value"
+    A1BITensorMaxPool2d k l m n padding1 padding2 ksize1 ksize2 stride1 stride2 -> "Tensor.max_pool2d" <> param (disps [k, l, m, n, padding1, padding2, ksize1, ksize2, stride1, stride2])
+    A1BILayerActivationRelu -> "Layer.Activation.relu"
+    A1BILayerActivationNone -> "Layer.Activation.none"
+    A1BILayerLinear ns input_dim output_dim -> "Layer.linear" <> param (dispListLiteral ns <> "," <+> disps [input_dim, output_dim])
+    A1BILayerForward shape1 shape2 -> "Layber.forward" <> param (dispListLiteral shape1 <> "," <+> dispListLiteral shape2)
+    A1BILayerConv2d l m n ksize stride padding input_dim output_dim -> "Layer.conv2d" <> param (disps [l, m, n, ksize, stride, padding, input_dim, output_dim])
+    A1BIVarStoreCreate -> "Var_store.create"
+    A1BIOptimizerAdam -> "Optimizer.adam"
+    A1BIOptimizerBackwardStep -> "Optimizer.backward_step"
+    A1BIDatasetHelperTrainBatch n1 n2 n3 n4 -> "Dataset_helper.train_batch" <> param (disps [n1, n2, n3, n4])
+    A1BIDatasetHelperBatchAccuracy ntest imgdim n batchSize -> "Dataset_helper.batch_accuracy" <> param (disps [ntest, imgdim, n, batchSize])
     A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
     A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
     A1BIMnistHelperTestImages -> "Mnist_helper.test_images"
@@ -825,6 +927,7 @@ instance (Disp sv) => Disp (Ass0TypeValF sv) where
   dispGen req = \case
     A0TyValPrim a0tyvPrim Nothing -> dispGen req a0tyvPrim
     A0TyValPrim a0tyvPrim (Just a0vPred) -> dispInternalRefinementType req a0tyvPrim a0vPred
+    A0TyValVar atyvar -> dispTypeVar atyvar
     A0TyValList a0tyv1 Nothing -> dispListType req a0tyv1
     A0TyValList a0tyv1 (Just a0vPred) -> dispInternalRefinementListType req a0tyv1 a0vPred
     A0TyValProduct a0tyv1 a0tyv2 -> dispProductType req a0tyv1 a0tyv2
@@ -833,11 +936,7 @@ instance (Disp sv) => Disp (Ass0TypeValF sv) where
 
 instance Disp Ass0PrimTypeVal where
   dispGen req = \case
-    A0TyValInt -> "Int"
-    A0TyValFloat -> "Float"
-    A0TyValBool -> "Bool"
-    A0TyValUnit -> "Unit"
-    A0TyValString -> "String"
+    A0TyValPrimBase tyPrimBase -> disp tyPrimBase
     A0TyValTensor [n] -> dispNameWithArgs req "Vec" disp [n]
     A0TyValTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
@@ -851,11 +950,7 @@ instance Disp Ass1TypeVal where
 
 instance Disp Ass1PrimTypeVal where
   dispGen req = \case
-    A1TyValInt -> "Int"
-    A1TyValFloat -> "Float"
-    A1TyValBool -> "Bool"
-    A1TyValUnit -> "Unit"
-    A1TyValString -> "String"
+    A1TyValPrimBase tyPrimBase -> disp tyPrimBase
     A1TyValTensor [n] -> dispNameWithArgs req "Vec" dispPersistent [n]
     A1TyValTensor [m, n] -> dispNameWithArgs req "Mat" dispPersistent [m, n]
     A1TyValTensor ns -> dispNameWithArgs req "Tensor" dispPersistentListLiteral [ns]
@@ -898,6 +993,8 @@ instance (Disp sv) => Disp (BugF sv) where
       "Not a Boolean:" <+> disp a0v
     NotAUnit a0v ->
       "Not a unit:" <+> disp a0v
+    NotAString a0v ->
+      "Not a string:" <+> disp a0v
     NotATuple a0v ->
       "Not a tuple:" <+> disp a0v
     FoundSymbol x symb ->
@@ -906,11 +1003,11 @@ instance (Disp sv) => Disp (BugF sv) where
       "Expected a symbol, but found a stage-0 value:" <+> disp a0v <+> "(bound to:" <+> disp x <> ")"
     InconsistentAppBuiltInArity1 bi1 a0v1 ->
       "Inconsistent application of a built-in function:"
-        <+> disp (Text.pack (show bi1))
+        <+> disp bi1
         <+> disp a0v1
     InconsistentAppBuiltInArity2 bi2 a0v1 a0v2 ->
       "Inconsistent application of a built-in function:"
-        <+> disp (Text.pack (show bi2))
+        <+> disp bi2
         <+> disp a0v1
         <+> disp a0v2
     BroadcastFailed ns1 ns2 ->
@@ -929,32 +1026,62 @@ instance (Disp sv) => Disp (EvalErrorF sv) where
         <> hardline
         <> "expected:"
         <> nest 2 (hardline <> disp a1tyv2)
-    RefinementAssertionFailure spanInFile a0v ->
+    RefinementAssertionFailure spanInFile a0vPred a0vTarget ->
       "Assertion failure of downcast"
         <+> disp spanInFile
         <> hardline
+        <> "predicate:"
+        <+> stage0Style (disp a0vPred)
+        <> hardline
         <> "got:"
-        <+> stage0Style (disp a0v)
+        <+> stage0Style (disp a0vTarget)
 
 instance Disp Bta.AnalysisError where
   dispGen _ = \case
-    Bta.UnboundVar spanInFile x ->
-      "Unbound variable" <+> disp x <+> disp spanInFile
+    Bta.UnboundVar spanInFile ms x ->
+      "Unbound variable" <+> disp (Text.intercalate "." (ms ++ [x])) <+> disp spanInFile
+    Bta.NotAVal spanInFile ms x ->
+      "Not a value:" <+> disp (Text.intercalate "." (ms ++ [x])) <+> disp spanInFile
+    Bta.NotAModule spanInFile m ->
+      "Not a module:" <+> disp m <+> disp spanInFile
     Bta.NotAFunction spanInFile bity ->
-      "Not a function;" <+> disp (show bity) <+> disp spanInFile
+      "Not a function;" <+> disp bity <+> disp spanInFile
     Bta.NotAnOptFunction spanInFile bity ->
-      "Not a function with optional parameter;" <+> disp (show bity) <+> disp spanInFile
+      "Not a function with optional parameter;" <+> disp bity <+> disp spanInFile
     Bta.NotABase spanInFile bity ->
-      "Not of base type;" <+> disp (show bity) <+> disp spanInFile
+      "Not of base type;" <+> disp bity <+> disp spanInFile
     Bta.NotATuple spanInFile bity ->
-      "Not a tuple;" <+> disp (show bity) <+> disp spanInFile
+      "Not a tuple;" <+> disp bity <+> disp spanInFile
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
     Bta.BITypeContradiction spanInFile bity1 bity2 ->
-      "Basic type contradiction;" <+> disp (show bity1) <> "," <+> disp (show bity2) <+> disp spanInFile
+      "Basic type contradiction;" <+> disp bity1 <> "," <+> disp bity2 <+> disp spanInFile
     Bta.UnknownTypeOrInvalidArgs spanInFile _tyName _args ->
       -- TODO (enhance): detailed report
       "Unknown type or invalid arguments" <+> disp spanInFile
+
+instance Disp Bta.BindingTime where
+  dispGen _req = \case
+    Bta.BTConst Bta.BT0 -> "0"
+    Bta.BTConst Bta.BT1 -> "1"
+    Bta.BTVar (Bta.BindingTimeVar n) -> "β" <> disp n
+
+instance (Disp bt) => Disp (Bta.BITypeF bt) where
+  dispGen _req (Bta.BIType bt btMain) =
+    dispGen Atomic btMain <> "^" <> dispGen Atomic bt
+
+instance (Disp bt) => Disp (Bta.BITypeMainF bt) where
+  dispGen req = \case
+    Bta.BITyBase [] ->
+      "●"
+    Bta.BITyBase (bt0 : bts) ->
+      deepenParenWhen (req <= Atomic) ("●" <+> List.foldl' (\doc bt -> doc <+> disp bt) (disp bt0) bts)
+    Bta.BITyProduct bt1 bt2 ->
+      deepenParenWhen (req <= Atomic) (dispGen Atomic bt1 <+> "*" <+> dispGen Atomic bt2)
+    Bta.BITyArrow bt1 bt2 ->
+      deepenParenWhen (req <= Atomic) (dispGen Atomic bt1 <+> "->" <+> dispGen Atomic bt2)
+    Bta.BITyOptArrow bt1 bt2 ->
+      deepenParenWhen (req <= Atomic) ("{" <> dispGen Atomic bt1 <> "} ->" <+> dispGen Atomic bt2)
 
 dispWithBindingTime :: (Disp exprMain) => Bta.BindingTimeConst -> exprMain -> Doc Ann
 dispWithBindingTime btc eMain =

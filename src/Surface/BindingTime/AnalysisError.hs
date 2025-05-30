@@ -9,7 +9,9 @@ import Util.LocationInFile (SpanInFile)
 import Prelude
 
 data AnalysisError
-  = UnboundVar SpanInFile Var
+  = UnboundVar SpanInFile [Var] Var
+  | NotAVal SpanInFile [Var] Var
+  | NotAModule SpanInFile Var
   | NotAFunction SpanInFile BIType
   | NotAnOptFunction SpanInFile BIType
   | NotABase SpanInFile BIType

@@ -8,6 +8,7 @@ module Util.TokenUtil
     upperIdent,
     longLowerIdent,
     operator,
+    operatorLong,
     integerLiteral,
     floatLiteral,
     stringLiteral,
@@ -85,6 +86,10 @@ opRestChar =
 operator :: Char -> Tokenizer Text
 operator firstChar =
   Text.pack <$> ((:) <$> Mp.single firstChar <*> (Mp.many opRestChar <* Mp.notFollowedBy opRestChar))
+
+operatorLong :: Char -> Tokenizer Text
+operatorLong firstChar =
+  Text.pack <$> ((:) <$> Mp.single firstChar <*> (Mp.some opRestChar <* Mp.notFollowedBy opRestChar))
 
 nonzeroDigit :: Tokenizer Char
 nonzeroDigit = Mp.satisfy (\c -> Char.isDigit c && c /= '0')

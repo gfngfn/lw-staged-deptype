@@ -19,6 +19,9 @@ parseExprWithLoc s = Parser.parseExpr (SourceSpec s "test") s
 parseTypeExpr :: Text -> Either FrontError TypeExprVoid
 parseTypeExpr s = fmap void (Parser.parseTypeExpr (SourceSpec s "test") s)
 
+parseBinds :: Text -> Either FrontError [BindVoid]
+parseBinds s = fmap (map void) (Parser.parseBinds (SourceSpec s "test") s)
+
 exprLoc :: Int -> Int -> ExprMainF Span -> Expr
 exprLoc start end = Expr (Span start end)
 
@@ -144,6 +147,12 @@ spec = do
     it "parses binary operators (6)" $
       parseExpr "2 +=+ f 3"
         `shouldBe` pure (app (app (var "+=+") (litInt 2)) (app (var "f") (litInt 3)))
+    it "parses binary operators (7)" $
+      parseExpr "2 == f 3"
+        `shouldBe` pure (app (app (var "==") (litInt 2)) (app (var "f") (litInt 3)))
+    it "parses binary operators (8)" $
+      parseExpr "2 <= f 3"
+        `shouldBe` pure (app (app (var "<=") (litInt 2)) (app (var "f") (litInt 3)))
     it "parses upcasts" $
       parseExpr "[| |] as Vec %n"
         `shouldBe` pure (upcast (litVec []) (tyPersVec (var "n")))
@@ -168,6 +177,9 @@ spec = do
     it "parses sequentials (4)" $
       parseExpr "f 42; let x = y in z"
         `shouldBe` pure (expr (Sequential (app (var "f") (litInt 42)) (expr (LetIn "x" [] (var "y") (var "z")))))
+    it "parses sequentials (5)" $
+      parseExpr "f 42; if p 57 then x else y"
+        `shouldBe` pure (expr (Sequential (app (var "f") (litInt 42)) (expr (IfThenElse (app (var "p") (litInt 57)) (var "x") (var "y")))))
     it "parses tuples (1)" $
       parseExpr "(x, y)"
         `shouldBe` pure (expr (Tuple (var "x") (var "y")))
@@ -330,3 +342,30 @@ spec = do
                 (exprLoc 7 8 $ short "z")
       parseExprWithLoc "x {y} {z}"
         `shouldBe` pure e
+  describe "parseBinds (without code locations)" $ do
+    it "parses single, stage-1 normal binding" $
+      parseBinds "val n = 42"
+        `shouldBe` pure [Bind () (BindVal Stage1 "n" (BindValNormal (litInt 42)))]
+    it "parses single, stage-0 normal binding" $
+      parseBinds "val ~n = 42"
+        `shouldBe` pure [Bind () (BindVal Stage0 "n" (BindValNormal (litInt 42)))]
+    it "parses single, stage-0 external binding" $
+      parseBinds "val ~foo : Int -> Bool external (builtin = \"bar\", surface = \"qux\")"
+        `shouldBe` pure
+          [ Bind () $
+              BindVal Stage0 "foo" $
+                BindValExternal
+                  []
+                  (tyNondepFun tyInt tyBool)
+                  [("builtin", "bar"), ("surface", "qux")]
+          ]
+    it "parses single, stage-0 external binding (polymorphic)" $
+      parseBinds "val ~app 'a 'b : ('a -> 'b) -> 'a -> 'b external (builtin = \"app\", surface = \"app\")"
+        `shouldBe` pure
+          [ Bind () $
+              BindVal Stage0 "app" $
+                BindValExternal
+                  [TypeVar "a", TypeVar "b"]
+                  (tyNondepFun (tyNondepFun (tyVar "a") (tyVar "b")) (tyNondepFun (tyVar "a") (tyVar "b")))
+                  [("builtin", "app"), ("surface", "app")]
+          ]

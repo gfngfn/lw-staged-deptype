@@ -15,6 +15,7 @@ import Prelude
 
 data TypeErrorF sv
   = UnboundVar SpanInFile [Var] Var
+  | UnboundTypeVar SpanInFile TypeVar
   | UnboundModule SpanInFile Var
   | NotAStage0Var SpanInFile Var
   | NotAStage1Var SpanInFile Var
@@ -22,6 +23,7 @@ data TypeErrorF sv
   | UnknownTypeOrInvalidArityAtStage1 SpanInFile TypeName Int
   | NotAnIntLitArgAtStage0 SpanInFile (Ass0ExprF sv)
   | NotAnIntListLitArgAtStage0 SpanInFile (Ass0ExprF sv)
+  | NotAValueArgAtStage0 SpanInFile (Ass0TypeExprF sv)
   | TypeContradictionAtStage0 SpanInFile (Ass0TypeExprF sv) (Ass0TypeExprF sv)
   | TypeContradictionAtStage1 SpanInFile (Ass1TypeExprF sv) (Ass1TypeExprF sv)
   | NotABoolTypeForStage0 SpanInFile (Ass0TypeExprF sv)
@@ -40,6 +42,7 @@ data TypeErrorF sv
   | CannotUseRefinementTypeAtStage1 SpanInFile
   | CannotUsePersistentArgAtStage0 SpanInFile
   | CannotUseNormalArgAtStage1 SpanInFile
+  | CannotUseTypeVarAtStage1 SpanInFile
   | VarOccursFreelyInAss0Type SpanInFile Var (ResultF Ass0TypeExprF sv)
   | VarOccursFreelyInAss1Type SpanInFile Var (ResultF Ass1TypeExprF sv)
   | InvalidMatrixLiteral SpanInFile Matrix.ConstructionError

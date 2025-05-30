@@ -12,4 +12,4 @@ ass0exprIsNonnegative =
   A0App (A0BuiltInName (BuiltInArity2 BILeq)) (A0Literal (ALitInt 0))
 
 tyNat :: Ass0TypeExpr
-tyNat = A0TyPrim A0TyInt (Just ass0exprIsNonnegative)
+tyNat = A0TyPrim (A0TyPrimBase ATyPrimInt) (Just ass0exprIsNonnegative)

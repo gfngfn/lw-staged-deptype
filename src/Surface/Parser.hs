@@ -105,6 +105,8 @@ exprAtom, expr :: P Expr
         <|> (located (Literal . LitList) <$> list letin)
         <|> (located (Literal . LitVec) <$> vec)
         <|> (located (Literal . LitMat) <$> mat)
+        <|> (makeBool True <$> token TokTrue)
+        <|> (makeBool False <$> token TokFalse)
         <|> (located Var <$> longOrShortLower)
         <|> try (located (\x -> Var ([], x)) <$> standaloneOp)
         <|> try (makeLitUnit <$> token TokLeftParen <*> token TokRightParen)
@@ -115,6 +117,7 @@ exprAtom, expr :: P Expr
         makeLitUnit loc1 loc2 = Expr (mergeSpan loc1 loc2) (Literal LitUnit)
         makeTuple (Located loc (e1, e2)) = Expr loc (Tuple e1 e2)
         makeEnclosed (Located loc (Expr _ eMain)) = Expr loc eMain
+        makeBool b loc = Expr loc (Literal (LitBool b))
 
     app :: P Expr
     app =

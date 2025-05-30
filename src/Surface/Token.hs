@@ -50,6 +50,8 @@ data Token
   | TokElse
   | TokAs
   | TokOpen
+  | TokTrue
+  | TokFalse
   | TokOpAdd Text
   | TokOpMult Text
   | TokOpComp Text
@@ -93,6 +95,8 @@ showToken = \case
   TokElse -> "else"
   TokAs -> "as"
   TokOpen -> "open"
+  TokTrue -> "true"
+  TokFalse -> "false"
   TokOpAdd op -> Text.unpack op
   TokOpMult op -> Text.unpack op
   TokOpComp op -> Text.unpack op
@@ -111,7 +115,9 @@ keywordMap =
       ("then", TokThen),
       ("else", TokElse),
       ("as", TokAs),
-      ("open", TokOpen)
+      ("open", TokOpen),
+      ("true", TokTrue),
+      ("false", TokFalse)
     ]
 
 lowerIdentOrKeyword :: Tokenizer Token
@@ -131,6 +137,7 @@ token =
       TokArrow <$ Mp.chunk "->",
       TokColon <$ Mp.single ':',
       TokComma <$ Mp.single ',',
+      Mp.try (TokOpComp <$> operatorLong '='),
       TokEqual <$ Mp.single '=',
       TokSemicolon <$ Mp.single ';',
       TokUnderscore <$ Mp.single '_',
@@ -145,7 +152,6 @@ token =
       TokOpAdd <$> operator '-',
       TokOpMult <$> operator '*',
       TokOpMult <$> operator '/',
-      TokOpComp <$> operator '=',
       TokOpComp <$> operator '<',
       TokOpComp <$> operator '>',
       lowerIdentOrKeyword,
