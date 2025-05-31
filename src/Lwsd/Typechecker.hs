@@ -610,12 +610,9 @@ instantiateGuidedByAppContext1 trav loc = go
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext1 spanInFile appCtx a1tye
 
--- validateEmptyRetAppContext :: String -> ResultF af StaticVar -> M trav (af StaticVar)
--- validateEmptyRetAppContext _ (Pure v) = pure v
--- validateEmptyRetAppContext msg _ = bug $ "non-empty RetAppContext; " ++ msg
-
 forceExpr0 :: trav -> TypeEnv -> Ass0TypeExpr -> Expr -> M trav Ass0Expr
 forceExpr0 trav tyEnv a0tyeReq e@(Expr loc eMain) = do
+  spanInFile <- askSpanInFile loc
   case eMain of
     Literal (LitList es) ->
       case a0tyeReq of
@@ -623,7 +620,7 @@ forceExpr0 trav tyEnv a0tyeReq e@(Expr loc eMain) = do
           a0es <- mapM (forceExpr0 trav tyEnv a0tyeElem) es
           pure $ A0Literal (ALitList a0es)
         _ ->
-          error "TODO (error): forceExpr0, not a List type"
+          typeError trav $ CannotForceType spanInFile a0tyeReq
     _ -> do
       (a0tye, a0e) <- typecheckExpr0Single trav tyEnv e
       (cast, _solution) <- makeAssertiveCast trav loc Set.empty a0tye a0tyeReq
@@ -663,7 +660,7 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
                 LitList es ->
                   case es of
                     [] ->
-                      error "TODO (error): typecheckExpr0, empty list literals"
+                      typeError trav $ CannotSynthesizeTypeFromExpr spanInFile
                     eFirst : esTail -> do
                       (a0tyeFirst, a0eFirst) <- typecheckExpr0Single trav tyEnv eFirst
                       a0esTail <- mapM (forceExpr0 trav tyEnv a0tyeFirst) esTail
@@ -784,8 +781,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
         (x0, tyeParam0, paramsRest) <-
           case params of
             MandatoryBinder (x0', tyeParam0') : paramsRest' -> pure (x0', tyeParam0', paramsRest')
-            OptionalBinder _ : _ -> error "TODO (error): LetRecIn, optional"
-            [] -> error "TODO (error): LetRecIn, empty param"
+            OptionalBinder _ : _ -> typeError trav $ LetRecParamsCannotStartWithOptional spanInFile
+            [] -> typeError trav $ LetRecRequiresNonEmptyParams spanInFile
         svFInner <- generateFreshVar (Just f)
         let afInner = AssVarStatic svFInner
         svX0 <- generateFreshVar (Just x0)
@@ -966,7 +963,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
               LitList es ->
                 case es of
                   [] ->
-                    error "TODO (error): typecheckExpr1, empty list literal"
+                    typeError trav $ CannotSynthesizeTypeFromExpr spanInFile
                   eFirst : esTail -> do
                     (a1tyeFirst, a1eFirst) <- typecheckExpr1Single trav tyEnv eFirst
                     a1esTail <-
@@ -1038,7 +1035,7 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
               (eq, _) <- makeEquation1 trav loc Set.empty a1tyeSynth a1tyeRec
               pure (Pure a1tyeRec, applyEquationCast loc eq (A1Lam (Just (af, a1tyeRec)) (ax1, a1tye1) a1e2))
         _ : _ ->
-          error "TODO (error): stage-1, Lam, non-empty AppContext"
+          error "TODO: stage-1, Lam, non-empty AppContext"
     App e1 e2 -> do
       (a1tye2, a1e2) <- typecheckExpr1Single trav tyEnv e2
       (result1, a1e1) <- typecheckExpr1 trav tyEnv (AppArg1 a1tye2 : appCtx) e1
@@ -1069,8 +1066,8 @@ typecheckExpr1 trav tyEnv appCtx (Expr loc eMain) = do
       (x0, tyeParam0, paramsRest) <-
         case params of
           MandatoryBinder (x0', tyeParam0') : paramsRest' -> pure (x0', tyeParam0', paramsRest')
-          OptionalBinder _ : _ -> error "TODO (error): LetRecIn, optional"
-          [] -> error "TODO (error): LetRecIn, empty param"
+          OptionalBinder _ : _ -> typeError trav $ LetRecParamsCannotStartWithOptional spanInFile
+          [] -> typeError trav $ LetRecRequiresNonEmptyParams spanInFile
       svFInner <- generateFreshVar (Just f)
       let afInner = AssVarStatic svFInner
       svX0 <- generateFreshVar (Just x0)
@@ -1213,33 +1210,45 @@ mapMPure f = go
     go (FillInferred0 a0e r) = FillInferred0 a0e <$> go r
     go (InsertInferred0 a0e r) = InsertInferred0 a0e <$> go r
 
-validateIntLiteral :: trav -> (IntermediateArgForAss0Type, Span) -> M trav Int
-validateIntLiteral trav = \case
-  (IA0ExprArg (A0Literal (ALitInt n)), _) ->
-    pure n
-  (IA0ExprArg a0e, loc) -> do
+validateExprArg0 :: trav -> (IntermediateArgForAss0Type, Span) -> M trav Ass0Expr
+validateExprArg0 trav = \case
+  (IA0ExprArg a0e, _loc) ->
+    pure a0e
+  (IA0TypeArg _a0tye, loc) -> do
     spanInFile <- askSpanInFile loc
-    typeError trav $ NotAnIntLitArgAtStage0 spanInFile a0e
-  (IA0TypeArg a0tye, loc) -> do
-    spanInFile <- askSpanInFile loc
-    typeError trav $ NotAValueArgAtStage0 spanInFile a0tye
+    typeError trav $ NotAValueArg spanInFile
 
-validateIntListLiteral :: trav -> (IntermediateArgForAss0Type, Span) -> M trav [Int]
-validateIntListLiteral trav = \case
-  (IA0ExprArg a0e@(A0Literal (ALitList a0es)), loc) -> do
+validateTypeArg0 :: trav -> (IntermediateArgForAss0Type, Span) -> M trav Ass0TypeExpr
+validateTypeArg0 trav = \case
+  (IA0ExprArg _, loc) -> do
     spanInFile <- askSpanInFile loc
-    mapM
-      ( \case
-          A0Literal (ALitInt n) -> pure n
-          _ -> typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
-      )
-      a0es
-  (IA0ExprArg a0e, loc) -> do
-    spanInFile <- askSpanInFile loc
-    typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
-  (IA0TypeArg a0tye, loc) -> do
-    spanInFile <- askSpanInFile loc
-    typeError trav $ NotAValueArgAtStage0 spanInFile a0tye
+    typeError trav $ NotATypeArg spanInFile
+  (IA0TypeArg a0tye, _loc) ->
+    pure a0tye
+
+validateIntLiteral :: trav -> Span -> Ass0Expr -> M trav Int
+validateIntLiteral trav loc a0e =
+  case a0e of
+    A0Literal (ALitInt n) ->
+      pure n
+    _ -> do
+      spanInFile <- askSpanInFile loc
+      typeError trav $ NotAnIntLitArgAtStage0 spanInFile a0e
+
+validateIntListLiteral :: trav -> Span -> Ass0Expr -> M trav [Int]
+validateIntListLiteral trav loc a0e =
+  case a0e of
+    A0Literal (ALitList a0es) -> do
+      spanInFile <- askSpanInFile loc
+      mapM
+        ( \case
+            A0Literal (ALitInt n) -> pure n
+            _ -> typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
+        )
+        a0es
+    _ -> do
+      spanInFile <- askSpanInFile loc
+      typeError trav $ NotAnIntListLitArgAtStage0 spanInFile a0e
 
 data IntermediateArgForAss0Type
   = IA0ExprArg Ass0Expr
@@ -1272,18 +1281,21 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
             Just tyPrimBase -> pure $ A0TyPrim (A0TyPrimBase tyPrimBase) Nothing
             Nothing -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName 0
         ("List", [arg]) -> do
-          case arg of
-            (IA0TypeArg a0tye, _) -> pure $ A0TyList a0tye Nothing
-            (IA0ExprArg _a0e, _loc) -> error "TODO (error): typecheckTypeExpr0, TyName, List, IA0ExprArg"
-        ("Vec", [arg]) -> do
-          n <- validateIntLiteral trav arg
-          pure $ A0TyPrim (a0TyVec n) Nothing
-        ("Mat", [arg1, arg2]) -> do
-          m <- validateIntLiteral trav arg1
-          n <- validateIntLiteral trav arg2
-          pure $ A0TyPrim (a0TyMat m n) Nothing
-        ("Tensor", [arg]) -> do
-          ns <- validateIntListLiteral trav arg
+          a0tye <- validateTypeArg0 trav arg
+          pure $ A0TyList a0tye Nothing
+        ("Vec", [arg1@(_, loc1)]) -> do
+          a0e1 <- validateExprArg0 trav arg1
+          n1 <- validateIntLiteral trav loc1 a0e1
+          pure $ A0TyPrim (a0TyVec n1) Nothing
+        ("Mat", [arg1@(_, loc1), arg2@(_, loc2)]) -> do
+          a0e1 <- validateExprArg0 trav arg1
+          a0e2 <- validateExprArg0 trav arg2
+          n1 <- validateIntLiteral trav loc1 a0e1
+          n2 <- validateIntLiteral trav loc2 a0e2
+          pure $ A0TyPrim (a0TyMat n1 n2) Nothing
+        ("Tensor", [arg@(_, loc')]) -> do
+          a0e <- validateExprArg0 trav arg
+          ns <- validateIntListLiteral trav loc' a0e
           pure $ A0TyPrim (A0TyTensor ns) Nothing
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage0 spanInFile tyName (List.length results)
     TyVar tyvar -> do
@@ -1359,38 +1371,54 @@ ass0exprAnd = A0BuiltInName (BuiltInArity2 BIAnd)
 ass0exprListMap :: Ass0Expr
 ass0exprListMap = A0BuiltInName (BuiltInArity2 BIListMap)
 
+validatePersistentExprArg1 :: trav -> ArgForType -> M trav Expr
+validatePersistentExprArg1 trav = \case
+  ExprArgPersistent e ->
+    pure e
+  ExprArgNormal (Expr loc _) -> do
+    spanInFile <- askSpanInFile loc
+    typeError trav $ CannotUseNormalArgAtStage1 spanInFile
+  TypeArg (TypeExpr loc _) -> do
+    spanInFile <- askSpanInFile loc
+    typeError trav $ NotAValueArg spanInFile
+
+validateTypeArg1 :: trav -> ArgForType -> M trav TypeExpr
+validateTypeArg1 trav = \case
+  ExprArgPersistent (Expr loc _) -> do
+    spanInFile <- askSpanInFile loc
+    typeError trav $ NotATypeArg spanInFile
+  ExprArgNormal (Expr loc _) -> do
+    spanInFile <- askSpanInFile loc
+    typeError trav $ CannotUseNormalArgAtStage1 spanInFile
+  TypeArg tye ->
+    pure tye
+
 typecheckTypeExpr1 :: trav -> TypeEnv -> TypeExpr -> M trav Ass1TypeExpr
 typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
   spanInFile <- askSpanInFile loc
   case tyeMain of
     TyName tyName args -> do
-      mapM_
-        ( \case
-            ExprArgPersistent _ ->
-              pure ()
-            ExprArgNormal (Expr loc' _) -> do
-              spanInFile' <- askSpanInFile loc'
-              typeError trav $ CannotUseNormalArgAtStage1 spanInFile'
-            TypeArg _ ->
-              pure ()
-        )
-        args
       case (tyName, args) of
         (_, []) ->
           case validatePrimBaseType tyName of
             Just tyPrimBase -> pure $ A1TyPrim (A1TyPrimBase tyPrimBase)
             Nothing -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName 0
-        ("List", [TypeArg tye]) -> do
+        ("List", [arg]) -> do
+          tye <- validateTypeArg1 trav arg
           a1tye <- typecheckTypeExpr1 trav tyEnv tye
           pure $ A1TyList a1tye
-        ("Vec", [ExprArgPersistent e]) -> do
+        ("Vec", [arg]) -> do
+          e <- validatePersistentExprArg1 trav arg
           a0e <- forceExpr0 trav tyEnv BuiltIn.tyNat e
           pure $ A1TyPrim (a1TyVec a0e)
-        ("Mat", [ExprArgPersistent e1, ExprArgPersistent e2]) -> do
+        ("Mat", [arg1, arg2]) -> do
+          e1 <- validatePersistentExprArg1 trav arg1
+          e2 <- validatePersistentExprArg1 trav arg2
           a0e1 <- forceExpr0 trav tyEnv BuiltIn.tyNat e1
           a0e2 <- forceExpr0 trav tyEnv BuiltIn.tyNat e2
           pure $ A1TyPrim (a1TyMat a0e1 a0e2)
-        ("Tensor", [ExprArgPersistent e]) -> do
+        ("Tensor", [arg]) -> do
+          e <- validatePersistentExprArg1 trav arg
           a0eList <- forceExpr0 trav tyEnv (A0TyList BuiltIn.tyNat Nothing) e
           pure $ A1TyPrim (A1TyTensor a0eList)
         _ -> typeError trav $ UnknownTypeOrInvalidArityAtStage1 spanInFile tyName (List.length args)
