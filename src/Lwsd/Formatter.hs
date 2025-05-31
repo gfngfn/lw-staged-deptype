@@ -620,8 +620,10 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
       "An argument expression at stage 0 is not an integer literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
     NotAnIntListLitArgAtStage0 spanInFile a0e ->
       "An argument expression at stage 0 is not an integer list literal:" <+> stage0Style (disp a0e) <+> disp spanInFile
-    NotAValueArgAtStage0 spanInFile a0tye ->
-      "Not a value argument:" <+> disp a0tye <+> disp spanInFile
+    NotAValueArg spanInFile ->
+      "Expected a value argument here, but is not" <+> disp spanInFile
+    NotATypeArg spanInFile ->
+      "Expected a type argument here, but is not" <+> disp spanInFile
     TypeContradictionAtStage0 spanInFile a0tye1 a0tye2 ->
       "Type contradiction at stage 0"
         <+> disp spanInFile
@@ -769,6 +771,14 @@ instance (Disp sv) => Disp (TypeErrorF sv) where
         <+> disp spanInFile
         <> hardline
         <+> stage1Style (disp a1tye)
+    LetRecParamsCannotStartWithOptional spanInFile ->
+      "Recursive function definitions cannot have an optional parameter as the first one" <+> disp spanInFile
+    LetRecRequiresNonEmptyParams spanInFile ->
+      "Recursive function definitions require at least one parameter" <+> disp spanInFile
+    CannotSynthesizeTypeFromExpr spanInFile ->
+      "Cannot synthesize the type of the expression; consider using `as`" <+> disp spanInFile
+    CannotForceType spanInFile a0tye ->
+      "Cannot force type" <+> disp a0tye <+> "on the expression" <+> disp spanInFile
 
 instance (Disp sv) => Disp (ConditionalMergeErrorF sv) where
   dispGen _ = \case
