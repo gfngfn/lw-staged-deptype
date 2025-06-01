@@ -599,6 +599,8 @@ evalTypeExpr0 env = \case
   SA0TyCode a1tye1 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1
+  SA0TyExplicitForAll atyvar sa0tye1 -> do
+    pure $ A0TyValExplicitForAll atyvar sa0tye1
 
 evalTypeExpr1 :: EvalEnv -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case

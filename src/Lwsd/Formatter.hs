@@ -551,7 +551,7 @@ instance (Disp sv) => Disp (Ass0TypeExprF sv) where
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
-    A0TyForAll atyvar a0tye -> dispForAllType req atyvar a0tye
+    A0TyImplicitForAll atyvar a0tye -> dispForAllType req atyvar a0tye
 
 instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
   dispGen req = \case
@@ -563,7 +563,7 @@ instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
     SA0TyProduct sa0tye1 sa0tye2 -> dispProductType req sa0tye1 sa0tye2
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
-    SA0TyForAll atyvar sa0tye -> dispForAllType req atyvar sa0tye
+    SA0TyExplicitForAll atyvar sa0tye -> dispForAllType req atyvar sa0tye
 
 instance (Disp sv) => Disp (Ass1PrimTypeF sv) where
   dispGen req = \case
@@ -950,6 +950,7 @@ instance (Disp sv) => Disp (Ass0TypeValF sv) where
     A0TyValProduct a0tyv1 a0tyv2 -> dispProductType req a0tyv1 a0tyv2
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
+    A0TyValExplicitForAll atyvar sa0tye1 -> dispForAllType req atyvar sa0tye1
 
 instance Disp Ass0PrimTypeVal where
   dispGen req = \case

@@ -1475,6 +1475,9 @@ validatePersistentType trav loc a0tye =
         Nothing
       A0TyCode _ ->
         Nothing
+      A0TyImplicitForAll atyvar a0tye' -> do
+        aPtye' <- go a0tye'
+        pure $ APersTyImplicitForAll atyvar aPtye'
 
 extractFromExternal :: ExternalField -> External -> Maybe Text
 extractFromExternal field0 =

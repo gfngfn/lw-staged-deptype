@@ -83,6 +83,8 @@ fromStaged0 = \case
     wrap0 $ BITyOptArrow (fromStaged0 a0tye1) (fromStaged0 a0tye2)
   Lwsd.A0TyCode a1tye ->
     fromStaged1 a1tye
+  Lwsd.A0TyImplicitForAll _atyvar _a0tye ->
+    error "TODO: Surface.BindingTime.Core.fromStaged0, A0TyImplicitForAll"
   where
     wrap0 = BIType BT0
 
@@ -114,3 +116,5 @@ fromStagedPers aPtye =
         BITyProduct (fromStagedPers aPtye1) (fromStagedPers aPtye2)
       Lwsd.APersTyArrow aPtye1 aPtye2 ->
         BITyArrow (fromStagedPers aPtye1) (fromStagedPers aPtye2)
+      Lwsd.APersTyImplicitForAll _atyvar _aPtye' ->
+        error "TODO: Surface.BindingTime.Core.fromStagedPers, A0TyImplicitForAll"
