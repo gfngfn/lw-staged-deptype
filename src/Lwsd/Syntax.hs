@@ -159,6 +159,7 @@ data Ass0TypeExprF sv
   | A0TyArrow (Maybe (AssVarF sv), Ass0TypeExprF sv) (Ass0TypeExprF sv)
   | A0TyOptArrow (AssVarF sv, Ass0TypeExprF sv) (Ass0TypeExprF sv)
   | A0TyCode (Ass1TypeExprF sv)
+  | A0TyForAll AssTypeVar (Ass0TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 -- For type annotations in target terms.
@@ -169,6 +170,7 @@ data StrictAss0TypeExprF sv
   | SA0TyProduct (StrictAss0TypeExprF sv) (StrictAss0TypeExprF sv) -- TODO: generalize product types
   | SA0TyArrow (Maybe (AssVarF sv), StrictAss0TypeExprF sv) (StrictAss0TypeExprF sv)
   | SA0TyCode (Ass1TypeExprF sv)
+  | SA0TyForAll AssTypeVar (StrictAss0TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 data AssPrimBaseType
@@ -339,6 +341,7 @@ strictify = \case
   A0TyArrow (x1opt, a0tye1) a0tye2 -> SA0TyArrow (x1opt, strictify a0tye1) (strictify a0tye2)
   A0TyCode a1tye1 -> SA0TyCode a1tye1
   A0TyOptArrow (x1, a0tye1) a0tye2 -> SA0TyArrow (Just x1, strictify a0tye1) (strictify a0tye2)
+  A0TyForAll atyvar a0tye -> SA0TyForAll atyvar (strictify a0tye)
 
 a0TyVec :: Int -> Ass0PrimType
 a0TyVec n = A0TyTensor [n]

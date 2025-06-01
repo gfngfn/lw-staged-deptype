@@ -202,6 +202,11 @@ dispEscape e =
 dispTypeVar :: AssTypeVar -> Doc Ann
 dispTypeVar (AssTypeVar n) = "'a" <> disp n
 
+dispForAllType :: (Disp ty) => Associativity -> AssTypeVar -> ty -> Doc Ann
+dispForAllType req atyvar tye =
+  deepenParenWhen (req <= Atomic) $
+    group ("forall" <+> dispTypeVar atyvar <> "." <+> disp tye)
+
 dispListType :: (Disp ty) => Associativity -> ty -> Doc Ann
 dispListType req tye =
   deepenParenWhen (req <= Atomic) $
@@ -546,6 +551,7 @@ instance (Disp sv) => Disp (Ass0TypeExprF sv) where
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
+    A0TyForAll atyvar a0tye -> dispForAllType req atyvar a0tye
 
 instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
   dispGen req = \case
@@ -557,6 +563,7 @@ instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
     SA0TyProduct sa0tye1 sa0tye2 -> dispProductType req sa0tye1 sa0tye2
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
+    SA0TyForAll atyvar sa0tye -> dispForAllType req atyvar sa0tye
 
 instance (Disp sv) => Disp (Ass1PrimTypeF sv) where
   dispGen req = \case

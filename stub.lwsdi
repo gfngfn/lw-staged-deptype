@@ -42,10 +42,9 @@ val %range : Int -> Int -> List Int
   external (builtin = "range", surface = "range")
 
 module List = struct
-  val %append : List Int -> List Int -> List Int
-(*  val %append 'a : List 'a -> List 'a -> List 'a  *)
+  val %append 'a : List 'a -> List 'a -> List 'a
     external (builtin = "list__append", surface = "append") (* TODO: generalize the type *)
-  val %iter : (Int -> Unit) -> List Int -> Unit
+  val %iter 'a : ('a -> Unit) -> List 'a -> Unit
     external (builtin = "list__iter", surface = "iter") (* TODO: generalize the type *)
 end
 
