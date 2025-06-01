@@ -102,6 +102,7 @@ data TypeExprMainF ann
   | TyOptArrow (Var, TypeExprF ann) (TypeExprF ann)
   | TyRefinement Var (TypeExprF ann) (ExprF ann)
   | TyProduct (TypeExprF ann) (TypeExprF ann)
+  | TyForAll TypeVar (TypeExprF ann)
   deriving stock (Eq, Show, Functor, Foldable, Traversable, Generic, Generic1)
   deriving (Eq1, Show1) via (Generically1 TypeExprMainF)
 

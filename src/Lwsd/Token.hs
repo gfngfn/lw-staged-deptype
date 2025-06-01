@@ -63,6 +63,7 @@ data Token
   | TokOpen
   | TokTrue
   | TokFalse
+  | TokForall
   | TokOpAdd Text
   | TokOpMult Text
   | TokOpComp Text
@@ -119,6 +120,7 @@ showToken = \case
   TokOpen -> "open"
   TokTrue -> "true"
   TokFalse -> "false"
+  TokForall -> "forall"
   TokOpAdd op -> Text.unpack op
   TokOpMult op -> Text.unpack op
   TokOpComp op -> Text.unpack op
@@ -144,7 +146,8 @@ keywordMap =
       ("external", TokExternal),
       ("open", TokOpen),
       ("true", TokTrue),
-      ("false", TokFalse)
+      ("false", TokFalse),
+      ("forall", TokForall)
     ]
 
 lowerIdentOrKeyword :: Tokenizer Token

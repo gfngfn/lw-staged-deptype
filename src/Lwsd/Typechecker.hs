@@ -1364,6 +1364,12 @@ typecheckTypeExpr0 trav tyEnv (TypeExpr loc tyeMain) = do
       a0tye1 <- typecheckTypeExpr0 trav tyEnv tye1
       a0tye2 <- typecheckTypeExpr0 trav tyEnv tye2
       pure $ A0TyProduct a0tye1 a0tye2
+    TyForAll tyvar tye1 -> do
+      atyvar <- generateFreshTypeVar tyvar
+      a0tye1 <- do
+        let tyEnv' = TypeEnv.addTypeVar tyvar (TypeVarEntry atyvar) tyEnv
+        typecheckTypeExpr0 trav tyEnv' tye1
+      pure $ A0TyImplicitForAll atyvar a0tye1
 
 ass0exprAnd :: Ass0Expr
 ass0exprAnd = A0BuiltInName (BuiltInArity2 BIAnd)
@@ -1442,6 +1448,8 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       a1tye1 <- typecheckTypeExpr1 trav tyEnv tye1
       a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
       pure $ A1TyProduct a1tye1 a1tye2
+    TyForAll _tyvar _tye1 ->
+      error "TODO (error): typecheckTypeExpr1, TyForAll"
 
 validatePersistentType :: trav -> Span -> Ass0TypeExpr -> M trav AssPersTypeExpr
 validatePersistentType trav loc a0tye =
