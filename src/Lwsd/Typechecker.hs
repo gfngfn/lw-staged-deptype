@@ -175,7 +175,11 @@ applyEquationCast loc eq =
   applyCast1 (A0TyEqAssert loc <$> eq)
 
 -- The core part of the cast insertion for stage 0.
+-- `makeAssertiveCast trav loc varsToInfer a0tye1 a0tye2` produces a cast
+-- that asserts that two types `a0tye1` and `a0tye2` are equivalent.
 -- Returning `(Nothing, ...)` means there's no need to insert a cast.
+-- Through cast generation, appropriate expressions for the variables in `varsToInfer`
+-- are inferred in a best-effort manner.
 makeAssertiveCast :: forall trav. trav -> Span -> Set AssVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, InferenceSolution)
 makeAssertiveCast trav loc =
   go
@@ -283,6 +287,8 @@ makeAssertiveCast trav loc =
         (A0TyCode a1tye1, A0TyCode a1tye2) -> do
           (eq, solution) <- makeEquation1 trav loc varsToInfer a1tye1 a1tye2
           pure (A0TyEqAssert loc <$> eq, solution)
+        (A0TyImplicitForAll _tyvar1 _a0tye1, A0TyImplicitForAll _tyvar2 _a0tye2) ->
+          error "TODO: makeAssertiveCast, A0TyImplicitForAll"
         _ ->
           typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
 
@@ -588,6 +594,8 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
           (result', solution) <- instantiateGuidedByAppContext1 trav loc varsToInfer appCtx a1tye
           result <- mapMPure (pure . A0TyCode) result'
           pure (result, solution)
+        (_, A0TyImplicitForAll _atyvar _a0tye) ->
+          error "TODO: infer a type for the type variable `atyvar`"
         _ -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye
