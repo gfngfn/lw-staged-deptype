@@ -39,6 +39,7 @@ import Lwsd.SrcSyntax
 import Lwsd.Subst
 import Lwsd.Syntax
 import Lwsd.TypeError
+import Lwsd.TypeSubst
 import Safe.Exact
 import Util.LocationInFile (SourceSpec, SpanInFile, getSpanInFile)
 import Util.Matrix qualified as Matrix
@@ -191,6 +192,10 @@ makeAssertiveCast trav loc =
     go varsToInfer tyvarsToInfer a0tye1 a0tye2 = do
       spanInFile <- askSpanInFile loc
       case (a0tye1, a0tye2) of
+        (_, A0TyVar atyvar2) ->
+          if atyvar2 `elem` tyvarsToInfer
+            then pure (Nothing, Map.empty, Map.singleton atyvar2 a0tye1)
+            else error "TODO (error): makeAssertiveCast, unexpected type variable"
         (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2') -> do
           -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
@@ -549,15 +554,16 @@ type VarSolution = Map AssVar (Ass0Expr, Ass0TypeExpr)
 type TypeVarSolution = Map AssTypeVar Ass0TypeExpr
 
 applyVarSolution :: forall af. (HasVar StaticVar af) => VarSolution -> af StaticVar -> af StaticVar
-applyVarSolution solution entity =
-  Map.foldrWithKey (flip subst0) entity (Map.map fst solution)
+applyVarSolution varSolution entity =
+  Map.foldrWithKey (flip subst0) entity (Map.map fst varSolution)
 
-applyTypeVarSolution :: TypeVarSolution -> a -> a
-applyTypeVarSolution = error "TODO: applyTypeVarSolution"
+applyTypeVarSolution :: forall af. (HasTypeVar af) => TypeVarSolution -> af StaticVar -> af StaticVar
+applyTypeVarSolution tyvarSolution entity =
+  Map.foldrWithKey (flip tySubst) entity tyvarSolution
 
-applySolution :: forall af. (HasVar StaticVar af) => VarSolution -> TypeVarSolution -> af StaticVar -> af StaticVar
+applySolution :: forall af. (HasVar StaticVar af, HasTypeVar af) => VarSolution -> TypeVarSolution -> af StaticVar -> af StaticVar
 applySolution varSolution tyvarSolution entity =
-  (applyTypeVarSolution tyvarSolution (applyVarSolution varSolution entity))
+  applyTypeVarSolution tyvarSolution (applyVarSolution varSolution entity)
 
 instantiateGuidedByAppContext0 :: forall trav. trav -> Span -> AppContext -> Ass0TypeExpr -> M trav Result0
 instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
@@ -627,8 +633,12 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
           result <- mapMPure (pure . A0TyCode) result'
           pure (result, varSolution, tyvarSolution)
         (_, A0TyImplicitForAll atyvar a0tye2) -> do
-          (_result', _varSolution', _tyvarSolution') <- go varsToInfer (Set.insert atyvar tyvarsToInfer) appCtx a0tye2
-          error "TODO: infer a type for the type variable `atyvar`"
+          (result', varSolution', tyvarSolution') <- go varsToInfer (Set.insert atyvar tyvarsToInfer) appCtx a0tye2
+          case Map.lookup atyvar tyvarSolution' of
+            Just a0tyeInferred ->
+              pure (InsertInferredType0 a0tyeInferred result', varSolution', tyvarSolution')
+            Nothing -> do
+              error "TODO (error): failed to infer a type for the type variable `atyvar`"
         _ -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye
@@ -925,6 +935,8 @@ typecheckExpr0 trav tyEnv appCtx (Expr loc eMain) = do
       case result of
         InsertInferred0 a0eInferred result' ->
           completeInferredOptional (result', A0App a0e a0eInferred)
+        InsertInferredType0 a0tyeInferred result' ->
+          completeInferredOptional (result', A0AppType a0e (strictify a0tyeInferred))
         _ ->
           pair
 
@@ -1252,6 +1264,7 @@ mapMPure f = go
     go (CastGiven0 a0e a0tye r) = CastGiven0 a0e a0tye <$> go r
     go (FillInferred0 a0e r) = FillInferred0 a0e <$> go r
     go (InsertInferred0 a0e r) = InsertInferred0 a0e <$> go r
+    go (InsertInferredType0 a0tye r) = InsertInferredType0 a0tye <$> go r
 
 validateExprArg0 :: trav -> (IntermediateArgForAss0Type, Span) -> M trav Ass0Expr
 validateExprArg0 trav = \case

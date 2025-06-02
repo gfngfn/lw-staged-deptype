@@ -111,6 +111,7 @@ data Ass0ExprF sv
   | A0Bracket (Ass1ExprF sv)
   | A0TyEqAssert Span (Type1EquationF sv)
   | A0RefinementAssert Span (Ass0ExprF sv) (Ass0ExprF sv) -- A predicate and a target.
+  | A0AppType (Ass0ExprF sv) (StrictAss0TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 data Ass1ExprF sv
@@ -397,6 +398,7 @@ data ResultF af sv
   | CastGiven0 (Maybe (Ass0ExprF sv)) (Ass0TypeExprF sv) (ResultF af sv)
   | FillInferred0 (Ass0ExprF sv) (ResultF af sv)
   | InsertInferred0 (Ass0ExprF sv) (ResultF af sv)
+  | InsertInferredType0 (Ass0TypeExprF sv) (ResultF af sv)
   deriving (Eq, Show, Functor)
 
 type AssVar = AssVarF StaticVar

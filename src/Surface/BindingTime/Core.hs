@@ -83,8 +83,9 @@ fromStaged0 = \case
     wrap0 $ BITyOptArrow (fromStaged0 a0tye1) (fromStaged0 a0tye2)
   Lwsd.A0TyCode a1tye ->
     fromStaged1 a1tye
-  Lwsd.A0TyImplicitForAll _atyvar _a0tye ->
-    error "TODO: Surface.BindingTime.Core.fromStaged0, A0TyImplicitForAll"
+  Lwsd.A0TyImplicitForAll _atyvar a0tye ->
+    -- TODO: support type application
+    fromStaged0 a0tye
   where
     wrap0 = BIType BT0
 
@@ -103,18 +104,20 @@ fromStaged1 a1tye =
 
 fromStagedPers :: Lwsd.AssPersTypeExpr -> BITypeF ()
 fromStagedPers aPtye =
-  BIType () $
-    case aPtye of
-      Lwsd.APersTyPrim _a0tyPrim ->
-        BITyBase []
-      Lwsd.APersTyVar _atyvar ->
-        -- Handles order-0 type variables only:
-        BITyBase []
-      Lwsd.APersTyList aPtye' ->
-        BITyBase [fromStagedPers aPtye']
-      Lwsd.APersTyProduct aPtye1 aPtye2 ->
-        BITyProduct (fromStagedPers aPtye1) (fromStagedPers aPtye2)
-      Lwsd.APersTyArrow aPtye1 aPtye2 ->
-        BITyArrow (fromStagedPers aPtye1) (fromStagedPers aPtye2)
-      Lwsd.APersTyImplicitForAll _atyvar _aPtye' ->
-        error "TODO: Surface.BindingTime.Core.fromStagedPers, A0TyImplicitForAll"
+  case aPtye of
+    Lwsd.APersTyPrim _a0tyPrim ->
+      wrapP $ BITyBase []
+    Lwsd.APersTyVar _atyvar ->
+      -- Handles order-0 type variables only:
+      wrapP $ BITyBase []
+    Lwsd.APersTyList aPtye' ->
+      wrapP $ BITyBase [fromStagedPers aPtye']
+    Lwsd.APersTyProduct aPtye1 aPtye2 ->
+      wrapP $ BITyProduct (fromStagedPers aPtye1) (fromStagedPers aPtye2)
+    Lwsd.APersTyArrow aPtye1 aPtye2 ->
+      wrapP $ BITyArrow (fromStagedPers aPtye1) (fromStagedPers aPtye2)
+    Lwsd.APersTyImplicitForAll _atyvar aPtye' ->
+      -- TODO: support type application
+      fromStagedPers aPtye'
+  where
+    wrapP = BIType ()

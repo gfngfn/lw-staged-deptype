@@ -129,6 +129,11 @@ dispAppOptOmitted req e1 =
   deepenParenWhen (req <= Atomic) $
     group (dispGen FunDomain e1 <> nest 2 (line <> "_"))
 
+dispAppType :: (Disp expr, Disp ty) => Associativity -> expr -> ty -> Doc Ann
+dispAppType req e1 tye2 =
+  deepenParenWhen (req <= Atomic) $
+    group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic tye2))
+
 dispLetIn :: (Disp var, Disp param, Disp expr) => Associativity -> var -> [param] -> expr -> expr -> Doc Ann
 dispLetIn req x params e1 e2 =
   deepenParenWhen (req <= FunDomain) $
@@ -507,6 +512,8 @@ instance (Disp sv) => Disp (Ass0ExprF sv) where
     A0RefinementAssert _loc a0ePred a0eTarget ->
       deepenParenWhen (req <= Atomic) $
         "ASSERT" <+> disp a0ePred <+> "FOR" <+> disp a0eTarget
+    A0AppType a0e1 sa0tye2 ->
+      dispAppType req a0e1 sa0tye2
 
 instance (Disp sv) => Disp (Ass1ExprF sv) where
   dispGen req = \case
@@ -810,6 +817,7 @@ instance (Disp sv, Disp (af sv)) => Disp (ResultF af sv) where
     CastGiven0 _ a0tye r -> "cast-given0 :" <+> stage0Style (disp a0tye) <> ";" <+> disp r
     FillInferred0 a0e r -> "fill0" <+> disp a0e <> ";" <+> disp r
     InsertInferred0 a0e r -> "insert0" <+> disp a0e <> ";" <+> disp r
+    InsertInferredType0 sa0tye r -> "insert-type0" <+> disp sa0tye <> ";" <+> disp r
 
 instance (Disp sv) => Disp (Ass0ValF sv) where
   dispGen req = \case

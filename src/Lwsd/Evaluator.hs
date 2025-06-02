@@ -446,6 +446,11 @@ reduceBeta a0vFun a0vArg =
     _ ->
       bug $ NotAClosure a0vFun
 
+-- TODO: fix this
+reduceTypeBeta :: Ass0Val -> Ass0TypeVal -> M Ass0Val
+reduceTypeBeta a0vTypeFun _a0tyvArg =
+  pure a0vTypeFun
+
 evalExpr0 :: EvalEnv -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
@@ -523,6 +528,10 @@ evalExpr0 env = \case
         EvalState {sourceSpec} <- get
         let spanInFile = getSpanInFile sourceSpec loc
         evalError $ RefinementAssertionFailure spanInFile a0vPred a0vTarget
+  A0AppType a0e1 sa0tye2 -> do
+    a0v1 <- evalExpr0 env a0e1
+    a0tyv2 <- evalTypeExpr0 env sa0tye2
+    reduceTypeBeta a0v1 a0tyv2
 
 evalExpr1 :: EvalEnv -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case

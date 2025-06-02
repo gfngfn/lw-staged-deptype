@@ -15,6 +15,7 @@ import Data.Set qualified as Set
 import Data.Tuple.Extra
 import Lwsd.Syntax
 import Safe.Exact
+import Util.Maybe1
 import Prelude
 
 -- TODO (refactor): use `Traversal` to implement `occurs0` and `subst0`
@@ -122,6 +123,8 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
       frees ty0eq
     A0RefinementAssert _ a0ePred a0eTarget ->
       unionPairs [frees a0ePred, frees a0eTarget]
+    A0AppType a0e1 a0tye2 ->
+      unionPairs [frees a0e1, frees a0tye2]
 
   subst s = \case
     A0Literal alit ->
@@ -166,6 +169,8 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
       A0TyEqAssert loc (go ty0eq)
     A0RefinementAssert loc a0ePred a0eTarget ->
       A0RefinementAssert loc (go a0ePred) (go a0eTarget)
+    A0AppType a0e1 a0tye2 ->
+      A0AppType (go a0e1) (go a0tye2)
     where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
@@ -585,8 +590,6 @@ instance (Ord sv) => HasVar sv Type1EquationF where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
       go = alphaEquivalent
 
-newtype Maybe1 af sv = Maybe1 {unMaybe1 :: Maybe (af sv)}
-
 instance (HasVar sv af) => HasVar sv (Maybe1 af) where
   frees = maybe (Set.empty, Set.empty) frees . unMaybe1
 
@@ -604,6 +607,7 @@ instance (HasVar sv af) => HasVar sv (ResultF af) where
     CastGiven0 cast a0tye r -> unionPairs [frees (Maybe1 cast), frees a0tye, frees r]
     FillInferred0 a0e r -> unionPairs [frees a0e, frees r]
     InsertInferred0 a0e r -> unionPairs [frees a0e, frees r]
+    InsertInferredType0 a0tye r -> unionPairs [frees a0tye, frees r]
 
   subst s = \case
     Pure v -> Pure (go v)
@@ -612,6 +616,7 @@ instance (HasVar sv af) => HasVar sv (ResultF af) where
     CastGiven0 cast a0tye r -> CastGiven0 (unMaybe1 . go . Maybe1 $ cast) (go a0tye) (go r)
     FillInferred0 a0e r -> FillInferred0 (go a0e) (go r)
     InsertInferred0 a0e r -> InsertInferred0 (go a0e) (go r)
+    InsertInferredType0 a0tye r -> InsertInferredType0 (go a0tye) (go r)
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv
       go = subst s
