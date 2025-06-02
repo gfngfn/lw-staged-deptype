@@ -334,12 +334,13 @@ instance Disp (TypeExprF ann) where
 instance Disp (TypeExprMainF ann) where
   dispGen req = \case
     TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
-    TyVar (TypeVar tyvar) -> disp tyvar
+    TyVar (TypeVar tyvar) -> "'" <> disp tyvar
     TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     TyCode tye1 -> dispBracket tye1
     TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
     TyRefinement x tye1 e2 -> "(" <> disp x <+> ":" <+> disp tye1 <+> "|" <+> disp e2 <+> ")"
     TyProduct tye1 tye2 -> dispProductType req tye1 tye2
+    TyForAll (TypeVar tyvar) tye -> "forall '" <> disp tyvar <+> "->" <+> disp tye
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case

@@ -287,7 +287,7 @@ typeExpr = fun
     fun :: P TypeExpr
     fun =
       try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
-        <|> (makeForAll <$> (token TokForall *> typeVar) <*> fun)
+        <|> (makeForAll <$> (token TokForall *> typeVar) <*> (token TokArrow *> fun))
         <|> prod
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
@@ -329,10 +329,10 @@ valBinder =
 
 bindVal :: P (BindVal, Span)
 bindVal =
-  (makeBindValExternal <$> many (noLoc typeVar) <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+  (makeBindValExternal <$> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
     <|> (makeBindValNormal <$> (token TokEqual *> expr))
   where
-    makeBindValExternal tyvars ty (Located locLast ext) = (BindValExternal tyvars ty ext, locLast)
+    makeBindValExternal ty (Located locLast ext) = (BindValExternal ty ext, locLast)
     makeBindValNormal e@(Expr locLast _) = (BindValNormal e, locLast)
 
 external :: P (Located External)

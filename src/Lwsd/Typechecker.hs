@@ -1449,7 +1449,7 @@ typecheckTypeExpr1 trav tyEnv (TypeExpr loc tyeMain) = do
       a1tye2 <- typecheckTypeExpr1 trav tyEnv tye2
       pure $ A1TyProduct a1tye1 a1tye2
     TyForAll _tyvar _tye1 ->
-      error "TODO (error): typecheckTypeExpr1, TyForAll"
+      error "TODO: typecheckTypeExpr1, TyForAll"
 
 validatePersistentType :: trav -> Span -> Ass0TypeExpr -> M trav AssPersTypeExpr
 validatePersistentType trav loc a0tye =
@@ -1494,7 +1494,7 @@ extractFromExternal field0 =
 typecheckBind :: trav -> TypeEnv -> Bind -> M trav (SigRecord, [AssBind])
 typecheckBind trav tyEnv (Bind loc bindMain) =
   case bindMain of
-    BindVal stage x (BindValExternal tyvars tye ext) -> do
+    BindVal stage x (BindValExternal tye ext) -> do
       extName <-
         case extractFromExternal "builtin" ext of
           Just s ->
@@ -1503,17 +1503,9 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
             spanInFile <- askSpanInFile loc
             typeError trav $ NoBuiltInNameInExternal spanInFile
       let surfaceName = extractFromExternal "surface" ext
-      tyEnv' <-
-        foldM
-          ( \tyEnv0 tyvar -> do
-              atyvar <- generateFreshTypeVar tyvar
-              pure $ TypeEnv.addTypeVar tyvar (TypeVarEntry atyvar) tyEnv0
-          )
-          tyEnv
-          tyvars
       case stage of
         Stage0 -> do
-          a0tye <- typecheckTypeExpr0 trav tyEnv' tye
+          a0tye <- typecheckTypeExpr0 trav tyEnv tye
           ass0builtInName <-
             case validateExternalName0 extName of
               Just a0builtInName' ->
@@ -1531,11 +1523,11 @@ typecheckBind trav tyEnv (Bind loc bindMain) =
               Nothing -> do
                 spanInFile <- askSpanInFile loc
                 typeError trav $ UnknownExternalName spanInFile extName
-          a1tye <- typecheckTypeExpr1 trav tyEnv' tye
+          a1tye <- typecheckTypeExpr1 trav tyEnv tye
           let a1metadata = Ass1Metadata {ass1builtInName, ass1surfaceName = surfaceName}
           pure (SigRecord.singletonVal x (Ass1Entry a1tye (Left a1metadata)), [])
         StagePers -> do
-          a0tye <- typecheckTypeExpr0 trav tyEnv' tye
+          a0tye <- typecheckTypeExpr0 trav tyEnv tye
           aPtye <- validatePersistentType trav loc a0tye
           assPbuiltInName <-
             case validateExternalName1 extName of

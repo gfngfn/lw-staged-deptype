@@ -40,6 +40,9 @@ tyNondepFun tye1 tye2 = typ (TyArrow (Nothing, tye1) tye2)
 tyRefinement :: Var -> TypeExprVoid -> ExprVoid -> TypeExprVoid
 tyRefinement x tye1 e2 = typ (TyRefinement x tye1 e2)
 
+tyForAll :: TypeVar -> TypeExprVoid -> TypeExprVoid
+tyForAll tyvar tye = typ (TyForAll tyvar tye)
+
 expr :: ExprMainF () -> ExprVoid
 expr = Expr ()
 
