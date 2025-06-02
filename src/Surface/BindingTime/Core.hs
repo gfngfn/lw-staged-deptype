@@ -91,16 +91,23 @@ fromStaged0 = \case
 
 fromStaged1 :: Lwsd.Ass1TypeExpr -> BITypeVoid
 fromStaged1 a1tye =
-  BIType BT1 $
-    case a1tye of
-      Lwsd.A1TyPrim _a1tyPrim ->
-        BITyBase []
-      Lwsd.A1TyList a1tye' ->
-        BITyBase [fromStaged1 a1tye']
-      Lwsd.A1TyProduct a1tye1 a1tye2 ->
-        BITyProduct (fromStaged1 a1tye1) (fromStaged1 a1tye2)
-      Lwsd.A1TyArrow a1tye1 a1tye2 ->
-        BITyArrow (fromStaged1 a1tye1) (fromStaged1 a1tye2)
+  case a1tye of
+    Lwsd.A1TyPrim _a1tyPrim ->
+      wrap1 $ BITyBase []
+    Lwsd.A1TyList a1tye' ->
+      wrap1 $ BITyBase [fromStaged1 a1tye']
+    Lwsd.A1TyVar _atyvar ->
+      -- Handles order-0 type variables only:
+      wrap1 $ BITyBase []
+    Lwsd.A1TyProduct a1tye1 a1tye2 ->
+      wrap1 $ BITyProduct (fromStaged1 a1tye1) (fromStaged1 a1tye2)
+    Lwsd.A1TyArrow a1tye1 a1tye2 ->
+      wrap1 $ BITyArrow (fromStaged1 a1tye1) (fromStaged1 a1tye2)
+    Lwsd.A1TyImplicitForAll _atyvar a1tye2 ->
+      -- TODO: support type application
+      fromStaged1 a1tye2
+  where
+    wrap1 = BIType BT1
 
 fromStagedPers :: Lwsd.AssPersTypeExpr -> BITypeF ()
 fromStagedPers aPtye =

@@ -447,9 +447,14 @@ reduceBeta a0vFun a0vArg =
       bug $ NotAClosure a0vFun
 
 -- TODO: fix this
-reduceTypeBeta :: Ass0Val -> Ass0TypeVal -> M Ass0Val
-reduceTypeBeta a0vTypeFun _a0tyvArg =
+reduceTypeBeta0 :: Ass0Val -> Ass0TypeVal -> M Ass0Val
+reduceTypeBeta0 a0vTypeFun _a0tyvArg =
   pure a0vTypeFun
+
+-- TODO: fix this
+reduceTypeBeta1 :: Ass1Val -> Ass1TypeVal -> M Ass1Val
+reduceTypeBeta1 a1vTypeFun _a1tyvArg =
+  pure a1vTypeFun
 
 evalExpr0 :: EvalEnv -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
@@ -531,7 +536,7 @@ evalExpr0 env = \case
   A0AppType a0e1 sa0tye2 -> do
     a0v1 <- evalExpr0 env a0e1
     a0tyv2 <- evalTypeExpr0 env sa0tye2
-    reduceTypeBeta a0v1 a0tyv2
+    reduceTypeBeta0 a0v1 a0tyv2
 
 evalExpr1 :: EvalEnv -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
@@ -582,6 +587,10 @@ evalExpr1 env = \case
     case a0v1 of
       A0ValBracket a1v1 -> pure a1v1
       _ -> bug $ NotACodeValue a0v1
+  A1AppType a1e1 a1tye2 -> do
+    a1v1 <- evalExpr1 env a1e1
+    a1tyv2 <- evalTypeExpr1 env a1tye2
+    reduceTypeBeta1 a1v1 a1tyv2
 
 evalTypeExpr0 :: EvalEnv -> StrictAss0TypeExpr -> M Ass0TypeVal
 evalTypeExpr0 env = \case
@@ -626,6 +635,8 @@ evalTypeExpr1 env = \case
   A1TyList a1tye -> do
     a1tyv <- evalTypeExpr1 env a1tye
     pure $ A1TyValList a1tyv
+  A1TyVar atyvar ->
+    pure $ A1TyValVar atyvar
   A1TyProduct a1tye1 a1tye2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
@@ -634,6 +645,8 @@ evalTypeExpr1 env = \case
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
     pure $ A1TyValArrow a1tyv1 a1tyv2
+  A1TyImplicitForAll atyvar a1tye2 -> do
+    pure $ A1TyValImplicitForAll atyvar a1tye2
 
 run :: M a -> EvalState -> Either EvalError a
 run = evalStateT
@@ -671,7 +684,11 @@ unliftTypeVal = \case
      in SA0TyPrim a0tyPrim Nothing
   A1TyValList a1tyv ->
     SA0TyList (unliftTypeVal a1tyv) Nothing
+  A1TyValVar _atyvar ->
+    error "TODO: unliftTypeVal, A1TyValVar"
   A1TyValProduct a1tyv1 a1tyv2 ->
     SA0TyProduct (unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
   A1TyValArrow a1tyv1 a1tyv2 ->
     SA0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
+  A1TyValImplicitForAll _atyvar _a1tye2 ->
+    error "TODO: unliftTypeVal, A1TyValImplicitForAll"

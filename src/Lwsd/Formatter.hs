@@ -528,6 +528,7 @@ instance (Disp sv) => Disp (Ass1ExprF sv) where
     A1Tuple a1e1 a1e2 -> dispTuple a1e1 a1e2
     A1IfThenElse a1e0 a1e1 a1e2 -> dispIfThenElse req a1e0 a1e1 a1e2
     A1Escape a0e1 -> dispEscape a0e1
+    A1AppType a1e1 a1tye2 -> dispAppType req a1e1 a1tye2
 
 instance Disp AssPrimBaseType where
   dispGen _req = \case
@@ -587,8 +588,10 @@ instance (Disp sv) => Disp (Ass1TypeExprF sv) where
   dispGen req = \case
     A1TyPrim a1tyPrim -> dispGen req a1tyPrim
     A1TyList a1tye -> dispListType req a1tye
+    A1TyVar atyvar -> dispTypeVar atyvar
     A1TyProduct a1tye1 a1tye2 -> dispProductType req a1tye1 a1tye2
     A1TyArrow a1tye1 a1tye2 -> dispNondepArrowType req a1tye1 a1tye2
+    A1TyImplicitForAll atyvar a1tye2 -> dispForAllType req atyvar a1tye2
 
 instance Disp FrontError where
   dispGen _ = \case
@@ -818,6 +821,7 @@ instance (Disp sv, Disp (af sv)) => Disp (ResultF af sv) where
     FillInferred0 a0e r -> "fill0" <+> disp a0e <> ";" <+> disp r
     InsertInferred0 a0e r -> "insert0" <+> disp a0e <> ";" <+> disp r
     InsertInferredType0 sa0tye r -> "insert-type0" <+> disp sa0tye <> ";" <+> disp r
+    InsertType1 a1tye r -> "insert-type1" <+> disp a1tye <> ";" <+> disp r
 
 instance (Disp sv) => Disp (Ass0ValF sv) where
   dispGen req = \case
@@ -968,12 +972,14 @@ instance Disp Ass0PrimTypeVal where
     A0TyValTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
 
-instance Disp Ass1TypeVal where
+instance (Disp sv) => Disp (Ass1TypeValF sv) where
   dispGen req = \case
     A1TyValPrim a1tyvPrim -> dispGen req a1tyvPrim
     A1TyValList a1tyv -> dispListType req a1tyv
+    A1TyValVar atyvar -> dispTypeVar atyvar
     A1TyValProduct a1tyv1 a1tyv2 -> dispProductType req a1tyv1 a1tyv2
     A1TyValArrow a1tyv1 a1tyv2 -> dispNondepArrowType req a1tyv1 a1tyv2
+    A1TyValImplicitForAll atyvar a1tye2 -> dispForAllType req atyvar a1tye2
 
 instance Disp Ass1PrimTypeVal where
   dispGen req = \case

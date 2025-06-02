@@ -6,7 +6,6 @@ module Lwsd.Subst
     subst1,
     occurs0,
     occurs1,
-    Maybe1 (..),
   )
 where
 
@@ -246,6 +245,8 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
       unionPairs [frees a1e0, frees a1e1, frees a1e2]
     A1Escape a0e1 ->
       frees a0e1
+    A1AppType a1e1 a1tye2 ->
+      unionPairs [frees a1e1, frees a1tye2]
 
   subst s = \case
     A1Literal alit ->
@@ -281,6 +282,8 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
       A1IfThenElse (go a1e0) (go a1e1) (go a1e2)
     A1Escape a0e1 ->
       A1Escape (go a0e1)
+    A1AppType a1e1 a1tye2 ->
+      A1AppType (go a1e1) (go a1tye2)
     where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
@@ -310,6 +313,8 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
         go a1e10 a1e20 && go a1e11 a1e21 && go a1e12 a1e22
       (A1Escape a0e1, A1Escape a0e2) ->
         go a0e1 a0e2
+      (A1AppType a1e11 a1tye12, A1AppType a1e21 a1tye22) ->
+        go a1e11 a1e21 && go a1tye12 a1tye22
       (_, _) ->
         False
     where
@@ -415,10 +420,14 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         A1TyTensor a0eList -> frees a0eList
     A1TyList a1tye1 ->
       frees a1tye1
+    A1TyVar _atyvar ->
+      (Set.empty, Set.empty)
     A1TyProduct a1tye1 a1tye2 ->
       unionPairs [frees a1tye1, frees a1tye2]
     A1TyArrow a1tye1 a1tye2 ->
       unionPairs [frees a1tye1, frees a1tye2]
+    A1TyImplicitForAll _atyvar a1tye2 ->
+      frees a1tye2
 
   subst s = \case
     A1TyPrim a1tyPrim ->
@@ -427,10 +436,14 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         A1TyTensor a0eList -> A1TyTensor (go a0eList)
     A1TyList a1tye1 ->
       A1TyList (go a1tye1)
+    A1TyVar atyvar ->
+      A1TyVar atyvar
     A1TyProduct a1tye1 a1tye2 ->
       A1TyProduct (go a1tye1) (go a1tye2)
     A1TyArrow a1tye1 a1tye2 ->
       A1TyArrow (go a1tye1) (go a1tye2)
+    A1TyImplicitForAll atyvar a1tye2 ->
+      A1TyImplicitForAll atyvar (go a1tye2)
     where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
@@ -608,6 +621,7 @@ instance (HasVar sv af) => HasVar sv (ResultF af) where
     FillInferred0 a0e r -> unionPairs [frees a0e, frees r]
     InsertInferred0 a0e r -> unionPairs [frees a0e, frees r]
     InsertInferredType0 a0tye r -> unionPairs [frees a0tye, frees r]
+    InsertType1 a1tye r -> unionPairs [frees a1tye, frees r]
 
   subst s = \case
     Pure v -> Pure (go v)
@@ -617,6 +631,7 @@ instance (HasVar sv af) => HasVar sv (ResultF af) where
     FillInferred0 a0e r -> FillInferred0 (go a0e) (go r)
     InsertInferred0 a0e r -> InsertInferred0 (go a0e) (go r)
     InsertInferredType0 a0tye r -> InsertInferredType0 (go a0tye) (go r)
+    InsertType1 a1tye r -> InsertType1 (go a1tye) (go r)
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv
       go = subst s
