@@ -182,11 +182,11 @@ applyEquationCast loc eq =
 -- Returning `(Nothing, ...)` means there's no need to insert a cast.
 -- Through cast generation, appropriate expressions for the variables in `varsToInfer`
 -- are inferred in a best-effort manner.
-makeAssertiveCast :: forall trav. trav -> Span -> Set AssVar -> Set AssTypeVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, VarSolution, TypeVarSolution)
+makeAssertiveCast :: forall trav. trav -> Span -> Set AssVar -> Set AssTypeVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, VarSolution, TypeVar0Solution)
 makeAssertiveCast trav loc =
   go
   where
-    go :: Set AssVar -> Set AssTypeVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, VarSolution, TypeVarSolution)
+    go :: Set AssVar -> Set AssTypeVar -> Ass0TypeExpr -> Ass0TypeExpr -> M trav (Maybe Ass0Expr, VarSolution, TypeVar0Solution)
     go _varsToInfer _tyvars0ToInfer a0tye1 a0tye2
       | alphaEquivalent a0tye1 a0tye2 =
           pure (Nothing, Map.empty, Map.empty)
@@ -201,6 +201,10 @@ makeAssertiveCast trav loc =
           if atyvar1 `elem` tyvars0ToInfer
             then pure (Nothing, Map.empty, Map.singleton atyvar1 a0tye2)
             else error "TODO (error): makeAssertiveCast, unexpected type variable"
+        (A0TyImplicitForAll _tyvar1 _a0tye1, _) ->
+          error "TODO: makeAssertiveCast, A0TyImplicitForAll (left)"
+        (_, A0TyImplicitForAll _tyvar2 _a0tye2) ->
+          error "TODO: makeAssertiveCast, A0TyImplicitForAll (right)"
         (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2') -> do
           -- Ad hoc optimization of refinement cast insertion:
           let maybePred2 =
@@ -252,7 +256,7 @@ makeAssertiveCast trav loc =
                       A0App (A0App ass0exprAnd (A0App a0eCast1 (A0Var ax))) (A0App a0eCast2 (A0Var ax))
           pure (castForList, varSolution, tyvar0Solution)
         (A0TyArrow (x1opt, a0tye11) a0tye12, A0TyArrow (x2opt, a0tye21) a0tye22withX2opt) -> do
-          (castDom, varSolutionDom, tyvarSolutionDom) <- go varsToInfer tyvars0ToInfer a0tye11 a0tye21
+          (castDom, varSolutionDom, tyvar0SolutionDom) <- go varsToInfer tyvars0ToInfer a0tye11 a0tye21
           (x, a0tye22) <-
             case (x1opt, x2opt) of
               (Nothing, Nothing) -> do
@@ -265,24 +269,24 @@ makeAssertiveCast trav loc =
                 pure (x2, a0tye22withX2opt)
               (Just x1, Just x2) ->
                 pure (x1, subst0 (A0Var x1) x2 a0tye22withX2opt)
-          (castCod, varSolutionCod, tyvarSolutionCod) <-
+          (castCod, varSolutionCod, tyvar0SolutionCod) <-
             go
               (varsToInfer \\ Map.keysSet varSolutionDom)
-              (tyvars0ToInfer \\ Map.keysSet tyvarSolutionDom)
-              (applySolution varSolutionDom tyvarSolutionDom a0tye12)
-              (applySolution varSolutionDom tyvarSolutionDom a0tye22)
+              (tyvars0ToInfer \\ Map.keysSet tyvar0SolutionDom)
+              (applySolution0 varSolutionDom tyvar0SolutionDom a0tye12)
+              (applySolution0 varSolutionDom tyvar0SolutionDom a0tye22)
           let varSolution = Map.union varSolutionDom varSolutionCod
-          let tyvarSolution = Map.union tyvarSolutionDom tyvarSolutionCod
+          let tyvar0Solution = Map.union tyvar0SolutionDom tyvar0SolutionCod
           cast <-
             makeFunctionTypeCast
               trav
               x
-              (applySolution varSolution tyvarSolution a0tye11)
-              (applySolution varSolution tyvarSolution a0tye12)
-              (applySolution varSolution tyvarSolution a0tye21)
-              (applySolution varSolutionCod tyvarSolution <$> castDom)
+              (applySolution0 varSolution tyvar0Solution a0tye11)
+              (applySolution0 varSolution tyvar0Solution a0tye12)
+              (applySolution0 varSolution tyvar0Solution a0tye21)
+              (applySolution0 varSolutionCod tyvar0Solution <$> castDom)
               castCod
-          pure (cast, varSolution, tyvarSolution)
+          pure (cast, varSolution, tyvar0Solution)
         (A0TyOptArrow (x1, a0tye11) a0tye12, A0TyOptArrow (x2, a0tye21) a0tye22withX2) -> do
           (castDom, varSolutionDom, tyvar0SolutionDom) <- go varsToInfer tyvars0ToInfer a0tye11 a0tye21
           let (x, a0tye22) = (x1, subst0 (A0Var x1) x2 a0tye22withX2)
@@ -290,26 +294,24 @@ makeAssertiveCast trav loc =
             go
               (varsToInfer \\ Map.keysSet varSolutionDom)
               (tyvars0ToInfer \\ Map.keysSet tyvar0SolutionDom)
-              (applySolution varSolutionDom tyvar0SolutionDom a0tye12)
-              (applySolution varSolutionDom tyvar0SolutionDom a0tye22)
+              (applySolution0 varSolutionDom tyvar0SolutionDom a0tye12)
+              (applySolution0 varSolutionDom tyvar0SolutionDom a0tye22)
           let varSolution = Map.union varSolutionDom varSolutionCod
           let tyvar0Solution = Map.union tyvar0SolutionDom tyvar0SolutionCod
           cast <-
             makeFunctionTypeCast
               trav
               x
-              (applySolution varSolution tyvar0Solution a0tye11)
-              (applySolution varSolution tyvar0Solution a0tye12)
-              (applySolution varSolution tyvar0Solution a0tye21)
-              (applySolution varSolutionCod tyvar0SolutionCod <$> castDom)
+              (applySolution0 varSolution tyvar0Solution a0tye11)
+              (applySolution0 varSolution tyvar0Solution a0tye12)
+              (applySolution0 varSolution tyvar0Solution a0tye21)
+              (applySolution0 varSolutionCod tyvar0SolutionCod <$> castDom)
               castCod
           pure (cast, varSolution, tyvar0Solution)
         (A0TyCode a1tye1, A0TyCode a1tye2) -> do
           (eq, varSolution, _tyvar1Solution) <- makeEquation1 trav loc varsToInfer Set.empty a1tye1 a1tye2
           let tyvar0Solution = Map.empty
           pure (A0TyEqAssert loc <$> eq, varSolution, tyvar0Solution)
-        (A0TyImplicitForAll _tyvar1 _a0tye1, A0TyImplicitForAll _tyvar2 _a0tye2) ->
-          error "TODO: makeAssertiveCast, A0TyImplicitForAll"
         _ ->
           typeError trav $ TypeContradictionAtStage0 spanInFile a0tye1 a0tye2
 
@@ -370,11 +372,11 @@ makeEquation1 trav loc varsToInfer' tyvars1ToInfer' a1tye1' a1tye2' = do
         (A1TyVar atyvar1, _) ->
           if atyvar1 `elem` tyvars1ToInfer
             then pure (True, makeTrivialEquationFromType a1tye2, Map.empty, Map.singleton atyvar1 a1tye2)
-            else error $ "TODO: unknown type variable (left) " ++ show atyvar1
+            else error $ "TODO: makeEquation1, unexpected type variable (left) " ++ show atyvar1
         (_, A1TyVar atyvar2) ->
           if atyvar2 `elem` tyvars1ToInfer
             then pure (True, makeTrivialEquationFromType a1tye1, Map.empty, Map.singleton atyvar2 a1tye1)
-            else error $ "TODO: unknown type variable (right) " ++ show atyvar2
+            else error $ "TODO: makeEquation1, unexpected type variable (right) " ++ show atyvar2
         (A1TyPrim a1tyPrim1, A1TyPrim a1tyPrim2) ->
           case (a1tyPrim1, a1tyPrim2) of
             (A1TyPrimBase tyPrimBase1, A1TyPrimBase tyPrimBase2) ->
@@ -580,26 +582,34 @@ mergeResultsByConditional0 trav loc a0e0 = go
 
 type VarSolution = Map AssVar (Ass0Expr, Ass0TypeExpr)
 
-type TypeVarSolution = Map AssTypeVar Ass0TypeExpr
+type TypeVar0Solution = Map AssTypeVar Ass0TypeExpr
 
 applyVarSolution :: forall af. (HasVar StaticVar af) => VarSolution -> af StaticVar -> af StaticVar
 applyVarSolution varSolution entity =
   Map.foldrWithKey (flip subst0) entity (Map.map fst varSolution)
 
-applyTypeVarSolution :: forall af. (HasTypeVar af) => TypeVarSolution -> af StaticVar -> af StaticVar
-applyTypeVarSolution tyvarSolution entity =
-  Map.foldrWithKey (flip tySubst0) entity tyvarSolution
+applyTypeVar0Solution :: forall af. (HasTypeVar af) => TypeVar0Solution -> af StaticVar -> af StaticVar
+applyTypeVar0Solution tyvar0Solution entity =
+  Map.foldrWithKey (flip tySubst0) entity tyvar0Solution
 
-applySolution :: forall af. (HasVar StaticVar af, HasTypeVar af) => VarSolution -> TypeVarSolution -> af StaticVar -> af StaticVar
-applySolution varSolution tyvarSolution entity =
-  applyTypeVarSolution tyvarSolution (applyVarSolution varSolution entity)
+applyTypeVar1Solution :: forall af. (HasTypeVar af) => TypeVar1Solution -> af StaticVar -> af StaticVar
+applyTypeVar1Solution tyvar1Solution entity =
+  Map.foldrWithKey (flip tySubst1) entity tyvar1Solution
+
+applySolution0 :: forall af. (HasVar StaticVar af, HasTypeVar af) => VarSolution -> TypeVar0Solution -> af StaticVar -> af StaticVar
+applySolution0 varSolution tyvar0Solution entity =
+  applyTypeVar0Solution tyvar0Solution (applyVarSolution varSolution entity)
+
+applySolution1 :: forall af. (HasVar StaticVar af, HasTypeVar af) => VarSolution -> TypeVar1Solution -> af StaticVar -> af StaticVar
+applySolution1 varSolution tyvar1Solution entity =
+  applyTypeVar1Solution tyvar1Solution (applyVarSolution varSolution entity)
 
 instantiateGuidedByAppContext0 :: forall trav. trav -> Span -> AppContext -> Ass0TypeExpr -> M trav Result0
 instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
-  (result, _varSolution, _tyvarSolution) <- go Set.empty Set.empty appCtx0 a0tye0
+  (result, _varSolution, _tyvar0Solution) <- go Set.empty Set.empty appCtx0 a0tye0
   pure result
   where
-    go :: Set AssVar -> Set AssTypeVar -> AppContext -> Ass0TypeExpr -> M trav (Result0, VarSolution, TypeVarSolution)
+    go :: Set AssVar -> Set AssTypeVar -> AppContext -> Ass0TypeExpr -> M trav (Result0, VarSolution, TypeVar0Solution)
     go varsToInfer tyvars0ToInfer appCtx a0tye =
       case (appCtx, a0tye) of
         ([], _) ->
@@ -609,31 +619,31 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
             makeAssertiveCast trav loc varsToInfer tyvars0ToInfer a0tye1' a0tye1
           let varsToInfer' = varsToInfer \\ Map.keysSet varSolution1
           let tyvars0ToInfer' = tyvars0ToInfer \\ Map.keysSet tyvar0Solution1
-          let a0tye2s = applySolution varSolution1 tyvar0Solution1 a0tye2
-          (result', varSolution', tyvarSolution') <-
+          let a0tye2s = applySolution0 varSolution1 tyvar0Solution1 a0tye2
+          (result', varSolution', tyvar0Solution') <-
             case xOpt of
               Nothing -> go varsToInfer' tyvars0ToInfer' appCtx' a0tye2s
               Just x -> go varsToInfer' tyvars0ToInfer' appCtx' (subst0 a0e1' x a0tye2s)
           let varSolution = Map.union varSolution1 varSolution'
-          let tyvarSolution = Map.union tyvar0Solution1 tyvarSolution'
-          let a0tye1s = applySolution varSolution tyvarSolution a0tye1
-          let result = Cast0 (fmap (applySolution varSolution' tyvarSolution') cast) a0tye1s result'
-          pure (result, varSolution, tyvarSolution)
+          let tyvar0Solution = Map.union tyvar0Solution1 tyvar0Solution'
+          let a0tye1s = applySolution0 varSolution tyvar0Solution a0tye1
+          let result = Cast0 (fmap (applySolution0 varSolution' tyvar0Solution') cast) a0tye1s result'
+          pure (result, varSolution, tyvar0Solution)
         (appCtxEntry : appCtx', A0TyOptArrow (x, a0tye1) a0tye2) ->
           case appCtxEntry of
             AppArgOptGiven0 a0e1' a0tye1' -> do
-              (cast, varSolution1, tyvarSolution1) <-
+              (cast, varSolution1, tyvar0Solution1) <-
                 makeAssertiveCast trav loc varsToInfer tyvars0ToInfer a0tye1' a0tye1
               let varsToInfer' = varsToInfer \\ Map.keysSet varSolution1
-              let tyvars0ToInfer' = tyvars0ToInfer \\ Map.keysSet tyvarSolution1
-              let a0tye2s = applySolution varSolution1 tyvarSolution1 a0tye2
-              (result', varSolution', tyvarSolution') <-
+              let tyvars0ToInfer' = tyvars0ToInfer \\ Map.keysSet tyvar0Solution1
+              let a0tye2s = applySolution0 varSolution1 tyvar0Solution1 a0tye2
+              (result', varSolution', tyvar0Solution') <-
                 go varsToInfer' tyvars0ToInfer' appCtx' (subst0 a0e1' x a0tye2s)
               let varSolution = Map.union varSolution1 varSolution'
-              let tyvarSolution = Map.union tyvarSolution1 tyvarSolution'
-              let a0tye1s = applySolution varSolution tyvarSolution a0tye1
-              let result = CastGiven0 (fmap (applySolution varSolution' tyvarSolution') cast) a0tye1s result'
-              pure (result, varSolution, tyvarSolution)
+              let tyvar0Solution = Map.union tyvar0Solution1 tyvar0Solution'
+              let a0tye1s = applySolution0 varSolution tyvar0Solution a0tye1
+              let result = CastGiven0 (fmap (applySolution0 varSolution' tyvar0Solution') cast) a0tye1s result'
+              pure (result, varSolution, tyvar0Solution)
             AppArgOptOmitted0 -> do
               (result', varSolution', tyvar0Solution') <-
                 go (Set.insert x varsToInfer) tyvars0ToInfer appCtx' a0tye2
@@ -644,14 +654,14 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                   Nothing -> do
                     spanInFile <- askSpanInFile loc
                     typeError trav $ CannotInferOptional spanInFile x a0tye appCtx
-              (cast', _varSolution'', _tyvarSolution'') <-
+              (cast', _varSolution'', _tyvar0Solution'') <-
                 makeAssertiveCast
                   trav
                   loc
                   Set.empty
                   Set.empty
                   a0tyeInferred
-                  (applySolution varSolution' tyvar0Solution' a0tye1)
+                  (applySolution0 varSolution' tyvar0Solution' a0tye1)
               let result = FillInferred0 (applyCast cast' a0eInferred) result'
               pure (result, varSolution', tyvar0Solution')
             _ -> do
@@ -671,21 +681,21 @@ instantiateGuidedByAppContext0 trav loc appCtx0 a0tye0 = do
                   Set.empty
                   Set.empty
                   a0tyeInferred
-                  (applySolution varSolution' tyvar0Solution' a0tye1)
+                  (applySolution0 varSolution' tyvar0Solution' a0tye1)
               pure (InsertInferred0 (applyCast cast' a0eInferred) result', varSolution', tyvar0Solution')
-        (_, A0TyCode a1tye) -> do
+        (_ : _, A0TyCode a1tye) -> do
           (result', varSolution) <- instantiateGuidedByAppContext1 trav loc varsToInfer appCtx a1tye
           let tyvar0Solution = Map.empty
           result <- mapMPure (pure . A0TyCode) result'
           pure (result, varSolution, tyvar0Solution)
-        (_, A0TyImplicitForAll atyvar a0tye2) -> do
-          (result', varSolution', tyvarSolution') <-
+        (_ : _, A0TyImplicitForAll atyvar a0tye2) -> do
+          (result', varSolution', tyvar0Solution') <-
             go varsToInfer (Set.insert atyvar tyvars0ToInfer) appCtx a0tye2
-          case Map.lookup atyvar tyvarSolution' of
+          case Map.lookup atyvar tyvar0Solution' of
             Just a0tyeInferred ->
-              pure (InsertInferredType0 a0tyeInferred result', varSolution', tyvarSolution')
+              pure (InsertInferredType0 a0tyeInferred result', varSolution', tyvar0Solution')
             Nothing -> do
-              error "TODO (error): failed to infer a type for the type variable `atyvar`"
+              error "TODO (error): instantiateGuidedByAppContext0, cannot infer a type for the type variable"
         _ -> do
           spanInFile <- askSpanInFile loc
           typeError trav $ CannotInstantiateGuidedByAppContext0 spanInFile appCtx a0tye
@@ -702,14 +712,14 @@ instantiateGuidedByAppContext1 trav loc varsToInfer0 appCtx0 a1tye0 = do
       case (appCtx, a1tye) of
         ([], _) ->
           pure (Pure a1tye, Map.empty, Map.empty)
-        (_, A1TyImplicitForAll atyvar a1tye2) -> do
+        (_ : _, A1TyImplicitForAll atyvar a1tye2) -> do
           (result', varSolution', tyvar1Solution') <-
             go varsToInfer (Set.insert atyvar tyvars1ToInfer) appCtx a1tye2
           case Map.lookup atyvar tyvar1Solution' of
             Just a1tyeInferred ->
               pure (InsertType1 a1tyeInferred result', varSolution', tyvar1Solution')
             Nothing ->
-              error "TODO: instantiateGuidedByAppContext1, infer a type for a type variable"
+              error "TODO (error): instantiateGuidedByAppContext1, cannot infer a type for a type variable"
         (AppArg1 a1tye1' : appCtx', A1TyArrow a1tye1 a1tye2) -> do
           (eq, varSolution1, tyvar1Solution1) <-
             makeEquation1 trav loc varsToInfer tyvars1ToInfer a1tye1' a1tye1
@@ -718,10 +728,10 @@ instantiateGuidedByAppContext1 trav loc varsToInfer0 appCtx0 a1tye0 = do
               (varsToInfer \\ Map.keysSet varSolution1)
               (tyvars1ToInfer \\ Map.keysSet tyvar1Solution1)
               appCtx'
-              (applyVarSolution varSolution1 a1tye2)
+              (applySolution1 varSolution1 tyvar1Solution1 a1tye2)
           let varSolution = Map.union varSolution1 varSolution'
           let tyvar1Solution = Map.union tyvar1Solution1 tyvar1Solution'
-          let result = Cast1 (fmap (applyVarSolution varSolution' . A0TyEqAssert loc) eq) a1tye1 result'
+          let result = Cast1 (fmap (applySolution1 varSolution' tyvar1Solution' . A0TyEqAssert loc) eq) a1tye1 result'
           pure (result, varSolution, tyvar1Solution)
         _ -> do
           spanInFile <- askSpanInFile loc
