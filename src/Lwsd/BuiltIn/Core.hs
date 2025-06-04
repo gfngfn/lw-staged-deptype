@@ -3,7 +3,6 @@ module Lwsd.BuiltIn.Core
     BuiltInArity1 (..),
     BuiltInArity2 (..),
     BuiltInArity3 (..),
-    BuiltInArity4 (..),
     BuiltInArity5 (..),
     BuiltInArity8 (..),
     BuiltInArity10 (..),
@@ -32,7 +31,6 @@ data BuiltIn
   = BuiltInArity1 BuiltInArity1
   | BuiltInArity2 BuiltInArity2
   | BuiltInArity3 BuiltInArity3
-  | BuiltInArity4 BuiltInArity4
   | BuiltInArity5 BuiltInArity5
   | BuiltInArity8 BuiltInArity8
   | BuiltInArity10 BuiltInArity10
@@ -41,7 +39,7 @@ data BuiltIn
 data BuiltInArity1
   = BIGenVadd
   | BIMtranspose Int Int
-  | BIDeviceCudaIfAvailable
+  | BIDeviceGenCudaIfAvailable
   | BITensorGenZeros
   | BITensorGenGrad
   | BITensorGenZeroGrad
@@ -85,10 +83,7 @@ data BuiltInArity3
   = BIGenMconcatVert
   | BITensorGenMm
   | BILayerGenLinear
-  deriving stock (Eq, Show)
-
-data BuiltInArity4
-  = BIDatasetHelperGenTrainBatch
+  | BIDatasetHelperGenTrainBatch
   deriving stock (Eq, Show)
 
 data BuiltInArity5
@@ -132,8 +127,7 @@ data Ass0PartialBuiltInAppArity3 val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity4 val
-  = PartialBuiltInAppArity4Nil BuiltInArity4
-  | PartialBuiltInAppArity4Cons (Ass0PartialBuiltInAppArity5 val) val
+  = PartialBuiltInAppArity4Cons (Ass0PartialBuiltInAppArity5 val) val
   deriving stock (Eq, Show, Functor)
 
 data Ass0PartialBuiltInAppArity5 val
@@ -205,7 +199,7 @@ data Ass1BuiltIn
   | A1BIVarStoreCreate
   | A1BIOptimizerAdam
   | A1BIOptimizerBackwardStep
-  | A1BIDatasetHelperTrainBatch Int Int Int Int
+  | A1BIDatasetHelperTrainBatch Int Int Int
   | A1BIDatasetHelperBatchAccuracy Int Int Int Int
   | A1BIMnistHelperTrainImages
   | A1BIMnistHelperTrainLabels
@@ -257,7 +251,7 @@ validateExternalName0 = \case
   "reshapeable" -> arity2 BIReshapeable
   "list__append" -> arity2 BIListAppend
   "list__iter" -> arity2 BIListIter
-  "device__cuda_if_available" -> arity1 BIDeviceCudaIfAvailable
+  "device__gen_cuda_if_available" -> arity1 BIDeviceGenCudaIfAvailable
   "layer__gen_forward" -> arity2 BILayerGenForward
   "layer__gen_conv2d_" -> arity8 BILayerGenConv2d
   "layer__gen_linear" -> arity3 BILayerGenLinear
@@ -274,14 +268,13 @@ validateExternalName0 = \case
   "tensor__gen_dropout" -> arity1 BITensorGenDropout
   "tensor__gen_reshape" -> arity2 BITensorGenReshape
   "tensor__gen_max_pool2d" -> arity10 BITensorGenMaxPool2d
-  "dataset_helper__gen_train_batch" -> arity4 BIDatasetHelperGenTrainBatch
+  "dataset_helper__gen_train_batch" -> arity3 BIDatasetHelperGenTrainBatch
   "dataset_helper__gen_batch_accuracy" -> arity5 BIDatasetHelperGenBatchAccuracy
   _ -> Nothing
   where
     arity1 = pure . BuiltInArity1
     arity2 = pure . BuiltInArity2
     arity3 = pure . BuiltInArity3
-    arity4 = pure . BuiltInArity4
     arity5 = pure . BuiltInArity5
     arity8 = pure . BuiltInArity8
     arity10 = pure . BuiltInArity10

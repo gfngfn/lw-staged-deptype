@@ -90,41 +90,39 @@ fromStaged0 = \case
     wrap0 = BIType BT0
 
 fromStaged1 :: Lwsd.Ass1TypeExpr -> BITypeVoid
-fromStaged1 a1tye =
-  case a1tye of
-    Lwsd.A1TyPrim _a1tyPrim ->
-      wrap1 $ BITyBase []
-    Lwsd.A1TyList a1tye' ->
-      wrap1 $ BITyBase [fromStaged1 a1tye']
-    Lwsd.A1TyVar _atyvar ->
-      -- Handles order-0 type variables only:
-      wrap1 $ BITyBase []
-    Lwsd.A1TyProduct a1tye1 a1tye2 ->
-      wrap1 $ BITyProduct (fromStaged1 a1tye1) (fromStaged1 a1tye2)
-    Lwsd.A1TyArrow a1tye1 a1tye2 ->
-      wrap1 $ BITyArrow (fromStaged1 a1tye1) (fromStaged1 a1tye2)
-    Lwsd.A1TyImplicitForAll _atyvar a1tye2 ->
-      -- TODO: support type application
-      fromStaged1 a1tye2
+fromStaged1 = \case
+  Lwsd.A1TyPrim _a1tyPrim ->
+    wrap1 $ BITyBase []
+  Lwsd.A1TyList a1tye' ->
+    wrap1 $ BITyBase [fromStaged1 a1tye']
+  Lwsd.A1TyVar _atyvar ->
+    -- Handles order-0 type variables only:
+    wrap1 $ BITyBase []
+  Lwsd.A1TyProduct a1tye1 a1tye2 ->
+    wrap1 $ BITyProduct (fromStaged1 a1tye1) (fromStaged1 a1tye2)
+  Lwsd.A1TyArrow a1tye1 a1tye2 ->
+    wrap1 $ BITyArrow (fromStaged1 a1tye1) (fromStaged1 a1tye2)
+  Lwsd.A1TyImplicitForAll _atyvar a1tye2 ->
+    -- TODO: support type application
+    fromStaged1 a1tye2
   where
     wrap1 = BIType BT1
 
 fromStagedPers :: Lwsd.AssPersTypeExpr -> BITypeF ()
-fromStagedPers aPtye =
-  case aPtye of
-    Lwsd.APersTyPrim _a0tyPrim ->
-      wrapP $ BITyBase []
-    Lwsd.APersTyVar _atyvar ->
-      -- Handles order-0 type variables only:
-      wrapP $ BITyBase []
-    Lwsd.APersTyList aPtye' ->
-      wrapP $ BITyBase [fromStagedPers aPtye']
-    Lwsd.APersTyProduct aPtye1 aPtye2 ->
-      wrapP $ BITyProduct (fromStagedPers aPtye1) (fromStagedPers aPtye2)
-    Lwsd.APersTyArrow aPtye1 aPtye2 ->
-      wrapP $ BITyArrow (fromStagedPers aPtye1) (fromStagedPers aPtye2)
-    Lwsd.APersTyImplicitForAll _atyvar aPtye' ->
-      -- TODO: support type application
-      fromStagedPers aPtye'
+fromStagedPers = \case
+  Lwsd.APersTyPrim _a0tyPrim ->
+    wrapP $ BITyBase []
+  Lwsd.APersTyVar _atyvar ->
+    -- Handles order-0 type variables only:
+    wrapP $ BITyBase []
+  Lwsd.APersTyList aPtye' ->
+    wrapP $ BITyBase [fromStagedPers aPtye']
+  Lwsd.APersTyProduct aPtye1 aPtye2 ->
+    wrapP $ BITyProduct (fromStagedPers aPtye1) (fromStagedPers aPtye2)
+  Lwsd.APersTyArrow aPtye1 aPtye2 ->
+    wrapP $ BITyArrow (fromStagedPers aPtye1) (fromStagedPers aPtye2)
+  Lwsd.APersTyImplicitForAll _atyvar aPtye2 ->
+    -- TODO: support type application
+    fromStagedPers aPtye2
   where
     wrapP = BIType ()

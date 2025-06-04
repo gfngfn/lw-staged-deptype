@@ -357,7 +357,7 @@ instance Disp BuiltInArity1 where
   dispGen _ = \case
     BIGenVadd -> "GEN_VADD"
     BIMtranspose m n -> "MTRANSPOSE@{" <> disps [m, n] <> "}"
-    BIDeviceCudaIfAvailable -> "DEVICE.CUDA_IF_AVAILABLE"
+    BIDeviceGenCudaIfAvailable -> "DEVICE.GEN_CUDA_IF_AVAILABLE"
     BITensorGenZeros -> "TENSOR.GEN_ZEROS"
     BITensorGenGrad -> "TENSOR.GEN_GRAD"
     BITensorGenZeroGrad -> "TENSOR.GEN_ZERO_GRAD"
@@ -401,9 +401,6 @@ instance Disp BuiltInArity3 where
     BIGenMconcatVert -> "GEN_MCONCAT_VERT"
     BITensorGenMm -> "TENSOR.GEN_MM"
     BILayerGenLinear -> "LAYER.GEN_LINEAR"
-
-instance Disp BuiltInArity4 where
-  dispGen _ = \case
     BIDatasetHelperGenTrainBatch -> "DATASET_HELPER.GEN_TRAIN_BATCH"
 
 instance Disp BuiltInArity5 where
@@ -423,7 +420,6 @@ instance Disp BuiltIn where
     BuiltInArity1 bi1 -> dispGen req bi1
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
-    BuiltInArity4 bi4 -> dispGen req bi4
     BuiltInArity5 bi5 -> dispGen req bi5
     BuiltInArity8 bi8 -> dispGen req bi8
     BuiltInArity10 bi10 -> dispGen req bi10
@@ -864,7 +860,6 @@ instance (Disp v) => Disp (Ass0PartialBuiltInAppArity3 v) where
 
 instance (Disp v) => Disp (Ass0PartialBuiltInAppArity4 v) where
   dispGen req = \case
-    PartialBuiltInAppArity4Nil bi4 -> disp bi4
     PartialBuiltInAppArity4Cons pba5 v -> f (disp pba5 <+> dispGen Atomic v)
     where
       f = deepenParenWhen (req <= Atomic)
@@ -924,7 +919,7 @@ instance Disp Ass1BuiltIn where
     A1BIVarStoreCreate -> "Var_store.create"
     A1BIOptimizerAdam -> "Optimizer.adam"
     A1BIOptimizerBackwardStep -> "Optimizer.backward_step"
-    A1BIDatasetHelperTrainBatch n1 n2 n3 n4 -> "Dataset_helper.train_batch" <> param (disps [n1, n2, n3, n4])
+    A1BIDatasetHelperTrainBatch ntrain imgdim batchSize -> "Dataset_helper.train_batch" <> param (disps [ntrain, imgdim, batchSize])
     A1BIDatasetHelperBatchAccuracy ntest imgdim n batchSize -> "Dataset_helper.batch_accuracy" <> param (disps [ntest, imgdim, n, batchSize])
     A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
     A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
@@ -1087,8 +1082,16 @@ instance Disp Bta.AnalysisError where
       "Not a tuple;" <+> disp bity <+> disp spanInFile
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
-    Bta.BITypeContradiction spanInFile bity1 bity2 ->
-      "Basic type contradiction;" <+> disp bity1 <> "," <+> disp bity2 <+> disp spanInFile
+    Bta.BITypeContradiction spanInFile bity1 bity2 bity1Local bity2Local ->
+      "Basic type contradiction;"
+        <+> disp bity1
+        <+> "!="
+        <+> disp bity2
+        <+> disp spanInFile
+        <> ";"
+        <+> disp bity1Local
+        <+> "!="
+        <+> disp bity2Local
     Bta.UnknownTypeOrInvalidArgs spanInFile _tyName _args ->
       -- TODO (enhance): detailed report
       "Unknown type or invalid arguments" <+> disp spanInFile

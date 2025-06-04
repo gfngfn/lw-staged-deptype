@@ -16,7 +16,7 @@ data AnalysisError
   | NotAnOptFunction SpanInFile BIType
   | NotABase SpanInFile BIType
   | BindingTimeContradiction SpanInFile
-  | BITypeContradiction SpanInFile BIType BIType
+  | BITypeContradiction SpanInFile BIType BIType BIType BIType
   | UnknownTypeOrInvalidArgs SpanInFile TypeName [BArgForType]
   | NotATuple SpanInFile BIType
   deriving stock (Show)

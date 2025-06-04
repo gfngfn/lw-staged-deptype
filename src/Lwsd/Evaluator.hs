@@ -143,9 +143,9 @@ reduceDeltaArity1 bi1 a0v1 =
       case Matrix.transpose m n mat1 of
         Just mat -> pure $ A0ValLiteral (ALitMat mat)
         Nothing -> bug $ InconsistentAppBuiltInArity1 bi1 a0v1
-    BIDeviceCudaIfAvailable -> do
+    BIDeviceGenCudaIfAvailable -> do
       () <- validateUnitLiteral a0v1
-      pure $ A0ValLiteral ALitUnit -- TODO: return a value of type `Device`
+      pure $ A0ValBracket (A1ValLiteral ALitUnit) -- TODO: return a value of type `Device`
     BITensorGenZeros -> do
       ns1 <- validateIntListLiteral a0v1
       pure $ A0ValBracket (A1ValConst (A1BITensorZeros ns1))
@@ -317,16 +317,11 @@ reduceDeltaArity3 bi3 a0v1 a0v2 a0v3 =
       input_dim <- validateIntLiteral a0v2
       output_dim <- validateIntLiteral a0v3
       pure $ A0ValBracket (A1ValConst (A1BILayerLinear ns input_dim output_dim))
-
-reduceDeltaArity4 :: BuiltInArity4 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
-reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0v4 =
-  case bi4 of
     BIDatasetHelperGenTrainBatch -> do
-      n1 <- validateIntLiteral a0v1
-      n2 <- validateIntLiteral a0v2
-      n3 <- validateIntLiteral a0v3
-      n4 <- validateIntLiteral a0v4
-      pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperTrainBatch n1 n2 n3 n4))
+      ntrain <- validateIntLiteral a0v1
+      imgdim <- validateIntLiteral a0v2
+      batchSize <- validateIntLiteral a0v3
+      pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperTrainBatch ntrain imgdim batchSize))
 
 reduceDeltaArity5 :: BuiltInArity5 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
 reduceDeltaArity5 bi5 a0v1 a0v2 a0v3 a0v4 a0v5 =
@@ -409,8 +404,6 @@ reduceDelta pba a0vArg =
                   reduceDeltaArity3 bi3 v3 v2 v1
                 PartialBuiltInAppArity3Cons pba4 v4 ->
                   case pba4 of
-                    PartialBuiltInAppArity4Nil bi4 ->
-                      reduceDeltaArity4 bi4 v4 v3 v2 v1
                     PartialBuiltInAppArity4Cons pba5 v5 ->
                       case pba5 of
                         PartialBuiltInAppArity5Nil bi5 ->
@@ -468,7 +461,6 @@ evalExpr0 env = \case
         BuiltInArity1 bi1 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity1 (PartialBuiltInAppArity1Nil bi1))
         BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity2 (PartialBuiltInAppArity2Nil bi2))
         BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity3 (PartialBuiltInAppArity3Nil bi3))
-        BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity4 (PartialBuiltInAppArity4Nil bi4))
         BuiltInArity5 bi5 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity5 (PartialBuiltInAppArity5Nil bi5))
         BuiltInArity8 bi8 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity8 (PartialBuiltInAppArity8Nil bi8))
         BuiltInArity10 bi10 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity10 (PartialBuiltInAppArity10Nil bi10))
