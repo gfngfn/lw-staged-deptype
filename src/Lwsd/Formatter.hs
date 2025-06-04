@@ -129,6 +129,11 @@ dispAppOptOmitted req e1 =
   deepenParenWhen (req <= Atomic) $
     group (dispGen FunDomain e1 <> nest 2 (line <> "_"))
 
+dispAppType :: (Disp expr, Disp ty) => Associativity -> expr -> ty -> Doc Ann
+dispAppType req e1 tye2 =
+  deepenParenWhen (req <= Atomic) $
+    group (dispGen FunDomain e1 <> nest 2 (line <> dispGen Atomic tye2))
+
 dispLetIn :: (Disp var, Disp param, Disp expr) => Associativity -> var -> [param] -> expr -> expr -> Doc Ann
 dispLetIn req x params e1 e2 =
   deepenParenWhen (req <= FunDomain) $
@@ -201,6 +206,11 @@ dispEscape e =
 
 dispTypeVar :: AssTypeVar -> Doc Ann
 dispTypeVar (AssTypeVar n) = "'a" <> disp n
+
+dispForAllType :: (Disp ty) => Associativity -> AssTypeVar -> ty -> Doc Ann
+dispForAllType req atyvar tye =
+  deepenParenWhen (req <= Atomic) $
+    group ("forall" <+> dispTypeVar atyvar <> "." <+> disp tye)
 
 dispListType :: (Disp ty) => Associativity -> ty -> Doc Ann
 dispListType req tye =
@@ -329,12 +339,13 @@ instance Disp (TypeExprF ann) where
 instance Disp (TypeExprMainF ann) where
   dispGen req = \case
     TyName tyName args -> dispNameWithArgs req (disp tyName) (dispGen Atomic) args
-    TyVar (TypeVar tyvar) -> disp tyvar
+    TyVar (TypeVar tyvar) -> "'" <> disp tyvar
     TyArrow (xOpt, tye1) tye2 -> dispArrowType req xOpt tye1 tye2
     TyCode tye1 -> dispBracket tye1
     TyOptArrow (x, tye1) tye2 -> dispOptArrowType req x tye1 tye2
     TyRefinement x tye1 e2 -> "(" <> disp x <+> ":" <+> disp tye1 <+> "|" <+> disp e2 <+> ")"
     TyProduct tye1 tye2 -> dispProductType req tye1 tye2
+    TyForAll (TypeVar tyvar) tye -> "forall '" <> disp tyvar <+> "->" <+> disp tye
 
 instance Disp (ArgForTypeF ann) where
   dispGen req = \case
@@ -346,7 +357,7 @@ instance Disp BuiltInArity1 where
   dispGen _ = \case
     BIGenVadd -> "GEN_VADD"
     BIMtranspose m n -> "MTRANSPOSE@{" <> disps [m, n] <> "}"
-    BIDeviceCudaIfAvailable -> "DEVICE.CUDA_IF_AVAILABLE"
+    BIDeviceGenCudaIfAvailable -> "DEVICE.GEN_CUDA_IF_AVAILABLE"
     BITensorGenZeros -> "TENSOR.GEN_ZEROS"
     BITensorGenGrad -> "TENSOR.GEN_GRAD"
     BITensorGenZeroGrad -> "TENSOR.GEN_ZERO_GRAD"
@@ -390,9 +401,6 @@ instance Disp BuiltInArity3 where
     BIGenMconcatVert -> "GEN_MCONCAT_VERT"
     BITensorGenMm -> "TENSOR.GEN_MM"
     BILayerGenLinear -> "LAYER.GEN_LINEAR"
-
-instance Disp BuiltInArity4 where
-  dispGen _ = \case
     BIDatasetHelperGenTrainBatch -> "DATASET_HELPER.GEN_TRAIN_BATCH"
 
 instance Disp BuiltInArity5 where
@@ -412,7 +420,6 @@ instance Disp BuiltIn where
     BuiltInArity1 bi1 -> dispGen req bi1
     BuiltInArity2 bi2 -> dispGen req bi2
     BuiltInArity3 bi3 -> dispGen req bi3
-    BuiltInArity4 bi4 -> dispGen req bi4
     BuiltInArity5 bi5 -> dispGen req bi5
     BuiltInArity8 bi8 -> dispGen req bi8
     BuiltInArity10 bi10 -> dispGen req bi10
@@ -501,6 +508,8 @@ instance (Disp sv) => Disp (Ass0ExprF sv) where
     A0RefinementAssert _loc a0ePred a0eTarget ->
       deepenParenWhen (req <= Atomic) $
         "ASSERT" <+> disp a0ePred <+> "FOR" <+> disp a0eTarget
+    A0AppType a0e1 sa0tye2 ->
+      dispAppType req a0e1 sa0tye2
 
 instance (Disp sv) => Disp (Ass1ExprF sv) where
   dispGen req = \case
@@ -515,6 +524,7 @@ instance (Disp sv) => Disp (Ass1ExprF sv) where
     A1Tuple a1e1 a1e2 -> dispTuple a1e1 a1e2
     A1IfThenElse a1e0 a1e1 a1e2 -> dispIfThenElse req a1e0 a1e1 a1e2
     A1Escape a0e1 -> dispEscape a0e1
+    A1AppType a1e1 a1tye2 -> dispAppType req a1e1 a1tye2
 
 instance Disp AssPrimBaseType where
   dispGen _req = \case
@@ -546,6 +556,7 @@ instance (Disp sv) => Disp (Ass0TypeExprF sv) where
     A0TyArrow (xOpt, a0tye1) a0tye2 -> dispArrowType req xOpt a0tye1 a0tye2
     A0TyCode a1tye1 -> dispBracket a1tye1
     A0TyOptArrow (x, a0tye1) a0tye2 -> dispOptArrowType req x a0tye1 a0tye2
+    A0TyImplicitForAll atyvar a0tye -> dispForAllType req atyvar a0tye
 
 instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
   dispGen req = \case
@@ -557,6 +568,7 @@ instance (Disp sv) => Disp (StrictAss0TypeExprF sv) where
     SA0TyProduct sa0tye1 sa0tye2 -> dispProductType req sa0tye1 sa0tye2
     SA0TyArrow (xOpt, sa0tye1) sa0tye2 -> dispArrowType req xOpt sa0tye1 sa0tye2
     SA0TyCode a1tye1 -> dispBracket a1tye1
+    SA0TyExplicitForAll atyvar sa0tye -> dispForAllType req atyvar sa0tye
 
 instance (Disp sv) => Disp (Ass1PrimTypeF sv) where
   dispGen req = \case
@@ -572,8 +584,10 @@ instance (Disp sv) => Disp (Ass1TypeExprF sv) where
   dispGen req = \case
     A1TyPrim a1tyPrim -> dispGen req a1tyPrim
     A1TyList a1tye -> dispListType req a1tye
+    A1TyVar atyvar -> dispTypeVar atyvar
     A1TyProduct a1tye1 a1tye2 -> dispProductType req a1tye1 a1tye2
     A1TyArrow a1tye1 a1tye2 -> dispNondepArrowType req a1tye1 a1tye2
+    A1TyImplicitForAll atyvar a1tye2 -> dispForAllType req atyvar a1tye2
 
 instance Disp FrontError where
   dispGen _ = \case
@@ -802,6 +816,8 @@ instance (Disp sv, Disp (af sv)) => Disp (ResultF af sv) where
     CastGiven0 _ a0tye r -> "cast-given0 :" <+> stage0Style (disp a0tye) <> ";" <+> disp r
     FillInferred0 a0e r -> "fill0" <+> disp a0e <> ";" <+> disp r
     InsertInferred0 a0e r -> "insert0" <+> disp a0e <> ";" <+> disp r
+    InsertInferredType0 sa0tye r -> "insert-type0" <+> disp sa0tye <> ";" <+> disp r
+    InsertType1 a1tye r -> "insert-type1" <+> disp a1tye <> ";" <+> disp r
 
 instance (Disp sv) => Disp (Ass0ValF sv) where
   dispGen req = \case
@@ -844,7 +860,6 @@ instance (Disp v) => Disp (Ass0PartialBuiltInAppArity3 v) where
 
 instance (Disp v) => Disp (Ass0PartialBuiltInAppArity4 v) where
   dispGen req = \case
-    PartialBuiltInAppArity4Nil bi4 -> disp bi4
     PartialBuiltInAppArity4Cons pba5 v -> f (disp pba5 <+> dispGen Atomic v)
     where
       f = deepenParenWhen (req <= Atomic)
@@ -904,7 +919,7 @@ instance Disp Ass1BuiltIn where
     A1BIVarStoreCreate -> "Var_store.create"
     A1BIOptimizerAdam -> "Optimizer.adam"
     A1BIOptimizerBackwardStep -> "Optimizer.backward_step"
-    A1BIDatasetHelperTrainBatch n1 n2 n3 n4 -> "Dataset_helper.train_batch" <> param (disps [n1, n2, n3, n4])
+    A1BIDatasetHelperTrainBatch ntrain imgdim batchSize -> "Dataset_helper.train_batch" <> param (disps [ntrain, imgdim, batchSize])
     A1BIDatasetHelperBatchAccuracy ntest imgdim n batchSize -> "Dataset_helper.batch_accuracy" <> param (disps [ntest, imgdim, n, batchSize])
     A1BIMnistHelperTrainImages -> "Mnist_helper.train_images"
     A1BIMnistHelperTrainLabels -> "Mnist_helper.train_labels"
@@ -943,6 +958,7 @@ instance (Disp sv) => Disp (Ass0TypeValF sv) where
     A0TyValProduct a0tyv1 a0tyv2 -> dispProductType req a0tyv1 a0tyv2
     A0TyValArrow (xOpt, a0tyv1) a0tye2 -> dispArrowType req xOpt a0tyv1 a0tye2
     A0TyValCode a1tyv1 -> dispBracket a1tyv1
+    A0TyValExplicitForAll atyvar sa0tye1 -> dispForAllType req atyvar sa0tye1
 
 instance Disp Ass0PrimTypeVal where
   dispGen req = \case
@@ -951,12 +967,14 @@ instance Disp Ass0PrimTypeVal where
     A0TyValTensor [m, n] -> dispNameWithArgs req "Mat" disp [m, n]
     A0TyValTensor ns -> dispNameWithArgs req "Tensor" dispListLiteral [ns]
 
-instance Disp Ass1TypeVal where
+instance (Disp sv) => Disp (Ass1TypeValF sv) where
   dispGen req = \case
     A1TyValPrim a1tyvPrim -> dispGen req a1tyvPrim
     A1TyValList a1tyv -> dispListType req a1tyv
+    A1TyValVar atyvar -> dispTypeVar atyvar
     A1TyValProduct a1tyv1 a1tyv2 -> dispProductType req a1tyv1 a1tyv2
     A1TyValArrow a1tyv1 a1tyv2 -> dispNondepArrowType req a1tyv1 a1tyv2
+    A1TyValImplicitForAll atyvar a1tye2 -> dispForAllType req atyvar a1tye2
 
 instance Disp Ass1PrimTypeVal where
   dispGen req = \case
@@ -1064,8 +1082,16 @@ instance Disp Bta.AnalysisError where
       "Not a tuple;" <+> disp bity <+> disp spanInFile
     Bta.BindingTimeContradiction spanInFile ->
       "Binding-time contradiction" <+> disp spanInFile
-    Bta.BITypeContradiction spanInFile bity1 bity2 ->
-      "Basic type contradiction;" <+> disp bity1 <> "," <+> disp bity2 <+> disp spanInFile
+    Bta.BITypeContradiction spanInFile bity1 bity2 bity1Local bity2Local ->
+      "Basic type contradiction;"
+        <+> disp bity1
+        <+> "!="
+        <+> disp bity2
+        <+> disp spanInFile
+        <> ";"
+        <+> disp bity1Local
+        <+> "!="
+        <+> disp bity2Local
     Bta.UnknownTypeOrInvalidArgs spanInFile _tyName _args ->
       -- TODO (enhance): detailed report
       "Unknown type or invalid arguments" <+> disp spanInFile

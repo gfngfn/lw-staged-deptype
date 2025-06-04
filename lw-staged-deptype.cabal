@@ -73,6 +73,7 @@ library
       Lwsd.Syntax,
       Lwsd.Token,
       Lwsd.TypeError,
+      Lwsd.TypeSubst,
       Lwsd.Typechecker,
       Surface.BindingTime,
       Surface.BindingTime.AnalysisError,
@@ -87,6 +88,7 @@ library
       Util.FrontError,
       Util.LocationInFile,
       Util.Matrix,
+      Util.Maybe1,
       Util.ParserUtil,
       Util.TokenUtil,
       Util.Vector

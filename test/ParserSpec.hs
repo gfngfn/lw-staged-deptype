@@ -355,17 +355,15 @@ spec = do
           [ Bind () $
               BindVal Stage0 "foo" $
                 BindValExternal
-                  []
                   (tyNondepFun tyInt tyBool)
                   [("builtin", "bar"), ("surface", "qux")]
           ]
     it "parses single, stage-0 external binding (polymorphic)" $
-      parseBinds "val ~app 'a 'b : ('a -> 'b) -> 'a -> 'b external (builtin = \"app\", surface = \"app\")"
+      parseBinds "val ~app : forall 'a -> forall 'b -> ('a -> 'b) -> 'a -> 'b external (builtin = \"app\", surface = \"app\")"
         `shouldBe` pure
           [ Bind () $
               BindVal Stage0 "app" $
                 BindValExternal
-                  [TypeVar "a", TypeVar "b"]
-                  (tyNondepFun (tyNondepFun (tyVar "a") (tyVar "b")) (tyNondepFun (tyVar "a") (tyVar "b")))
+                  (tyForAll (TypeVar "a") $ tyForAll (TypeVar "b") $ tyNondepFun (tyNondepFun (tyVar "a") (tyVar "b")) (tyNondepFun (tyVar "a") (tyVar "b")))
                   [("builtin", "app"), ("surface", "app")]
           ]

@@ -287,6 +287,7 @@ typeExpr = fun
     fun :: P TypeExpr
     fun =
       try (makeTyArrow <$> funDom <*> (token TokArrow *> fun))
+        <|> (makeForAll <$> (token TokForall *> typeVar) <*> (token TokArrow *> fun))
         <|> prod
       where
         makeTyArrow funDomSpec tye2@(TypeExpr loc2 _) =
@@ -298,6 +299,8 @@ typeExpr = fun
                 if isMandatory
                   then TyArrow (Just x, tye1) tye2
                   else TyOptArrow (x, tye1) tye2
+        makeForAll (Located loc1 tyvar) tye@(TypeExpr loc2 _) =
+          TypeExpr (mergeSpan loc1 loc2) (TyForAll tyvar tye)
 
     funDom :: P (Maybe (Bool, Span, Var), TypeExpr)
     funDom =
@@ -326,10 +329,10 @@ valBinder =
 
 bindVal :: P (BindVal, Span)
 bindVal =
-  (makeBindValExternal <$> many (noLoc typeVar) <*> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
+  (makeBindValExternal <$> (token TokColon *> typeExpr) <*> (token TokExternal *> external))
     <|> (makeBindValNormal <$> (token TokEqual *> expr))
   where
-    makeBindValExternal tyvars ty (Located locLast ext) = (BindValExternal tyvars ty ext, locLast)
+    makeBindValExternal ty (Located locLast ext) = (BindValExternal ty ext, locLast)
     makeBindValNormal e@(Expr locLast _) = (BindValNormal e, locLast)
 
 external :: P (Located External)

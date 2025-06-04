@@ -426,7 +426,7 @@ appendOmittedOptionalArguments e@(Expr (_, ann) _) bity@(BIType _bt bityMain) =
       (e, bity)
 
 makeConstraintsFromBITypeEquation :: Span -> BIType -> BIType -> M [Constraint Span]
-makeConstraintsFromBITypeEquation ann = go
+makeConstraintsFromBITypeEquation ann bity1' bity2' = go bity1' bity2'
   where
     go :: BIType -> BIType -> M [Constraint Span]
     go bity1@(BIType bt1 bityMain1) bity2@(BIType bt2 bityMain2) =
@@ -436,7 +436,7 @@ makeConstraintsFromBITypeEquation ann = go
             case zipExactMay bityBaseArgs1 bityBaseArgs2 of
               Nothing -> do
                 spanInFile <- askSpanInFile ann
-                analysisError $ BITypeContradiction spanInFile bity1 bity2
+                analysisError $ BITypeContradiction spanInFile bity1' bity2' bity1 bity2
               Just zipped -> do
                 concat <$> mapM (uncurry go) zipped
           (BITyProduct bity11 bity12, BITyProduct bity21 bity22) -> do
@@ -453,7 +453,7 @@ makeConstraintsFromBITypeEquation ann = go
             pure $ constraints1 ++ constraints2
           (_, _) -> do
             spanInFile <- askSpanInFile ann
-            analysisError $ BITypeContradiction spanInFile bity1 bity2
+            analysisError $ BITypeContradiction spanInFile bity1' bity2' bity1 bity2
 
 extractConstraintsFromExprArgsForType :: BindingTimeEnv -> BindingTime -> Span -> [(BExpr, BIType)] -> M ([BExpr], [Constraint Span])
 extractConstraintsFromExprArgsForType btenv bt ann argsWithBityReq = do

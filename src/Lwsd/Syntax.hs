@@ -27,7 +27,7 @@ module Lwsd.Syntax
     Ass1ValF (..),
     Ass0TypeValF (..),
     Ass0PrimTypeVal (..),
-    Ass1TypeVal (..),
+    Ass1TypeValF (..),
     Ass1PrimTypeVal (..),
     EvalEnv,
     EvalEnvEntry (..),
@@ -53,6 +53,7 @@ module Lwsd.Syntax
     Ass0Val,
     Ass1Val,
     Ass0TypeVal,
+    Ass1TypeVal,
     Ass1PrimType,
     AppContext,
     Result0,
@@ -111,6 +112,7 @@ data Ass0ExprF sv
   | A0Bracket (Ass1ExprF sv)
   | A0TyEqAssert Span (Type1EquationF sv)
   | A0RefinementAssert Span (Ass0ExprF sv) (Ass0ExprF sv) -- A predicate and a target.
+  | A0AppType (Ass0ExprF sv) (StrictAss0TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 data Ass1ExprF sv
@@ -124,6 +126,7 @@ data Ass1ExprF sv
   | A1Tuple (Ass1ExprF sv) (Ass1ExprF sv) -- TODO: generalize tuples
   | A1IfThenElse (Ass1ExprF sv) (Ass1ExprF sv) (Ass1ExprF sv)
   | A1Escape (Ass0ExprF sv)
+  | A1AppType (Ass1ExprF sv) (Ass1TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 a1LetIn :: (AssVarF sv, Ass1TypeExprF sv) -> Ass1ExprF sv -> Ass1ExprF sv -> Ass1ExprF sv
@@ -159,6 +162,7 @@ data Ass0TypeExprF sv
   | A0TyArrow (Maybe (AssVarF sv), Ass0TypeExprF sv) (Ass0TypeExprF sv)
   | A0TyOptArrow (AssVarF sv, Ass0TypeExprF sv) (Ass0TypeExprF sv)
   | A0TyCode (Ass1TypeExprF sv)
+  | A0TyImplicitForAll AssTypeVar (Ass0TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 -- For type annotations in target terms.
@@ -169,6 +173,7 @@ data StrictAss0TypeExprF sv
   | SA0TyProduct (StrictAss0TypeExprF sv) (StrictAss0TypeExprF sv) -- TODO: generalize product types
   | SA0TyArrow (Maybe (AssVarF sv), StrictAss0TypeExprF sv) (StrictAss0TypeExprF sv)
   | SA0TyCode (Ass1TypeExprF sv)
+  | SA0TyExplicitForAll AssTypeVar (StrictAss0TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 data AssPrimBaseType
@@ -204,8 +209,10 @@ data Ass0PrimType
 data Ass1TypeExprF sv
   = A1TyPrim (Ass1PrimTypeF sv)
   | A1TyList (Ass1TypeExprF sv)
+  | A1TyVar AssTypeVar
   | A1TyProduct (Ass1TypeExprF sv) (Ass1TypeExprF sv) -- TODO: generalize product types
   | A1TyArrow (Ass1TypeExprF sv) (Ass1TypeExprF sv)
+  | A1TyImplicitForAll AssTypeVar (Ass1TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 data Ass1PrimTypeF sv
@@ -220,6 +227,7 @@ data AssPersTypeExpr
   | APersTyList AssPersTypeExpr
   | APersTyProduct AssPersTypeExpr AssPersTypeExpr
   | APersTyArrow AssPersTypeExpr AssPersTypeExpr
+  | APersTyImplicitForAll AssTypeVar AssPersTypeExpr
   deriving stock (Eq, Show)
 
 persistentTypeTo0 :: AssPersTypeExpr -> Ass0TypeExprF sv
@@ -229,14 +237,16 @@ persistentTypeTo0 = \case
   APersTyList aPtye -> A0TyList (persistentTypeTo0 aPtye) Nothing
   APersTyProduct aPtye1 aPtye2 -> A0TyProduct (persistentTypeTo0 aPtye1) (persistentTypeTo0 aPtye2)
   APersTyArrow aPtye1 aPtye2 -> A0TyArrow (Nothing, persistentTypeTo0 aPtye1) (persistentTypeTo0 aPtye2)
+  APersTyImplicitForAll atyvar aPtye -> A0TyImplicitForAll atyvar (persistentTypeTo0 aPtye)
 
 persistentTypeTo1 :: AssPersTypeExpr -> Ass1TypeExprF sv
 persistentTypeTo1 = \case
   APersTyPrim a0tyPrim -> A1TyPrim (liftPrimType a0tyPrim)
-  APersTyVar _atyvar -> error "TODO: persistentTypeTo1, APersTyVar"
+  APersTyVar atyvar -> A1TyVar atyvar
   APersTyList aPtye -> A1TyList (persistentTypeTo1 aPtye)
   APersTyProduct aPtye1 aPtye2 -> A1TyProduct (persistentTypeTo1 aPtye1) (persistentTypeTo1 aPtye2)
   APersTyArrow aPtye1 aPtye2 -> A1TyArrow (persistentTypeTo1 aPtye1) (persistentTypeTo1 aPtye2)
+  APersTyImplicitForAll atyvar aPtye -> A1TyImplicitForAll atyvar (persistentTypeTo1 aPtye)
 
 liftPrimType :: Ass0PrimType -> Ass1PrimTypeF sv
 liftPrimType = \case
@@ -255,7 +265,7 @@ data Ass1ValF sv
   = A1ValLiteral (AssLiteralF Ass1ValF sv)
   | A1ValConst Ass1BuiltIn
   | A1ValVar Symbol
-  | A1ValLam (Maybe (Symbol, Ass1TypeVal)) (Symbol, Ass1TypeVal) (Ass1ValF sv)
+  | A1ValLam (Maybe (Symbol, Ass1TypeValF sv)) (Symbol, Ass1TypeValF sv) (Ass1ValF sv)
   | A1ValApp (Ass1ValF sv) (Ass1ValF sv)
   | A1ValLetTupleIn Symbol Symbol (Ass1ValF sv) (Ass1ValF sv)
   | A1ValSequential (Ass1ValF sv) (Ass1ValF sv)
@@ -269,7 +279,8 @@ data Ass0TypeValF sv
   | A0TyValList (Ass0TypeValF sv) (Maybe (Ass0ValF sv)) -- Possibly equipped with a refinement predicate.
   | A0TyValProduct (Ass0TypeValF sv) (Ass0TypeValF sv)
   | A0TyValArrow (Maybe (AssVarF sv), Ass0TypeValF sv) (StrictAss0TypeExprF sv)
-  | A0TyValCode Ass1TypeVal
+  | A0TyValCode (Ass1TypeValF sv)
+  | A0TyValExplicitForAll AssTypeVar (StrictAss0TypeExprF sv)
   deriving stock (Eq, Show, Functor)
 
 data Ass0PrimTypeVal
@@ -277,12 +288,14 @@ data Ass0PrimTypeVal
   | A0TyValTensor [Int]
   deriving stock (Eq, Show)
 
-data Ass1TypeVal
+data Ass1TypeValF sv
   = A1TyValPrim Ass1PrimTypeVal
-  | A1TyValList Ass1TypeVal
-  | A1TyValProduct Ass1TypeVal Ass1TypeVal
-  | A1TyValArrow Ass1TypeVal Ass1TypeVal
-  deriving stock (Eq, Show)
+  | A1TyValList (Ass1TypeValF sv)
+  | A1TyValVar AssTypeVar
+  | A1TyValProduct (Ass1TypeValF sv) (Ass1TypeValF sv)
+  | A1TyValArrow (Ass1TypeValF sv) (Ass1TypeValF sv)
+  | A1TyValImplicitForAll AssTypeVar (Ass1TypeExprF sv)
+  deriving stock (Eq, Show, Functor)
 
 data Ass1PrimTypeVal
   = A1TyValPrimBase AssPrimBaseType
@@ -339,6 +352,7 @@ strictify = \case
   A0TyArrow (x1opt, a0tye1) a0tye2 -> SA0TyArrow (x1opt, strictify a0tye1) (strictify a0tye2)
   A0TyCode a1tye1 -> SA0TyCode a1tye1
   A0TyOptArrow (x1, a0tye1) a0tye2 -> SA0TyArrow (Just x1, strictify a0tye1) (strictify a0tye2)
+  A0TyImplicitForAll atyvar a0tye -> SA0TyExplicitForAll atyvar (strictify a0tye)
 
 a0TyVec :: Int -> Ass0PrimType
 a0TyVec n = A0TyTensor [n]
@@ -390,6 +404,8 @@ data ResultF af sv
   | CastGiven0 (Maybe (Ass0ExprF sv)) (Ass0TypeExprF sv) (ResultF af sv)
   | FillInferred0 (Ass0ExprF sv) (ResultF af sv)
   | InsertInferred0 (Ass0ExprF sv) (ResultF af sv)
+  | InsertInferredType0 (Ass0TypeExprF sv) (ResultF af sv)
+  | InsertType1 (Ass1TypeExprF sv) (ResultF af sv)
   deriving (Eq, Show, Functor)
 
 type AssVar = AssVarF StaticVar
@@ -415,6 +431,8 @@ type Ass0Val = Ass0ValF StaticVar
 type Ass1Val = Ass1ValF StaticVar
 
 type Ass0TypeVal = Ass0TypeValF StaticVar
+
+type Ass1TypeVal = Ass1TypeValF StaticVar
 
 type AppContext = AppContextF StaticVar
 

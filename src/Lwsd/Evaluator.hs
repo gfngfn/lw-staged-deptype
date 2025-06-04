@@ -143,9 +143,9 @@ reduceDeltaArity1 bi1 a0v1 =
       case Matrix.transpose m n mat1 of
         Just mat -> pure $ A0ValLiteral (ALitMat mat)
         Nothing -> bug $ InconsistentAppBuiltInArity1 bi1 a0v1
-    BIDeviceCudaIfAvailable -> do
+    BIDeviceGenCudaIfAvailable -> do
       () <- validateUnitLiteral a0v1
-      pure $ A0ValLiteral ALitUnit -- TODO: return a value of type `Device`
+      pure $ A0ValBracket (A1ValLiteral ALitUnit) -- TODO: return a value of type `Device`
     BITensorGenZeros -> do
       ns1 <- validateIntListLiteral a0v1
       pure $ A0ValBracket (A1ValConst (A1BITensorZeros ns1))
@@ -317,16 +317,11 @@ reduceDeltaArity3 bi3 a0v1 a0v2 a0v3 =
       input_dim <- validateIntLiteral a0v2
       output_dim <- validateIntLiteral a0v3
       pure $ A0ValBracket (A1ValConst (A1BILayerLinear ns input_dim output_dim))
-
-reduceDeltaArity4 :: BuiltInArity4 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
-reduceDeltaArity4 bi4 a0v1 a0v2 a0v3 a0v4 =
-  case bi4 of
     BIDatasetHelperGenTrainBatch -> do
-      n1 <- validateIntLiteral a0v1
-      n2 <- validateIntLiteral a0v2
-      n3 <- validateIntLiteral a0v3
-      n4 <- validateIntLiteral a0v4
-      pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperTrainBatch n1 n2 n3 n4))
+      ntrain <- validateIntLiteral a0v1
+      imgdim <- validateIntLiteral a0v2
+      batchSize <- validateIntLiteral a0v3
+      pure $ A0ValBracket (A1ValConst (A1BIDatasetHelperTrainBatch ntrain imgdim batchSize))
 
 reduceDeltaArity5 :: BuiltInArity5 -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> Ass0Val -> M Ass0Val
 reduceDeltaArity5 bi5 a0v1 a0v2 a0v3 a0v4 a0v5 =
@@ -409,8 +404,6 @@ reduceDelta pba a0vArg =
                   reduceDeltaArity3 bi3 v3 v2 v1
                 PartialBuiltInAppArity3Cons pba4 v4 ->
                   case pba4 of
-                    PartialBuiltInAppArity4Nil bi4 ->
-                      reduceDeltaArity4 bi4 v4 v3 v2 v1
                     PartialBuiltInAppArity4Cons pba5 v5 ->
                       case pba5 of
                         PartialBuiltInAppArity5Nil bi5 ->
@@ -446,6 +439,16 @@ reduceBeta a0vFun a0vArg =
     _ ->
       bug $ NotAClosure a0vFun
 
+-- TODO: fix this
+reduceTypeBeta0 :: Ass0Val -> Ass0TypeVal -> M Ass0Val
+reduceTypeBeta0 a0vTypeFun _a0tyvArg =
+  pure a0vTypeFun
+
+-- TODO: fix this
+reduceTypeBeta1 :: Ass1Val -> Ass1TypeVal -> M Ass1Val
+reduceTypeBeta1 a1vTypeFun _a1tyvArg =
+  pure a1vTypeFun
+
 evalExpr0 :: EvalEnv -> Ass0Expr -> M Ass0Val
 evalExpr0 env = \case
   A0Literal lit ->
@@ -458,7 +461,6 @@ evalExpr0 env = \case
         BuiltInArity1 bi1 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity1 (PartialBuiltInAppArity1Nil bi1))
         BuiltInArity2 bi2 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity2 (PartialBuiltInAppArity2Nil bi2))
         BuiltInArity3 bi3 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity3 (PartialBuiltInAppArity3Nil bi3))
-        BuiltInArity4 bi4 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity4 (PartialBuiltInAppArity4Nil bi4))
         BuiltInArity5 bi5 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity5 (PartialBuiltInAppArity5Nil bi5))
         BuiltInArity8 bi8 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity8 (PartialBuiltInAppArity8Nil bi8))
         BuiltInArity10 bi10 -> A0ValPartialBuiltInApp (A0PartialBuiltInAppArity10 (PartialBuiltInAppArity10Nil bi10))
@@ -523,6 +525,10 @@ evalExpr0 env = \case
         EvalState {sourceSpec} <- get
         let spanInFile = getSpanInFile sourceSpec loc
         evalError $ RefinementAssertionFailure spanInFile a0vPred a0vTarget
+  A0AppType a0e1 sa0tye2 -> do
+    a0v1 <- evalExpr0 env a0e1
+    a0tyv2 <- evalTypeExpr0 env sa0tye2
+    reduceTypeBeta0 a0v1 a0tyv2
 
 evalExpr1 :: EvalEnv -> Ass1Expr -> M Ass1Val
 evalExpr1 env = \case
@@ -573,6 +579,10 @@ evalExpr1 env = \case
     case a0v1 of
       A0ValBracket a1v1 -> pure a1v1
       _ -> bug $ NotACodeValue a0v1
+  A1AppType a1e1 a1tye2 -> do
+    a1v1 <- evalExpr1 env a1e1
+    a1tyv2 <- evalTypeExpr1 env a1tye2
+    reduceTypeBeta1 a1v1 a1tyv2
 
 evalTypeExpr0 :: EvalEnv -> StrictAss0TypeExpr -> M Ass0TypeVal
 evalTypeExpr0 env = \case
@@ -599,6 +609,8 @@ evalTypeExpr0 env = \case
   SA0TyCode a1tye1 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     pure $ A0TyValCode a1tyv1
+  SA0TyExplicitForAll atyvar sa0tye1 -> do
+    pure $ A0TyValExplicitForAll atyvar sa0tye1
 
 evalTypeExpr1 :: EvalEnv -> Ass1TypeExpr -> M Ass1TypeVal
 evalTypeExpr1 env = \case
@@ -615,6 +627,8 @@ evalTypeExpr1 env = \case
   A1TyList a1tye -> do
     a1tyv <- evalTypeExpr1 env a1tye
     pure $ A1TyValList a1tyv
+  A1TyVar atyvar ->
+    pure $ A1TyValVar atyvar
   A1TyProduct a1tye1 a1tye2 -> do
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
@@ -623,6 +637,8 @@ evalTypeExpr1 env = \case
     a1tyv1 <- evalTypeExpr1 env a1tye1
     a1tyv2 <- evalTypeExpr1 env a1tye2
     pure $ A1TyValArrow a1tyv1 a1tyv2
+  A1TyImplicitForAll atyvar a1tye2 -> do
+    pure $ A1TyValImplicitForAll atyvar a1tye2
 
 run :: M a -> EvalState -> Either EvalError a
 run = evalStateT
@@ -660,7 +676,11 @@ unliftTypeVal = \case
      in SA0TyPrim a0tyPrim Nothing
   A1TyValList a1tyv ->
     SA0TyList (unliftTypeVal a1tyv) Nothing
+  A1TyValVar _atyvar ->
+    error "TODO: unliftTypeVal, A1TyValVar"
   A1TyValProduct a1tyv1 a1tyv2 ->
     SA0TyProduct (unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
   A1TyValArrow a1tyv1 a1tyv2 ->
     SA0TyArrow (Nothing, unliftTypeVal a1tyv1) (unliftTypeVal a1tyv2)
+  A1TyValImplicitForAll _atyvar _a1tye2 ->
+    error "TODO: unliftTypeVal, A1TyValImplicitForAll"

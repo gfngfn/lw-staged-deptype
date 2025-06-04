@@ -6,7 +6,6 @@ module Lwsd.Subst
     subst1,
     occurs0,
     occurs1,
-    Maybe1 (..),
   )
 where
 
@@ -15,6 +14,7 @@ import Data.Set qualified as Set
 import Data.Tuple.Extra
 import Lwsd.Syntax
 import Safe.Exact
+import Util.Maybe1
 import Prelude
 
 -- TODO (refactor): use `Traversal` to implement `occurs0` and `subst0`
@@ -122,6 +122,8 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
       frees ty0eq
     A0RefinementAssert _ a0ePred a0eTarget ->
       unionPairs [frees a0ePred, frees a0eTarget]
+    A0AppType a0e1 a0tye2 ->
+      unionPairs [frees a0e1, frees a0tye2]
 
   subst s = \case
     A0Literal alit ->
@@ -166,6 +168,8 @@ instance (Ord sv) => HasVar sv Ass0ExprF where
       A0TyEqAssert loc (go ty0eq)
     A0RefinementAssert loc a0ePred a0eTarget ->
       A0RefinementAssert loc (go a0ePred) (go a0eTarget)
+    A0AppType a0e1 a0tye2 ->
+      A0AppType (go a0e1) (go a0tye2)
     where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
@@ -241,6 +245,8 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
       unionPairs [frees a1e0, frees a1e1, frees a1e2]
     A1Escape a0e1 ->
       frees a0e1
+    A1AppType a1e1 a1tye2 ->
+      unionPairs [frees a1e1, frees a1tye2]
 
   subst s = \case
     A1Literal alit ->
@@ -276,6 +282,8 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
       A1IfThenElse (go a1e0) (go a1e1) (go a1e2)
     A1Escape a0e1 ->
       A1Escape (go a0e1)
+    A1AppType a1e1 a1tye2 ->
+      A1AppType (go a1e1) (go a1tye2)
     where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
@@ -305,6 +313,8 @@ instance (Ord sv) => HasVar sv Ass1ExprF where
         go a1e10 a1e20 && go a1e11 a1e21 && go a1e12 a1e22
       (A1Escape a0e1, A1Escape a0e2) ->
         go a0e1 a0e2
+      (A1AppType a1e11 a1tye12, A1AppType a1e21 a1tye22) ->
+        go a1e11 a1e21 && go a1tye12 a1tye22
       (_, _) ->
         False
     where
@@ -315,7 +325,7 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
   frees = \case
     A0TyPrim _ maybePred ->
       frees (Maybe1 maybePred)
-    A0TyVar _ ->
+    A0TyVar _atyvar ->
       (Set.empty, Set.empty)
     A0TyList a0tye maybePred ->
       unionPairs [frees a0tye, frees (Maybe1 maybePred)]
@@ -339,6 +349,8 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
           var0set = Set.union var0set1 (Set.delete y var0set2)
           var1set = Set.union var1set1 var1set2
        in (var0set, var1set)
+    A0TyImplicitForAll _atyvar a0tye ->
+      frees a0tye
 
   subst s = \case
     A0TyPrim a0tyPrim maybePred ->
@@ -361,6 +373,8 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
       case s of
         Subst0 x _ -> A0TyOptArrow (y, go a0tye1) (if y == x then a0tye2 else go a0tye2)
         Subst1 _ _ -> A0TyOptArrow (y, go a0tye1) (go a0tye2)
+    A0TyImplicitForAll atyvar a0tye ->
+      A0TyImplicitForAll atyvar (go a0tye)
     where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
@@ -389,6 +403,9 @@ instance (Ord sv) => HasVar sv Ass0TypeExprF where
         go a1tye1 a1tye2
       (A0TyOptArrow (y1, a0tye11) a0tye12, A0TyOptArrow (y2, a0tye21) a0tye22) ->
         go a0tye11 a0tye21 && go a0tye12 (subst0 (A0Var y1) y2 a0tye22)
+      (A0TyImplicitForAll atyvar1 a0tye1', A0TyImplicitForAll atyvar2 a0tye2') ->
+        -- TODO: true alpha-equivalence
+        atyvar1 == atyvar2 && go a0tye1' a0tye2'
       (_, _) ->
         False
     where
@@ -403,10 +420,14 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         A1TyTensor a0eList -> frees a0eList
     A1TyList a1tye1 ->
       frees a1tye1
+    A1TyVar _atyvar ->
+      (Set.empty, Set.empty)
     A1TyProduct a1tye1 a1tye2 ->
       unionPairs [frees a1tye1, frees a1tye2]
     A1TyArrow a1tye1 a1tye2 ->
       unionPairs [frees a1tye1, frees a1tye2]
+    A1TyImplicitForAll _atyvar a1tye2 ->
+      frees a1tye2
 
   subst s = \case
     A1TyPrim a1tyPrim ->
@@ -415,10 +436,14 @@ instance (Ord sv) => HasVar sv Ass1TypeExprF where
         A1TyTensor a0eList -> A1TyTensor (go a0eList)
     A1TyList a1tye1 ->
       A1TyList (go a1tye1)
+    A1TyVar atyvar ->
+      A1TyVar atyvar
     A1TyProduct a1tye1 a1tye2 ->
       A1TyProduct (go a1tye1) (go a1tye2)
     A1TyArrow a1tye1 a1tye2 ->
       A1TyArrow (go a1tye1) (go a1tye2)
+    A1TyImplicitForAll atyvar a1tye2 ->
+      A1TyImplicitForAll atyvar (go a1tye2)
     where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
@@ -447,7 +472,7 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
   frees = \case
     SA0TyPrim _ maybePred ->
       frees (Maybe1 maybePred)
-    SA0TyVar _ ->
+    SA0TyVar _atyvar ->
       (Set.empty, Set.empty)
     SA0TyList a0tye maybePred ->
       unionPairs [frees a0tye, frees (Maybe1 maybePred)]
@@ -465,6 +490,8 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
        in (var0set, var1set)
     SA0TyCode a1tye1 ->
       frees a1tye1
+    SA0TyExplicitForAll _atyvar a0tye ->
+      frees a0tye
 
   subst s = \case
     SA0TyPrim a0tyPrim maybePred ->
@@ -483,6 +510,8 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
           (_, Subst1 _ _) -> go sa0tye2
     SA0TyCode a1tye1 ->
       SA0TyCode (go a1tye1)
+    SA0TyExplicitForAll atyvar a0tye ->
+      SA0TyExplicitForAll atyvar (go a0tye)
     where
       go :: forall af. (HasVar sv af) => af sv -> af sv
       go = subst s
@@ -507,6 +536,9 @@ instance (Ord sv) => HasVar sv StrictAss0TypeExprF where
               go sa0tye12 (subst0 (A0Var y1) y2 sa0tye22)
       (SA0TyCode a1tye1, SA0TyCode a1tye2) ->
         go a1tye1 a1tye2
+      (SA0TyExplicitForAll atyvar1 sa0tye1', SA0TyExplicitForAll atyvar2 sa0tye2') ->
+        -- TODO: true alpha-equivalence
+        atyvar1 == atyvar2 && go sa0tye1' sa0tye2'
       (_, _) ->
         False
     where
@@ -571,8 +603,6 @@ instance (Ord sv) => HasVar sv Type1EquationF where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv -> Bool
       go = alphaEquivalent
 
-newtype Maybe1 af sv = Maybe1 {unMaybe1 :: Maybe (af sv)}
-
 instance (HasVar sv af) => HasVar sv (Maybe1 af) where
   frees = maybe (Set.empty, Set.empty) frees . unMaybe1
 
@@ -590,6 +620,8 @@ instance (HasVar sv af) => HasVar sv (ResultF af) where
     CastGiven0 cast a0tye r -> unionPairs [frees (Maybe1 cast), frees a0tye, frees r]
     FillInferred0 a0e r -> unionPairs [frees a0e, frees r]
     InsertInferred0 a0e r -> unionPairs [frees a0e, frees r]
+    InsertInferredType0 a0tye r -> unionPairs [frees a0tye, frees r]
+    InsertType1 a1tye r -> unionPairs [frees a1tye, frees r]
 
   subst s = \case
     Pure v -> Pure (go v)
@@ -598,6 +630,8 @@ instance (HasVar sv af) => HasVar sv (ResultF af) where
     CastGiven0 cast a0tye r -> CastGiven0 (unMaybe1 . go . Maybe1 $ cast) (go a0tye) (go r)
     FillInferred0 a0e r -> FillInferred0 (go a0e) (go r)
     InsertInferred0 a0e r -> InsertInferred0 (go a0e) (go r)
+    InsertInferredType0 a0tye r -> InsertInferredType0 (go a0tye) (go r)
+    InsertType1 a1tye r -> InsertType1 (go a1tye) (go r)
     where
       go :: forall bf. (HasVar sv bf) => bf sv -> bf sv
       go = subst s

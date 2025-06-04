@@ -42,16 +42,15 @@ val %range : Int -> Int -> List Int
   external (builtin = "range", surface = "range")
 
 module List = struct
-  val %append : List Int -> List Int -> List Int
-(*  val %append 'a : List 'a -> List 'a -> List 'a  *)
+  val %append : forall 'a -> List 'a -> List 'a -> List 'a
     external (builtin = "list__append", surface = "append") (* TODO: generalize the type *)
-  val %iter : (Int -> Unit) -> List Int -> Unit
+  val %iter : forall 'a -> ('a -> Unit) -> List 'a -> Unit
     external (builtin = "list__iter", surface = "iter") (* TODO: generalize the type *)
 end
 
 module Device = struct
-  val ~cuda_if_available : Unit -> Device
-    external (builtin = "device__cuda_if_available", surface = "cuda_if_available")
+  val ~gen_cuda_if_available : Unit -> &Device
+    external (builtin = "device__gen_cuda_if_available", surface = "cuda_if_available")
 end
 
 module Tensor = struct
@@ -183,11 +182,10 @@ end
 module DatasetHelper = struct
   val ~gen_train_batch :
     {ntrain : Nat} ->
-    {ntest : Nat} ->
     {imgdim : Nat} ->
-    Device ->
     (batch_size : Nat) ->
-    &(Tensor %[ntrain, imgdim] ->
+    &(Device ->
+      Tensor %[ntrain, imgdim] ->
       Tensor %[ntrain] ->
       Int ->
       Tensor %[batch_size, imgdim] * Tensor %[batch_size]
@@ -201,7 +199,7 @@ module DatasetHelper = struct
     ((actual_batch_size : Nat) ->
       &(Tensor %[actual_batch_size, imgdim] -> Tensor %[actual_batch_size, n])
     ) ->
-    &(Tensor %[ntest, imgdim] -> Tensor %[ntest] -> Float)
+    &(Device -> Tensor %[ntest, imgdim] -> Tensor %[ntest] -> Float)
     external (builtin = "dataset_helper__gen_batch_accuracy", surface = "batch_accuracy")
 end
 
