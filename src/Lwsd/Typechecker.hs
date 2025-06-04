@@ -193,20 +193,35 @@ makeAssertiveCast trav loc =
     go varsToInfer tyvars0ToInfer a0tye1 a0tye2 = do
       spanInFile <- askSpanInFile loc
       case (a0tye1, a0tye2) of
-        (_, A0TyVar atyvar2) ->
-          if atyvar2 `elem` tyvars0ToInfer
-            then pure (Nothing, Map.empty, Map.singleton atyvar2 a0tye1)
-            else error "TODO (error): makeAssertiveCast, unexpected type variable"
         (A0TyVar atyvar1, _) ->
           if atyvar1 `elem` tyvars0ToInfer
             then pure (Nothing, Map.empty, Map.singleton atyvar1 a0tye2)
-            else error "TODO (error): makeAssertiveCast, unexpected type variable"
-        (A0TyImplicitForAll _tyvar1 _a0tye1, _) ->
-          error "TODO: makeAssertiveCast, A0TyImplicitForAll (left)"
+            else error "TODO (error): makeAssertiveCast, unexpected type variable (left)"
+        (_, A0TyVar atyvar2) ->
+          if atyvar2 `elem` tyvars0ToInfer
+            then pure (Nothing, Map.empty, Map.singleton atyvar2 a0tye1)
+            else error "TODO (error): makeAssertiveCast, unexpected type variable (right)"
+        (A0TyImplicitForAll tyvar1 a0tye12, _) -> do
+          (cast', varSolution', tyvar0Solution') <-
+            go varsToInfer (Set.insert tyvar1 tyvars0ToInfer) a0tye12 a0tye2
+          case Map.lookup tyvar1 tyvar0Solution' of
+            Just a0tye11 -> do
+              cast <- do
+                sv <- generateFreshVar Nothing
+                let ax = AssVarStatic sv
+                pure $
+                  Just $
+                    A0Lam Nothing (ax, strictify a0tye1) $
+                      applyCast cast' (A0AppType (A0Var ax) (strictify a0tye11))
+              pure (cast, varSolution', tyvar0Solution')
+            Nothing ->
+              error "TODO (error): makeAssertiveCast, cannot infer a type for a type variable (left)"
         (_, A0TyImplicitForAll _tyvar2 _a0tye2) ->
           error "TODO: makeAssertiveCast, A0TyImplicitForAll (right)"
         (A0TyPrim a0tyPrim1 maybePred1, A0TyPrim a0tyPrim2 maybePred2') -> do
-          -- Ad hoc optimization of refinement cast insertion:
+          -- Ad-hoc optimization of refinement cast insertion.
+          -- Maybe we can try using an SMT solver for some subset of predicates here
+          -- (if the user allows us to do so) to judge that the LHS predicate implies the RHS one:
           let maybePred2 =
                 if alphaEquivalent (Maybe1 maybePred2') (Maybe1 maybePred1)
                   then Nothing
